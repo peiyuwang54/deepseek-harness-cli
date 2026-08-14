@@ -130,6 +130,6 @@
     "@deepseek-ai/dsh-user-approval": "workspace:^",
     "@deepseek-ai/dsh-user-questions": "workspace:^",
     "@deepseek-ai/dsh-workspace": "workspace:^",
-    "@xterm/headless": "5.5.0"
+    "@xterm/headless": "6.0.0"
   }
 }

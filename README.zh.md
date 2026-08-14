@@ -12,7 +12,7 @@
 
 > [!IMPORTANT]
 >
-> 这是一个非官方的社区 fork，不由 DeepSeek AI 维护，也未获得 DeepSeek AI 的赞助或背书。DeepSeek Harness 和 `@deepseek-ai` npm 包来自 DeepSeek AI。本仓库的终端改动目前通过源码分发；公开的 `@deepseek-ai/dsh` npm 包是上游独立发布的产物，不应默认它已包含本 fork 的 TUI。
+> 这是一个非官方的社区 fork，不由 DeepSeek AI 维护，也未获得 DeepSeek AI 的赞助或背书。DeepSeek Harness 和 `@deepseek-ai` npm 包来自 DeepSeek AI。本仓库的终端改动通过源码分发，在 Windows 上还可通过由该源码打出的目录包分发；公开的 `@deepseek-ai/dsh` npm 包是上游独立发布的产物，不应默认它已包含本 fork 的 TUI。
 
 ## 状态
 
@@ -23,9 +23,27 @@
 - Node.js `^22.19.0` 或 `>=24.0.0`；建议开发时使用 Node.js 24。
 - pnpm `11.7.0`，与仓库 `packageManager` 字段一致。
 - `tui` 要求 stdin 和 stdout 都是真实 TTY；重定向和自动化请使用 `headless`。
-- 第一次请求模型前需要提供方凭据。随附的默认适配器读取 `DEEPSEEK_API_KEY`。
+- 第一次请求模型前需要提供方凭据。随附的默认适配器读取 `DEEPSEEK_API_KEY`。在 `$DSH_HOME/settings.yaml` 启用 `openrouter` 路由后，改为读取 `OPENROUTER_API_KEY`。
 
 终端实现面向 macOS、Linux 和 Windows。下文介绍的无密钥 built-binary PTY 验收测试在 POSIX 上运行；Windows 终端行为使用 pi-tui 的 VT 输入和 ConPTY 路径，并配有独立的平台导向测试。
+
+<a id="install-windows"></a>
+
+## 在 Windows 上安装
+
+本仓库没有公开的安装器 URL。请先 clone 这份检出，再从该目录运行安装器：
+
+```powershell
+git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
+cd deepseek-harness-cli
+powershell -ExecutionPolicy Bypass -File .\scripts\install\install.ps1
+```
+
+当缺少 `node_modules` 时，脚本会安装 workspace 依赖，构建 Host 与 Client 库，打出一份便携目录（宿主 `node.exe` 加上 `@deepseek-ai/dsh` 的生产闭包），复制到 `%LOCALAPPDATA%\Programs\dsh`，并把该目录写入用户 PATH。打开新的终端后运行 `dsh`。不带参数的命令会打开终端 UI。
+
+已安装的命令不指向这份 clone。更新或删除检出不会改变已安装副本，除非再次运行安装器。同一打包器还会在该目录旁写出 `dist-windows/dsh-win32-<arch>.zip`。
+
+打包装包的机器需要 Node.js `^22.19.0` 或 `>=24.0.0`，以及 pnpm `11.7.0`（Corepack）。`dsh web` 不属于此包：打包器不构建 Web 前端。`pnpm run pack:windows-cli` 只写出目录和 zip，不执行安装。
 
 <a id="run-from-source"></a>
 
@@ -48,6 +66,22 @@ pnpm dsh tui
 ```
 
 不要提交提供方密钥。除了继承的环境外，启动器还可以从 `$DSH_HOME/.credentials.yaml`、调用目录下的 `.env` 以及 `$DSH_HOME/.env` 解析凭据。`$DSH_HOME` 默认为 `~/.dsh`，其中还保存 profile 和持久化 Session。
+
+要调用 [OpenRouter](https://openrouter.ai/docs/quickstart) 上的模型，把 `OPENROUTER_API_KEY` 写入该凭据文档，并启用已有的 `openrouter` catalog 路由：
+
+```yaml
+llm-pi-ai:
+  providers:
+    openrouter:
+      apiKeyEnv: OPENROUTER_API_KEY
+      displayName: OpenRouter
+
+agent-default-model:
+  provider: openrouter
+  model: deepseek/deepseek-v4-flash
+```
+
+之后 `/model` 会列出 OpenRouter catalog。示例默认是该路由上的 DeepSeek slug。在这份 settings 分节改写之前，组合默认值仍是 `deepseek-official`。
 
 运行 `pnpm dsh ...` 时所在的目录是默认 workspace。`web`、`tui` 和 `headless` profile 都会在首次使用时自动初始化。
 

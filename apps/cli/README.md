@@ -46,3 +46,5 @@ The [CLI behavior reference](reference/README.md) owns exact layer precedence, f
 ## Development
 
 Production runs require built package and frontend artifacts. From the repository root, run `pnpm run build` separately, then use `pnpm dsh <args...>` to run the TypeScript entry and forward every argument; the [source-execution reference](reference/README.md#source-execution) owns the module-resolution contract.
+
+On Windows, [`scripts/install/install.ps1`](../../scripts/install/install.ps1) installs a packed copy of this CLI into `%LOCALAPPDATA%\Programs\dsh`. That launcher boots `tui` when the user passes no arguments; the grammar in [`src/args.ts`](src/args.ts) is unchanged. See the [root Windows install section](../../README.md#install-windows).

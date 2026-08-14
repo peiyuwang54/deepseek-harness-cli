@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-06-21-mandatory-app-attribution-headers.md
-2026-06-21-mandatory-app-attribution-headers.md: 479d3a46dc41c5cc9ae9b77b81dbef3d6524370b
-2026-06-21-mandatory-app-attribution-headers.zh.md: 75162604623099d50ca87aafd5d45567e2121789
+2026-06-21-mandatory-app-attribution-headers.md: cec1043b508f1afd1a79bb893cc197d9f03202a2
+2026-06-21-mandatory-app-attribution-headers.zh.md: ccdfda74ded8e3f7034bd5202e96efa47d219bdc

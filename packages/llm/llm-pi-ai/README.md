@@ -151,7 +151,7 @@ If a listener rewrites assembled assistant content, the loop drops replay state 
 
 ## App attribution
 
-Every request carries the shared attribution header from dsh-llm's `attributionHeaders()`, merged through pi-ai's `headers` stream option. Provider-specific app-attribution headers are not synthesized. See [dsh-llm § App attribution](../llm/README.md#app-attribution-attributionts).
+Every request carries the shared attribution header from dsh-llm's `attributionHeaders()`, merged through pi-ai's `headers` stream option. The explicit catalog route `openrouter` also sends OpenRouter's `HTTP-Referer` and `X-OpenRouter-Title` from the same public `APP_IDENTITY`; other routes do not. A profile `headers` entry may replace those two OpenRouter names. Shared `User-Agent` attribution still wins reserved names. See [dsh-llm § App attribution](../llm/README.md#app-attribution-attributionts) and the [OpenRouter route decision](../../../.agents/notes/implemented/feature/2026-08-15-openrouter-pi-ai-route.md).
 
 ## Dependency weight
 

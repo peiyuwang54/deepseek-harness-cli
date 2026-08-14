@@ -81,6 +81,27 @@ describe('PiAiAdapter provider routing', () => {
     await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
     expect(server.headers[0]?.['x-company']).toBe('private')
     expect(server.headers[0]?.['user-agent']).toBe(userAgent())
+    expect(server.headers[0]).not.toHaveProperty('http-referer')
+    expect(server.headers[0]).not.toHaveProperty('x-openrouter-title')
+  })
+
+  it('sends OpenRouter product headers only on the openrouter route', async () => {
+    const server = await mockServer([{ events: textEvents }, { events: textEvents }])
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    await ctx.plugin(LlmPiAi, {
+      providers: {
+        openrouter: { apiKeyEnv: 'PI_TEST_KEY', baseURL: server.url },
+        deepseek: { apiKeyEnv: 'PI_TEST_KEY', baseURL: server.url },
+      },
+    })
+    await assemble(ctx, { provider: 'openrouter', model: 'deepseek/deepseek-v4-flash', messages: [] })
+    expect(server.headers[0]?.['http-referer']).toBe('https://github.com/deepseek-ai/deepseek-harness')
+    expect(server.headers[0]?.['x-openrouter-title']).toBe('DeepSeek Harness')
+    expect(server.headers[0]?.['user-agent']).toBe(userAgent())
+    await assemble(ctx, { provider: 'deepseek', model: 'deepseek-v4-flash', messages: [] })
+    expect(server.headers[1]).not.toHaveProperty('http-referer')
+    expect(server.headers[1]).not.toHaveProperty('x-openrouter-title')
   })
 
   it('forwards common stream options and profile reasoning', async () => {

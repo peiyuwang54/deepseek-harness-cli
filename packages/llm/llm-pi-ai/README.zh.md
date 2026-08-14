@@ -152,7 +152,7 @@ profile 的 `models` 列表是*替换*该路由已安装 catalog，而不是扩�
 
 ## 应用归因
 
-每个请求都携带 dsh-llm `attributionHeaders()` 的共享归因标头，并通过 pi-ai `headers` 流选项合并。不会合成提供方特定应用归因标头。详见 [dsh-llm § 应用归因](../llm/README.md#app-attribution-attributionts)。
+每个请求都携带 dsh-llm `attributionHeaders()` 的共享归因标头，并通过 pi-ai `headers` 流选项合并。显式 catalog 路由 `openrouter` 还会用同一份公开 `APP_IDENTITY` 发送 OpenRouter 的 `HTTP-Referer` 与 `X-OpenRouter-Title`；其他路由不会。profile 的 `headers` 条目可以覆盖这两个 OpenRouter 名称。共享 `User-Agent` 归属仍赢得保留名称。详见 [dsh-llm § 应用归因](../llm/README.md#app-attribution-attributionts) 与 [OpenRouter 路由决策](../../../.agents/notes/implemented/feature/2026-08-15-openrouter-pi-ai-route.md)。
 
 ## 依赖体量
 

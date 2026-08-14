@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-15-openrouter-pi-ai-route.md
+2026-08-15-openrouter-pi-ai-route.md: b9bd18c36dcb37f5766aae468d390d71e4f0e58d
+2026-08-15-openrouter-pi-ai-route.zh.md: d96502faee9f9be7a9b0507a0ee2293db0957e85

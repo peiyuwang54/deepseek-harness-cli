@@ -126,6 +126,8 @@ describe('draft-provider model discovery', () => {
     expect(server.paths).toEqual(['/v1/models'])
     expect(server.headers[0]?.authorization).toBe('Bearer probe-key')
     expect(server.headers[0]?.['user-agent']).toBe(userAgent())
+    expect(server.headers[0]).not.toHaveProperty('http-referer')
+    expect(server.headers[0]).not.toHaveProperty('x-openrouter-title')
   })
 
   it('keeps a deployment path instead of resolving it away', async () => {

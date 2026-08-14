@@ -24,8 +24,8 @@
 
 import { INVALID_CREDENTIAL_CODE, LlmError, normalizeApiKey } from '@deepseek-ai/dsh-llm'
 import type { LlmDiscoveredModel, LlmModelDiscoveryRequest } from '@deepseek-ai/dsh-llm'
-import { attributionHeaders } from '@deepseek-ai/dsh-llm'
 import { catalogModels } from './catalog.ts'
+import { requestHeaders } from './openrouter-headers.ts'
 
 /**
  * Protocols whose model listing this module can read: the two that speak
@@ -246,7 +246,7 @@ export async function discoverModels(
       headers: {
         accept: 'application/json',
         ...apiKey === undefined ? {} : { authorization: `Bearer ${apiKey}` },
-        ...attributionHeaders(),
+        ...requestHeaders(request.provider ?? '', undefined),
       },
       ...request.signal === undefined ? {} : { signal: request.signal },
     })

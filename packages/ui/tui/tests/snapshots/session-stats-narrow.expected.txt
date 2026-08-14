@@ -25,10 +25,11 @@ buffer
 10-11| <blank>
 12| "╭ Message ─────────────────────────────────────────────────────────────╮"
   style 0-71 fg=bright-magenta
-13| "│ dsh   Describe a task, @ a file, or / for commands                   │"
+13| "│ dsh   │Describe a task, @ a file, or / for commands                  │"
   style 0-0 fg=bright-magenta
   style 2-4 fg=bright-magenta bold
-  style 7-51 dim
+  style 7-7 dim
+  style 9-52 dim
   style 71-71 fg=bright-magenta
 14| "╰────────────────────── Enter steer · Esc cancel · Shift+Enter newline ╯"
   style 0-71 fg=bright-magenta

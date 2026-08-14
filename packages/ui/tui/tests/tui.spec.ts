@@ -44,6 +44,7 @@ import {
   type TuiRuntime,
 } from '../src/index.ts'
 import { WorkspaceFileSearch } from '../src/chat/file-autocomplete.ts'
+import { CURSOR_BLINK_INTERVAL_MS } from '../src/chat/helpers.ts'
 import { ResumePicker } from '../src/components/dialogs.ts'
 import {
   ATTRIBUTE_ROLES,
@@ -311,6 +312,48 @@ describe('TUI config', () => {
       },
       title: 'DSH',
     })
+  })
+})
+
+describe('software input cursor', () => {
+  it('alternates the focused placeholder caret without relying on terminal blink support', async () => {
+    const intervalSpy = vi.spyOn(globalThis, 'setInterval')
+    const result = await setup()
+    try {
+      const call = intervalSpy.mock.calls.find(([, delay]) => delay === CURSOR_BLINK_INTERVAL_MS)
+      expect(call).toBeDefined()
+      expect(result.terminal.output).toContain('dsh > │Describe a task')
+
+      result.terminal.output = ''
+      const blink = call?.[0]
+      if (typeof blink !== 'function') throw new Error('cursor blink callback was not installed')
+      blink()
+      await tick()
+      expect(result.terminal.output).toContain('dsh >  Describe a task')
+      expect(result.terminal.output).not.toContain('dsh > │Describe a task')
+
+      result.terminal.output = ''
+      blink()
+      await tick()
+      expect(result.terminal.output).toContain('dsh > │Describe a task')
+    } finally {
+      intervalSpy.mockRestore()
+      await dispose(result)
+    }
+  })
+
+  it('does not render or schedule the caret when cursor display is disabled', async () => {
+    const intervalSpy = vi.spyOn(globalThis, 'setInterval')
+    const result = await setup({ config: { showHardwareCursor: false } })
+    try {
+      const call = intervalSpy.mock.calls.find(([, delay]) => delay === CURSOR_BLINK_INTERVAL_MS)
+      expect(call).toBeUndefined()
+      expect(result.terminal.output).toContain('dsh > Describe a task')
+      expect(result.terminal.output).not.toContain('dsh > │Describe a task')
+    } finally {
+      intervalSpy.mockRestore()
+      await dispose(result)
+    }
   })
 })
 
@@ -2712,10 +2755,11 @@ describe('pi-tui chat lifecycle and transcript', () => {
       clearIntervalSpy.mockClear()
       result.session.append('compaction/start', { compactionId: LIVE_COMPACTION_ID, turn: null })
       expect(intervalSpy).toHaveBeenCalledOnce()
+      const compactionTimer = intervalSpy.mock.results[0]?.value as ReturnType<typeof setInterval>
 
       await dispose(result)
       didDispose = true
-      expect(clearIntervalSpy).toHaveBeenCalledOnce()
+      expect(clearIntervalSpy.mock.calls.some(([timer]) => timer === compactionTimer)).toBe(true)
       expect(result.terminal.progress.at(-1)).toBe(false)
     } finally {
       if (result !== undefined && !didDispose) await dispose(result)

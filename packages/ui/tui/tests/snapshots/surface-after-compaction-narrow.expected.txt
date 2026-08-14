@@ -44,10 +44,11 @@ buffer
 21-22| <blank>
 23| "╭ Message ─────────────────────────────────╮"
   style 0-43 dim
-24| "│ dsh > Describe a task, @ a file, or / for│"
+24| "│ dsh > │Describe a task, @ a file, or / fo│"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
-  style 6-43 dim
+  style 6-7 dim
+  style 9-43 dim
 25| "╰ Enter send · Shift+Enter newline · / comm╯"
   style 0-42 dim
 26| "▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0%"

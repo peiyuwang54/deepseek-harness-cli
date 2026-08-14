@@ -2853,7 +2853,7 @@ export interface TuiConfig {
   fileSearchMaxEntries?: number
   /** Directory basenames excluded from `@` traversal and completion. */
   fileSearchExcludedDirectories?: string[]
-  /** Show the terminal's hardware cursor at the pi editor's IME marker. */
+  /** Show a software-blinking caret while retaining pi-tui's IME cursor marker. */
   showHardwareCursor?: boolean
   /** Color and prompt-template settings. */
   theme?: TuiThemeConfig

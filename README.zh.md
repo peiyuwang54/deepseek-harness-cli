@@ -32,8 +32,8 @@
 ## 从源码快速开始
 
 ```sh
-git clone https://github.com/peiyuwang54/deepseek-harness-web-to-cli.git
-cd deepseek-harness-web-to-cli
+git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
+cd deepseek-harness-cli
 pnpm install --frozen-lockfile
 pnpm run build
 export DEEPSEEK_API_KEY="your-key"
@@ -274,7 +274,7 @@ TUI renderer 从上游 DeepSeek Harness 删除它之前的 tree 恢复，并迁�
 
 ## 开发与支持
 
-- Fork 专用 bug 请提交到本仓库的 [Issues](https://github.com/peiyuwang54/deepseek-harness-web-to-cli/issues)，不要提交到上游 issue tracker。
+- Fork 专用 bug 请提交到本仓库的 [Issues](https://github.com/peiyuwang54/deepseek-harness-cli/issues)，不要提交到上游 issue tracker。
 - 请从[开发指南](docs/development.md)和[架构文档](docs/architecture.md)开始。
 - 提交改动前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 - 在仓库中工作的 agent 必须遵循 [AGENTS.md](AGENTS.md)。

@@ -32,8 +32,8 @@ The terminal implementation targets macOS, Linux, and Windows. The keyless built
 ## Quick start from source
 
 ```sh
-git clone https://github.com/peiyuwang54/deepseek-harness-web-to-cli.git
-cd deepseek-harness-web-to-cli
+git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
+cd deepseek-harness-cli
 pnpm install --frozen-lockfile
 pnpm run build
 export DEEPSEEK_API_KEY="your-key"
@@ -274,7 +274,7 @@ Gemini CLI and OpenAI Codex were studied for high-level process, rendering, appr
 
 ## Development and support
 
-- Report fork-specific bugs through this repository's [Issues](https://github.com/peiyuwang54/deepseek-harness-web-to-cli/issues), not the upstream issue tracker.
+- Report fork-specific bugs through this repository's [Issues](https://github.com/peiyuwang54/deepseek-harness-cli/issues), not the upstream issue tracker.
 - Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
 - See [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change.
 - Agents working in the repository must follow [AGENTS.md](AGENTS.md).

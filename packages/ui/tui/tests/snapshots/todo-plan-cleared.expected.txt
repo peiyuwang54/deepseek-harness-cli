@@ -28,10 +28,11 @@ viewport
 13-14| <blank>
 15| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
   style 0-95 dim
-16| "│ dsh > Describe a task, @ a file, or / for commands                                           │"
+16| "│ dsh > │Describe a task, @ a file, or / for commands                                          │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
-  style 6-51 dim
+  style 6-7 dim
+  style 9-52 dim
   style 95-95 dim
 17| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-95 dim

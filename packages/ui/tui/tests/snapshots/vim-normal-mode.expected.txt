@@ -17,10 +17,11 @@ buffer
 5-6| <blank>
 7| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
   style 0-95 dim
-8| "│ dsh > Describe a task, @ a file, or / for commands                                           │"
+8| "│ dsh > │Describe a task, @ a file, or / for commands                                          │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
-  style 6-51 dim
+  style 6-7 dim
+  style 9-52 dim
   style 95-95 dim
 9| "╰───────────────────────────────────────────── VIM NORMAL · i insert · h/j/k/l move · x delete ╯"
   style 0-95 dim

@@ -17,10 +17,11 @@ buffer
 5-27| <blank>
 28| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
   style 0-91 dim
-29| "│ dsh > Describe a task, @ a file, or / for commands                                       │"
+29| "│ dsh > │Describe a task, @ a file, or / for commands                                      │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
-  style 6-51 dim
+  style 6-7 dim
+  style 9-52 dim
   style 91-91 dim
 30| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-91 dim

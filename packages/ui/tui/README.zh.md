@@ -8,7 +8,7 @@ DeepSeek Harness agent（智能体）的交互式终端入口，基于 [`@earend
 
 支持 macOS、Linux 和 Windows 上的交互式终端。Windows 使用 pi-tui 原生控制台 VT 输入处理与 ConPTY 进程验证。
 
-Renderer 默认使用 alternate screen，因此对话、overlay 和不断扩展的多行编辑器会占据一个完整终端 viewport，退出时恢复此前的 shell 画面。获得焦点的编辑器会在 pi-tui cursor marker 处显示真实硬件光标；闪烁频率和形状跟随终端自身设置。Shift/Alt+Enter 插入换行，bracketed paste 保留多行内容，任意光标位置仍可使用 `@` 补全。Page Up/Down 或鼠标滚轮滚动 transcript；到达最新页后会恢复跟随实时输出。应用鼠标跟踪也会让模型徽标和 footer 详情图标可点击，并允许滚轮在已打开的选择器中导航。如需框选文本复制，请按住终端的选择修饰键（通常是 Shift）。设置 `fullscreen: false` 会恢复 inline scrollback 渲染，并把鼠标处理交还终端。
+Renderer 默认使用 alternate screen，因此对话、overlay 和不断扩展的多行编辑器会占据一个完整终端 viewport，退出时恢复此前的 shell 画面。获得焦点的编辑器会保留 pi-tui 的硬件 cursor marker 作为终端 IME 锚点，并每隔 530 ms 交替渲染一个单字符软件光标，因此即使终端配置禁用或忽略光标闪烁，输入焦点仍清晰可见。点击或按键会重新开始可见阶段。Shift/Alt+Enter 插入换行，bracketed paste 保留多行内容，任意光标位置仍可使用 `@` 补全。Page Up/Down 或鼠标滚轮滚动 transcript；到达最新页后会恢复跟随实时输出。应用鼠标跟踪也会让模型徽标和 footer 详情图标可点击，并允许滚轮在已打开的选择器中导航。如需框选文本复制，请按住终端的选择修饰键（通常是 Shift）。设置 `fullscreen: false` 会恢复 inline scrollback 渲染，并把鼠标处理交还终端。
 
 全新的空会话会打开一张自适应、借鉴 Claude Code 编排方式的双栏欢迎卡，但不会复制 Claude 的产品文案或资产。标题显示基础包版本号；左栏显示欢迎语、由仓库第一方 DeepSeek SVG 鲸鱼标志派生的 Braille 字符栅格，并投影已组合的 agent preset、所选模型、有效 permission preset 或 approval policy 以及 workspace。鲸鱼继承终端前景色，因此在浅色终端中呈黑色，在深色终端中仍然可见。右栏列出真实存在的 Harness 入口，并通过可选 session-query 服务显示最多两个最新会话。较窄终端使用缩小鲸鱼、紧凑状态行和操作行。欢迎卡与输入框之间只保留两行安静留白，不再用空 transcript 把输入框推到屏幕底部。第一个 turn 开始后，欢迎卡会自动收缩为普通 transcript header。最近会话行只提供信息而不直接点击；搜索与校验仍由 `/resume` 持有。
 
@@ -84,7 +84,7 @@ Reasoning 首次渲染时默认隐藏。注入上下文卡片只显示一行 `N 
 | `fileSearchMaxResults` | `TuiConfig` | `20` | 一次 `@` 查询显示的最大文件和目录候选数 |
 | `fileSearchMaxEntries` | `TuiConfig` | `10000` | 无路径模糊查询使用的有界工作区索引最多保留的路径数 |
 | `fileSearchExcludedDirectories` | `TuiConfig` | `['.git', 'node_modules']` | 遍历和直接补全时忽略的目录 basename |
-| `showHardwareCursor` | `TuiConfig` | `true` | 在 pi-tui 的 IME marker 处显示硬件 cursor；闪烁和形状跟随终端 |
+| `showHardwareCursor` | `TuiConfig` | `true` | 保留 pi-tui 的 IME marker，并显示获得焦点的软件闪烁光标 |
 | `theme.color` | `TuiConfig` | `true` | 应用内置 ANSI palette（参见[颜色](#color)） |
 | `theme.truecolor` | `TuiConfig` | 进程入口检测 `COLORTERM`；direct runtime 调用使用 `false` | 启用 24-bit 启动渐变与 DeepSeek 品牌色 |
 | `theme.leftPrompt` | `TuiConfig` | `${cwd}${git/worktree}` | 底部状态栏左对齐模板 |

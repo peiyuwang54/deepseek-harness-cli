@@ -20,6 +20,19 @@ import { isAppendSurfaceEvent, isReplacementSurfaceEvent } from '@deepseek-ai/ds
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
 
+/** Software cursor cadence, independent of the terminal profile's blink preference. */
+export const CURSOR_BLINK_INTERVAL_MS = 530
+
+/** Remove pi-tui's inverse-video cursor cell while preserving its IME marker. */
+function hideRenderedEditorCursor(line: string): string {
+  const markerIndex = line.indexOf(CURSOR_MARKER)
+  if (markerIndex < 0) return line
+  const contentIndex = markerIndex + CURSOR_MARKER.length
+  const before = line.slice(0, contentIndex)
+  const after = line.slice(contentIndex)
+  return `${before}${after.replace(/^\x1b\[7m([^\x1b]*)\x1b\[0m/u, '$1')}`
+}
+
 /** Editor with a full terminal frame and a placeholder that never becomes editable content. */
 export class HintEditor extends Editor {
   /** Placeholder shown in the empty input row; `undefined` hides it. */
@@ -32,22 +45,39 @@ export class HintEditor extends Editor {
   frameFooter = 'Enter send · Shift+Enter newline'
   /** Whether the full frame is visible; modal prompts temporarily reclaim its two rows. */
   frameVisible = true
+  /** Whether the focused editor renders a caret at all. */
+  cursorEnabled = true
+  /** Current software cursor phase; the chat lifecycle toggles it while this editor owns focus. */
+  cursorVisible = true
 
   override render(width: number): string[] {
     const framed = this.frameVisible && width >= 4
     const contentWidth = framed ? width - 2 : width
     const lines = super.render(contentWidth)
+    if (this.focused && (!this.cursorEnabled || !this.cursorVisible)) {
+      for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index]
+        if (line !== undefined) lines[index] = hideRenderedEditorCursor(line)
+      }
+    }
     if (this.hint !== undefined && this.getText() === '') {
       const content = lines[0]
       /* v8 ignore next -- Editor always renders one content row. */
       if (content !== undefined) {
         const padding = ' '.repeat(this.getPaddingX())
         /* v8 ignore next -- the mounted editor is focused whenever its empty-input hint is rendered. */
-        const marker = this.focused ? CURSOR_MARKER : ''
-        const available = Math.max(0, contentWidth - visibleWidth(padding) - visibleWidth(this.hintPrefix))
+        // Reserve one stable cell in both phases so the placeholder never
+        // shifts as the focused caret appears and disappears.
+        const cursor = this.focused && this.cursorEnabled
+          ? `${CURSOR_MARKER}${this.cursorVisible ? '│' : ' '}`
+          : ''
+        const available = Math.max(
+          0,
+          contentWidth - visibleWidth(padding) - visibleWidth(this.hintPrefix) - visibleWidth(cursor),
+        )
         const placeholder = truncateToWidth(this.hint, available, '')
-        const used = visibleWidth(padding) + visibleWidth(this.hintPrefix) + visibleWidth(placeholder)
-        lines[0] = `${padding}${this.hintPrefix}${marker}${placeholder}${' '.repeat(Math.max(0, contentWidth - used))}`
+        const used = visibleWidth(padding) + visibleWidth(this.hintPrefix) + visibleWidth(cursor) + visibleWidth(placeholder)
+        lines[0] = `${padding}${this.hintPrefix}${cursor}${placeholder}${' '.repeat(Math.max(0, contentWidth - used))}`
       }
     }
     if (!framed) return lines

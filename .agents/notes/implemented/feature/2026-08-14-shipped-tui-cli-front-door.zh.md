@@ -34,7 +34,7 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 
 富文本输出保持终端原生，而不是导入 Web React tree。pi-tui 的 GFM renderer 持有标题、强调、链接、嵌套／任务列表、引用、表格与代码围栏；一个窄范围 highlighter 把 `diff`/`patch` 元数据、hunk、删除和新增映射到工具 diff 卡片共用的语义 palette。同一路径的相邻 hunk 形成一个可见分组。KaTeX 排版、获取 Markdown 图像、Shiki token 着色、复制控件与水平滚动器仍是明确的浏览器差异，而不是终端包中的隐藏依赖。
 
-欢迎态与紧凑态的产品名旁都会渲染包的基础语义版本，避免维护第二份手写版本源。纯净零状态不再分配空 transcript viewport，而是使用固定的两行 composer 间距，避免把输入框固定到终端底部。编辑器默认公开 pi-tui 的真实硬件 cursor marker，光标形状与闪烁由终端控制。Reasoning 默认隐藏，注入上下文卡片折叠为单行详情入口，不再泄露正文预览。Footer 的 `▸`／`▾` 鼠标目标会共同驱动既有 reasoning 与工具／上下文可见性状态；Ctrl+O、Ctrl+R 和 `/details` 仍保留为相互独立的无障碍控制入口。
+欢迎态与紧凑态的产品名旁都会渲染包的基础语义版本，避免维护第二份手写版本源。纯净零状态不再分配空 transcript viewport，而是使用固定的两行 composer 间距，避免把输入框固定到终端底部。编辑器保留 pi-tui 的硬件 cursor marker 作为 IME 锚点，并每隔 530 ms 切换一个预留单字符宽度的软件光标。按键和状态重绘会重新开始可见阶段，因此忽略 DECSCUSR 的终端仍能明确显示焦点，且 placeholder 不会在闪烁时移位。该 timer 在获取终端后启动，并在共享释放边界中清理。Reasoning 默认隐藏，注入上下文卡片折叠为单行详情入口，不再泄露正文预览。Footer 的 `▸`／`▾` 鼠标目标会共同驱动既有 reasoning 与工具／上下文可见性状态；Ctrl+O、Ctrl+R 和 `/details` 仍保留为相互独立的无障碍控制入口。
 
 ## 参考与来源边界
 
@@ -46,7 +46,7 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 
 专用命令 checkpoint 固定 skill 浏览器、keymap 选择器、Vim Normal footer、真实 fast-route 切换、experiment 启动器、IDE 降级界面与空审批状态。Approval-service 测试证明程序化命令授权会产生与对话框相同的持久 asked／decided 配对。
 
-Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服务测试、ANSI 感知的 headless-terminal 组件测试与无密钥终端状态快照覆盖。专用零状态 checkpoint 锁定双栏欢迎卡、继承终端前景色的鲸鱼、真实状态标签、最近会话投影、带框 editor 与底部状态栏；交互测试则锁定它在第一个 turn 时收缩。完成态、运行态与窄屏 checkpoint 会锁定共享统计栏，包括不折行的宽度边界。权限选择器与一次已提交的 preset 切换通过真实 Command 和 Projection 服务各有一份终端状态 checkpoint。Settings、Appearance、workspace picker 与 handoff 失败恢复各有一份终端状态 checkpoint；交互测试还锁定仅字段 theme mutate、设置文档发现、不可变 cwd，以及重复 Enter 下在首个 await 前占用的 single-flight latch。应用 bundle 具有启动、身份、非 TTY、preset 安全的 Agent 创建／恢复、session-stats 组合与 patch 形状测试。CLI 测试覆盖别名、profile 选择、help、非 TTY 失败、随发行版配置、替换参数忠实度、shutdown 前校验、POSIX exec 与受监督子进程后备。软件包 typecheck、host typecheck、Loader／配置约束、软件包发布约束、生成 catalog、文档链接、许可证与第三方声明均为必需门禁。
+Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服务测试、ANSI 感知的 headless-terminal 组件测试与无密钥终端状态快照覆盖。专用零状态 checkpoint 锁定双栏欢迎卡、继承终端前景色的鲸鱼、真实状态标签、最近会话投影、带框 editor 与底部状态栏；交互测试则锁定它在第一个 turn 时收缩。一项行为测试会调用由 TUI 持有的 interval，锁定 placeholder 的可见—隐藏—可见阶段及 dispose；终端快照则锁定输入框中的可见光标。完成态、运行态与窄屏 checkpoint 会锁定共享统计栏，包括不折行的宽度边界。权限选择器与一次已提交的 preset 切换通过真实 Command 和 Projection 服务各有一份终端状态 checkpoint。Settings、Appearance、workspace picker 与 handoff 失败恢复各有一份终端状态 checkpoint；交互测试还锁定仅字段 theme mutate、设置文档发现、不可变 cwd，以及重复 Enter 下在首个 await 前占用的 single-flight latch。应用 bundle 具有启动、身份、非 TTY、preset 安全的 Agent 创建／恢复、session-stats 组合与 patch 形状测试。CLI 测试覆盖别名、profile 选择、help、非 TTY 失败、随发行版配置、替换参数忠实度、shutdown 前校验、POSIX exec 与受监督子进程后备。软件包 typecheck、host typecheck、Loader／配置约束、软件包发布约束、生成 catalog、文档链接、许可证与第三方声明均为必需门禁。
 
 ## 考虑过的替代方案
 

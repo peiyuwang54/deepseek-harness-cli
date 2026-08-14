@@ -11,6 +11,10 @@ const ENTER_ALTERNATE_SCREEN = '\x1b[?1049h\x1b[2J\x1b[H'
 const LEAVE_ALTERNATE_SCREEN = '\x1b[?1049l'
 const ENABLE_MOUSE = '\x1b[?1000h\x1b[?1006h'
 const DISABLE_MOUSE = '\x1b[?1006l\x1b[?1000l'
+// DECSCUSR 5 selects a blinking bar. Resetting to 0 on release hands cursor
+// shape and animation back to the user's terminal profile.
+const ENABLE_BLINKING_INPUT_CURSOR = '\x1b[5 q'
+const RESTORE_DEFAULT_CURSOR = '\x1b[0 q'
 
 /** Application mouse input decoded from the terminal's SGR 1006 protocol. */
 export interface TuiMouseEvent {
@@ -62,6 +66,8 @@ export interface TuiTerminalModeOptions {
   readonly fullscreen: boolean
   /** Enable application mouse input while the alternate screen is active. */
   readonly mouse: boolean
+  /** Show the editor's hardware cursor and request a visible blinking bar. */
+  readonly showHardwareCursor?: boolean
 }
 
 /**
@@ -78,6 +84,7 @@ export function createTuiTerminalMode(
 ): { enter(): void; leave(): void } {
   let alternateScreenActive = false
   let mouseActive = false
+  let blinkingCursorActive = false
   return {
     enter(): void {
       if (options.fullscreen && !alternateScreenActive) {
@@ -88,8 +95,16 @@ export function createTuiTerminalMode(
         mouseActive = true
         terminal.write(ENABLE_MOUSE)
       }
+      if (options.showHardwareCursor === true && !blinkingCursorActive) {
+        blinkingCursorActive = true
+        terminal.write(ENABLE_BLINKING_INPUT_CURSOR)
+      }
     },
     leave(): void {
+      if (blinkingCursorActive) {
+        blinkingCursorActive = false
+        terminal.write(RESTORE_DEFAULT_CURSOR)
+      }
       if (mouseActive) {
         mouseActive = false
         terminal.write(DISABLE_MOUSE)

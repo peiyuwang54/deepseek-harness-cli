@@ -30,6 +30,24 @@ describe('TUI terminal mode', () => {
     expect(write).not.toHaveBeenCalled()
   })
 
+  it('requests a blinking input cursor once and restores the terminal default', () => {
+    const write = vi.fn<(data: string) => void>()
+    const mode = createTuiTerminalMode(
+      { write },
+      { fullscreen: false, mouse: false, showHardwareCursor: true },
+    )
+
+    mode.enter()
+    mode.enter()
+    mode.leave()
+    mode.leave()
+
+    expect(write.mock.calls.map(([value]) => value)).toEqual([
+      '\x1b[5 q',
+      '\x1b[0 q',
+    ])
+  })
+
   it('decodes SGR clicks, releases, and wheel input', () => {
     expect(parseTuiMouseEvent('\x1b[<0;12;7M')).toEqual({
       button: 'left', column: 12, row: 7, action: 'press',

@@ -140,6 +140,7 @@ import { ReferenceAutocompleteProvider } from './chat/autocomplete.ts'
 import {
   BANNER_REVEAL_INTERVAL_MS,
   BANNER_REVEAL_STEPS,
+  CURSOR_BLINK_INTERVAL_MS,
   formatCwd,
   gitBranch,
   HintEditor,
@@ -360,6 +361,9 @@ export function createTuiChat(
   const initialScheme: TerminalColorScheme = themePreference === 'light' ? 'light' : 'dark'
   const palette = createPalette(resolved.theme.color, initialScheme)
   const mdTheme = markdownTheme(palette)
+  // The software caret below provides deterministic blinking even when a
+  // terminal profile ignores DECSCUSR. Keep pi-tui's hardware cursor enabled
+  // as the IME candidate-window anchor on terminals that support it.
   const ui = new TUI(runtime.terminal, resolved.showHardwareCursor)
   const terminalMode = createTuiTerminalMode(runtime.terminal, resolved)
   let terminalOwned = false
@@ -380,6 +384,8 @@ export function createTuiChat(
       continuation: ' '.repeat(visibleWidth(initialInputPrompt)),
     },
   })
+  editor.cursorEnabled = resolved.showHardwareCursor
+  editor.cursorVisible = resolved.showHardwareCursor
   editor.hintPrefix = initialInputPrompt
   editor.hint = palette.dim(displayInlineText(resolved.theme.inputPlaceholder))
   type TuiKeymap = 'default' | 'vim'
@@ -662,12 +668,36 @@ export function createTuiChat(
 
   const requestRender = (): void => {
     if (disposed) return
+    // State changes and user input begin a fresh visible phase. The blink timer
+    // bypasses this wrapper when it intentionally renders the hidden phase.
+    editor.cursorVisible = editor.cursorEnabled
     updatePromptValues()
     const inputPrompt = renderInputPrompt()
     editor.setPrompt({ first: inputPrompt, continuation: ' '.repeat(visibleWidth(inputPrompt)) })
     editor.hintPrefix = inputPrompt
     promptContext.invalidate()
     ui.requestRender()
+  }
+  let cursorBlinkTimer: ReturnType<typeof setInterval> | undefined
+  const stopCursorBlink = (): void => {
+    if (cursorBlinkTimer !== undefined) {
+      clearInterval(cursorBlinkTimer)
+      cursorBlinkTimer = undefined
+    }
+    editor.cursorVisible = editor.cursorEnabled
+  }
+  const startCursorBlink = (): void => {
+    if (!resolved.showHardwareCursor || cursorBlinkTimer !== undefined) return
+    editor.cursorVisible = editor.cursorEnabled
+    cursorBlinkTimer = setInterval(() => {
+      if (!terminalOwned || !editor.focused) {
+        editor.cursorVisible = false
+        return
+      }
+      editor.cursorVisible = !editor.cursorVisible
+      editor.invalidate()
+      ui.requestRender()
+    }, CURSOR_BLINK_INTERVAL_MS)
   }
   // A prompt value that changes on its own schedule (e.g. a plugin-owned
   // `${custom}` fragment) redraws through the registry's coalesced notification;
@@ -1307,6 +1337,7 @@ export function createTuiChat(
         throw error
       }
       terminalOwned = true
+      startCursorBlink()
     } catch (error: unknown) {
       terminalMode.leave()
       throw error
@@ -1319,6 +1350,7 @@ export function createTuiChat(
     // Clear ownership before invoking external terminal code so a disposal
     // re-entering this boundary cannot write a second stop into the primary
     // screen after the alternate buffer has already been left.
+    stopCursorBlink()
     terminalOwned = false
     try {
       ui.stop()
@@ -2327,6 +2359,13 @@ export function createTuiChat(
   }
 
   const removeInputListener = ui.addInputListener((data) => {
+    // A click or keystroke starts a fresh visible phase immediately; the
+    // periodic timer will hide it again after one complete blink interval.
+    if (editor.focused && resolved.showHardwareCursor) {
+      editor.cursorVisible = true
+      editor.invalidate()
+      ui.requestRender()
+    }
     const mouseEvent = parseTuiMouseEvent(data)
     if (mouseEvent !== undefined && resolved.fullscreen && resolved.mouse) {
       if (overlayManager.hasActiveOverlay() && mouseEvent.action === 'wheel') {

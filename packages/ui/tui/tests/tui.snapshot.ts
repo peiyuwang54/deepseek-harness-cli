@@ -89,7 +89,6 @@ const CHECKPOINTS = [
   'experimental-selector',
   'ide-context-selector',
   'approve-empty',
-  'yolo-permission',
   'settings-hub',
   'theme-selector',
   'workspace-selector',
@@ -1200,19 +1199,6 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('model-switching', harness.terminal, { includeScrollback: true })
-    await disposeSnapshot(harness)
-  })
-
-  it('pins the explicit full-access shortcut and recovery guidance', async () => {
-    const harness = await setupSnapshot({
-      omitInitialLifecycle: true,
-      configureContext: configurePermissionPresets,
-    }, { columns: 96, rows: 36 })
-    await renderAfter(harness, () => {
-      harness.terminal.send('/yolo')
-      harness.terminal.send('\r')
-    })
-    await checkpoint('yolo-permission', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

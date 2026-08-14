@@ -33,6 +33,8 @@ async function tick(): Promise<void> {
 function bench(
   identity: TuiStartupValues['identity'],
   resumed: { agentPreset?: string; events?: readonly SessionEvent[] } = {},
+  fullAccess = false,
+  fullAccessPreset: string | null = 'danger-full-access',
 ) {
   const ctx = new Context()
   contexts.push(ctx)
@@ -42,7 +44,17 @@ function bench(
   const resolved: Array<string | undefined> = []
   const create = vi.fn(async (options: { setup?(ctx: Context): unknown }) => {
     order.push('create')
+    const session = Session.create(
+      SessionId(String(identity.id)),
+      undefined,
+      {
+        version: SESSION_FORMAT_VERSION,
+        id: SessionId(String(identity.id)),
+        createdAt: 1,
+      },
+    )
     const agentCtx = new Context()
+    agentCtx.provide('agent', { session })
     await options.setup?.(agentCtx)
     return { agent: {}, dispose: async () => {} }
   })
@@ -64,7 +76,7 @@ function bench(
     return { agent: {}, dispose: async () => {} }
   })
   ctx.provide('appExit', code => void exits.push(code))
-  ctx.provide('tuiStartup', { identity })
+  ctx.provide('tuiStartup', { identity, fullAccess })
   ctx.provide('agentDefaultModel', {
     currentSelection: () => ({ provider: 'provider-a', model: 'model-a' }),
   } as never)
@@ -73,11 +85,21 @@ function bench(
       resolved.push(id)
       return { id: id ?? 'standard' }
     }),
-    mount: vi.fn(async (_agentCtx: Context, id?: string) => { mounted.push(id) }),
+    mount: vi.fn(async (_agentCtx: Context, id?: string) => {
+      mounted.push(id)
+      order.push(`preset:${id}`)
+    }),
+  } as never)
+  const setPermission = vi.fn((_session: Session, name: string) => {
+    order.push(`permission:${name}`)
+  })
+  ctx.provide('permissionPresets', {
+    fullAccessPreset: fullAccessPreset ?? undefined,
+    set: setPermission,
   } as never)
   ctx.provide('agents', { create, resume } as never)
   internals.mount = (_ctx, config) => { order.push(`mount:${config.sessionId}`) }
-  return { ctx, order, exits, create, resume, mounted, resolved }
+  return { ctx, order, exits, create, resume, mounted, resolved, setPermission }
 }
 
 describe('tui runner', () => {
@@ -85,7 +107,7 @@ describe('tui runner', () => {
     const test = bench({ id: SessionId('fresh-main'), resume: false })
     apply(test.ctx, { showReasoning: false })
     await tick()
-    expect(test.order).toEqual(['create', 'mount:fresh-main'])
+    expect(test.order).toEqual(['create', 'preset:standard', 'mount:fresh-main'])
     expect(test.resume).not.toHaveBeenCalled()
     expect(test.create).toHaveBeenCalledWith(expect.objectContaining({
       sessionId: 'fresh-main',
@@ -113,7 +135,7 @@ describe('tui runner', () => {
     )
     apply(test.ctx, {})
     await tick()
-    expect(test.order).toEqual(['resume', 'mount:persisted-main'])
+    expect(test.order).toEqual(['resume', 'preset:minimal', 'mount:persisted-main'])
     expect(test.create).not.toHaveBeenCalled()
     expect(test.resume).toHaveBeenCalledWith(expect.objectContaining({
       resumeSessionId: 'persisted-main',
@@ -123,6 +145,31 @@ describe('tui runner', () => {
     expect(test.resolved).toEqual([])
     expect(test.mounted).toEqual(['minimal'])
     expect(test.exits).toEqual([])
+  })
+
+  it('pins unrestricted permission before publishing a yolo session', async () => {
+    const test = bench({ id: SessionId('yolo-main'), resume: false }, {}, true)
+    apply(test.ctx, {})
+    await tick()
+    expect(test.setPermission).toHaveBeenCalledWith(expect.any(Session), 'danger-full-access')
+    expect(test.order).toEqual([
+      'create',
+      'permission:danger-full-access',
+      'preset:standard',
+      'mount:yolo-main',
+    ])
+    expect(test.exits).toEqual([])
+  })
+
+  it('fails before publication when yolo is unavailable', async () => {
+    const test = bench({ id: SessionId('safe-only'), resume: false }, {}, true, null)
+    let stderr = ''
+    internals.stderr = { write: (chunk) => { stderr += chunk; return true } }
+    apply(test.ctx, {})
+    await tick()
+    expect(test.order).toEqual(['create'])
+    expect(stderr).toContain('--yolo is unavailable')
+    expect(test.exits).toEqual([1])
   })
 
   it('reports registry startup failure through the bounded launcher exit', async () => {
@@ -139,7 +186,10 @@ describe('tui runner', () => {
   it('fails loud without the launcher-owned exit hook', () => {
     const ctx = new Context()
     contexts.push(ctx)
-    ctx.provide('tuiStartup', { identity: { id: SessionId('main'), resume: false } })
+    ctx.provide('tuiStartup', {
+      identity: { id: SessionId('main'), resume: false },
+      fullAccess: false,
+    })
     expect(() => { apply(ctx, {}) }).toThrow('must provide ctx.appExit')
   })
 

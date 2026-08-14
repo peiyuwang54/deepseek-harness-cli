@@ -13,10 +13,10 @@ import {
 } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { resolveSessionPreset } from '@deepseek-ai/dsh-agent-presets'
+import type {} from '@deepseek-ai/dsh-permission-presets'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import {
   apply as mountProcessTui,
-  type MainSessionIdentity,
   type TuiConfig,
 } from '@deepseek-ai/dsh-tui'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
@@ -31,6 +31,7 @@ export const inject = [
   'tuiStartup',
   'agentDefaultModel',
   'agentPresets',
+  'permissionPresets',
   'agents',
   'sessions',
   'approval',
@@ -99,19 +100,32 @@ function fail(exit: (code: number) => void, error: unknown): void {
  * `agent/created` has mounted the TUI's mutable selector, the bootstrap
  * listener is removed so `/model` remains authoritative for later steps.
  */
-async function startAgent(ctx: Context, identity: MainSessionIdentity, config: Config): Promise<void> {
+async function startAgent(ctx: Context, startup: import('./startup.ts').TuiStartupValues, config: Config): Promise<void> {
   await ctx.get('loader')?.await()
   const agents = ctx.get('agents')
   const defaultModel = ctx.get('agentDefaultModel')
   const presets = ctx.get('agentPresets')
+  const permissions = ctx.get('permissionPresets')
   // A requested shutdown can dispose providers while Loader settlement is in flight.
-  if (agents === undefined || defaultModel === undefined || presets === undefined) return
+  if (agents === undefined || defaultModel === undefined || presets === undefined || permissions === undefined) return
+
+  const { identity, fullAccess } = startup
 
   const selection = defaultModel.currentSelection()
   let disposeBootstrapSelection: (() => void) | undefined
   const installSelection = (agentCtx: Context): void => {
     const selected: ModelSelectionRef = { current: selection, assembled: undefined }
     disposeBootstrapSelection = installModelSelection(agentCtx, selected)
+  }
+  const installStartupPermission = (agentCtx: Context): void => {
+    if (!fullAccess) return
+    const agent = agentCtx.agent
+    if (agent === undefined) throw new Error('tui-runner: unrestricted startup has no scoped Agent')
+    const target = permissions.fullAccessPreset
+    if (target === undefined) {
+      throw new Error('tui-runner: --yolo is unavailable because this permission configuration has no unrestricted preset')
+    }
+    permissions.set(agent.session, target)
   }
   try {
     if (identity.resume) {
@@ -122,6 +136,7 @@ async function startAgent(ctx: Context, identity: MainSessionIdentity, config: C
           const agent = agentCtx.agent
           if (agent === undefined) throw new Error('tui-runner: resumed Agent setup has no scoped agent')
           installSelection(agentCtx)
+          installStartupPermission(agentCtx)
           await presets.mount(agentCtx, resolveSessionPreset(agent.session))
         },
       })
@@ -133,6 +148,7 @@ async function startAgent(ctx: Context, identity: MainSessionIdentity, config: C
         agentOptions: { provider: selection.provider, model: selection.model },
         setup: async (agentCtx) => {
           installSelection(agentCtx)
+          installStartupPermission(agentCtx)
           await presets.mount(agentCtx, preset.id)
         },
       })
@@ -157,6 +173,5 @@ export function apply(ctx: Context, config: Config = {}): void {
   if (exit === undefined) {
     throw new Error('tui-runner: the launcher must provide ctx.appExit before the tree mounts')
   }
-  const { identity } = ctx.tuiStartup
-  void startAgent(ctx, identity, config).catch((error: unknown) => { fail(exit, error) })
+  void startAgent(ctx, ctx.tuiStartup, config).catch((error: unknown) => { fail(exit, error) })
 }

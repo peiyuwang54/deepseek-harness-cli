@@ -1,5 +1,5 @@
 /**
- * The terminal app's command-line provider. It parses `--resume`, rejects a
+ * The terminal app's command-line provider. It parses `--resume`/`--yolo`, rejects a
  * non-interactive launch before the renderer can claim the terminal, and
  * publishes the immutable identity consumed by the TUI runner.
  * @module @deepseek-ai/dsh-tui-app/startup
@@ -29,6 +29,8 @@ export const TUI_STARTUP_SERVICE = 'tuiStartup'
 export interface TuiStartupValues {
   /** Fresh or persisted identity the root TUI Agent owns. */
   readonly identity: MainSessionIdentity
+  /** Whether startup must pin the session to unrestricted execution before publication. */
+  readonly fullAccess: boolean
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -52,6 +54,7 @@ export const internals: {
 /** The terminal flag family, as Commander parsed it. */
 interface TuiOptions {
   resume?: string
+  yolo?: boolean
 }
 
 /**
@@ -64,10 +67,12 @@ function tuiCommand(): Command {
     .description('Open the interactive DeepSeek Harness terminal UI.')
     .helpOption('-h, --help', 'show this help')
     .option('--resume <session>', 'resume an existing persisted session')
+    .option('--yolo', 'DANGEROUS: start with full file access and no approval prompts')
     .addHelpText('after', `
 Examples:
   dsh tui                              start a fresh session
   dsh tui --resume <session>           resume a persisted session
+  dsh tui --yolo                       start unrestricted without approval prompts
 `)
 }
 
@@ -80,7 +85,7 @@ Examples:
 export function apply(ctx: Context): void {
   const program = tuiCommand()
   program.action(() => {
-    const { resume } = program.opts<TuiOptions>()
+    const { resume, yolo } = program.opts<TuiOptions>()
     if (resume !== undefined && resume.trim() === '') {
       program.error('error: --resume needs a non-empty session id')
     }
@@ -94,7 +99,10 @@ export function apply(ctx: Context): void {
     // and by terminal-local extensions that need the main identity.
     ctx.provide(MAIN_SESSION_ID_KEY, identity)
     ctx.provide(TUI_GOODBYE_MESSAGE_KEY, `To resume this session: dsh tui --resume=${identity.id}`)
-    ctx.provide(TUI_STARTUP_SERVICE, { identity } satisfies TuiStartupValues)
+    ctx.provide(TUI_STARTUP_SERVICE, {
+      identity,
+      fullAccess: yolo === true,
+    } satisfies TuiStartupValues)
   })
   parseCmdline(ctx, program)
 }

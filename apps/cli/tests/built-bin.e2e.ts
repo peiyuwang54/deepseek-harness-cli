@@ -625,6 +625,7 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       expect(tuiHelp.stderr).toBe('')
       expect(tuiHelp.stdout).toContain('Usage: dsh tui')
       expect(tuiHelp.stdout).toContain('--resume <session>')
+      expect(tuiHelp.stdout).toContain('--yolo')
 
       const pipedTui = await runBuiltBin(['tui'], {
         DSH_HOME: home,

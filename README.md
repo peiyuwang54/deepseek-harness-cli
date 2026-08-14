@@ -57,7 +57,7 @@ Requires Node.js `^22.19` or `>=24` and pnpm `11.7.0`. Once on `PATH`, `deepseek
 ## Security
 
 - New sessions default to `workspace-write` with approval prompts; writes are confined to the workspace, but file reads, network access, and process visibility are not a full sandbox.
-- `/yolo` deliberately disables the sandbox and approval prompts — run it only in an isolated environment.
+- `dsh tui --yolo` starts a session with the sandbox and approval prompts disabled — run it only in an isolated environment. There is no in-session `/yolo` command; use `/permissions` for deliberate live changes.
 - Credentials are process-visible plain files, not an OS keychain.
 - External plugins and MCP server commands are trusted executable code; review them before adding them to a profile.
 

@@ -56,7 +56,7 @@ describe('tui command-line provider', () => {
   it('mints one main identity and publishes the matching resume line', () => {
     internals.randomUUID = () => 'fixed-id'
     const { ctx, observed, startup } = parse([])
-    expect(startup).toEqual({ identity: { id: 'main-session-fixed-id', resume: false } })
+    expect(startup).toEqual({ identity: { id: 'main-session-fixed-id', resume: false }, fullAccess: false })
     expect(ctx.get('mainSessionId')).toEqual(startup?.identity)
     expect(ctx.get('tuiGoodbyeMessage')).toBe('To resume this session: dsh tui --resume=main-session-fixed-id')
     expect(observed).toEqual({ exits: [], output: '' })
@@ -64,8 +64,17 @@ describe('tui command-line provider', () => {
 
   it('preserves an explicitly resumed persisted identity', () => {
     const { ctx, observed, startup } = parse(['--resume', 'persisted-session'])
-    expect(startup).toEqual({ identity: { id: 'persisted-session', resume: true } })
+    expect(startup).toEqual({ identity: { id: 'persisted-session', resume: true }, fullAccess: false })
     expect(ctx.get('mainSessionId')).toEqual(startup?.identity)
+    expect(observed).toEqual({ exits: [], output: '' })
+  })
+
+  it('publishes unrestricted startup intent for the yolo flag', () => {
+    const { observed, startup } = parse(['--yolo'])
+    expect(startup).toMatchObject({
+      identity: { resume: false },
+      fullAccess: true,
+    })
     expect(observed).toEqual({ exits: [], output: '' })
   })
 
@@ -75,6 +84,7 @@ describe('tui command-line provider', () => {
     expect(observed.exits).toEqual([0])
     expect(observed.output).toContain('Usage: dsh tui')
     expect(observed.output).toContain('--resume <session>')
+    expect(observed.output).toContain('--yolo')
   })
 
   it('fails fast on a successful non-interactive launch', () => {

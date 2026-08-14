@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { exactEditState } from './rescope-vendor.ts'
+import { exactEditState, isPreservedCordisProtocolToken } from './rescope-vendor.ts'
 
 const ANCHOR = '\n## Sync procedure'
 const INSERTED = `\n15. **rescope**: one log entry.\n${ANCHOR}`
@@ -37,5 +37,19 @@ describe('exactEditState', () => {
     // A moved or partially applied site: neither state is complete.
     expect(exactEditState('a = 1\nb = 2\n', 'a = 1', 'b = 2', 1)).toBe('invalid')
     expect(exactEditState('x\n', 'a = 1', 'b = 2', 1)).toBe('invalid')
+  })
+})
+
+describe('Cordis product protocol names', () => {
+  it('preserves only the declared remote-event namespace, not package subpaths', () => {
+    expect(isPreservedCordisProtocolToken('cordis/request-run')).toBe(true)
+    expect(isPreservedCordisProtocolToken('cordis/inspect-query-resolved')).toBe(true)
+    expect(isPreservedCordisProtocolToken('cordis/')).toBe(true)
+    expect(isPreservedCordisProtocolToken('cordis/*')).toBe(true)
+    expect(isPreservedCordisProtocolToken('cordis/request-run\\')).toBe(true)
+
+    expect(isPreservedCordisProtocolToken('cordis')).toBe(false)
+    expect(isPreservedCordisProtocolToken('cordis/src/context')).toBe(false)
+    expect(isPreservedCordisProtocolToken('cordis/new-unclassified-event')).toBe(false)
   })
 })

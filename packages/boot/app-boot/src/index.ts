@@ -685,17 +685,11 @@ function formatActivationError(error: unknown): string {
  * their private rejection reason.
  * @param ctx - the settled context whose Loader entries to audit.
  * @param binName - the diagnostic prefix on the thrown error.
- * @param allowPending - whether a caller-owned exit may leave injected rows
- * pending after the Loader itself settled successfully.
  * @returns nothing when every enabled entry is active.
  * @throws after one process rejection checkpoint when an entry failed to
  * import, rejected during activation, or did not become active.
  */
-export async function assertEntriesActivated(
-  ctx: Context,
-  binName: string,
-  allowPending = false,
-): Promise<void> {
+export async function assertEntriesActivated(ctx: Context, binName: string): Promise<void> {
   assertEntriesLoaded(ctx, binName)
   const failures: string[] = []
   const rejectionReasons: unknown[] = []
@@ -713,7 +707,6 @@ export async function assertEntriesActivated(
       }
       continue
     }
-    if (state === FIBER_PENDING && allowPending) continue
     if (state === FIBER_PENDING) {
       const missing = Object.keys(fiber.inject).filter(service => fiber.ctx.get(service) === undefined)
       const subject = missing.length === 1 ? 'service' : 'services'
@@ -755,14 +748,8 @@ export async function assertEntriesActivated(
  * @param bareModuleBaseUrl - optional installed-host base for bare package
  * names; use it when the host, rather than the configuration project, owns the
  * complete plugin set.
- * @param isExitRequested - optional caller-owned exit fact. It is read only
- * after Loader settlement and relaxes only the final pending-fiber audit;
- * import, configuration, apply, missing-module, and failed-fiber errors remain
- * fatal.
- * @returns the root context once every entry has started; after a
- * caller-owned exit it may instead retain pending rows from the relaxed final
- * audit. A surface that disposed the tree while startup was still in flight
- * also returns its settled context.
+ * @returns the root context once every entry has started, or as soon as a
+ * surface disposed the tree while startup was still in flight.
  * @throws a labelled error after disposing the partial context — `host
  * preparation failed` when `prepare` threw before any config-tree entry
  * mounted, `plugin tree failed to load` afterwards.
@@ -773,7 +760,6 @@ export async function boot(
   patches?: PatchOptions[],
   prepare?: (ctx: Context) => Promise<void> | void,
   bareModuleBaseUrl?: string,
-  isExitRequested?: () => boolean,
 ): Promise<Context> {
   const ctx = new Context()
   // Two failure labels: `prepare` runs before any config-tree entry mounts,
@@ -795,7 +781,7 @@ export async function boot(
     // re-check after every await.
     await ctx.get('loader')?.await()
     if (ctx.get('loader') === undefined) return ctx
-    await assertEntriesActivated(ctx, binName, isExitRequested?.() === true)
+    await assertEntriesActivated(ctx, binName)
     return ctx
   } catch (cause) {
     // Root-fiber disposal contains cleanup failures per observer (Cordis

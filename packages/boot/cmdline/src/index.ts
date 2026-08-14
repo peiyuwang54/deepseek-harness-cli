@@ -41,39 +41,12 @@ export interface AppExit {
   (code: number): void
 }
 
-/** Synchronous claim for one launcher interrupt. */
-export interface AppInterrupt {
-  /**
-   * Register the booted app's sole interrupt handler. Returning `true` claims
-   * the signal; `false` delegates to the launcher's ordinary shutdown path.
-   * @param handler - synchronous app-owned signal decision.
-   * @returns a disposer that releases the handler.
-   */
-  register(handler: () => boolean): () => void
-
-  /**
-   * Escalate an app-owned interrupt into the launcher's bounded process
-   * shutdown. A launcher with no dedicated interrupt path falls back to its
-   * ordinary exit request.
-   * @param code - the process exit code.
-   */
-  escalate(code: number): void
-}
-
-/** Launcher-only side of the interrupt handoff returned by {@link provideCmdline}. */
-export interface AppInterruptHost {
-  /** Ask the active app handler to claim an interrupt. */
-  dispatch(): boolean
-}
-
 declare module '@deepseek-ai/cordis' {
   interface Context {
     /** The invocation's inner arguments; provided by a launcher before the tree mounts. */
     cmdlineArgs?: CmdlineArgs
     /** Bounded process-exit request; provided by a launcher before the tree mounts. */
     appExit?: AppExit
-    /** Optional app-owned first chance to handle a user interrupt. */
-    appInterrupt?: AppInterrupt
   }
 }
 
@@ -83,8 +56,6 @@ export interface CmdlineHost {
   args: readonly string[]
   /** Bounded process-exit request. */
   exit: AppExit
-  /** Optional repeated-interrupt path; launchers with escalation should supply it. */
-  interrupt?: AppExit
 }
 
 /**
@@ -93,37 +64,11 @@ export interface CmdlineHost {
  * with no command line provides an empty argument list.
  * @param ctx - the host context the tree will mount under.
  * @param host - the invocation's arguments and its exit request.
- * @returns the launcher-only interrupt dispatcher for process signal handling.
  */
-export function provideCmdline(ctx: Context, host: CmdlineHost): AppInterruptHost {
+export function provideCmdline(ctx: Context, host: CmdlineHost): void {
   const snapshot: readonly string[] = Object.freeze([...host.args])
-  let interruptHandler: (() => boolean) | undefined
   ctx.provide('cmdlineArgs', { get: () => snapshot })
   ctx.provide('appExit', host.exit)
-  ctx.provide('appInterrupt', {
-    register(handler: () => boolean): () => void {
-      if (interruptHandler !== undefined) {
-        throw new Error('dsh-cmdline: an app interrupt handler is already registered')
-      }
-      interruptHandler = handler
-      return () => {
-        if (interruptHandler === handler) interruptHandler = undefined
-      }
-    },
-    escalate(code: number): void {
-      (host.interrupt ?? host.exit)(code)
-    },
-  })
-  return {
-    dispatch(): boolean {
-      try {
-        return interruptHandler?.() === true
-      } catch {
-        // A broken UI callback cannot suppress the launcher's fail-safe exit.
-        return false
-      }
-    },
-  }
 }
 
 /** The process streams commander output is written to; production writes to the process. */

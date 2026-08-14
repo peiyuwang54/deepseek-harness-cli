@@ -10,7 +10,6 @@ dsh 启动器交给它所引导应用的那条命令行。启动器只解析属�
 
 - `ctx.cmdlineArgs`：本次调用的内层参数。`get()` 就是它的全部接口，返回一份快照：`dsh --profile tui --resume abc` 得到 `['--resume', 'abc']`。
 - `ctx.appExit`：一个有边界的进程退出请求，接到启动器的关停控制器上。
-- `ctx.appInterrupt`：应用自有的中断交接。`register(handler)` 安装唯一的同步处理器：返回 `true` 会认领信号，返回 `false` 或抛错则交给启动器关停。`escalate(code)` 把应用自有中断升级为启动器持有的有边界进程关停；宿主未提供专用中断路径时会回退到 `ctx.appExit`。
 
 没有命令行的嵌入宿主提供空列表；这是诚实的答案，而不是缺失的值。
 

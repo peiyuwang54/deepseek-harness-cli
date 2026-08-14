@@ -1,0 +1,34 @@
+terminal 96x36 buffer=normal length=36 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=7 viewportRow=11 bufferRow=11
+buffer
+0| " DEEPSEEK HARNESS"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+1| " Snapshot agent ready."
+  style 1-21 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "Assistant                                                                                       "
+  style 0-8 fg=bright-magenta bold underline
+5| "Reasoning                                                                                       "
+  style 0-8 dim italic
+6| "Checking the result.                                                                            "
+  style 0-19 dim italic
+7| "The result is ready.                                                                            "
+8| "Model wait 1.0s · Thinking 2.0s · Response 3.0s · Completed 2026-07-21 14:32:12                 "
+  style 0-78 dim
+9| <blank>
+10| "/workspace/project (tui-staging)  deepseek-v4-flash  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-magenta bold
+  style 18-31 dim
+  style 34-50 dim
+  style 53-57 dim
+  style 60-69 dim
+11| " dsh >                                                                                          "
+  style 1-3 fg=bright-magenta bold
+  style 5-6 dim
+  style 7-7 inverse
+12-35| <blank>

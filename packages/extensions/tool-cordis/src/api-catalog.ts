@@ -1737,18 +1737,6 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
-    key: 'terminalCliStartup',
-    summary: 'Parsed terminal invocation published for the runner.',
-    description: 'Parsed terminal invocation published for the runner.',
-    methods: [
-      {
-        signature: 'readonly value: TerminalCliStartupValues',
-        description: 'Immutable mode and option values for this process.',
-        parameters: [],
-      },
-    ],
-  },
-  {
     key: 'terminals',
     summary: 'In-process registry for replaceable PTY backends and exact-Agent sessions.',
     description: 'In-process registry for replaceable PTY backends and exact-Agent sessions.',
@@ -1948,6 +1936,62 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Execute through pre-policy, guards, around-dispatch, post-policy, definition-owned content finalization, and final notification. Tool and listener failures resolve as materialized error results; an invisible tool reports `UNKNOWN_TOOL`. The returned outcome is the same lossless, frozen snapshot final observers receive. Cancellation arriving after entry and before final result materialization skips a not-yet-started body with `ABORTED_BEFORE_DISPATCH` or replaces a successful started outcome with `ABORTED`; already-started work is still drained and may retain a tool-owned structured error.',
         parameters: [{ name: 'exec', description: 'the typed same-process call input. The registry assigns its correlation token before policy begins.' }],
         returns: 'the materialized final result.',
+      },
+    ],
+  },
+  {
+    key: 'tui',
+    summary: 'Optional terminal-local interaction service provided by one mounted TUI.',
+    description: 'Optional terminal-local interaction service provided by one mounted TUI.\n\nThe concrete provider retains pi-tui, focus, and terminal lifecycle state. Plugins receive only effect-owned overlay sessions.',
+    methods: [
+      {
+        signature: 'abstract readonly agent: Agent',
+        description: 'Exact agent driven by this terminal instance.',
+        parameters: [],
+      },
+      {
+        signature: 'abstract openOverlay(request: TuiOverlayRequest): TuiOverlaySession',
+        description: 'Queue an interactive overlay owned by the calling plugin fiber.\n\nThe TUI displays one overlay at a time in FIFO order. Disposing the caller removes a queued overlay or closes an active one before plugin teardown settles. This live presentation is neither logged nor replayed.',
+        parameters: [{ name: 'request', description: 'component factory, layout constraints, and cancellation.' }],
+        returns: 'the effect-owned overlay session.',
+        throws: ['when the TUI has begun shutting down.'],
+      },
+    ],
+  },
+  {
+    key: 'tuiPrompt',
+    summary: 'Context-global mutable values interpolated by TUI theme prompt templates.',
+    description: 'Context-global mutable values interpolated by TUI theme prompt templates. A registration, mutation, or disposal schedules one coalesced notification to the renderer subscribed with TuiPromptService.subscribe, so a value that changes on its own schedule (not only in response to a UI event) still redraws. Notification is a direct in-service callback, not a Cordis event.',
+    methods: [
+      {
+        signature: 'register(name: string, initialValue?: string): TuiPromptValueHandle',
+        description: 'Register one globally unique template value under the calling Cordis effect.',
+        parameters: [{ name: 'name', description: 'Lowercase slash-separated template name.' }, { name: 'initialValue', description: 'Initial trusted ANSI-capable fragment.' }],
+        returns: 'A mutable handle whose disposal unregisters the name.',
+      },
+      {
+        signature: 'get(name: string): string | undefined',
+        description: 'Read a registered fragment without evaluating plugin code.',
+        parameters: [{ name: 'name', description: 'Exact registered template name.' }],
+        returns: 'The current fragment, or `undefined` when unknown or unavailable.',
+      },
+      {
+        signature: 'subscribe(listener: () => unknown): TuiPromptUnsubscribe',
+        description: 'Observe registration and value changes. The listener runs after a coalesced microtask following any burst of mutations; the renderer re-reads current values on that callback. The subscription is owned by the calling Cordis effect, so it is removed when the subscriber\'s fiber disposes; the returned disposer removes it early. Listener failures are contained — a synchronous throw or a rejected returned promise cannot starve the other observers.',
+        parameters: [{ name: 'listener', description: 'Invoked once per coalesced change burst. Delivery does not wait on a returned promise; its rejection is only observed and logged, never left unhandled, so an async listener cannot order later observers.' }],
+        returns: 'A disposer that removes the subscription.',
+      },
+    ],
+  },
+  {
+    key: 'tuiStartup',
+    summary: 'Immutable process-local values shared by the terminal runner.',
+    description: 'Immutable process-local values shared by the terminal runner.',
+    methods: [
+      {
+        signature: 'readonly identity: MainSessionIdentity',
+        description: 'Fresh or persisted identity the root TUI Agent owns.',
+        parameters: [],
       },
     ],
   },
@@ -3042,10 +3086,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    system?: string;\n    tools?: ToolSchema[];\n}',
   },
   {
-    name: 'ExecStartup',
-    declaration: 'export interface ExecStartup extends TerminalCliOverrides {\n    mode: \'exec\';\n    prompt: string[];\n    json: boolean;\n}',
-  },
-  {
     name: 'FileDiff',
     declaration: 'export interface FileDiff {\n    path: string;\n    oldText: string | null;\n    newText: string;\n}',
   },
@@ -3172,10 +3212,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'InboxTarget',
     declaration: 'export type InboxTarget = \'next-turn\' | \'next-step\';',
-  },
-  {
-    name: 'InteractiveStartup',
-    declaration: 'export interface InteractiveStartup extends TerminalCliOverrides {\n    mode: \'interactive\';\n    prompt: string[];\n}',
   },
   {
     name: 'InvariantFailure',
@@ -3376,6 +3412,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'LspRange',
     declaration: 'export interface LspRange {\n    readonly start: LspPosition;\n    readonly end: LspPosition;\n}',
+  },
+  {
+    name: 'MainSessionIdentity',
+    declaration: 'export interface MainSessionIdentity {\n    readonly id: SessionId;\n    readonly resume: boolean;\n}',
   },
   {
     name: 'ManualCompactAgentContext',
@@ -3644,10 +3684,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ResumeAgentOptions',
     declaration: 'export interface ResumeAgentOptions {\n    readonly resumeSessionId: SessionId;\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
-  },
-  {
-    name: 'ResumeStartup',
-    declaration: 'export interface ResumeStartup extends TerminalCliOverrides {\n    mode: \'resume\';\n    sessionId?: string;\n    prompt: string[];\n}',
   },
   {
     name: 'RpcError',
@@ -4282,14 +4318,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface TerminalCallView {\n    card: \'terminal\';\n    title: string;\n    description?: string;\n    cwd?: string;\n}',
   },
   {
-    name: 'TerminalCliOverrides',
-    declaration: 'export interface TerminalCliOverrides {\n    provider?: string;\n    model?: string;\n    reasoningEffort?: string;\n    sandbox?: SandboxMode;\n    approval?: ApprovalPolicy;\n}',
-  },
-  {
-    name: 'TerminalCliStartupValues',
-    declaration: 'export type TerminalCliStartupValues = InteractiveStartup | ExecStartup | ResumeStartup;',
-  },
-  {
     name: 'TerminalReadRequest',
     declaration: 'export interface TerminalReadRequest {\n    offset?: number;\n    count?: number;\n}',
   },
@@ -4480,6 +4508,66 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ToolSchema',
     declaration: 'export interface ToolSchema {\n    name: string;\n    description: string;\n    parameters: Record<string, unknown>;\n}',
+  },
+  {
+    name: 'TuiComponent',
+    declaration: 'export interface TuiComponent {\n    render(width: number): string[];\n    handleInput?(data: string): void;\n    wantsKeyRelease?: boolean;\n    invalidate(): void;\n}',
+  },
+  {
+    name: 'TuiFocusable',
+    declaration: 'export interface TuiFocusable {\n    focused: boolean;\n}',
+  },
+  {
+    name: 'TuiOverlayAnchor',
+    declaration: 'export type TuiOverlayAnchor = \'center\' | \'top-left\' | \'top-right\' | \'bottom-left\' | \'bottom-right\' | \'top-center\' | \'bottom-center\' | \'left-center\' | \'right-center\';',
+  },
+  {
+    name: 'TuiOverlayCloseReason',
+    declaration: 'export type TuiOverlayCloseReason = \'closed\' | \'aborted\' | \'owner-disposed\' | \'tui-disposed\' | \'error\';',
+  },
+  {
+    name: 'TuiOverlayHost',
+    declaration: 'export interface TuiOverlayHost {\n    readonly signal: AbortSignal;\n    readonly viewport: TuiViewport;\n    readonly theme: TuiTheme;\n    display(value: string): string;\n    invalidate(): void;\n    close(): void;\n}',
+  },
+  {
+    name: 'TuiOverlayMargin',
+    declaration: 'export interface TuiOverlayMargin {\n    readonly top?: number;\n    readonly right?: number;\n    readonly bottom?: number;\n    readonly left?: number;\n}',
+  },
+  {
+    name: 'TuiOverlayOptions',
+    declaration: 'export interface TuiOverlayOptions {\n    readonly width?: number | `${number}%`;\n    readonly minWidth?: number;\n    readonly maxHeight?: number | `${number}%`;\n    readonly anchor?: TuiOverlayAnchor;\n    readonly margin?: number | TuiOverlayMargin;\n}',
+  },
+  {
+    name: 'TuiOverlayOutcome',
+    declaration: 'export type TuiOverlayOutcome = {\n    readonly reason: Exclude<TuiOverlayCloseReason, \'error\'>;\n} | {\n    readonly reason: \'error\';\n    readonly error: unknown;\n};',
+  },
+  {
+    name: 'TuiOverlayRequest',
+    declaration: 'export interface TuiOverlayRequest {\n    readonly create: (host: TuiOverlayHost) => TuiComponent & Partial<TuiFocusable>;\n    readonly options?: TuiOverlayOptions;\n    readonly signal?: AbortSignal;\n}',
+  },
+  {
+    name: 'TuiOverlaySession',
+    declaration: 'export interface TuiOverlaySession {\n    readonly state: TuiOverlayState;\n    readonly closed: Promise<TuiOverlayOutcome>;\n    close(): Promise<TuiOverlayOutcome>;\n}',
+  },
+  {
+    name: 'TuiOverlayState',
+    declaration: 'export type TuiOverlayState = \'queued\' | \'active\' | \'closed\';',
+  },
+  {
+    name: 'TuiPromptUnsubscribe',
+    declaration: 'export type TuiPromptUnsubscribe = () => void;',
+  },
+  {
+    name: 'TuiPromptValueHandle',
+    declaration: 'export interface TuiPromptValueHandle {\n    set(value: string | undefined): void;\n    dispose(): void;\n}',
+  },
+  {
+    name: 'TuiTheme',
+    declaration: 'export interface TuiTheme {\n    readonly text: (value: string) => string;\n    readonly brand: (value: string) => string;\n    readonly dim: (value: string) => string;\n    readonly accent: (value: string) => string;\n    readonly success: (value: string) => string;\n    readonly warning: (value: string) => string;\n    readonly error: (value: string) => string;\n    readonly bold: (value: string) => string;\n}',
+  },
+  {
+    name: 'TuiViewport',
+    declaration: 'export interface TuiViewport {\n    readonly columns: number;\n    readonly rows: number;\n}',
   },
   {
     name: 'TurnEndCancelCause',

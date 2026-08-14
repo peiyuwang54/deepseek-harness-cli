@@ -4,6 +4,8 @@ Status: implemented
 
 [English](2026-08-04-remove-tui-package.md) | 中文
 
+本决策已由[随发行版交付 TUI CLI 入口决策](../feature/2026-08-14-shipped-tui-cli-front-door.md)取代；后者会把该包与受支持的产品组合一并恢复。
+
 ## 问题
 
 移除隐式的 `dsh` 终端应用后，`@deepseek-ai/dsh-tui` 不再拥有任何已交付的组合。该包仍包含终端渲染器、交互式命令与问答适配器、扩展浮层、快照 fixture（测试前置数据）、已打补丁的 `pi-tui` 依赖，以及仍将 TUI 宣称为受支持应用接口的 SDK 脚手架。保留这整套能力意味着继续维护一个产品规模的前端，而其唯一剩余消费方就是项目生成器本身。
@@ -34,6 +36,6 @@ Status: implemented
 
 ## 后果
 
-产品规模的全屏 `@deepseek-ai/dsh-tui` 包仍保持删除状态。现有 import 和依赖该包的 `cordis.yml` 条目会直接失败，不会得到兼容转换；它的组件栈、overlay 模型与已打补丁的 `pi-tui` 依赖都不是兼容性基础。已交付的[行式终端 CLI](../feature/2026-08-14-shipped-terminal-cli.md)是独立产品，拥有自己的 `cli` profile、交互提供方，以及基于当前 Agent 与会话服务的组装验收。它不是对已移除 TUI 的恢复或延续。
+DeepSeek Harness 不再提供终端 UI 包。现有 import 和依赖该包的 `cordis.yml` 条目会直接失败，不会得到兼容转换。Web 仍是已交付的交互界面；ACP、JSON-RPC 与一次性 CLI 仍是 Web 之外的入口。
 
-提供方无关的命令、用户交互、审批、工具呈现、PTY 与会话投影能力仍可供其他宿主使用。行式 CLI 已满足自身部署的重新引入条件；全屏终端前端仍需要独立的产品理由、包职责、交互设计，以及组装后的生命周期与 transcript（文本记录）验收。
+提供方无关的命令、用户交互、审批、工具呈现、PTY 与会话投影能力仍可供其他宿主使用。重新引入终端前端时，必须为其提供具名产品或部署、显式包边界、具体交互提供方，以及组装后的生命周期与 transcript（文本记录）验收。

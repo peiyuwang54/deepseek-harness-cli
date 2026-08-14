@@ -1,0 +1,50 @@
+terminal 92x32 buffer=normal length=32 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=6 viewportRow=4 bufferRow=4
+buffer
+0| "                                                                                            "
+1| "  Resume session (1 of 2)                                                                   "
+  style 2-24 fg=bright-magenta bold
+2| "                                                                                            "
+3| "  ╭──────────────────────────────────────────────────────────────────────────────────────╮  "
+  style 2-89 dim
+4| "  │ ⌕                                                                                    │  "
+  style 2-2 dim
+  style 6-6 inverse
+  style 89-89 dim
+5| "  ╰──────────────────────────────────────────────────────────────────────────────────────╯  "
+  style 2-89 dim
+6| "                                                                                            "
+7| "  this workspace /workspace/project  ⇥ all workspaces (3)                                   "
+  style 2-34 fg=bright-magenta
+  style 35-56 dim
+8| "                                                                                            "
+9| "  ❯ Untitled session                                                                        "
+  style 2-19 fg=bright-magenta bold
+10| "    2026-07-23T08:00:00.000Z · current · live · main-session                                "
+  style 2-59 dim
+11| "    unavailable: current session                                                            "
+  style 2-31 fg=yellow
+12| "    Resume selector design                                                                  "
+13| "    2024-01-01T00:00:00.000Z · persisted · earlier-session                                  "
+  style 2-57 dim
+14| "                                                                                            "
+15| "                                                                                            "
+16| "                                                                                            "
+17| "                                                                                            "
+18| "                                                                                            "
+19| "                                                                                            "
+20| "                                                                                            "
+21| "                                                                                            "
+22| "                                                                                            "
+23| "                                                                                            "
+24| "                                                                                            "
+25| "                                                                                            "
+26| "                                                                                            "
+27| "                                                                                            "
+28| "                                                                                            "
+29| "                                                                                            "
+30| "  Type to search  •  ↑/↓ navigate  •  Tab scope  •  Enter resume  •  Esc clear/cancel       "
+  style 2-84 dim
+31| "                                                                                            "

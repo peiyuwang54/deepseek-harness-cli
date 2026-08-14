@@ -1,0 +1,36 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../core/agent" },
+    { "path": "../../core/agent-loop" },
+    { "path": "../../core/session" },
+    { "path": "../../core/system-prompt" },
+    { "path": "../../core/tools" },
+    { "path": "../../goal/goal" },
+    { "path": "../../context/session-reference" },
+    { "path": "../../session/session-persistence" },
+    { "path": "../../session/session-projection" },
+    { "path": "../../session/session-projection-cache" },
+    { "path": "../../session/session-title" },
+    { "path": "../../session-query/session-query" },
+    { "path": "../../llm/llm" },
+    { "path": "../../llm/token-meter" },
+    { "path": "../../llm/llm-retry" },
+    { "path": "../../interaction/commands" },
+    { "path": "../../interaction/user-approval" },
+    { "path": "../../interaction/user-questions" },
+    { "path": "../../compaction/compaction" },
+    { "path": "../../skill/skill" },
+    { "path": "../../subprocess/subprocess" },
+    { "path": "../../runtime-diagnostics/invariants" }
+  ]
+}

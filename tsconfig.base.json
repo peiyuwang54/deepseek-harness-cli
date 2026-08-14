@@ -98,6 +98,7 @@
       "@deepseek-ai/dsh-scope/invariant": ["./packages/core/scope/src/invariant.ts"],
       "@deepseek-ai/dsh-agent-loop/invariant": ["./packages/core/agent-loop/src/invariant.ts"],
       "@deepseek-ai/dsh-*/invariant": [
+        "./packages/ui/*/src/invariant.ts",
         "./packages/core/*/src/invariant.ts",
         "./packages/prompt/*/src/invariant.ts",
         "./packages/llm/*/src/invariant.ts",
@@ -148,7 +149,12 @@
       "@deepseek-ai/dsh-host-*/invariant": ["./packages/host/*/src/invariant.ts"],
       "@deepseek-ai/dsh-client-*/invariant": ["./packages/client/*/src/invariant.ts"],
       "@deepseek-ai/dsh-headless/startup": ["./packages/bundle/headless/src/startup.ts"],
-      "@deepseek-ai/dsh-terminal-cli/startup": ["./packages/bundle/terminal-cli/src/startup.ts"],
+      "@deepseek-ai/dsh-tui": ["./packages/ui/tui/src/index.ts"],
+      "@deepseek-ai/dsh-tui/invariant": ["./packages/ui/tui/src/invariant.ts"],
+      "@deepseek-ai/dsh-tui/prompt": ["./packages/ui/tui/src/prompt.ts"],
+      "@deepseek-ai/dsh-tui-app": ["./packages/bundle/tui/src/index.ts"],
+      "@deepseek-ai/dsh-tui-app/invariant": ["./packages/bundle/tui/src/invariant.ts"],
+      "@deepseek-ai/dsh-tui-app/startup": ["./packages/bundle/tui/src/startup.ts"],
       "@deepseek-ai/dsh-web-app/startup": ["./packages/bundle/web-app/src/startup.ts"],
       "@deepseek-ai/dsh-client-*/client": ["./packages/client/*/src/client"],
        // One wildcard maps every @deepseek-ai/dsh-<name> to its source. Package
@@ -227,6 +233,7 @@
       "@deepseek-ai/dsh-sdk-protocol": ["./packages/sdk/protocol/src"],
       "@deepseek-ai/dsh-sdk-jsonrpc-server": ["./packages/sdk/server/src"],
       "@deepseek-ai/dsh-*": [
+        "./packages/ui/*/src",
         "./packages/core/*/src",
         "./packages/prompt/*/src",
         "./packages/llm/*/src",

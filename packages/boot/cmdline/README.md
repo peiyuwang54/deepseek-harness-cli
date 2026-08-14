@@ -10,7 +10,6 @@ A launcher calls `provideCmdline(ctx, host)` before any tree entry mounts, which
 
 - `ctx.cmdlineArgs` — the invocation's inner arguments. `get()` is the whole interface, and it returns a snapshot: `dsh --profile tui --resume abc` yields `['--resume', 'abc']`.
 - `ctx.appExit` — a bounded process-exit request, wired to the launcher's shutdown controller.
-- `ctx.appInterrupt` — the app-owned interrupt handoff. `register(handler)` installs the sole synchronous handler: returning `true` claims the signal, while returning `false` or throwing delegates to launcher shutdown. `escalate(code)` turns an app-owned interrupt into launcher-owned bounded process shutdown; a host without a dedicated interrupt path falls back to `ctx.appExit`.
 
 An embedding host with no command line provides an empty list; that is the honest answer, not a missing value.
 

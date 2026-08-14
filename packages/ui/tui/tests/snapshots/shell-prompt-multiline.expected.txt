@@ -1,0 +1,26 @@
+terminal 44x18 buffer=normal length=18 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=38 viewportRow=10 bufferRow=10
+viewport
+0| " DEEPSEEK HARNESS"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+1| " Snapshot agent ready."
+  style 1-21 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "/workspace/project (tui-staging)  deepseek-v"
+  style 0-17 fg=bright-magenta bold
+  style 18-31 dim
+  style 34-43 dim
+5| "       ↑ 1 more                             "
+  style 1-14 dim
+6| " enough detail to wrap across multiple      "
+7| " full-width continuation rows without       "
+8| " leaving a prompt-sized gap at the right    "
+9| " edge.                                      "
+10| "       Then suggest a simpler version.      "
+  style 38-38 inverse
+11-17| <blank>

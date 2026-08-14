@@ -4,6 +4,8 @@ Status: implemented
 
 English | [中文](2026-08-04-remove-tui-package.zh.md)
 
+Superseded by the [shipped TUI CLI front-door decision](../feature/2026-08-14-shipped-tui-cli-front-door.md), which restores the package together with a supported product composition.
+
 ## Problem
 
 Removing the implicit `dsh` terminal application left `@deepseek-ai/dsh-tui` without a shipped composition. The package still carried a terminal renderer, interactive command and question adapters, extension overlays, snapshot fixtures, a patched `pi-tui` dependency, and SDK scaffolding that advertised TUI as a supported application interface. Keeping that surface required maintaining a product-sized frontend whose only remaining consumer was the project generator itself.
@@ -34,6 +36,6 @@ Repository searches and generated catalogs contain no TUI package, dependency pa
 
 ## Consequences
 
-The product-sized, full-screen `@deepseek-ai/dsh-tui` package remains deleted. Existing imports and `cordis.yml` rows that depend on that package fail instead of being translated; its widget stack, overlay model, and patched `pi-tui` dependency are not compatibility foundations. The shipped [line-oriented terminal CLI](../feature/2026-08-14-shipped-terminal-cli.md) is an independent product with its own `cli` profile, interaction provider, and assembled acceptance over current Agent and Session services. It does not restore or continue the removed TUI.
+DeepSeek Harness has no terminal UI package. Existing imports and `cordis.yml` rows that depend on the package fail instead of being translated. Web remains the shipped interactive surface; ACP, JSON-RPC, and one-shot CLI remain the non-Web entry points.
 
-The provider-neutral command, user-questions, approval, tool-presentation, PTY, and session-projection capabilities remain available to other hosts. The line-oriented CLI satisfies the reintroduction conditions for its own deployment; a full-screen terminal frontend still requires separate product rationale, package ownership, interaction design, and assembled lifecycle and transcript acceptance.
+The provider-neutral command, user-questions, approval, tool-presentation, PTY, and session-projection capabilities remain available to other hosts. Reintroducing a terminal frontend requires a named product or deployment, an explicit package boundary, a concrete interaction provider, and assembled lifecycle and transcript acceptance for that frontend.

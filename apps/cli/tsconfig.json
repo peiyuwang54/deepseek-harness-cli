@@ -30,7 +30,7 @@
       "path": "../../packages/bundle/headless"
     },
     {
-      "path": "../../packages/bundle/terminal-cli"
+      "path": "../../packages/bundle/tui"
     },
     {
       "path": "../../packages/bundle/web-app"

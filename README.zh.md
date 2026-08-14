@@ -1,206 +1,257 @@
-# DeepSeek Harness
+# DeepSeek Harness Web-to-CLI
 
 [English](README.md) | 中文
 
-DeepSeek Harness（`dsh`）是由 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness（智能体框架）。
+这是一个由社区维护的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) fork，为原项目增加了一等的交互式终端 UI（TUI）和 CLI 入口，同时保留 Web 与单次执行的 headless 入口。最终是同一套插件化 agent 运行时，对外提供三个边界明确的入口：
 
-它采用**一切皆插件**的架构，并由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper)。
+| 界面 | 源码 checkout 命令 | 适用场景 |
+|---|---|---|
+| 终端 | `pnpm dsh tui` | 在终端、SSH 会话或 tmux 中交互式使用 coding agent |
+| Headless | `pnpm dsh --profile headless "task"` | 脚本、pipe、CI 任务和单次自动化 |
+| Web | `pnpm dsh web` | 原有浏览器 UI，默认服务地址为 `http://127.0.0.1:3080` |
 
-## 开发者预览
+> [!IMPORTANT]
+>
+> 这是一个非官方的社区 fork，不由 DeepSeek AI 维护，也未获得 DeepSeek AI 的赞助或背书。DeepSeek Harness 和 `@deepseek-ai` npm 包来自 DeepSeek AI。本仓库的终端改动目前通过源码分发；公开的 `@deepseek-ai/dsh` npm 包是上游独立发布的产物，不应默认它已包含本 fork 的 TUI。
 
-DeepSeek Harness 目前处于 _开发者预览_ 阶段，正在快速迭代。**未来将出现破坏兼容性的变更。**
+## 状态
 
-## 运行
+本项目仍处于开发者预览阶段。配置、包 API、Session 格式、命令和终端行为都可能发生破坏兼容性的变化。在敏感仓库中使用 agent 前，请备份重要工作，并阅读下文的权限与凭据说明。
 
-此私有仓库中的终端 CLI（命令行界面）目前通过源码分发。公开的 `@deepseek-ai/dsh` 包是 DeepSeek AI 独立发布的版本；如需使用本仓库中的代码，请按照下文的源码流程操作。
+## 环境要求
 
-### 前置条件
+- Node.js `^22.19.0` 或 `>=24.0.0`；建议开发时使用 Node.js 24。
+- pnpm `11.7.0`，与仓库 `packageManager` 字段一致。
+- `tui` 要求 stdin 和 stdout 都是真实 TTY；重定向和自动化请使用 `headless`。
+- 第一次请求模型前需要提供方凭据。随附的默认适配器读取 `DEEPSEEK_API_KEY`。
 
-- Git，以及有权访问此私有仓库的 GitHub 账号。
-- Node.js `^22.19.0` 或 `>=24.0.0`。
-- pnpm。本仓库固定使用 `pnpm@11.7.0`；如果 `pnpm --version` 无法运行，请通过 Corepack 或 npm 安装。
-- 提交模型任务前需要准备 DeepSeek API Key。查看帮助、转储配置以及不带提示词的启动过程不会调用模型。
+终端实现面向 macOS、Linux 和 Windows。下文介绍的无密钥 built-binary PTY 验收测试在 POSIX 上运行；Windows 终端行为使用 pi-tui 的 VT 输入和 ConPTY 路径，并配有独立的平台导向测试。
 
-安装固定 pnpm 版本的一种方式是：
+<a id="run-from-source"></a>
 
-```sh
-npm install --global pnpm@11.7.0
-```
-
-### 从源码运行
-
-克隆仓库、安装 workspace 依赖，然后构建各个包与 Web 前端：
+## 从源码快速开始
 
 ```sh
 git clone https://github.com/peiyuwang54/deepseek-harness-web-to-cli.git
 cd deepseek-harness-web-to-cli
-pnpm install
+pnpm install --frozen-lockfile
 pnpm run build
+export DEEPSEEK_API_KEY="your-key"
+pnpm dsh tui
 ```
 
-`pnpm-lock.yaml` 发生变化后，请重新运行 `pnpm install`。拉取到影响包或 Web 前端的源码变更后，请重新运行 `pnpm run build`。
-
-### 配置 API Key
-
-在启动 `dsh` 的 shell 中设置 Key。
-
-macOS 或 Linux：
-
-```sh
-export DEEPSEEK_API_KEY="sk-your-key-here"
-```
-
-Windows PowerShell：
+PowerShell 凭据设置：
 
 ```powershell
-$env:DEEPSEEK_API_KEY = "sk-your-key-here"
+$env:DEEPSEEK_API_KEY = "your-key"
+pnpm dsh tui
 ```
 
-也可以把 Key 写入所选工作区根目录下的 `.env` 文件：
+不要提交提供方密钥。除了继承的环境外，启动器还可以从 `$DSH_HOME/.credentials.yaml`、调用目录下的 `.env` 以及 `$DSH_HOME/.env` 解析凭据。`$DSH_HOME` 默认为 `~/.dsh`，其中还保存 profile 和持久化 Session。
 
-```dotenv
-DEEPSEEK_API_KEY=sk-your-key-here
-```
+运行 `pnpm dsh ...` 时所在的目录是默认 workspace。`web`、`tui` 和 `headless` profile 都会在首次使用时自动初始化。
 
-本仓库会忽略 `.env`，但绝不能提交真实凭据。启动器还支持 `$DSH_HOME`（默认为 `~/.dsh`）下的用户级凭据层，详见[凭据提供方参考](packages/credentials/credentials-local/README.md)。
+<a id="run"></a>
 
-### 验证安装
+## 运行三种入口
 
-以下命令会验证本地启动器，但不会发送模型请求：
+### 交互式终端
+
+启动新的持久化 Session：
 
 ```sh
-pnpm dsh --version
-pnpm dsh --help
-pnpm dsh exec --help
+pnpm dsh tui
 ```
 
-根帮助中应列出 `cli`、`exec`、`resume`、`web` 和 `plugin`。
-
-### 启动交互式终端会话
-
-可以在当前仓库中运行，也可以通过 `-C` 选择另一工作区，或直接在命令中提供第一条提示词：
+显示终端专用帮助，或直接恢复已知 Session：
 
 ```sh
-pnpm dsh
-pnpm dsh -C /path/to/project
-pnpm dsh -C /path/to/project "Inspect this repository and explain how to run its tests"
+pnpm dsh tui --help
+pnpm dsh tui --resume <session-id>
 ```
 
-首次调用会在 `$DSH_HOME/profiles/cli` 下初始化内置 `cli` profile。启动横幅会显示会话 ID、工作区、模型、沙箱和审批策略；提交任务前请核对工作区与权限。
+终端退出时，启动器会打印 Session ID 和恢复命令。直接 `--resume` 是默认 profile 支持的恢复路径。请在你想继续工作的 workspace 中执行该命令。
 
-- `/help` 列出可用的斜杠命令。
-- `/exit`、`/quit`、Ctrl-D 或空闲时的 Ctrl-C 会关闭会话。
-- 轮次运行期间按 Ctrl-C 会请求取消；再次中断会退出进程。
-
-### 运行一个非交互任务
-
-脚本、管道和 CI 使用 `exec`：
+### Headless 自动化
 
 ```sh
-pnpm dsh exec "Summarize this repository"
-pnpm dsh exec --sandbox workspace-write "Fix the failing tests and summarize the changes"
-git diff --cached | pnpm dsh exec "Review this staged diff"
-pnpm dsh exec --json "Summarize package.json" > run.jsonl
+pnpm dsh --profile headless "inspect the repository and summarize the test failures"
 ```
 
-全新 `exec` 会话默认使用 `read-only`，审批策略为 `never`。只有任务需要修改所选工作区时，才添加 `--sandbox workspace-write`。在人类可读模式下，stdout 只包含 assistant 的最终答案，stderr 承载进度；`--json` 将 JSONL 事件写入 stdout。缺少提示词、轮次失败或操作被拒绝时，进程会返回非零退出码。
+Headless 模式会创建一个新的持久化 Agent，把最后一段非空 assistant 答案写入 stdout，然后退出。它不挂载 Web server 或终端 renderer。缺少任务属于用法错误，未完成的 turn 会以非零状态退出。
 
-### 恢复终端会话
-
-恢复当前工作区中符合条件的最新会话，或在恢复前选择工作区：
-
-```sh
-pnpm dsh resume --last
-pnpm dsh -C ../another-project resume --last
-```
-
-启动横幅会显示会话 ID，可用于显式调用 `pnpm dsh resume <session-id>`。终端恢复只接受同一工作区中持久化的 root 会话；Web 与自定义 preset 会话使用不同组合，因此终端 profile 不会打开它们。
-
-### 启动 Web UI
-
-同一个源码工作区也可以启动浏览器应用：
+### Web UI
 
 ```sh
 pnpm dsh web
 pnpm dsh web --port 8080
 ```
 
-请打开命令打印的 URL。在启动服务器的终端中按 Ctrl-C 即可停止。接下来可按照 [Web UI 指南](docs/user/guide/index.md)配置模型并选择工作区。
+Web 界面仍然是独立的 `base + web-app` profile。增加 TUI 不会让 Web 流量经过终端 renderer，也不会删除浏览器 client。详见 [Web UI 指南](docs/user/guide/index.md)。
 
-### 权限默认值
+## TUI 功能
 
-| 调用方式 | 随附默认值 | 效果 |
-|---|---|---|
-| `pnpm dsh` | `workspace-write` + `ask` | 交互式 agent 可以修改所选工作区，并能在操作需要审批时发起询问。 |
-| `pnpm dsh exec` | `read-only` + `never` | 除非 flag 显式修改策略，否则无人值守任务不能写入，也不会等待终端审批。 |
-| `--sandbox workspace-write` | 显式覆盖 | 授予本次调用工作区写权限；使用前请确认所选目录。 |
+终端是一个独立的展示层，复用 Harness 其他界面使用的 Agent、Session、Tool、Command、Approval、模型、skill 和持久化服务。
 
-使用 `pnpm dsh cli --help`、`pnpm dsh exec --help` 或 `pnpm dsh resume --help` 查看提供方、模型、推理强度、沙箱和审批选项。stdin、输出、恢复、权限与中断的精确行为由[终端 CLI 参考](packages/bundle/terminal-cli/README.md)定义。
+| 领域 | 已实现行为 |
+|---|---|
+| 对话 | 流式 Markdown、reasoning 块、重试状态、阶段与 step 计时，以及持久历史回放 |
+| 工具 | 终端、diff 和通用卡片；进行中／成功／错误状态；折叠、展开和隐藏视图 |
+| 人机协同 | 严格限定 Agent 的 FIFO 审批提示，以及结构化单选、多选和自定义问题 |
+| 模型 | `/model` catalog 与过滤、精确 provider/model 选择、适配器公布的 reasoning effort |
+| Session | 持久化身份、直接 `--resume`、可搜索恢复候选、标题、压缩标记和 Session 引用 |
+| Workspace | 文件与目录的 `@` 补全、含空格路径的引号处理、有界 workspace 索引 |
+| Skill 与命令 | 动态斜杠命令补全，以及面向用户可调用 skill 的 `/skill:<name> [instructions]` |
+| 诊断 | Token 与 KV-cache 计量、context 压力、当前模型、`/status` 和终端安全的错误报告 |
+| 扩展性 | Agent 作用域命令、由工具持有的展示意图、受生命周期约束的 `ctx.tui` overlay 服务 |
+| 终端生命周期 | ANSI 控制字符转义、同步渲染、raw mode 所有权、dispose 时恢复终端 |
 
-### 更新源码工作区
+`@path` 补全只会把路径插入 user message；它不会在背景中偷偷读取或附加该文件。存在 `read` 工具时，模型会收到一条稳定指令：需要内容时应读取用户明确引用的路径。
 
-拉取最新源码并重新构建：
+### 键盘快捷键
 
-```sh
-git pull
-pnpm install
-pnpm run build
+| 按键 | 操作 |
+|---|---|
+| `Enter` | Agent 空闲时发送 follow-up；Agent 运行时发送 steering 输入 |
+| `Shift+Enter` / `Alt+Enter` | 插入换行 |
+| `Up` / `Down` | editor 持有这些按键时遍历 prompt 历史 |
+| `Esc` | 取消活动 turn |
+| `Ctrl+C` | 运行时取消；空闲时先清除非空输入，再在空 editor 上按下时退出 |
+| `Ctrl+D` | 空闲时退出 |
+| `Ctrl+O` | 在折叠、展开和隐藏间循环切换工具卡片 |
+| `Ctrl+R` | 切换 reasoning 块可见性 |
+| `Ctrl+L` | 强制完整重绘 |
+
+### 终端命令
+
+| 命令 | 用途 |
+|---|---|
+| `/help` | 显示当前快捷键和有效命令注册表 |
+| `/model [[provider/]model]` | 打开选择器，或直接选择无歧义目标 |
+| `/clear` | 只清空已渲染 transcript；持久化 Session 历史不变 |
+| `/details` | 修改工具卡片可见性和 reasoning 展示 |
+| `/palette` | 查看语义化 ANSI palette |
+| `/status` | 把 Session、模型、用量、system prompt 和工具诊断添加到终端 transcript |
+| `/resume` | 搜索可恢复 Session；参见下文的 handoff 限制 |
+| `/reload` | 实验性开发命令；Agent 空闲时重载文件型 Loader 配置 |
+| `/exit` / `/quit` | 等待活动 turn 进入空闲后退出 |
+| `/skill:<name> [instructions]` | 把用户可调用 skill 作为 user turn 加载 |
+
+其他插件可以贡献 Agent 作用域命令，它们会动态出现在补全和 `/help` 中。
+
+## 架构
+
+“一切皆插件”的 Cordis 架构保持不变。CLI 选择 profile，profile composer 叠加 bundle 与用户 patch，被选中的界面持有自己的进程边界。
+
+```mermaid
+flowchart TD
+  CLI["dsh launcher"] --> Composer["profile composer"]
+  Composer --> TUIProfile["tui = base + tui-app"]
+  Composer --> WebProfile["web = base + web-app"]
+  Composer --> HeadlessProfile["headless = base + headless"]
+  TUIProfile --> Startup["TUI startup: args + exact Session identity"]
+  Startup --> Registry["Agent registry: create or resume"]
+  Registry --> Session["canonical persisted Session events"]
+  Registry --> Renderer["dsh-tui renderer + input"]
+  Session --> Renderer
+  Renderer --> Terminal["interactive terminal"]
 ```
 
-### 故障排查
+`@deepseek-ai/dsh-tui-app` 持有 `--resume`、TTY 准入、精确 root Agent 身份和 Agent create/resume。它会等待 Loader tree，在 Agent 尚未发布时安装初始模型路由，随后把 `@deepseek-ai/dsh-tui` 挂载到该 Agent。Renderer 只持有展示与输入。
 
-| 现象 | 处理方法 |
-|---|---|
-| `pnpm: command not found` | 安装 `pnpm@11.7.0`，然后确认 `pnpm --version` 可以运行。 |
-| Node 报告 engine 不匹配 | 使用 Node.js `^22.19.0` 或 `>=24.0.0`。 |
-| 缺少模型凭据 | 导出 `DEEPSEEK_API_KEY`，或将其写入所选工作区的 `.env`。 |
-| `interactive mode requires a TTY` | 在终端中运行 `pnpm dsh`，重定向输入或输出时改用 `pnpm dsh exec`。 |
-| `a prompt is required` | 传入提示词文本、管道传入非空 stdin，或使用 `-` 显式读取 stdin。 |
-| `exec` 任务无法编辑文件 | 确认目标工作区后添加 `--sandbox workspace-write`。 |
-| 无法判断配置来源 | 运行 `pnpm dsh --dump-config`，在不启动应用的情况下检查组合后的 profile。 |
+权威 Session 事件是唯一的持久对话来源。流式 chunk、工具进度、问题、审批和 overlay 都是实时 projection，而不是第二份聊天日志。审批策略与持久审计事件仍由 `ctx.approval` 持有；TUI 只是精确 Agent 的回答者。结构化问题仍是独立的 `ctx.userQuestions` 服务。
 
-### 更多文档
+实现决策、API 迁移、生命周期契约、测试边界和源码来源记录在[已交付 TUI CLI Agent Note](.agents/notes/implemented/feature/2026-08-14-shipped-tui-cli-front-door.md) 中。
 
-- [`dsh` 命令与 profile](apps/cli/README.md)
-- [终端交互、自动化、权限与限制](packages/bundle/terminal-cli/README.md)
-- [Web UI 指南](docs/user/guide/index.md)
-- [贡献者设置与开发工作流](docs/development.md)
+## Profile、配置与插件
 
-## 社区与支持
+每个 profile 位于 `$DSH_HOME/profiles/<name>`。有效配置树依次应用以下层：
 
-- 欢迎通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。
-- 为你的插件仓库添加 [`dsh-plugin`](https://github.com/topics/dsh-plugin) 话题，便于被发现。
-- 欢迎加入 DeepSeek Harness 企微群：扫码添加企微小助手并填写入群问卷，完成后小助手会邀请你入群。
+1. 按 profile `dsh.profile.bundles` 顺序排列的 bundle patch。
+2. Profile 自身的 `cordis.patch.yml`。
+3. 共享的 `$DSH_HOME/cordis.patch.yml`。
+4. 按命令行顺序排列、可重复的 `--patch <path>` overlay。
 
-<table>
-  <thead>
-    <tr>
-      <th align="center">企微小助手</th>
-      <th align="center">入群问卷</th>
-      <th align="center">微信公众号</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center"><img src="assets/community-wecom-assistant.png" alt="DeepSeek Harness 企微小助手二维码" width="180" height="180"></td>
-      <td align="center"><a href="https://trtgsjkv6r.feishu.cn/share/base/form/shrcnIt5twSVdLGD52KJBckGCgg"><img src="assets/community-wecom-survey.png" alt="DeepSeek Harness 入群问卷二维码" width="180" height="180"></a></td>
-      <td align="center"><img src="assets/community-wechat-official-account.png" alt="DeepSeek Harness 团队微信公众号二维码" width="180" height="180"></td>
-    </tr>
-  </tbody>
-</table>
+后应用的层按 row 覆盖前者；替换一个 row 的 `config` 会替换整个值，而非深度合并。可以在不启动的情况下检查 TUI profile，或者扩展它：
 
-## 参与贡献
+```sh
+pnpm dsh tui --dump-default-config
+pnpm dsh tui --dump-config
+pnpm dsh tui --patch ./extra.cordis.yml
+pnpm dsh plugin --profile tui add <package-or-git-spec>
+```
 
-参见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+`--patch` 等 launcher flag 必须放在 `--resume` 等应用所有参数之前：
 
-## 开发
+```sh
+pnpm dsh tui --patch ./extra.cordis.yml --resume <session-id>
+```
 
-请先阅读[开发指南](docs/development.md)与[架构文档](docs/architecture.md)。
+完整的层、schema 和扩展契约请参见 [CLI 行为参考](apps/cli/reference/README.md)、[TUI renderer 参考](packages/ui/tui/README.md) 和[配置 catalog](docs/config-catalog.md)。
 
-面向 agent：请遵循 [AGENTS.md](AGENTS.md)。
+## 安全与隐私边界
+
+- 新 Session 默认使用 `workspace-write` 并显示审批提示。受强制的文件修改被限制在 Session workspace 和平台临时根目录内，但读取、网络访问和进程可见性并不是完整的沙箱边界。
+- `DSH_PERMISSION_MODE=danger-full-access` 会移除常规文件边界，并把随附审批策略改为 `never`。只应在已经隔离的环境中使用它。
+- 环境凭据对进程可见。`$DSH_HOME/.credentials.yaml` 是用于减少意外泄露的普通文件，不是操作系统 keychain；其他同用户进程可以读取它。
+- 外部插件和 MCP server 命令是在 Agent 工具沙箱之外加载的受信任可执行代码。向 profile 添加插件前，请审查它及其安装脚本。
+- Session telemetry 默认关闭。显式开启后，随附 exporter 可能包含消息文本、工具参数与结果、workspace 路径。任何非空 `DSH_TELEMETRY_DISABLED` 都是权威的强制退出开关。
+- TUI 会把不受信任的 C0/C1 终端控制字符显示为可见文本，并在正常 dispose 时恢复终端模式。它保护的是显示边界，并不会使模型选择的 shell 命令变得安全。
+
+## 验证
+
+CLI/TUI baseline 在发布前已完成本地验证，结果如下：
+
+- 完整 workspace build 完成。
+- TUI 单元与 Agent/Session 集成套件：243 项测试通过。
+- 无密钥终端状态快照：26 项快照通过。
+- TUI bundle 与 CLI 参数套件：5 个文件内的 19 项测试通过。
+- Built CLI E2E 套件：20 项测试通过；其中包含真实 POSIX PTY 启动 `apps/cli/lib/bin.js`，证明 Loader 激活、同步首帧、运行中 raw mode、`Ctrl+D` 退出以及完整 termios 恢复。
+- Baseline 的类型、包、Loader/配置、生成 catalog、文档链接、中英文配对、许可证和第三方声明门禁已完成。
+
+这些是有日期的本地 baseline 结果，不是 GitHub Actions 徽章，也不保证之后每个 commit 都是绿色。PTY 路径不需要密钥，也不会发起模型请求；它不能替代真实提供方 E2E。
+
+常用开发命令：
+
+```sh
+pnpm run build
+pnpm run typecheck
+pnpm run test
+pnpm run test:snapshot
+pnpm exec vitest run --config vitest.e2e.config.ts apps/cli/tests/built-bin.e2e.ts
+pnpm run check:ci
+```
+
+真实 DeepSeek API E2E 需要单独配置凭据，并可能消耗配额。上述无密钥测试结果不包含这项验证。
+
+## 已知限制
+
+- **本 fork 通过源码分发：** 本仓库没有发布或控制任何 `@deepseek-ai` scope 下的 npm 包。
+- **仅支持 TTY：** `tui` 的常规启动要求交互式 stdin 和 stdout；在 pipe 中它不会自动回退到 headless。
+- **会话内恢复需要宿主 callback：** 随附 profile 的 `/resume` 选择器可以查看候选项，但没有宿主提供的 `ctx.tuiResumeHost` 时，它无法原地替换当前进程。直接 `pnpm dsh tui --resume <session-id>` 不需要该 callback。
+- **没有跨进程 Session lock：** 另一个进程可以尝试恢复同一持久化身份。
+- **文本终端展示：** 工具卡片不会渲染内联图像块。
+- **只渲染一个 Agent：** 已配置 Session 持有 transcript 与 editor，即使共享 overlay 可以回答其他 Agent 的请求。
+- **宿主 workspace 发现：** `@` 文件补全索引宿主 Session 目录，按已配置目录 basename 排除，而不解析 `.gitignore`，也不遍历目录 symlink。
+- **没有 renderer 模块 HMR：** 随附 TUI bundle 在 raw 终端状态存活时禁用模块热更新；`/reload` 只面向 Loader 配置和开发环境。
+
+详见[完整 TUI 限制](packages/ui/tui/README.md#known-limitations-and-deferred-work) 和 [bundle 专用限制](packages/bundle/tui/README.md#known-limitations-and-deferred-work)。
+
+## 来源与可追溯性
+
+TUI renderer 从上游 DeepSeek Harness 删除它之前的 tree 恢复，并迁移到当前 Agent、Session、model-selection、Approval、user-question、compaction 和 Cordis API。本 fork 的新压缩 Git 历史不会重现上游 commit；[删除前的上游 tree](https://github.com/deepseek-ai/deepseek-harness/tree/7248b5ec8f8769f882f12fd521504fa48e97bcf3/packages/ui/tui) 保留了这条可追溯路径。
+
+我们研究了 Gemini CLI 和 OpenAI Codex 在高层进程、渲染、审批、恢复、headless 和 PTY 测试方面的模式。Claude 系工具只通过高层可观测行为参考。本实现没有复制这些外部 CLI 的源码或非平凡表达。Renderer 把 `@earendil-works/pi-tui` 作为显式依赖，并记录了本地兼容 patch。
+
+## 开发与支持
+
+- Fork 专用 bug 请提交到本仓库的 [Issues](https://github.com/peiyuwang54/deepseek-harness-web-to-cli/issues)，不要提交到上游 issue tracker。
+- 请从[开发指南](docs/development.md)和[架构文档](docs/architecture.md)开始。
+- 提交改动前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- 在仓库中工作的 agent 必须遵循 [AGENTS.md](AGENTS.md)。
+
+上游 DeepSeek Harness 文档和社区描述的是上游项目；它们不是本 fork 的支持或背书渠道。
 
 ## 许可证
 
-[MIT](LICENSE)
-
-第三方依赖及其许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+Fork 改动和当前仓库 baseline 按根目录 [MIT 许可证](LICENSE) 分发。从早期上游历史恢复的 TUI 源码保留 DeepSeek 版权和 [BSD-3-Clause 声明](packages/ui/tui/LICENSE)。依赖许可证、pi-tui patch 和其他必需声明记录在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 中。重新分发组合作品时，请遵守每一项适用声明。

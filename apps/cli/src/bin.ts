@@ -9,7 +9,6 @@
 /* v8 ignore file -- built-bin acceptance exercises this self-executing dispatch. */
 
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadLayeredEnv } from '@deepseek-ai/dsh-app-boot'
 import { parseDshArgs } from './args.ts'
@@ -26,16 +25,6 @@ function readVersion(): string {
 }
 
 const invocation = parseDshArgs(process.argv.slice(2), readVersion())
-
-if ('cwd' in invocation) {
-  const target = resolve(invocation.cwd)
-  try {
-    process.chdir(target)
-  } catch (error: unknown) {
-    process.stderr.write(`dsh: cannot change directory to ${JSON.stringify(target)}: ${error instanceof Error ? error.message : String(error)}\n`)
-    process.exit(1)
-  }
-}
 
 switch (invocation.mode) {
   case 'profile': {

@@ -56,4 +56,35 @@ describe('DSH package license gate', () => {
       'packages/core/agent/package.json: @deepseek-ai/dsh-agent must declare "license": "MIT"; found undefined.',
     ])
   })
+
+  it('accepts the exact restored-TUI conjunction and no broader DSH exception', () => {
+    const root = createWorkspace()
+    writeManifest(root, 'packages/ui/tui/package.json', {
+      name: '@deepseek-ai/dsh-tui',
+      license: '(MIT AND BSD-3-Clause)',
+    })
+    writeManifest(root, 'packages/ui/other/package.json', {
+      name: '@deepseek-ai/dsh-other-ui',
+      license: '(MIT AND BSD-3-Clause)',
+    })
+
+    expect(inspectDshPackageLicenses(root)).toEqual({
+      packageCount: 3,
+      failures: [
+        'packages/ui/other/package.json: @deepseek-ai/dsh-other-ui must declare "license": "MIT"; found "(MIT AND BSD-3-Clause)".',
+      ],
+    })
+  })
+
+  it('rejects a TUI declaration that is equivalent-looking but not the exact policy string', () => {
+    const root = createWorkspace()
+    writeManifest(root, 'packages/ui/tui/package.json', {
+      name: '@deepseek-ai/dsh-tui',
+      license: 'MIT AND BSD-3-Clause',
+    })
+
+    expect(inspectDshPackageLicenses(root).failures).toEqual([
+      'packages/ui/tui/package.json: @deepseek-ai/dsh-tui must declare "license": "(MIT AND BSD-3-Clause)"; found "MIT AND BSD-3-Clause".',
+    ])
+  })
 })

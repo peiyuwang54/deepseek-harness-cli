@@ -1,189 +1,257 @@
-# DeepSeek Harness
+# DeepSeek Harness Web-to-CLI
 
 English | [中文](README.zh.md)
 
-DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
+This community-maintained fork adds a first-class interactive terminal UI (TUI) and CLI entry point to [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), while retaining its Web and one-shot headless surfaces. The result is one plugin-based agent runtime with three explicit front doors:
 
-It uses an architecture where **everything is a plugin**, and is powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper).
+| Surface | Source-checkout command | Intended use |
+|---|---|---|
+| Terminal | `pnpm dsh tui` | Interactive coding-agent work in a terminal, SSH session, or tmux |
+| Headless | `pnpm dsh --profile headless "task"` | Scripts, pipes, CI jobs, and one-shot automation |
+| Web | `pnpm dsh web` | The existing browser UI, served at `http://127.0.0.1:3080` by default |
 
-## Developer preview
+> [!IMPORTANT]
+>
+> This is an unofficial community fork. It is not maintained, sponsored, or endorsed by DeepSeek AI. DeepSeek Harness and the `@deepseek-ai` npm packages originate from DeepSeek AI. The terminal changes in this repository are currently distributed from source; the public `@deepseek-ai/dsh` npm package is an independent upstream release and must not be assumed to contain this fork's TUI.
 
-DeepSeek Harness is currently in _developer preview_ and is iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
+## Status
 
-## Run
+This project is a developer preview. Configuration, package APIs, session formats, commands, and terminal behavior may change incompatibly. Keep backups of important work and review the permission and credential notes below before using an agent on sensitive repositories.
 
-The terminal CLI in this private repository is currently distributed from source. The public `@deepseek-ai/dsh` package is an independently published DeepSeek AI release; use the source workflow below when you need the code in this repository.
+## Requirements
 
-### Prerequisites
+- Node.js `^22.19.0` or `>=24.0.0`; Node.js 24 is the recommended development runtime.
+- pnpm `11.7.0`, matching the repository's `packageManager` field.
+- A real stdin and stdout TTY for `tui`; use `headless` for redirection and automation.
+- A provider credential before the first model request. The shipped default adapter reads `DEEPSEEK_API_KEY`.
 
-- Git and a GitHub account with access to this private repository.
-- Node.js `^22.19.0` or `>=24.0.0`.
-- pnpm. The repository pins `pnpm@11.7.0`; install it with Corepack or npm if `pnpm --version` does not work.
-- A DeepSeek API key before submitting a model task. Help, configuration dumps, and startup without a prompt do not call the model.
+The terminal implementation targets macOS, Linux, and Windows. The keyless built-binary PTY acceptance test described below runs on POSIX; Windows terminal behavior uses the pi-tui VT-input and ConPTY paths and has separate platform-oriented tests.
 
-One way to install the pinned pnpm version is:
+<a id="run-from-source"></a>
 
-```sh
-npm install --global pnpm@11.7.0
-```
-
-### Run from source
-
-Clone the repository, install its workspace dependencies, and build the packages and Web frontend:
+## Quick start from source
 
 ```sh
 git clone https://github.com/peiyuwang54/deepseek-harness-web-to-cli.git
 cd deepseek-harness-web-to-cli
-pnpm install
+pnpm install --frozen-lockfile
 pnpm run build
+export DEEPSEEK_API_KEY="your-key"
+pnpm dsh tui
 ```
 
-Run `pnpm install` again after `pnpm-lock.yaml` changes. Run `pnpm run build` after pulling source changes that affect packages or the Web frontend.
-
-### Configure the API key
-
-Set the key in the shell that starts `dsh`.
-
-On macOS or Linux:
-
-```sh
-export DEEPSEEK_API_KEY="sk-your-key-here"
-```
-
-On Windows PowerShell:
+PowerShell credential setup:
 
 ```powershell
-$env:DEEPSEEK_API_KEY = "sk-your-key-here"
+$env:DEEPSEEK_API_KEY = "your-key"
+pnpm dsh tui
 ```
 
-Alternatively, put the key in a `.env` file at the selected workspace root:
+Do not commit provider keys. Besides the inherited environment, the launcher can resolve credentials from `$DSH_HOME/.credentials.yaml`, the invocation directory's `.env`, and `$DSH_HOME/.env`. `$DSH_HOME` defaults to `~/.dsh`; it also contains profiles and persisted sessions.
 
-```dotenv
-DEEPSEEK_API_KEY=sk-your-key-here
-```
+The directory in which you run `pnpm dsh ...` is the default workspace. The `web`, `tui`, and `headless` profiles initialize themselves on first use.
 
-The repository ignores `.env`, but never commit a real credential. The launcher also supports user-level credential layers under `$DSH_HOME` (default `~/.dsh`); see the [credential provider reference](packages/credentials/credentials-local/README.md).
+<a id="run"></a>
 
-### Verify the installation
+## Running the three surfaces
 
-These commands exercise the local launcher without sending a model request:
+### Interactive terminal
+
+Start a new persistent session:
 
 ```sh
-pnpm dsh --version
-pnpm dsh --help
-pnpm dsh exec --help
+pnpm dsh tui
 ```
 
-The root help should list `cli`, `exec`, `resume`, `web`, and `plugin`.
-
-### Start an interactive terminal session
-
-Run in the current repository, select another workspace with `-C`, or include the first prompt in the command:
+Show terminal-specific help or resume a known session directly:
 
 ```sh
-pnpm dsh
-pnpm dsh -C /path/to/project
-pnpm dsh -C /path/to/project "Inspect this repository and explain how to run its tests"
+pnpm dsh tui --help
+pnpm dsh tui --resume <session-id>
 ```
 
-The first invocation initializes the built-in `cli` profile under `$DSH_HOME/profiles/cli`. The startup banner shows the Session id, workspace, model, sandbox, and approval policy; verify the workspace and permissions before submitting a task.
+The launcher prints the session ID and a resume command when the terminal exits. Direct `--resume` is the supported default-profile resume path. Run it from the workspace in which you want to continue working.
 
-- `/help` lists the available slash commands.
-- `/exit`, `/quit`, Ctrl-D, or Ctrl-C while idle closes the Session.
-- Ctrl-C during a running turn requests cancellation; a repeated interrupt exits the process.
-
-### Run one non-interactive task
-
-Use `exec` for scripts, pipes, and CI:
+### Headless automation
 
 ```sh
-pnpm dsh exec "Summarize this repository"
-pnpm dsh exec --sandbox workspace-write "Fix the failing tests and summarize the changes"
-git diff --cached | pnpm dsh exec "Review this staged diff"
-pnpm dsh exec --json "Summarize package.json" > run.jsonl
+pnpm dsh --profile headless "inspect the repository and summarize the test failures"
 ```
 
-Fresh `exec` Sessions default to `read-only` with approval policy `never`. Add `--sandbox workspace-write` only when the task should modify the selected workspace. In human-readable mode, stdout contains the final assistant answer and stderr carries progress; `--json` writes JSONL events to stdout. A missing prompt, failed turn, or rejected operation returns a nonzero exit code.
+Headless mode creates one fresh persisted Agent, writes the final non-empty assistant answer to stdout, and exits. It mounts no Web server or terminal renderer. An absent task is a usage error, and a non-completed turn exits nonzero.
 
-### Resume a terminal Session
-
-Resume the newest eligible Session in the current workspace, or select the workspace before resume:
-
-```sh
-pnpm dsh resume --last
-pnpm dsh -C ../another-project resume --last
-```
-
-The startup banner prints the Session id for an explicit `pnpm dsh resume <session-id>` invocation. Terminal resume accepts persisted root Sessions from the same workspace; Web and custom-preset Sessions use a different composition and are not opened by the terminal profile.
-
-### Start the Web UI
-
-The same checkout can start the browser application:
+### Web UI
 
 ```sh
 pnpm dsh web
 pnpm dsh web --port 8080
 ```
 
-Open the URL printed by the command. Press Ctrl-C in the launching terminal to stop the server. Continue with the [Web UI guide](docs/user/guide/index.md) to configure models and choose a workspace.
+The Web surface remains a separate `base + web-app` profile. Adding the TUI does not route Web traffic through the terminal renderer and does not remove the browser client. See the [Web UI guide](docs/user/guide/index.md).
 
-### Permission defaults
+## TUI capabilities
 
-| Invocation | Shipped default | Effect |
-|---|---|---|
-| `pnpm dsh` | `workspace-write` + `ask` | The interactive agent may modify the selected workspace and can ask before an operation that requires approval. |
-| `pnpm dsh exec` | `read-only` + `never` | The unattended task cannot write or wait for a terminal approval unless flags explicitly change the policy. |
-| `--sandbox workspace-write` | Explicit override | Grants workspace writes for the current invocation; inspect the selected directory before using it. |
+The terminal is an independent presentation layer over the same Agent, Session, Tool, Command, Approval, model, skill, and persistence services used elsewhere in Harness.
 
-Use `pnpm dsh cli --help`, `pnpm dsh exec --help`, or `pnpm dsh resume --help` for provider, model, reasoning-effort, sandbox, and approval options. The [terminal CLI reference](packages/bundle/terminal-cli/README.md) owns the exact stdin, output, resume, permission, and interruption behavior.
+| Area | Implemented behavior |
+|---|---|
+| Conversation | Streaming Markdown, reasoning blocks, retry state, phase and step timing, and replay of persisted history |
+| Tools | Terminal, diff, and generic cards; pending/success/error state; collapsed, expanded, and hidden views |
+| Human in the loop | Exact-Agent FIFO approval prompts plus structured single-select, multi-select, and custom questions |
+| Models | `/model` catalog and filter, exact provider/model selection, and adapter-advertised reasoning effort |
+| Sessions | Persistent identities, direct `--resume`, searchable resume candidates, titles, compaction markers, and session references |
+| Workspace | `@` completion for files and directories, quoted paths with spaces, and bounded workspace indexing |
+| Skills and commands | Dynamic slash-command completion and `/skill:<name> [instructions]` for user-invocable skills |
+| Diagnostics | Token and KV-cache accounting, context pressure, current model, `/status`, and terminal-safe error reporting |
+| Extensibility | Agent-scoped commands, tool-owned presentation intents, and a lifecycle-bound `ctx.tui` overlay service |
+| Terminal lifecycle | ANSI control-character escaping, synchronized rendering, raw-mode ownership, and terminal restoration on disposal |
 
-### Update the checkout
+`@path` completion inserts a path into the user message; it does not secretly read or attach that file. When a `read` tool is available, the model receives a stable instruction to read an explicitly referenced path when its contents are needed.
 
-Pull the latest source and rebuild:
+### Keyboard shortcuts
 
-```sh
-git pull
-pnpm install
-pnpm run build
+| Key | Action |
+|---|---|
+| `Enter` | Send a follow-up while idle or steering input while the Agent is running |
+| `Shift+Enter` / `Alt+Enter` | Insert a newline |
+| `Up` / `Down` | Navigate prompt history when the editor owns those keys |
+| `Esc` | Cancel the active turn |
+| `Ctrl+C` | Cancel while running; while idle, clear non-empty input, then exit when pressed on an empty editor |
+| `Ctrl+D` | Exit while idle |
+| `Ctrl+O` | Cycle tool cards through collapsed, expanded, and hidden |
+| `Ctrl+R` | Toggle reasoning-block visibility |
+| `Ctrl+L` | Force a full redraw |
+
+### Terminal commands
+
+| Command | Purpose |
+|---|---|
+| `/help` | Show current shortcuts and the effective command registry |
+| `/model [[provider/]model]` | Open the selector or choose an unambiguous target directly |
+| `/clear` | Clear only the rendered transcript; durable session history is unchanged |
+| `/details` | Change tool-card visibility and reasoning display |
+| `/palette` | Inspect the semantic ANSI palette |
+| `/status` | Add session, model, usage, system-prompt, and tool diagnostics to the terminal transcript |
+| `/resume` | Search resumable sessions; see the handoff limitation below |
+| `/reload` | Experimental development-only reload of file-backed Loader configuration while idle |
+| `/exit` / `/quit` | Exit after the active turn reaches idle |
+| `/skill:<name> [instructions]` | Load a user-invocable skill as a user turn |
+
+Other plugins can contribute Agent-scoped commands, which appear dynamically in completion and `/help`.
+
+## Architecture
+
+Everything remains a Cordis plugin. The CLI selects a profile, the profile composer layers bundles and user patches, and the selected surface owns its process boundary.
+
+```mermaid
+flowchart TD
+  CLI["dsh launcher"] --> Composer["profile composer"]
+  Composer --> TUIProfile["tui = base + tui-app"]
+  Composer --> WebProfile["web = base + web-app"]
+  Composer --> HeadlessProfile["headless = base + headless"]
+  TUIProfile --> Startup["TUI startup: args + exact Session identity"]
+  Startup --> Registry["Agent registry: create or resume"]
+  Registry --> Session["canonical persisted Session events"]
+  Registry --> Renderer["dsh-tui renderer + input"]
+  Session --> Renderer
+  Renderer --> Terminal["interactive terminal"]
 ```
 
-### Troubleshooting
+`@deepseek-ai/dsh-tui-app` owns `--resume`, TTY admission, the exact root Agent identity, and Agent create/resume. It waits for the Loader tree, installs the initial model route while the Agent is unpublished, and then mounts `@deepseek-ai/dsh-tui` onto that Agent. The renderer owns presentation and input only.
 
-| Symptom | Resolution |
-|---|---|
-| `pnpm: command not found` | Install `pnpm@11.7.0`, then confirm `pnpm --version`. |
-| Node reports an engine mismatch | Use Node.js `^22.19.0` or `>=24.0.0`. |
-| The model credential is missing | Export `DEEPSEEK_API_KEY` or add it to the selected workspace's `.env`. |
-| `interactive mode requires a TTY` | Run `pnpm dsh` in a terminal, or use `pnpm dsh exec` for redirected input or output. |
-| `a prompt is required` | Pass prompt text, pipe non-empty stdin, or use `-` to read stdin explicitly. |
-| An `exec` task cannot edit files | Add `--sandbox workspace-write` after confirming the target workspace. |
-| Configuration is unclear | Run `pnpm dsh --dump-config` and inspect the composed profile without booting it. |
+Canonical Session events are the sole durable conversation source. Streaming chunks, tool progress, questions, approvals, and overlays are live projections rather than a second chat log. Approval policy and durable audit events remain owned by `ctx.approval`; the TUI is only the exact-Agent answerer. Structured questions remain a separate `ctx.userQuestions` service.
 
-### More documentation
+The implementation decision, API migration, lifecycle contracts, testing boundary, and source provenance are recorded in the [shipped TUI CLI Agent Note](.agents/notes/implemented/feature/2026-08-14-shipped-tui-cli-front-door.md).
 
-- [`dsh` commands and profiles](apps/cli/README.md)
-- [Terminal interaction, automation, permissions, and limitations](packages/bundle/terminal-cli/README.md)
-- [Web UI guide](docs/user/guide/index.md)
-- [Contributor setup and development workflow](docs/development.md)
+## Profiles, configuration, and plugins
 
-## Community and support
+Each profile lives under `$DSH_HOME/profiles/<name>`. The effective tree applies these layers in order:
 
-- Feel free to submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
-- Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to your plugin repository for discoverability.
-- Join <a href="https://discord.gg/Ycq5dCaS4">DeepSeek Harness Discord community</a>.
+1. Bundle patches in the profile's `dsh.profile.bundles` order.
+2. The profile's `cordis.patch.yml`.
+3. The shared `$DSH_HOME/cordis.patch.yml`.
+4. Repeatable `--patch <path>` overlays in command-line order.
 
-## Contributing
+Later layers win by row, and replacing a row's `config` replaces that complete value rather than deep-merging it. Inspect or extend the TUI profile without booting it:
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+```sh
+pnpm dsh tui --dump-default-config
+pnpm dsh tui --dump-config
+pnpm dsh tui --patch ./extra.cordis.yml
+pnpm dsh plugin --profile tui add <package-or-git-spec>
+```
 
-## Development
+Launcher flags such as `--patch` must appear before app-owned arguments such as `--resume`:
 
-Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
+```sh
+pnpm dsh tui --patch ./extra.cordis.yml --resume <session-id>
+```
 
-For agents, follow [AGENTS.md](AGENTS.md).
+See the [CLI behavior reference](apps/cli/reference/README.md), the [TUI renderer reference](packages/ui/tui/README.md), and the [configuration catalog](docs/config-catalog.md) for the full layer, schema, and extension contracts.
+
+## Security and privacy boundaries
+
+- New sessions default to `workspace-write` with approval prompts. Enforced file mutations are confined to the session workspace and platform temporary roots, but reads, network access, and process visibility are not a complete sandbox boundary.
+- `DSH_PERMISSION_MODE=danger-full-access` removes the normal file boundary and changes the shipped approval policy to `never`. Use it only in an already isolated environment.
+- Environment credentials are process-visible. `$DSH_HOME/.credentials.yaml` is a plain file protected from accidental disclosure, not an OS keychain; another same-user process can read it.
+- External plugins and MCP server commands are trusted executable code loaded outside the Agent's tool sandbox. Review a plugin and its install scripts before adding it to a profile.
+- Session telemetry is disabled by default. If explicitly enabled, the shipped exporter can include message text, tool arguments and results, and workspace paths. Any non-empty `DSH_TELEMETRY_DISABLED` is a hard opt-out.
+- The TUI makes untrusted C0/C1 terminal controls visible instead of executing them and restores terminal mode during normal disposal. This protects the display boundary; it does not make model-selected shell commands safe.
+
+## Verification
+
+The CLI/TUI baseline was locally validated before publication with the following results:
+
+- Full workspace build completed.
+- TUI unit and Agent/Session integration suites: 243 tests passed.
+- Keyless terminal-state snapshots: 26 snapshots passed.
+- TUI bundle and CLI argument suites: 19 tests passed across 5 files.
+- Built CLI E2E suite: 20 tests passed, including a real POSIX PTY launch of `apps/cli/lib/bin.js` that proves Loader activation, a synchronized first frame, active raw mode, `Ctrl+D` exit, and complete termios restoration.
+- Type, package, Loader/config, generated-catalog, documentation-link, translation-pairing, license, and third-party-notice gates completed for the baseline.
+
+These are dated local baseline results, not a GitHub Actions badge or a promise that every later commit is green. The PTY path is keyless and makes no model request; it does not replace a real-provider E2E run.
+
+Useful developer commands:
+
+```sh
+pnpm run build
+pnpm run typecheck
+pnpm run test
+pnpm run test:snapshot
+pnpm exec vitest run --config vitest.e2e.config.ts apps/cli/tests/built-bin.e2e.ts
+pnpm run check:ci
+```
+
+Real DeepSeek API E2E requires a separately configured credential and can spend quota. It is not implied by the keyless test results above.
+
+## Known limitations
+
+- **Source distribution for this fork:** no npm package under the `@deepseek-ai` scope is published or controlled by this repository.
+- **TTY only:** ordinary `tui` startup requires interactive stdin and stdout. It intentionally does not fall back to headless mode when piped.
+- **In-channel resume needs a host callback:** the shipped profile's `/resume` selector can inspect candidates, but it cannot replace the current process in place without a host-provided `ctx.tuiResumeHost`. Direct `pnpm dsh tui --resume <session-id>` works without that callback.
+- **No cross-process session lock:** another process can attempt to resume the same persisted identity.
+- **Text-terminal presentation:** tool cards do not render inline image blocks.
+- **One rendered Agent:** the configured Session owns the transcript and editor, even though shared overlays may answer requests from other Agents.
+- **Host workspace discovery:** `@` file completion indexes the host session directory, excludes configured directory basenames rather than interpreting `.gitignore`, and does not traverse directory symlinks.
+- **No renderer module HMR:** the shipped TUI bundle disables module hot reload while raw terminal state is live; `/reload` is limited to Loader configuration and development use.
+
+See the [complete TUI limitations](packages/ui/tui/README.md#known-limitations-and-deferred-work) and the [bundle-specific limitations](packages/bundle/tui/README.md#known-limitations-and-deferred-work).
+
+## Provenance
+
+The TUI renderer was recovered from the upstream DeepSeek Harness tree immediately before its removal and ported to the current Agent, Session, model-selection, Approval, user-question, compaction, and Cordis APIs. This fork's new squashed Git history does not reproduce the upstream commits; the [pre-removal upstream tree](https://github.com/deepseek-ai/deepseek-harness/tree/7248b5ec8f8769f882f12fd521504fa48e97bcf3/packages/ui/tui) preserves that traceability.
+
+Gemini CLI and OpenAI Codex were studied for high-level process, rendering, approval, resume, headless, and PTY testing patterns. Claude-family tools were considered only through high-level observable behavior. No source or nontrivial expression from those external CLIs was copied into this implementation. The renderer uses `@earendil-works/pi-tui` as an explicit dependency with a recorded local compatibility patch.
+
+## Development and support
+
+- Report fork-specific bugs through this repository's [Issues](https://github.com/peiyuwang54/deepseek-harness-web-to-cli/issues), not the upstream issue tracker.
+- Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
+- See [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change.
+- Agents working in the repository must follow [AGENTS.md](AGENTS.md).
+
+Upstream DeepSeek Harness documentation and communities describe the upstream project; they are not a support or endorsement channel for this fork.
 
 ## License
 
-[MIT](LICENSE)
-
-Third-party dependencies and their licenses are disclosed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Fork changes and the current repository baseline are distributed under the root [MIT license](LICENSE). The TUI source recovered from the earlier upstream history retains its DeepSeek copyright and [BSD-3-Clause notice](packages/ui/tui/LICENSE). Dependency licenses, the pi-tui patch, and other required notices are recorded in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Comply with each applicable notice when redistributing the combined work.

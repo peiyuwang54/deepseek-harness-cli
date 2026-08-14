@@ -14,18 +14,229 @@ const cliVersion = (JSON.parse(readFileSync(new URL('../package.json', import.me
 const dshBin = join(repoRoot, 'apps/cli/lib/bin.js')
 const invalidProvider = fileURLToPath(new URL('./fixtures/invalid-provider.cordis.yml', import.meta.url))
 
+/**
+ * POSIX PTY driver for the built terminal profile. The child wrapper keeps the
+ * same slave TTY before and after Node, so its complete termios snapshot can
+ * prove that ProcessTerminal restored raw-mode mutations instead of merely
+ * disappearing with the process. The parent waits for both an injected
+ * `tuiPrompt` probe and a complete synchronized UI frame before sending Ctrl-D.
+ */
+const POSIX_BUILT_TUI_PTY_DRIVER = String.raw`
+import base64, errno, fcntl, json, os, pty, select, signal, struct, subprocess, sys, termios, time
+
+node, dsh_bin, overlay, launch_env_json, cwd, timeout_seconds = sys.argv[1:]
+env = os.environ.copy()
+env.update(json.loads(launch_env_json))
+frame_start = b"\x1b[?2026h"
+frame_end = b"\x1b[?2026l"
+probe_marker = b"dsh-test: tuiPrompt active"
+wrapper_marker = b"dsh-test: tui wrapper "
+viewport = struct.pack("HHHH", 30, 100, 0, 0)
+
+def complete_tui_frame(data):
+    start = data.find(frame_start)
+    if start < 0:
+        return False
+    return data.find(frame_end, start + len(frame_start)) >= 0
+
+def rendered_tui(data):
+    # pi-tui emits incremental synchronized updates: the prompt can be in the
+    # initial frame while the title and session arrive in later patch frames.
+    # Require a complete frame boundary, but observe the stable UI markers over
+    # the cumulative terminal stream instead of requiring one physical frame to
+    # contain the entire viewport.
+    return (
+        complete_tui_frame(data)
+        and b"HARNESS" in data
+        and b"main-session-" in data
+        and b"dsh" in data
+    )
+
+pid, fd = pty.fork()
+if pid == 0:
+    os.chdir(cwd)
+    fcntl.ioctl(0, termios.TIOCSWINSZ, viewport)
+    before = termios.tcgetattr(0)
+    completed = subprocess.run([node, dsh_bin, "tui", "--patch", overlay], env=env)
+    after = termios.tcgetattr(0)
+    report = {
+        "nodeExitCode": completed.returncode,
+        "restored": before == after,
+        "afterCanonical": bool(after[3] & termios.ICANON),
+        "afterEcho": bool(after[3] & termios.ECHO),
+    }
+    os.write(1, b"\r\n" + wrapper_marker + json.dumps(report).encode() + b"\r\n")
+    os._exit(0)
+
+# Give the renderer a deterministic viewport instead of inheriting the host
+# runner's possibly unset PTY dimensions.
+fcntl.ioctl(fd, termios.TIOCSWINSZ, viewport)
+output = bytearray()
+sent_ctrl_d = False
+raw_mode_observed = False
+status = None
+deadline = time.monotonic() + float(timeout_seconds)
+while time.monotonic() < deadline:
+    ready, _, _ = select.select([fd], [], [], 0.05)
+    if ready:
+        try:
+            chunk = os.read(fd, 65536)
+        except OSError as error:
+            if error.errno != errno.EIO:
+                raise
+            chunk = b""
+        if chunk:
+            output.extend(chunk)
+    if not sent_ctrl_d and probe_marker in output and rendered_tui(output):
+        active = termios.tcgetattr(fd)
+        raw_mode_observed = not bool(active[3] & termios.ICANON) and not bool(active[3] & termios.ECHO)
+        os.write(fd, b"\x04")
+        sent_ctrl_d = True
+    waited, candidate = os.waitpid(pid, os.WNOHANG)
+    if waited == pid:
+        status = candidate
+        break
+
+timed_out = status is None
+if status is None:
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    _, status = os.waitpid(pid, 0)
+
+# Drain bytes already queued by the wrapper before the slave closed.
+while True:
+    ready, _, _ = select.select([fd], [], [], 0)
+    if not ready:
+        break
+    try:
+        chunk = os.read(fd, 65536)
+    except OSError as error:
+        if error.errno == errno.EIO:
+            break
+        raise
+    if not chunk:
+        break
+    output.extend(chunk)
+
+wrapper = None
+marker_at = output.rfind(wrapper_marker)
+if marker_at >= 0:
+    report_start = marker_at + len(wrapper_marker)
+    report_end = output.find(b"\r\n", report_start)
+    if report_end >= 0:
+        wrapper = json.loads(bytes(output[report_start:report_end]).decode())
+
+summary = {
+    "outputBase64": base64.b64encode(output).decode(),
+    "probeActivated": probe_marker in output,
+    "frameRendered": rendered_tui(output),
+    "sentCtrlD": sent_ctrl_d,
+    "rawModeObserved": raw_mode_observed,
+    "timedOut": timed_out,
+    "wrapperExitCode": os.waitstatus_to_exitcode(status),
+    "wrapper": wrapper,
+}
+sys.stdout.write(json.dumps(summary))
+`
+
+interface BuiltTuiPtySummary {
+  outputBase64: string
+  probeActivated: boolean
+  frameRendered: boolean
+  sentCtrlD: boolean
+  rawModeObserved: boolean
+  timedOut: boolean
+  wrapperExitCode: number
+  wrapper: {
+    nodeExitCode: number
+    restored: boolean
+    afterCanonical: boolean
+    afterEcho: boolean
+  } | null
+}
+
+interface BuiltTuiPtyResult extends Omit<BuiltTuiPtySummary, 'outputBase64'> {
+  output: string
+}
+
+/** Boot the published terminal profile through a real PTY and a Loader probe. */
+async function runBuiltTuiPty(): Promise<BuiltTuiPtyResult> {
+  const root = mkdtempSync(join(tmpdir(), 'dsh-built-tui-'))
+  try {
+    const probe = join(root, 'tui-prompt-probe.mjs')
+    writeFileSync(probe, [
+      "export const name = 'tui-prompt-probe'",
+      "export const inject = ['tuiPrompt']",
+      'export function apply(ctx) {',
+      "  const value = ctx.tuiPrompt.register('test/probe', 'active')",
+      "  if (ctx.tuiPrompt.get('test/probe') !== 'active') throw new Error('tuiPrompt probe could not read its registration')",
+      '  const unsubscribe = ctx.tuiPrompt.subscribe(() => {})',
+      '  unsubscribe()',
+      "  process.stdout.write('dsh-test: tuiPrompt active\\n')",
+      '  ctx.effect(() => () => { value.dispose() })',
+      '}',
+      '',
+    ].join('\n'))
+    const overlay = join(root, 'tui-probe.cordis.yml')
+    writeFileSync(overlay, [
+      '- insert:',
+      '    - id: tui-prompt-probe',
+      `      name: ${JSON.stringify(pathToFileURL(probe).href)}`,
+      '      inject: [tuiPrompt]',
+      '',
+    ].join('\n'))
+
+    const timeoutMs = 45_000
+    const result = await execa('python3', [
+      '-c',
+      POSIX_BUILT_TUI_PTY_DRIVER,
+      process.execPath,
+      dshBin,
+      overlay,
+      JSON.stringify({
+        DSH_HOME: join(root, '.dsh'),
+        DSH_AGENTS_HOME: join(root, '.agents'),
+        DSH_TELEMETRY_DISABLED: '1',
+        DEEPSEEK_API_KEY: 'keyless-tui-no-call',
+        TERM: 'xterm-256color',
+        COLORTERM: '',
+      }),
+      root,
+      String(timeoutMs / 1_000),
+    ], {
+      stdin: 'ignore',
+      timeout: timeoutMs + 5_000,
+      killSignal: 'SIGKILL',
+      reject: false,
+      stripFinalNewline: false,
+    })
+    if (result.timedOut) {
+      throw new Error(`dsh built TUI PTY driver did not exit. stdout:\n${result.stdout}\nstderr:\n${result.stderr}`)
+    }
+    if (result.failed) {
+      throw new Error(`dsh built TUI PTY driver exited ${String(result.exitCode)}. stdout:\n${result.stdout}\nstderr:\n${result.stderr}`)
+    }
+    const summary = JSON.parse(result.stdout) as BuiltTuiPtySummary
+    const { outputBase64, ...facts } = summary
+    return { ...facts, output: Buffer.from(outputBase64, 'base64').toString('utf8') }
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+}
+
 async function runBuiltBin(
   args: readonly string[] = [],
   env: Readonly<Record<string, string | undefined>> = {},
   cwd?: string,
-  input = '',
 ): Promise<{ stdout: string; code: number; stderr: string }> {
   const childEnv = Object.fromEntries(
     Object.entries({ ...process.env, ...env })
       .filter((entry): entry is [string, string] => entry[1] !== undefined),
   )
   const result = await execa(process.execPath, [dshBin, ...args], {
-    input,
+    input: '',
     timeout: 25_000,
     killSignal: 'SIGKILL',
     reject: false,
@@ -311,81 +522,20 @@ function startStartupProfile(fixture: StartupFixture, args: readonly string[]) {
 }
 
 describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', () => {
-  it('defaults to the terminal CLI and rejects removed commands', async () => {
+  it('requires --profile, advertises shipped aliases, and rejects removed commands', async () => {
     const bare = await runBuiltBin()
     expect(bare.code).toBe(1)
     expect(bare.stdout).toBe('')
-    expect(bare.stderr).toContain('interactive mode requires a TTY')
-    expect(bare.stderr).toContain('dsh exec')
+    expect(bare.stderr).toContain('--profile <name> is required')
     const help = await runBuiltBin(['--help'])
     expect(help.code).toBe(0)
-    expect(help.stdout).toContain('dsh exec')
-    expect(help.stdout).toContain('dsh resume')
     expect(help.stdout).toContain('dsh --profile web')
     expect(help.stdout).toContain('dsh plugin --profile')
-    expect(help.stdout).not.toMatch(/^\s+(?:tui|meta|upgrade)\b/mu)
-    const dump = await runBuiltBin(['exec', '--dump-default-config'])
-    expect(dump.code, dump.stderr).toBe(0)
-    expect(dump.stderr).toBe('')
-    expect(dump.stdout).toContain('terminal-cli-startup')
-    for (const removed of [['tui'], ['--config', 'x.yml'], ['-p', 'task'], ['run', 'task']]) {
+    expect(help.stdout).toMatch(/^\s+tui\b/mu)
+    expect(help.stdout).not.toMatch(/^\s+(?:meta|upgrade)\b/mu)
+    for (const removed of [['--config', 'x.yml'], ['-p', 'task'], ['run', 'task']]) {
       const result = await runBuiltBin(removed)
       expect(result.code).toBe(1)
-    }
-  }, 30_000)
-
-  it('runs terminal exec from argv and stdin with pure human or JSONL stdout', async () => {
-    const apiKey = 'built-dsh-terminal-cli-key'
-    const server = await startMockLlmServer({
-      sequence: ['success'],
-      repeatLast: true,
-      apiKey,
-      successText: 'published terminal CLI reached the mock',
-    })
-    const home = mkdtempSync(join(tmpdir(), 'dsh-built-terminal-cli-'))
-    const env = {
-      DSH_HOME: home,
-      DSH_TELEMETRY_DISABLED: '1',
-      DEEPSEEK_API_KEY: apiKey,
-      DEEPSEEK_BASE_URL: server.baseURL,
-    }
-    try {
-      const argv = await runBuiltBin(['exec', 'answer', 'from', 'argv'], env)
-      expect(argv.code, argv.stderr).toBe(0)
-      expect(argv.stdout).toBe('published terminal CLI reached the mock')
-      expect(argv.stderr).toBe('')
-
-      const stdin = await runBuiltBin(['exec', '-'], env, undefined, 'answer from stdin')
-      expect(stdin.code, stdin.stderr).toBe(0)
-      expect(stdin.stdout).toBe('published terminal CLI reached the mock')
-      expect(stdin.stderr).toBe('')
-
-      const combined = await runBuiltBin(['exec', 'use', 'this', 'context'], env, undefined, 'piped attachment')
-      expect(combined.code, combined.stderr).toBe(0)
-      expect(combined.stdout).toBe('published terminal CLI reached the mock')
-      expect(combined.stderr).toBe('')
-
-      const json = await runBuiltBin(['exec', '--json', 'answer', 'as', 'events'], env)
-      expect(json.code, json.stderr).toBe(0)
-      expect(json.stderr).toBe('')
-      const events = json.stdout.split('\n').map(line => JSON.parse(line) as { type: string })
-      expect(events[0]?.type).toBe('thread.started')
-      expect(events.some(event => event.type === 'item.completed')).toBe(true)
-      expect(events.at(-1)?.type).toBe('turn.completed')
-
-      const bodies = JSON.stringify(server.requests.map(request => request.body))
-      expect(bodies).toContain('answer from argv')
-      expect(bodies).toContain('answer from stdin')
-      expect(bodies).toContain('use this context\\n\\npiped attachment')
-      expect(bodies).toContain('answer as events')
-
-      const empty = await runBuiltBin(['exec', '-'], env)
-      expect(empty.code).toBe(1)
-      expect(empty.stdout).toBe('')
-      expect(empty.stderr).toContain('a prompt is required')
-    } finally {
-      await server.close()
-      rmSync(home, { recursive: true, force: true })
     }
   }, 30_000)
 
@@ -425,10 +575,47 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       })
       expect(missingTask.code).toBe(1)
       expect(missingTask.stderr).toContain('a task is required')
+
+      // App help remains usable in CI/pipes; only a successful interactive
+      // launch requires the TTY pair.
+      const tuiHelp = await runBuiltBin(['tui', '--help'], {
+        DSH_HOME: home,
+        DSH_TELEMETRY_DISABLED: '1',
+      })
+      expect(tuiHelp.code).toBe(0)
+      expect(tuiHelp.stderr).toBe('')
+      expect(tuiHelp.stdout).toContain('Usage: dsh tui')
+      expect(tuiHelp.stdout).toContain('--resume <session>')
+
+      const pipedTui = await runBuiltBin(['tui'], {
+        DSH_HOME: home,
+        DSH_TELEMETRY_DISABLED: '1',
+      })
+      expect(pipedTui.code).toBe(1)
+      expect(pipedTui.stderr).toContain('requires interactive stdin and stdout TTYs')
     } finally {
       rmSync(home, { recursive: true, force: true })
     }
   }, 30_000)
+
+  it.skipIf(process.platform === 'win32')('boots the shipped TUI through its published Loader tree, renders a PTY frame, and restores the terminal', async () => {
+    const result = await runBuiltTuiPty()
+    expect(result.timedOut, result.output).toBe(false)
+    expect(result.wrapperExitCode, result.output).toBe(0)
+    expect(result.probeActivated, result.output).toBe(true)
+    expect(result.wrapper, result.output).toMatchObject({
+      nodeExitCode: 0,
+      restored: true,
+      afterCanonical: true,
+      afterEcho: true,
+    })
+    expect(result.frameRendered, result.output).toBe(true)
+    expect(result.sentCtrlD, result.output).toBe(true)
+    expect(result.rawModeObserved, result.output).toBe(true)
+    expect(result.output).toContain('dsh-test: tuiPrompt active')
+    expect(result.output).toContain('To resume this session: dsh tui --resume=main-session-')
+    expect(result.output).not.toMatch(/ERR_MODULE_NOT_FOUND|failed to import|failed to start/ui)
+  }, 60_000)
 
   it('runs the headless profile through its app-owned task positional', async () => {
     const apiKey = 'built-dsh-headless-key'
@@ -535,16 +722,6 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       expect(result.code).toBe(1)
       expect(result.stdout).toBe('')
       expect(result.stderr).toContain('llm-pi-ai')
-
-      const help = await runBuiltBin(['--profile', 'web', '--patch', invalidProvider, '--help'], {
-        DSH_HOME: home,
-        DEEPSEEK_API_KEY: 'keyless-invalid-config',
-        DSH_TELEMETRY_DISABLED: '1',
-      })
-      expect(help.code).toBe(1)
-      expect(help.stdout).toContain('Usage: dsh --profile web')
-      expect(help.stderr).toContain('llm-pi-ai')
-      expect(help.stderr).toContain('invalid config')
     } finally {
       rmSync(home, { recursive: true, force: true })
     }
@@ -789,6 +966,23 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       expect(code).toBe(0)
       expect(stderr).toBe('')
       expect(stdout).toContain("name: '@deepseek-ai/dsh-headless'")
+      expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-host-/)
+      expect(stdout).not.toContain("name: '@deepseek-ai/dsh-web-app'")
+      expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-client-/)
+    }, 30_000)
+
+    it('prints the shipped terminal profile over base without Host or browser layers', async () => {
+      const { stdout, code, stderr } = await runBuiltBin(
+        ['tui', '--dump-default-config'],
+        { DSH_HOME: home },
+      )
+      expect(code).toBe(0)
+      expect(stderr).toBe('')
+      expect(stdout).toContain('# == @deepseek-ai/dsh-base')
+      expect(stdout).toContain('# == @deepseek-ai/dsh-tui-app')
+      expect(stdout).toContain("name: '@deepseek-ai/dsh-tui-app/startup'")
+      expect(stdout).toContain("name: '@deepseek-ai/dsh-tui-app'")
+      expect(stdout).toContain("name: '@deepseek-ai/dsh-tui/prompt'")
       expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-host-/)
       expect(stdout).not.toContain("name: '@deepseek-ai/dsh-web-app'")
       expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-client-/)

@@ -730,14 +730,6 @@ roots(): Agent[]
 
 Source: [`packages/core/agent/src/index.ts:256`](../../packages/core/agent/src/index.ts)
 
-<a id="ctxterminalclistartup--terminalclistartup"></a>
-
-### `ctx.terminalCliStartup` — `TerminalCliStartup`
-
-Parsed terminal invocation published for the runner.
-
-Source: [`packages/bundle/terminal-cli/src/startup.ts:60`](../../packages/bundle/terminal-cli/src/startup.ts)
-
 <a id="agent-events"></a>
 
 ### `agent/*` events

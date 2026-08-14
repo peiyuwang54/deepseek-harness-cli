@@ -1,0 +1,34 @@
+terminal 96x36 buffer=normal length=36 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=7 viewportRow=12 bufferRow=12
+buffer
+0| " DEEPSEEK HARNESS"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+1| " Snapshot agent ready."
+  style 1-21 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "You                                                                                             "
+  style 0-2 fg=bright-magenta bold underline
+5| "Start then cancel.                                                                              "
+6| <blank>
+7| "Retrying model request (1/∞) in 1000ms: temporary transport failure                             "
+  style 0-66 fg=yellow
+8| <blank>
+9| "Turn cancelled.                                                                                 "
+  style 0-14 fg=yellow
+10| <blank>
+11| "/workspace/project (tui-staging)  deepseek-v4-flash  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-magenta bold
+  style 18-31 dim
+  style 34-50 dim
+  style 53-57 dim
+  style 60-69 dim
+12| " dsh >                                                                                          "
+  style 1-3 fg=bright-magenta bold
+  style 5-6 dim
+  style 7-7 inverse
+13-35| <blank>

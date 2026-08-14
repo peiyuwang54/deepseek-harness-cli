@@ -51,6 +51,9 @@ export default defineConfig({
       ...(process.env.DSH_EXAMPLE_MODE === 'lib' ? ['apps/web/tests/**/*.snapshot.ts'] : []),
       'apps/cli/tests/**/*.snapshot.ts',
       'examples/*/tests/**/*.snapshot.ts',
+      // The terminal surface has its own emulator-backed golden transcripts;
+      // replay is keyless and exercises the same ANSI stream as a real TTY.
+      'packages/ui/tui/tests/**/*.snapshot.ts',
     ],
     // Replay never writes committed outputs and every scenario owns its
     // mutable runtime state (the subprocess suites use a unique temp dir and

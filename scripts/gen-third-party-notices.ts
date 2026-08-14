@@ -691,7 +691,7 @@ export function render(): string {
 
 # Third-Party Notices
 
-DeepSeek Harness is licensed under [MIT](LICENSE). It depends on the third-party software listed below. Each project remains under its own license; nothing in this file changes those terms.
+DeepSeek Harness is licensed under [MIT](LICENSE). The restored first-party \`@deepseek-ai/dsh-tui\` package also retains the BSD 3-Clause terms that applied before the repository adopted MIT; its package-local [\`LICENSE\`](packages/ui/tui/LICENSE) records both notices and its manifest declares \`(MIT AND BSD-3-Clause)\`. It depends on the third-party software listed below. Each project remains under its own license; nothing in this file changes those terms.
 
 This file lists **direct** dependencies declared by the workspace and the explicitly disclosed official Claude platform payload closure. It is generated from the workspace manifests by \`scripts/gen-third-party-notices.ts\`: a pre-commit hook regenerates it whenever a staged file changes one of its inputs, and \`scripts/gen-third-party-notices.spec.ts\` asserts in the test lane that the committed bytes match. Deleting a manifest runs no hook, so that case is caught by the assertion instead. Run \`pnpm run verify-third-party-notices\` for the standalone check.
 
@@ -736,6 +736,10 @@ ${python.map(dep => `| [\`${dep.name}\`](${dep.repo}) | ${dep.license} | ${dep.r
 | Package | License | Role |
 | --- | --- | --- |
 ${BUILD_TIME_TOOLS.map(tool => `| [\`${tool.name}\`](${tool.repo}) | ${tool.license} | ${tool.role} |`).join('\n')}
+
+## First-party restored package
+
+\`@deepseek-ai/dsh-tui\` combines a renderer restored from this repository's BSD-3-Clause history with MIT-licensed adaptations and additions. Its exact SPDX expression is \`(MIT AND BSD-3-Clause)\`; [\`packages/ui/tui/LICENSE\`](packages/ui/tui/LICENSE) preserves both notices and explains the provenance boundary. It is listed here for completeness; it is first-party, not third-party.
 
 ## First-party native packages
 

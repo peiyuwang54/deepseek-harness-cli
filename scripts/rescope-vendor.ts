@@ -15,7 +15,9 @@
  * rewrite idempotent because the scoped name's `cordis` is preceded by `/`.
  * Markdown follows the rename inside every fence, and in `docs/` prose too:
  * a tutorial that teaches an unresolvable name is wrong, while prose elsewhere
- * records what was true when it was written.
+ * records what was true when it was written. Product protocol names and UI
+ * locale namespaces that deliberately use the word `cordis` are preserved by
+ * the explicit, checked declarations below.
  *
  * Sites the token rule cannot express (dot-notation access, unquoted object
  * keys, regex literals, the vendored-manifest table) are listed in
@@ -104,6 +106,95 @@ const GENERIC_SKIPS: readonly GenericSkip[] = [
   // GROUP_ORDER holds `packages/<group>/` directory names, not package names.
   { file: 'scripts/gen-module-graph.ts', upstream: ['cordis'] },
   { file: 'scripts/gen-doc-graphs.ts', upstream: ['cordis'] },
+  // The codemod test names both sides of this mapping on purpose.
+  { file: 'scripts/rescope-vendor.spec.ts', upstream: ['cordis'] },
+]
+
+/**
+ * Public remote-event names are product protocol, not imports from Cordis
+ * package subpaths. Keeping this allowlist narrow means a new `cordis/*` token
+ * still fails the rescope gate until its owner classifies it deliberately.
+ */
+const CORDIS_PROTOCOL_TOKENS = new Set([
+  'cordis/request-run',
+  'cordis/request-run-resolved',
+  'cordis/dynamic-package',
+  'cordis/dynamic-retract',
+  'cordis/inspect-query',
+  'cordis/inspect-query-resolved',
+  'cordis/',
+  'cordis/*',
+])
+
+/** Return whether a complete token is a product protocol name, not a package. */
+export function isPreservedCordisProtocolToken(token: string): boolean {
+  // Generated catalogs carry signatures inside strings, so the scanner sees
+  // the escape before their closing quote as the token's final character.
+  const normalized = token.endsWith('\\') ? token.slice(0, -1) : token
+  return CORDIS_PROTOCOL_TOKENS.has(normalized)
+}
+
+/**
+ * An exact product-data literal that happens to equal the upstream package
+ * name. These are masked only at their declared site, so another bare
+ * `cordis` import added to the same file is still caught by the generic gate.
+ */
+interface PreservedLiteral {
+  readonly id: string
+  readonly file: string
+  readonly text: string
+  readonly expect: number
+}
+
+const PRESERVED_LITERALS: readonly PreservedLiteral[] = [
+  {
+    id: 'plugin-inventory-locale-key',
+    file: 'packages/client/ui-settings-plugin-inventory/src/client/PluginInventorySettingsTab.tsx',
+    text: "t('cordis')",
+    expect: 1,
+  },
+  {
+    id: 'cordis-action-row-locale-namespace',
+    file: 'packages/extensions/ui-cordis/src/client/CordisActionRow.tsx',
+    text: "PropsLocale<'cordis'>",
+    expect: 1,
+  },
+  {
+    id: 'cordis-define-row-locale-namespace',
+    file: 'packages/extensions/ui-cordis/src/client/CordisDefineRow.tsx',
+    text: "PropsLocale<'cordis'>",
+    expect: 1,
+  },
+  {
+    id: 'cordis-panel-locale-namespace',
+    file: 'packages/extensions/ui-cordis/src/client/CordisPanel.tsx',
+    text: "PropsLocale<'cordis'>",
+    expect: 1,
+  },
+  {
+    id: 'cordis-run-row-locale-namespace',
+    file: 'packages/extensions/ui-cordis/src/client/CordisRunRow.tsx',
+    text: "PropsLocale<'cordis'>",
+    expect: 1,
+  },
+  {
+    id: 'cordis-ui-plugin-name',
+    file: 'packages/extensions/ui-cordis/src/client/index.ts',
+    text: "name: 'cordis',",
+    expect: 1,
+  },
+  {
+    id: 'cordis-ui-locale-namespace',
+    file: 'packages/extensions/ui-cordis/src/client/locales.ts',
+    text: "export const NS = 'cordis'",
+    expect: 1,
+  },
+  {
+    id: 'cordis-event-catalog-page-key',
+    file: 'scripts/gen-cordis-catalog.ts',
+    text: "  'cordis': 'extensions.md',",
+    expect: 1,
+  },
 ]
 
 /** A string that must appear exactly `count` times once the rescope has run. */
@@ -511,7 +602,13 @@ function rewriteLine(line: string, file: string, all: readonly Pattern[]): strin
   let out = line
   for (const pattern of all) {
     if (skipped(file, pattern)) continue
-    out = out.replace(pattern.token, (_match, quote: string, subpath: string) => `${quote}${pattern.to}${subpath}${quote}`)
+    out = out.replace(pattern.token, (match, quote: string, subpath: string) => {
+      const token = `${pattern.from}${subpath}`
+      if (pattern.from === pattern.upstream && pattern.upstream === 'cordis' && isPreservedCordisProtocolToken(token)) {
+        return match
+      }
+      return `${quote}${pattern.to}${subpath}${quote}`
+    })
     out = out.replace(pattern.yamlName, (_match, prefix: string, suffix: string) => `${prefix}${pattern.to}${suffix}`)
   }
   return out
@@ -529,11 +626,19 @@ function rewriteLine(line: string, file: string, all: readonly Pattern[]): strin
  * unvendored `@cordisjs/plugin-http`.
  */
 function rewrite(text: string, file: string, all: readonly Pattern[]): { text: string; lines: number } {
+  const preserved = PRESERVED_LITERALS.filter(site => site.file === file)
+  const markers = preserved.map((site, index) => ({
+    marker: `\uE000dsh-rescope-preserved-${String(index)}\uE001`,
+    site,
+  }))
+  let masked = text
+  for (const { marker, site } of markers) masked = masked.split(site.text).join(marker)
+
   const markdown = file.endsWith('.md')
   const prose = markdown && file.startsWith('docs/')
   let insideFence = false
   let lines = 0
-  const out = text.split('\n').map((line) => {
+  const out = masked.split('\n').map((line) => {
     if (markdown) {
       if (/^\s*```/.test(line)) {
         insideFence = !insideFence
@@ -545,7 +650,9 @@ function rewrite(text: string, file: string, all: readonly Pattern[]): { text: s
     if (next !== line) lines += 1
     return next
   })
-  return { text: out.join('\n'), lines }
+  let restored = out.join('\n')
+  for (const { marker, site } of markers) restored = restored.split(marker).join(site.text)
+  return { text: restored, lines }
 }
 
 function classify(file: string): string {
@@ -624,6 +731,13 @@ function main(): void {
       continue
     }
     if (state === 'pending') planned.push({ edit, path, find, replace })
+  }
+  for (const site of PRESERVED_LITERALS) {
+    const path = resolve(root, site.file)
+    const hits = existsSync(path) ? readFileSync(path, 'utf8').split(site.text).length - 1 : -1
+    if (hits !== site.expect) {
+      failures.push(`preserved literal ${site.id}: ${site.file} has ${String(hits)} occurrence(s), expected ${String(site.expect)}`)
+    }
   }
   if (failures.length > 0) {
     for (const failure of failures) console.error(`rescope-vendor: ${failure}`)

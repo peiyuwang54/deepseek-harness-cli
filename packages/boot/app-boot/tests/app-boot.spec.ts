@@ -779,23 +779,6 @@ describe('boot', () => {
       './waiting.mjs: pending (waiting for service: neverProvided)',
     ].join('\n'))
   })
-
-  it('allows only pending fibers after a caller-owned exit request', async () => {
-    const dir = tmp()
-    writeFileSync(join(dir, 'waiting.mjs'), 'export const inject = ["neverProvided"]\nexport function apply() {}\n')
-    writeFileSync(join(dir, 'cordis.yml'), '- id: waiting\n  name: ./waiting.mjs\n')
-    const ctx = await boot(NAME, join(dir, 'cordis.yml'), undefined, undefined, undefined, () => true)
-    try {
-      expect(ctx.get('loader')).toBeDefined()
-    } finally {
-      await ctx.fiber.dispose()
-    }
-
-    writeFileSync(join(dir, 'failing.mjs'), 'export function apply() { throw new Error("real activation failure") }\n')
-    writeFileSync(join(dir, 'cordis.yml'), '- id: failing\n  name: ./failing.mjs\n')
-    await expect(boot(NAME, join(dir, 'cordis.yml'), undefined, undefined, undefined, () => true))
-      .rejects.toThrow('real activation failure')
-  })
 })
 
 describe('addHarnessSourceSection', () => {

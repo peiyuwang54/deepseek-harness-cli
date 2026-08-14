@@ -299,6 +299,27 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Plugins register direct human commands without sending invocations to the model.',
   },
   {
+    key: 'tui',
+    pkg: 'tui',
+    title: 'Terminal-local overlay seam',
+    mode: 'seam',
+    note: 'A mounted terminal owns pi-tui, focus, and teardown state while extensions receive only effect-owned FIFO overlay sessions scoped to that exact TUI.',
+  },
+  {
+    key: 'tuiPrompt',
+    pkg: 'tui',
+    title: 'Terminal prompt value registry',
+    mode: 'core',
+    note: 'Plugins register trusted prompt fragments under Cordis effects; the renderer observes coalesced changes without turning presentation-only values into durable session events.',
+  },
+  {
+    key: 'tuiStartup',
+    pkg: 'tui-app',
+    title: 'Terminal launcher-to-runner handoff',
+    mode: 'bundle',
+    note: 'The CLI startup row validates TTY and resume arguments, then publishes one immutable main-session identity that releases the runner to create or resume the exact Agent.',
+  },
+  {
     key: 'sessionProjections',
     pkg: 'session-projection',
     title: 'Session projection units',
@@ -346,13 +367,6 @@ const SERVICE_ROLES: ServiceRole[] = [
     mode: 'bundle',
     consumers: ['agent-spine-demo'],
     note: 'The one concrete loop plugin; extension packages depend on dsh-agent events and services, not on this package.',
-  },
-  {
-    key: 'terminalCliStartup',
-    pkg: 'terminal-cli',
-    title: 'Parsed terminal invocation',
-    mode: 'bundle',
-    note: 'The startup plugin publishes one immutable invocation after parsing profile-owned arguments; the runner consumes it only after the surrounding composition has settled.',
   },
   {
     key: 'goals',

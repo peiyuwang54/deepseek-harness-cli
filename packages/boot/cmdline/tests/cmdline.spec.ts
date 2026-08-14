@@ -229,45 +229,4 @@ describe('provideCmdline', () => {
     expect(parseOnce()).toEqual({ port: 8080 })
     expect(Object.isFrozen(ctx.cmdlineArgs?.get())).toBe(true)
   })
-
-  it('lets one app handler claim an interrupt until its disposer runs', () => {
-    const ctx = new Context()
-    const host = provideCmdline(ctx, { args: [], exit: () => {} })
-    const seen: string[] = []
-    const dispose = ctx.appInterrupt?.register(() => {
-      seen.push('interrupt')
-      return true
-    })
-    expect(host.dispatch()).toBe(true)
-    expect(seen).toEqual(['interrupt'])
-    dispose?.()
-    expect(host.dispatch()).toBe(false)
-  })
-
-  it('rejects competing handlers and delegates when a handler throws', () => {
-    const ctx = new Context()
-    const host = provideCmdline(ctx, { args: [], exit: () => {} })
-    ctx.appInterrupt?.register(() => { throw new Error('broken UI') })
-    expect(() => ctx.appInterrupt?.register(() => true)).toThrow('already registered')
-    expect(host.dispatch()).toBe(false)
-  })
-
-  it('exposes launcher interrupt escalation and falls back to ordinary exit for simple hosts', () => {
-    const escalated: number[] = []
-    const ordinary: number[] = []
-    const withInterrupt = new Context()
-    provideCmdline(withInterrupt, {
-      args: [],
-      exit: code => void ordinary.push(code),
-      interrupt: code => void escalated.push(code),
-    })
-    withInterrupt.appInterrupt?.escalate(130)
-    expect(escalated).toEqual([130])
-    expect(ordinary).toEqual([])
-
-    const simple = new Context()
-    provideCmdline(simple, { args: [], exit: code => void ordinary.push(code) })
-    simple.appInterrupt?.escalate(2)
-    expect(ordinary).toEqual([2])
-  })
 })

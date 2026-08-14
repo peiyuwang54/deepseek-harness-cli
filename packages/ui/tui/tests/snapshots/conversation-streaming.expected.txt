@@ -1,0 +1,44 @@
+terminal 96x36 buffer=normal length=36 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=active
+title "DSH snapshot"
+cursor hidden column=7 viewportRow=18 bufferRow=18
+viewport
+0| " DEEPSEEK HARNESS"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+1| " Snapshot agent ready."
+  style 1-21 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "You                                                                                             "
+  style 0-2 fg=bright-magenta bold underline
+5| "Show the live update.                                                                           "
+6| <blank>
+7| "Assistant                                                                                       "
+  style 0-8 fg=bright-magenta bold underline
+8| "Reasoning                                                                                       "
+  style 0-8 dim italic
+9| "Inspecting width and styles.                                                                    "
+  style 0-27 dim italic
+10| "Streaming visible state…                                                                        "
+  style 10-22 bold
+11| "                                                                                                "
+12| "ts                                                                                              "
+  style 0-1 dim
+13| "  const visible = true                                                                          "
+  style 2-21 fg=cyan
+14| "                                                                                                "
+15| "Model wait 1.0s · Thinking 2.0s                                                                 "
+  style 0-30 dim
+16| <blank>
+17| "/workspace/project (tui-staging)  deepseek-v4-flash  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-magenta bold
+  style 18-31 dim
+  style 34-50 dim
+  style 53-57 dim
+  style 60-69 dim
+18| " dsh ● press enter to steer and esc to cancel                                                   "
+  style 1-3 fg=bright-magenta bold
+  style 5-44 dim
+19-35| <blank>

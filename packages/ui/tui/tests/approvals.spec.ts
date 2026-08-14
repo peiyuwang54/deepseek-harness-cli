@@ -114,6 +114,49 @@ function expectAuditPairs(session: Session, outcomes: readonly ApprovalOutcome[]
 }
 
 describe('TUI approval queue', () => {
+  it('exposes one-shot command approval only while a real request is active', async () => {
+    const ctx = await approvalContext()
+    const agent = testAgent(ctx, 'approval-command')
+    const capture = overlayCapture()
+    const queue = approvalQueue(ctx, agent, capture)
+
+    expect(queue.hasActive()).toBe(false)
+    expect(queue.approveActive()).toBe(false)
+    expect(queue.approveRecentRejection()).toBe(false)
+    const outcome = ctx.approval.request({ agent, toolName: 'command-approved-tool' })
+    await vi.waitFor(() => { expect(queue.hasActive()).toBe(true) })
+    expect(queue.approveActive()).toBe(true)
+    expect(queue.hasActive()).toBe(false)
+    await expect(outcome).resolves.toBe('allowed-once')
+    expectAuditPairs(agent.session, ['allowed-once'])
+
+    queue.unregister()
+    await ctx.fiber.dispose()
+  })
+
+  it('arms exactly one matching retry after an interactive rejection', async () => {
+    const ctx = await approvalContext()
+    const agent = testAgent(ctx, 'approval-retry-command')
+    const capture = overlayCapture()
+    const queue = approvalQueue(ctx, agent, capture)
+
+    const rejected = ctx.approval.request({ agent, toolName: 'bash', reason: 'outside workspace' })
+    await vi.waitFor(() => { expect(capture.open).toHaveBeenCalledTimes(1) })
+    sendKey(capture.opened[0]!, '\x1b[B')
+    sendKey(capture.opened[0]!, '\r')
+    await expect(rejected).resolves.toBe('rejected')
+    expect(queue.approveRecentRejection()).toBe(true)
+
+    const retry = ctx.approval.request({ agent, toolName: 'bash', reason: 'outside workspace' })
+    await expect(retry).resolves.toBe('allowed-once')
+    expect(capture.open).toHaveBeenCalledTimes(1)
+    expect(queue.approveRecentRejection()).toBe(false)
+    expectAuditPairs(agent.session, ['rejected', 'allowed-once'])
+
+    queue.unregister()
+    await ctx.fiber.dispose()
+  })
+
   it('cancels an active request and every queued request without promoting an escapee', async () => {
     const ctx = await approvalContext()
     const agent = testAgent(ctx, 'approval-tui')

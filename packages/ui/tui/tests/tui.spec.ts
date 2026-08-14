@@ -4341,6 +4341,40 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await dispose(reasoningFailed)
   })
 
+  it('switches /fast through an advertised low-latency route and restores the previous model', async () => {
+    const result = await setup({
+      agentOptions: { provider: 'deepseek-official', model: 'deepseek-v4-pro' },
+      catalog: {
+        providers: [{ id: 'deepseek-official', name: 'DeepSeek' }],
+        models: [
+          { provider: 'deepseek-official', id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro' },
+          { provider: 'deepseek-official', id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash' },
+        ],
+      },
+    })
+    result.terminal.send('/fast on')
+    result.terminal.send('\r')
+    await vi.waitFor(() => { expect(result.terminal.output).toContain('Fast route enabled') })
+    expect(result.terminal.output).toContain('deepseek-v4-flash')
+    result.terminal.send('/fast off')
+    result.terminal.send('\r')
+    await vi.waitFor(() => { expect(result.terminal.output).toContain('Fast route disabled') })
+    expect(result.terminal.output).toContain('Model selected: deepseek-official/deepseek-v4-pro')
+    await dispose(result)
+
+    const unavailable = await setup({
+      agentOptions: { provider: 'alpha', model: 'pro' },
+      catalog: {
+        providers: [{ id: 'alpha', name: 'Alpha' }],
+        models: [{ provider: 'alpha', id: 'pro', name: 'Pro' }],
+      },
+    })
+    unavailable.terminal.send('/fast on')
+    unavailable.terminal.send('\r')
+    await vi.waitFor(() => { expect(unavailable.terminal.output).toContain('No advertised model is marked') })
+    await dispose(unavailable)
+  })
+
   it('defers a NO_ADAPTER context resolution until the provider registers instead of surfacing an error', async () => {
     // Loader activation order is service-driven: the TUI can mount before a
     // configured adapter plugin activates, so the initial resolveModelInfo
@@ -4478,6 +4512,23 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await tick()
     expect(contextResult.terminal.output).not.toContain('99% context')
     await contextResult.ctx.fiber.dispose()
+  })
+
+  it('keeps Vim Normal mode non-inserting and returns to Insert mode with i', async () => {
+    const result = await setup()
+    result.terminal.send('/vim on')
+    result.terminal.send('\r')
+    await tick()
+    result.terminal.send('\x1b')
+    await tick()
+    expect(result.terminal.output).toContain('VIM NORMAL')
+    result.terminal.send('blocked')
+    result.terminal.send('i')
+    result.terminal.send('hello from vim')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.agent.sent.at(-1)?.[0]).toMatchObject({ type: 'text', text: 'hello from vim' })
+    await dispose(result)
   })
 
   it('discovers and executes plugin commands, then removes TUI-local commands on disposal', async () => {
@@ -4704,6 +4755,24 @@ describe('skill slash command', () => {
       content: 'Trusted-only instructions body.',
     })
   }
+
+  it('browses only user-invocable skills and invokes a named row through /skills', async () => {
+    const result = await setup({ configureContext: withSkills })
+    result.terminal.send('/skills')
+    result.terminal.send('\r')
+    await vi.waitFor(() => { expect(result.terminal.output).toContain('Demo skill for tests') })
+    expect(result.terminal.output).toContain('User-only skill')
+    expect(result.terminal.output).not.toContain('Model-only skill')
+    result.terminal.send('\x1b')
+    result.terminal.send('/skills demo-skill')
+    result.terminal.send('\r')
+    await vi.waitFor(() => { expect(result.agent.sent).toHaveLength(1) })
+    const sent = result.agent.sent[0]?.[0]
+    expect(sent?.type).toBe('text')
+    if (sent?.type !== 'text') throw new Error('expected text skill invocation')
+    expect(sent.text).toContain('<skill name="demo-skill">')
+    await dispose(result)
+  })
 
   it('labels slash completions by scope and applies user invocation policy', async () => {
     const result = await setup({ configureContext: withSkills })

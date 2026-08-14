@@ -556,6 +556,65 @@ export class PermissionDialog implements Component {
   }
 }
 
+/** One row rendered by the reusable command action selector. */
+export interface ActionDialogChoice {
+  /** Stable value returned on selection. */
+  readonly value: string
+  /** User-facing action label. */
+  readonly label: string
+  /** Optional concise status or explanation. */
+  readonly description?: string
+}
+
+/** Small searchable-free action selector shared by slash-command hubs. */
+export class ActionDialog implements Component {
+  private readonly list: SelectList
+
+  constructor(
+    private readonly title: string,
+    choices: readonly ActionDialogChoice[],
+    maxVisible: number,
+    private readonly palette: Palette,
+    done: (value: string) => void,
+    private readonly cancel: () => void,
+    initialValue?: string,
+  ) {
+    const items: SelectItem[] = choices.map(choice => ({
+      value: choice.value,
+      label: displayText(choice.label),
+      ...choice.description === undefined ? {} : { description: displayText(choice.description) },
+    }))
+    this.list = new SelectList(items, Math.max(1, Math.min(maxVisible, items.length)), dialogSelectTheme(palette))
+    const selected = initialValue === undefined ? -1 : items.findIndex(item => item.value === initialValue)
+    if (selected >= 0) this.list.setSelectedIndex(selected)
+    this.list.onSelect = (item) => { done(item.value) }
+    this.list.onCancel = cancel
+  }
+
+  invalidate(): void {
+    this.list.invalidate()
+  }
+
+  handleInput(data: string): void {
+    if (matchesKey(data, Key.escape) || matchesKey(data, Key.ctrl('c'))) {
+      this.cancel()
+      this.invalidate()
+      return
+    }
+    this.list.handleInput(data)
+    this.invalidate()
+  }
+
+  render(width: number): string[] {
+    const innerWidth = Math.max(1, width - 4)
+    return renderDialog(this.title, [
+      ...this.list.render(innerWidth),
+      '',
+      this.palette.dim('↑/↓ move • Enter select • Esc close'),
+    ], width, this.palette)
+  }
+}
+
 /** A resume selector row summarizing one session from metadata and its folded title. */
 export interface ResumeCandidate {
   record: SessionRecord

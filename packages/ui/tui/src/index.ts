@@ -111,6 +111,7 @@ import {
   type WelcomeRecentSession,
 } from './components/transcript.ts'
 import {
+  ActionDialog,
   compactTargetLabel,
   DetailsDialog,
   diagnosticMeter,
@@ -123,6 +124,7 @@ import {
   PromptContextComponent,
   targetLabel,
   type DetailsSelection,
+  type ActionDialogChoice,
   type StatusCardRow,
 } from './components/dialogs.ts'
 import {
@@ -376,7 +378,24 @@ export function createTuiChat(
   })
   editor.hintPrefix = initialInputPrompt
   editor.hint = palette.dim(displayInlineText(resolved.theme.inputPlaceholder))
-  editor.frameFooter = 'Enter send · Shift+Enter newline · / commands'
+  type TuiKeymap = 'default' | 'vim'
+  type VimState = 'insert' | 'normal'
+  let keymap: TuiKeymap = 'default'
+  let vimState: VimState = 'insert'
+  let vimPending = ''
+  const refreshEditorFooter = (): void => {
+    if (keymap === 'vim' && vimState === 'normal') {
+      editor.frameFooter = agent.status === 'running'
+        ? 'VIM NORMAL · Esc cancel · i insert · h/j/k/l move'
+        : 'VIM NORMAL · i insert · h/j/k/l move · x delete'
+      return
+    }
+    const mode = keymap === 'vim' ? 'VIM INSERT · ' : ''
+    editor.frameFooter = agent.status === 'running'
+      ? `${mode}Enter steer · Esc cancel · Shift+Enter newline`
+      : `${mode}Enter send · Shift+Enter newline · / commands`
+  }
+  refreshEditorFooter()
   const todo = new TodoComponent(palette)
   const compactionStatusLine = new Text('', 0, 0)
   let showReasoning = resolved.showReasoning
@@ -439,6 +458,8 @@ export function createTuiChat(
   let workspaceController!: WorkspaceController
   // oxlint-disable-next-line prefer-const -- selector callbacks run only after command dispatch is assigned.
   let runCommand!: (text: string) => void
+  // oxlint-disable-next-line prefer-const -- skill-browser callbacks run only after dispatch is assigned.
+  let invokeSkill!: (name: string, instructions: string) => void
   const now = (): number => runtime.now?.() ?? Date.now()
   const agentStatus = (): AgentStatus => agent.status
   const isDisposed = (): boolean => disposed
@@ -781,9 +802,7 @@ export function createTuiChat(
     else clearTurnStatus()
     editor.borderColor = status === 'running' ? text => palette.accent(text) : text => palette.dim(text)
     editor.hint = palette.dim(displayInlineText(resolved.theme.inputPlaceholder))
-    editor.frameFooter = status === 'running'
-      ? 'Enter steer · Esc cancel · Shift+Enter newline'
-      : 'Enter send · Shift+Enter newline · / commands'
+    refreshEditorFooter()
     if (status === 'running') {
       const turn = priorTurn ?? openTurn(agent.session.events)
       const running: RunningStatus = {
@@ -1546,6 +1565,163 @@ export function createTuiChat(
     requestRender()
   }
 
+  let commandHubOverlay: TuiOverlaySession | undefined
+  let commandHubOperations = Promise.resolve()
+  const openActionDialog = (
+    title: string,
+    choices: readonly ActionDialogChoice[],
+    done: (value: string) => void,
+    initialValue?: string,
+  ): void => {
+    void commandHubOverlay?.close()
+    const session = overlayManager.open({
+      create: () => new ActionDialog(
+        title,
+        choices,
+        resolved.maxModelOptions,
+        palette,
+        (value) => {
+          void session.close()
+          done(value)
+        },
+        () => { void session.close() },
+        initialValue,
+      ),
+      options: {
+        width: resolved.modelDialogWidth,
+        maxHeight: resolved.modelDialogMaxHeight,
+        anchor: 'center',
+        margin: 1,
+      },
+    })
+    commandHubOverlay = session
+    void session.closed.then(() => {
+      if (commandHubOverlay === session) commandHubOverlay = undefined
+    })
+    requestRender()
+  }
+
+  const setKeymap = (next: TuiKeymap): void => {
+    keymap = next
+    vimState = 'insert'
+    vimPending = ''
+    refreshEditorFooter()
+    appendNotice(next === 'vim'
+      ? 'Vim keymap enabled in Insert mode. Press Esc for Normal mode; i returns to Insert mode.'
+      : 'Default terminal keymap enabled.')
+    requestRender()
+  }
+
+  const runKeymapCommand = (raw: string): CommandResult => {
+    const argument = raw.trim().toLowerCase()
+    if (argument === '') {
+      openActionDialog('Keymap', [
+        { value: 'default', label: 'Default', description: keymap === 'default' ? 'current · terminal editing shortcuts' : 'terminal editing shortcuts' },
+        { value: 'vim', label: 'Vim', description: keymap === 'vim' ? 'current · Normal and Insert modes' : 'Normal and Insert modes' },
+      ], (value) => { if (value === 'default' || value === 'vim') setKeymap(value) }, keymap)
+      return { kind: 'success' }
+    }
+    if (argument !== 'default' && argument !== 'vim') {
+      return { kind: 'error', text: 'Usage: /keymap [default|vim]' }
+    }
+    setKeymap(argument)
+    return { kind: 'success' }
+  }
+
+  const runVimCommand = (raw: string): CommandResult => {
+    const argument = raw.trim().toLowerCase()
+    if (argument === 'status') {
+      return { kind: 'success', text: `Vim mode is ${keymap === 'vim' ? `on (${vimState})` : 'off'}.` }
+    }
+    if (argument !== '' && argument !== 'on' && argument !== 'off') {
+      return { kind: 'error', text: 'Usage: /vim [on|off|status]' }
+    }
+    const enable = argument === 'on' || (argument === '' && keymap !== 'vim')
+    setKeymap(enable ? 'vim' : 'default')
+    return { kind: 'success' }
+  }
+
+  const showSkills = async (): Promise<void> => {
+    if (skills === undefined) {
+      appendNotice('Skills are not available in this agent preset.', 'warning')
+      return
+    }
+    const snapshot = await skills.snapshot({ cwd, scope: agent, signal: skillAbort.signal })
+    if (disposed) return
+    const invocable = snapshot.skills.filter(skill => skill.invocation.userInvocable)
+    if (invocable.length === 0) {
+      appendNotice(snapshot.complete
+        ? 'No user-invocable skills are installed for this agent.'
+        : 'Skill discovery is incomplete and returned no user-invocable skills.', 'warning')
+      return
+    }
+    openActionDialog('Skills', invocable.map(skill => ({
+      value: skill.name,
+      label: skill.name,
+      description: `${skill.source.startsWith('project-') ? 'project' : 'user'} · ${skill.description}`,
+    })), (value) => { invokeSkill(value, '') })
+  }
+
+  const runSkillsCommand = (raw: string): CommandResult => {
+    const argument = raw.trim()
+    if (argument !== '') {
+      invokeSkill(argument, '')
+      return { kind: 'success' }
+    }
+    commandHubOperations = commandHubOperations.then(showSkills).catch((error: unknown) => {
+      if (!disposed) appendNotice(`Could not read skills: ${errorChain(error)}`, 'error')
+    })
+    return { kind: 'success' }
+  }
+
+  const runIdeCommand = (raw: string): CommandResult => {
+    const argument = raw.trim()
+    if (argument !== '') {
+      const reference = /\s/u.test(argument) ? `@${JSON.stringify(argument)} ` : `@${argument} `
+      editor.insertTextAtCursor(reference)
+      appendNotice(`Inserted workspace reference ${displayText(reference.trim())}.`)
+      requestRender()
+      return { kind: 'success' }
+    }
+    const terminalHost = process.env.TERM_PROGRAM?.trim() || 'standalone terminal (no IDE bridge)'
+    openActionDialog('IDE Context', [
+      { value: 'reference', label: 'Reference a workspace file', description: 'insert @ and open file completion' },
+      { value: 'workspace', label: 'Choose workspace', description: displayText(cwd) },
+      { value: 'status', label: 'Inspect current context', description: displayText(terminalHost) },
+    ], (value) => {
+      if (value === 'reference') {
+        editor.insertTextAtCursor('@')
+        editor.handleInput('\t')
+        requestRender()
+      } else if (value === 'workspace') runCommand('/workspace')
+      else if (value === 'status') appendNotice(`Terminal host: ${displayText(terminalHost)}\nWorkspace: ${displayText(cwd)}\nGit branch: ${displayText(gitBranch(cwd) ?? 'not detected')}\nOpen files and editor selections require an IDE bridge; use @ references in this terminal.`)
+    })
+    return { kind: 'success' }
+  }
+
+  const runExperimentalCommand = (raw: string): CommandResult => {
+    const argument = raw.trim().toLowerCase()
+    const actions: Record<string, string> = {
+      fast: '/fast',
+      vim: '/vim',
+      reload: '/reload',
+      reasoning: '/details reasoning',
+    }
+    if (argument !== '') {
+      const command = actions[argument]
+      if (command === undefined) return { kind: 'error', text: 'Usage: /experimental [fast|vim|reload|reasoning]' }
+      runCommand(command)
+      return { kind: 'success' }
+    }
+    openActionDialog('Experimental Features', [
+      { value: 'fast', label: 'Fast model route', description: 'switch to an advertised flash/fast/turbo/lite model' },
+      { value: 'vim', label: 'Vim editor mode', description: keymap === 'vim' ? `active · ${vimState}` : 'inactive' },
+      { value: 'reasoning', label: 'Reasoning visibility', description: showReasoning ? 'shown' : 'hidden' },
+      { value: 'reload', label: 'Reload composition', description: 'development only · idle agents' },
+    ], (value) => { const command = actions[value]; if (command !== undefined) runCommand(command) })
+    return { kind: 'success' }
+  }
+
   const showPalette = (): void => {
     chat.addChild(new Spacer(1))
     chat.addChild(new Text(
@@ -1713,6 +1889,56 @@ export function createTuiChat(
       },
     })
     commandCtx.commands.register({
+      name: 'fast',
+      description: 'Toggle a real advertised low-latency model route',
+      input: { hint: '[on|off|status]' },
+      handler: ({ rawInput }) => {
+        modelController.queueFastCommand(rawInput)
+        return { kind: 'success' }
+      },
+    })
+    commandCtx.commands.register({
+      name: 'skills',
+      description: 'Browse and invoke user-invocable skills for this agent',
+      input: { hint: '[name]' },
+      handler: ({ rawInput }) => runSkillsCommand(rawInput),
+    })
+    commandCtx.commands.register({
+      name: 'keymap',
+      description: 'Choose the default or Vim terminal editing keymap',
+      input: { hint: '[default|vim]' },
+      handler: ({ rawInput }) => runKeymapCommand(rawInput),
+    })
+    commandCtx.commands.register({
+      name: 'vim',
+      description: 'Toggle Vim Normal and Insert modes for the composer',
+      input: { hint: '[on|off|status]' },
+      handler: ({ rawInput }) => runVimCommand(rawInput),
+    })
+    commandCtx.commands.register({
+      name: 'experimental',
+      description: 'Open the terminal experimental-feature launcher',
+      input: { hint: '[fast|vim|reload|reasoning]' },
+      handler: ({ rawInput }) => runExperimentalCommand(rawInput),
+    })
+    commandCtx.commands.register({
+      name: 'ide',
+      description: 'Inspect terminal IDE context or insert a workspace file reference',
+      input: { hint: '[path]' },
+      handler: ({ rawInput }) => runIdeCommand(rawInput),
+    })
+    commandCtx.commands.register({
+      name: 'approve',
+      description: 'Allow an active request or one retry of the latest rejected request',
+      handler: () => {
+        if (approvals.approveActive()) return { kind: 'success', text: 'Pending tool request allowed once.' }
+        if (approvals.approveRecentRejection()) {
+          return { kind: 'success', text: 'One matching retry of the latest rejected tool request is approved.' }
+        }
+        return { kind: 'error', text: 'No active or recently rejected tool approval is available.' }
+      },
+    })
+    commandCtx.commands.register({
       name: 'clear',
       description: 'Clear the transcript view (session history is unchanged)',
       handler: () => { chat.clear(); transcriptViewport.followTail(); requestRender(); return { kind: 'success' } },
@@ -1854,7 +2080,7 @@ export function createTuiChat(
   }
 
   /** Load a manually invoked skill and deliver its rendered body as a user turn, reporting lookup outcomes as notices. */
-  const invokeSkill = (name: string, instructions: string): void => {
+  invokeSkill = (name: string, instructions: string): void => {
     if (skills === undefined) {
       appendNotice('Skills are not available in this session.', 'warning')
       return
@@ -2117,6 +2343,53 @@ export function createTuiChat(
     if (matchesKey(data, Key.ctrl('d'))) {
       if (agent.status === 'running') appendNotice('Cancel the active turn before exiting.', 'warning')
       else requestExit()
+      return { consume: true }
+    }
+    if (keymap === 'vim') {
+      if (vimState === 'insert') {
+        if (matchesKey(data, Key.escape)) {
+          vimState = 'normal'
+          vimPending = ''
+          refreshEditorFooter()
+          requestRender()
+          return { consume: true }
+        }
+        return undefined
+      }
+      if (data === 'i') {
+        vimState = 'insert'
+      } else if (data === 'a') {
+        editor.handleInput('\x1b[C')
+        vimState = 'insert'
+      } else if (data === 'h') editor.handleInput('\x1b[D')
+      else if (data === 'j') editor.handleInput('\x1b[B')
+      else if (data === 'k') editor.handleInput('\x1b[A')
+      else if (data === 'l') editor.handleInput('\x1b[C')
+      else if (data === 'w') editor.handleInput('\x1bf')
+      else if (data === 'b') editor.handleInput('\x1bb')
+      else if (data === '0') editor.handleInput('\x01')
+      else if (data === '$') editor.handleInput('\x05')
+      else if (data === 'x') editor.handleInput('\x1b[3~')
+      else if (data === 'o') {
+        editor.handleInput('\x05')
+        editor.handleInput('\x1b[13;2~')
+        vimState = 'insert'
+      } else if (data === '/') {
+        vimState = 'insert'
+        editor.handleInput('/')
+      } else if (data === 'd') {
+        if (vimPending === 'd') {
+          editor.handleInput('\x01')
+          editor.handleInput('\x0b')
+          vimPending = ''
+        } else vimPending = 'd'
+        refreshEditorFooter()
+        requestRender()
+        return { consume: true }
+      }
+      vimPending = ''
+      refreshEditorFooter()
+      requestRender()
       return { consume: true }
     }
     return undefined

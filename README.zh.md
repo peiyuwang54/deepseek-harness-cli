@@ -102,7 +102,7 @@ Web 界面仍然是独立的 `base + web-app` profile。增加 TUI 不会让 Web
 | Session | 直接与会话内恢复、安全恢复 Web preset 组成、标题、压缩标记和 Session 引用 |
 | Workspace | 可搜索的持久 workspace 选择器、新进程 handoff，以及有界文件／目录 `@` 补全 |
 | Settings | 脱敏的 settings hub／文档定位，以及持久化的共享亮色、暗色与 system 主题选择 |
-| Skill 与命令 | 动态斜杠命令补全，以及面向用户可调用 skill 的 `/skill:<name> [instructions]` |
+| Skill 与命令 | 动态补全、`/skills` 浏览、`/skill:<name>`、默认／Vim 键位以及快速路由与实验功能入口 |
 | 诊断 | Token 与 KV-cache 计量、context 压力、当前模型、`/status` 和终端安全的错误报告 |
 | 扩展性 | Agent 作用域命令、由工具持有的展示意图、受生命周期约束的 `ctx.tui` overlay 服务 |
 | 终端生命周期 | 全屏 alternate buffer、多行 editor、鼠标输入、可滚动 transcript、raw mode 和完整恢复 |
@@ -133,8 +133,19 @@ Web 界面仍然是独立的 `base + web-app` profile。增加 TUI 不会让 Web
 |---|---|
 | `/help` | 显示当前快捷键和有效命令注册表 |
 | `/model [[provider/]model]` | 打开选择器，或直接选择无歧义目标 |
+| `/fast [on\|off\|status]` | 切换到 catalog 真实公布的 flash／fast／turbo／lite 模型路由；没有时明确拒绝 |
+| `/skills [name]` | 浏览用户可调用 skill，或直接调用其中一个 |
+| `/keymap [default\|vim]` | 选择终端 composer 键位方案 |
+| `/vim [on\|off\|status]` | 切换 Vim Insert／Normal 编辑模式 |
+| `/experimental [fast\|vim\|reload\|reasoning]` | 打开终端实验功能入口 |
+| `/ide [path]` | 检查终端宿主上下文，或插入 `@` workspace 引用 |
+| `/approve` | 允许活动请求一次，或为最新一次交互拒绝预批准一次匹配重试；绝不改变权限 preset |
 | `/permissions [preset]` | 打开权限选择器，或直接切换到具名沙箱与审批 preset |
 | `/yolo` | **危险：**关闭沙箱和审批提示；执行结果会打印恢复命令 |
+| `/plan [off\|message]` | 进入 plan 模式并可选提交规划请求，或退出该模式 |
+| `/goal [objective\|clear\|edit ...\|pause\|resume]` | 管理可持久的长时间运行 goal |
+| `/compact` | 在当前 preset 提供 compaction 时压缩较早对话历史 |
+| `/feedback <text>` | 记录当前 Session 的反馈 |
 | `/clear` | 只清空已渲染 transcript；持久化 Session 历史不变 |
 | `/details` | 修改工具卡片可见性和 reasoning 展示 |
 | `/palette` | 查看语义化 ANSI palette |

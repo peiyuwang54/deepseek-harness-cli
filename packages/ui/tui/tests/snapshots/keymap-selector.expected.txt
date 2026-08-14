@@ -1,0 +1,50 @@
+terminal 96x36 buffer=normal length=36 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=0 viewportRow=35 bufferRow=35
+buffer
+0| " DEEPSEEK HARNESS"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+1| " Snapshot agent ready."
+  style 1-21 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
+  style 0-95 dim
+5| "│ dsh > Describe a task, @ a file, or / for commands                                           │"
+  style 0-0 dim
+  style 2-4 fg=bright-magenta bold
+  style 6-51 dim
+  style 95-95 dim
+6| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+  style 0-95 dim
+7| "/workspace/project (tui-staging)                idle  deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-magenta bold
+  style 18-31 dim
+  style 48-51 dim
+  style 54-76 dim
+  style 79-83 dim
+  style 86-95 dim
+8-14| <blank>
+15| "          ╭ Keymap ──────────────────────────────────────────────────────────────────╮          "
+  style 10-85 fg=bright-magenta
+16| "          │ → Default                         current · terminal editing shortcuts   │          "
+  style 10-10 fg=bright-magenta
+  style 12-81 fg=bright-magenta inverse
+  style 85-85 fg=bright-magenta
+17| "          │   Vim                             Normal and Insert modes                │          "
+  style 10-10 fg=bright-magenta
+  style 17-68 dim
+  style 85-85 fg=bright-magenta
+18| "          │                                                                          │          "
+  style 10-10 fg=bright-magenta
+  style 85-85 fg=bright-magenta
+19| "          │ ↑/↓ move • Enter select • Esc close                                      │          "
+  style 10-10 fg=bright-magenta
+  style 12-46 dim
+  style 85-85 fg=bright-magenta
+20| "          ╰──────────────────────────────────────────────────────────────────────────╯          "
+  style 10-85 fg=bright-magenta
+21-35| <blank>

@@ -10,6 +10,7 @@ import { compactCheckpointSource, CompactionId } from '@deepseek-ai/dsh-compacti
 import { createUserMessage, CallId, type ContentBlock , createMessage, createToolResultMessage } from '@deepseek-ai/dsh-llm'
 import { RetryId } from '@deepseek-ai/dsh-llm-retry'
 import PermissionPresetService from '@deepseek-ai/dsh-permission-presets'
+import SkillRegistry from '@deepseek-ai/dsh-skill'
 import { SessionId, type JsonValue, type Session, type SessionEvent } from '@deepseek-ai/dsh-session'
 import SessionReferenceResolver from '@deepseek-ai/dsh-session-reference'
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
@@ -69,6 +70,13 @@ const CHECKPOINTS = [
   'model-switching',
   'permissions-selector',
   'permissions-switching',
+  'skills-selector',
+  'keymap-selector',
+  'vim-normal-mode',
+  'fast-route-switching',
+  'experimental-selector',
+  'ide-context-selector',
+  'approve-empty',
   'yolo-permission',
   'settings-hub',
   'theme-selector',
@@ -210,6 +218,24 @@ async function configurePermissionPresets(ctx: Context): Promise<void> {
       },
     },
     defaultPreset: 'workspace-write',
+  })
+}
+
+async function configureSnapshotSkills(ctx: Context): Promise<void> {
+  await ctx.plugin(SystemPrompt)
+  await ctx.plugin(ToolRegistry)
+  await ctx.plugin(SkillRegistry)
+  ctx.skills.register({
+    name: 'browser-workflow',
+    description: 'Inspect a browser-driven workflow',
+    source: 'bundled',
+    content: 'Use the browser workflow.',
+  })
+  ctx.skills.register({
+    name: 'document-review',
+    description: 'Review and edit a document artifact',
+    source: 'runtime',
+    content: 'Review the document.',
   })
 }
 
@@ -1135,6 +1161,54 @@ describe('TUI terminal-state snapshots', () => {
     })
     await checkpoint('permissions-switching', harness.terminal, { includeScrollback: true })
     expect(harness.ctx.permissionPresets.current(harness.session.events)).toBe('danger-full-access')
+    await disposeSnapshot(harness)
+  })
+
+  it('pins the skills, keymap, fast-route, experiment, IDE, and approve command surfaces', async () => {
+    const harness = await setupSnapshot({
+      configureContext: configureSnapshotSkills,
+      agentOptions: { provider: 'deepseek-official', model: 'deepseek-v4-pro' },
+    }, { columns: 96, rows: 36 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/skills')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('skills-selector', harness.terminal, { includeScrollback: true })
+    await renderAfter(harness, () => { harness.terminal.send('\x1b') })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/keymap')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('keymap-selector', harness.terminal, { includeScrollback: true })
+    await renderAfter(harness, () => {
+      harness.terminal.send('\x1b[B')
+      harness.terminal.send('\r')
+    })
+    await renderAfter(harness, () => { harness.terminal.send('\x1b') })
+    await checkpoint('vim-normal-mode', harness.terminal, { includeScrollback: true })
+    await renderAfter(harness, () => {
+      harness.terminal.send('i')
+      harness.terminal.send('/fast on')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('fast-route-switching', harness.terminal, { includeScrollback: true })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/experimental')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('experimental-selector', harness.terminal, { includeScrollback: true })
+    await renderAfter(harness, () => { harness.terminal.send('\x1b') })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/ide')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('ide-context-selector', harness.terminal, { includeScrollback: true })
+    await renderAfter(harness, () => { harness.terminal.send('\x1b') })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/approve')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('approve-empty', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

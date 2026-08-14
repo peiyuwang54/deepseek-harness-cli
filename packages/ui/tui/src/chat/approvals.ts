@@ -35,6 +35,12 @@ export interface ApprovalQueueDeps extends ChatChannelDeps {
 
 /** Lifecycle handle for the mounted approval answerer. */
 export interface ApprovalQueue {
+  /** Allow the active approval exactly once; false means no request is pending. */
+  approveActive(): boolean
+  /** Arm one retry of the most recently rejected matching request. */
+  approveRecentRejection(): boolean
+  /** Whether an approval request currently owns the dialog. */
+  hasActive(): boolean
   /** Settle active and queued requests as cancelled during terminal shutdown. */
   cancelAll(): void
   /** Remove the scoped `approval/request` listener. */
@@ -116,6 +122,8 @@ export function createApprovalQueue(deps: ApprovalQueueDeps): ApprovalQueue {
   const queue: PendingApproval[] = []
   let active: PendingApproval | undefined
   let accepting = true
+  let lastRejected: Pick<ApprovalRequest, 'toolName' | 'reason'> | undefined
+  let retryApproval: Pick<ApprovalRequest, 'toolName' | 'reason'> | undefined
 
   const settle = (pending: PendingApproval, outcome: ApprovalOutcome): void => {
     if (pending.settled) return
@@ -127,6 +135,12 @@ export function createApprovalQueue(deps: ApprovalQueueDeps): ApprovalQueue {
     else {
       const index = queue.indexOf(pending)
       if (index >= 0) queue.splice(index, 1)
+    }
+    if (outcome === 'rejected') {
+      lastRejected = {
+        toolName: pending.request.toolName,
+        ...pending.request.reason === undefined ? {} : { reason: pending.request.reason },
+      }
     }
     pending.resolve(outcome)
     void overlay?.close()
@@ -166,6 +180,14 @@ export function createApprovalQueue(deps: ApprovalQueueDeps): ApprovalQueue {
     if (request.agent !== deps.agent) return next()
     if (!accepting) return Promise.resolve('unavailable')
     if (request.signal?.aborted === true) return Promise.resolve('cancelled')
+    if (retryApproval !== undefined) {
+      const grant = retryApproval
+      retryApproval = undefined
+      if (request.toolName === grant.toolName && request.reason === grant.reason) {
+        lastRejected = undefined
+        return Promise.resolve('allowed-once')
+      }
+    }
     return new Promise<ApprovalOutcome>((resolve) => {
       const pending: PendingApproval = {
         request,
@@ -181,6 +203,18 @@ export function createApprovalQueue(deps: ApprovalQueueDeps): ApprovalQueue {
   })
 
   return {
+    approveActive(): boolean {
+      if (active === undefined) return false
+      settle(active, 'allowed-once')
+      return true
+    },
+    approveRecentRejection(): boolean {
+      if (lastRejected === undefined) return false
+      retryApproval = lastRejected
+      lastRejected = undefined
+      return true
+    },
+    hasActive: () => active !== undefined,
     cancelAll(): void {
       accepting = false
       const pending = [

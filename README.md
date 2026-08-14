@@ -102,7 +102,7 @@ The terminal is an independent presentation layer over the same Agent, Session, 
 | Sessions | Direct and in-channel resume, Web-preset-safe composition restore, titles, compaction markers, and session references |
 | Workspace | Searchable durable workspace selector, fresh-process handoff, and bounded `@` file/directory completion |
 | Settings | Redacted settings hub/document discovery plus persistent shared light, dark, and system theme selection |
-| Skills and commands | Dynamic slash-command completion and `/skill:<name> [instructions]` for user-invocable skills |
+| Skills and commands | Dynamic completion, `/skills` browsing, `/skill:<name>`, default/Vim keymaps, fast-route and experimental launchers |
 | Diagnostics | Token and KV-cache accounting, context pressure, current model, `/status`, and terminal-safe error reporting |
 | Extensibility | Agent-scoped commands, tool-owned presentation intents, and a lifecycle-bound `ctx.tui` overlay service |
 | Terminal lifecycle | Full-screen alternate buffer, multiline editor, mouse input, scrollable transcript, raw mode, and complete restoration |
@@ -133,8 +133,19 @@ The terminal is an independent presentation layer over the same Agent, Session, 
 |---|---|
 | `/help` | Show current shortcuts and the effective command registry |
 | `/model [[provider/]model]` | Open the selector or choose an unambiguous target directly |
+| `/fast [on\|off\|status]` | Toggle a genuinely advertised flash/fast/turbo/lite model route; refuse when none exists |
+| `/skills [name]` | Browse user-invocable skills or invoke one directly |
+| `/keymap [default\|vim]` | Choose the terminal composer keymap |
+| `/vim [on\|off\|status]` | Toggle Vim Insert/Normal editing modes |
+| `/experimental [fast\|vim\|reload\|reasoning]` | Open the terminal experimental-feature launcher |
+| `/ide [path]` | Inspect terminal host context or insert an `@` workspace reference |
+| `/approve` | Allow an active request once, or arm one matching retry of the latest interactive rejection; never change the permission preset |
 | `/permissions [preset]` | Open the permission picker, or switch directly to a named sandbox-and-approval preset |
 | `/yolo` | **Dangerous:** disable the sandbox and approval prompts; the result prints the recovery command |
+| `/plan [off\|message]` | Enter plan mode, optionally steering a planning request, or leave it |
+| `/goal [objective\|clear\|edit ...\|pause\|resume]` | Manage a durable long-running goal |
+| `/compact` | Compact older conversation history when the selected preset provides compaction |
+| `/feedback <text>` | Record feedback for the current Session |
 | `/clear` | Clear only the rendered transcript; durable session history is unchanged |
 | `/details` | Change tool-card visibility and reasoning display |
 | `/palette` | Inspect the semantic ANSI palette |

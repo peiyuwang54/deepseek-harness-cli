@@ -22,6 +22,8 @@ Settings 与 workspace 状态属于 Host 平面的产品服务，而非浏览器
 
 Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到当前 API。权威 `Session` 事件仍是唯一持久对话来源：replay 将这些事件折叠成已提交终端输出，实时 chunk、工具进度、问题与审批则是瞬时 projection。TUI 不会增加第二份聊天日志或工具 scheduler。它消费现有的作用域 command registry、Agent inbox 操作、session query/reference 服务、skill registry、工具 presenter、token meter 与模型选择 seam。
 
+终端命令 catalog 包含受 Codex 启发的 `/skills`、`/keymap`、`/vim`、`/fast`、`/experimental`、`/ide` 与 `/approve` 适配器，但不引入 Codex 运行时状态。Skill 仍是 Agent 作用域 registry 条目；Vim 是 pi-tui editor 之上的输入模式 projection；fast 模式仅选择元数据标识为低延迟变体的已公布路由，并保留先前路由以便可逆切换。Experiments 启动现有终端 action，而不创建第二个 feature-flag store。在 embedding 提供 IDE bridge 之前，IDE 上下文会退化为终端宿主诊断、`@` 引用与 workspace handoff。Approve 会把活动队列条目结算为 `allowed-once`，或为下一个工具和理由与最新交互拒绝完全匹配的请求预批准一次；如果下一个请求不匹配，它会消耗该授权但不会获得批准，因此该命令不能扩大会话策略，也不会创建持久授权。
+
 审批策略与执行仍由 `ctx.approval` 持有。TUI 只为 `approval/request` 注册精确 Agent、FIFO 的回答器，返回 `allowed-once`、`rejected`、`cancelled` 或 `unavailable`；Approval 服务持有持久 `approval/asked` 与 `approval/decided` 审计事件对。共享 Permission 服务会贡献 `/permissions` 与受 Codex 启发的 `/yolo` 快捷命令。不带参数的 `/permissions` 会打开一个读取服务所持 preset 表的终端选择器，带参调用与每次选择则使用和 Web 相同的命令 handler。Dashboard 与 footer 会从该服务投影配置的 preset 展示名称。`/yolo` 会解析部署中组合 `danger-full-access` 与 `never` 的 preset，并通过相同的沙箱 setter 与实时 Approval setter 写入；显式命令本身就是确认，其结算文本会给出恢复此前可选择 preset 的命令。`ctx.userQuestions` 仍是独立的结构化问题 provider。两个交互队列共享 renderer 的模态队列，但都不会让 TUI 成为生命周期或策略权威。
 
 终端渲染把稳定历史与实时 projection 分开，保留首 token 前与分阶段计时，把空的 Assistant 行重排到已认领的用户／上下文消息之后，渲染工具持有的展示意图，支持会话恢复与作用域 skill，并在 dispose 时恢复 raw mode。按宽度索引的卡片缓存避免每一帧都重新换行已结算输出，一个只向前推进的计时 cursor 则为所有 step footer 提供数据，无需反复扫描完整日志。颜色方案或 reasoning 重建会保留当前 streaming component 并使其计时缓存失效，因此轮次中的重绘不会丢失累计 response 时间。
@@ -39,6 +41,8 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 恢复的 TUI 快照是 DeepSeek Harness 的第一方源码，取自删除提交 `10bb9cbf4a22b5095bb9ff04d1425907af8f08af` 之前的提交 `7248b5ec8f8769f882f12fd521504fa48e97bcf3`。当时仓库与 `@deepseek-ai/dsh-tui` 均声明 BSD 3-Clause。全仓库在 `c905c4694e317eff1f529f0fed047c2ce202d11a` 采用 MIT 时，该包已经被删除，因此历史快照没有参与那次机械式 package manifest 换证。恢复的实现继续保留 BSD 3-Clause 条款；当前迁移与新增内容采用 MIT。组合后的软件包因此声明精确 SPDX 表达式 `(MIT AND BSD-3-Clause)`，并由包内 `LICENSE` 保留两份声明和解释该边界。
 
 ## 验证
+
+专用命令 checkpoint 固定 skill 浏览器、keymap 选择器、Vim Normal footer、真实 fast-route 切换、experiment 启动器、IDE 降级界面与空审批状态。Approval-service 测试证明程序化命令授权会产生与对话框相同的持久 asked／decided 配对。
 
 Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服务测试、ANSI 感知的 headless-terminal 组件测试与无密钥终端状态快照覆盖。专用零状态 checkpoint 锁定居中面板、真实状态标签、最近会话投影、带框 editor 与底部状态栏；交互测试则锁定它在第一个 turn 时收缩。权限选择器与一次已提交的 preset 切换通过真实 Command 和 Projection 服务各有一份终端状态 checkpoint。Settings、Appearance、workspace picker 与 handoff 失败恢复各有一份终端状态 checkpoint；交互测试还锁定仅字段 theme mutate、设置文档发现、不可变 cwd，以及重复 Enter 下在首个 await 前占用的 single-flight latch。应用 bundle 具有启动、身份、非 TTY、preset 安全的 Agent 创建／恢复与 patch 形状测试。CLI 测试覆盖别名、profile 选择、help、非 TTY 失败、随发行版配置、替换参数忠实度、shutdown 前校验、POSIX exec 与受监督子进程后备。软件包 typecheck、host typecheck、Loader／配置约束、软件包发布约束、生成 catalog、文档链接、许可证与第三方声明均为必需门禁。
 

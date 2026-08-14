@@ -103,7 +103,7 @@ The terminal is an independent presentation layer over the same Agent, Session, 
 | Workspace | Searchable durable workspace selector, fresh-process handoff, and bounded `@` file/directory completion |
 | Settings | Redacted settings hub/document discovery plus persistent shared light, dark, and system theme selection |
 | Skills and commands | Dynamic completion, `/skills` browsing, `/skill:<name>`, default/Vim keymaps, fast-route and experimental launchers |
-| Diagnostics | Token and KV-cache accounting, context pressure, current model, `/status`, and terminal-safe error reporting |
+| Diagnostics | Web-parity turn/step, LLM/tool time, TTFT, throughput, token and KV-cache statistics; context pressure, current model, `/status`, and terminal-safe errors |
 | Extensibility | Agent-scoped commands, tool-owned presentation intents, and a lifecycle-bound `ctx.tui` overlay service |
 | Terminal lifecycle | Full-screen alternate buffer, multiline editor, mouse input, scrollable transcript, raw mode, and complete restoration |
 
@@ -232,8 +232,8 @@ See the [CLI behavior reference](apps/cli/reference/README.md), the [TUI rendere
 The CLI/TUI baseline was locally validated before publication with the following results:
 
 - Full workspace build completed.
-- TUI unit and Agent/Session integration suites: 259 tests passed.
-- Keyless terminal-state snapshots: 28 snapshots passed.
+- TUI unit and Agent/Session integration suites: 269 tests passed.
+- Keyless terminal-state snapshots: 33 snapshots passed.
 - TUI bundle and CLI argument suites: 26 tests passed across 5 files.
 - Built CLI E2E suite: 21 tests passed, including real POSIX PTY launches of `apps/cli/lib/bin.js` that prove Loader activation, synchronized frames, active raw mode, `Ctrl+D` exit, workspace process handoff with environment rebasing, and complete termios restoration.
 - Type, package, Loader/config, generated-catalog, documentation-link, translation-pairing, license, and third-party-notice gates completed for the baseline.

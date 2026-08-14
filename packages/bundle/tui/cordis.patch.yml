@@ -132,6 +132,12 @@
     - id: session-reference
       name: '@deepseek-ai/dsh-session-reference'
 
+    # Reuse the Web conversation statistics projection. The TUI renders the
+    # same whole-log turns, steps, LLM/tool time, TTFT, and decode throughput
+    # below its composer instead of maintaining a second accounting model.
+    - id: session-stats
+      name: '@deepseek-ai/dsh-session-stats'
+
     # Terminal-only workspace context. Model-facing question tools belong to
     # the selected preset (minimal intentionally does not expose one).
     - id: tmux-context

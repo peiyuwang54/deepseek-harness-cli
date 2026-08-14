@@ -49,4 +49,6 @@ buffer
   style 56-80 dim
   style 83-87 dim
   style 90-99 dim
-23-39| <blank>
+23| "                                         1 turn · 2 steps"
+  style 41-56 dim
+24-39| <blank>

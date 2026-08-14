@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=53 base=21 viewport=21
+terminal 92x32 buffer=normal length=54 base=22 viewport=22
 lifecycle started=1 stopped=1 progress=inactive
 title "DSH snapshot"
-cursor visible column=0 viewportRow=31 bufferRow=52
+cursor visible column=0 viewportRow=31 bufferRow=53
 buffer
 0| " DEEPSEEK HARNESS"
   style 1-8 fg=bright-magenta bold
@@ -107,4 +107,6 @@ buffer
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-52| <blank>
+52| "                                      1 turn · 1 step"
+  style 38-52 dim
+53| <blank>

@@ -34,6 +34,7 @@ describe('dsh-tui-app bundle', () => {
       expect.objectContaining({ id: 'storage-domain', name: '@deepseek-ai/dsh-storage-domain' }),
       expect.objectContaining({ id: 'workspace', name: '@deepseek-ai/dsh-workspace' }),
       expect.objectContaining({ id: 'session-reference', name: '@deepseek-ai/dsh-session-reference' }),
+      expect.objectContaining({ id: 'session-stats', name: '@deepseek-ai/dsh-session-stats' }),
     ]))
     expect(rows).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'tool-ask-user' }),

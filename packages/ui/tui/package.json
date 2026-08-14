@@ -59,6 +59,7 @@
     "@deepseek-ai/dsh-session-projection-cache": "workspace:^",
     "@deepseek-ai/dsh-session-query": "workspace:^",
     "@deepseek-ai/dsh-session-reference": "workspace:^",
+    "@deepseek-ai/dsh-session-stats": "workspace:^",
     "@deepseek-ai/dsh-session-title": "workspace:^",
     "@deepseek-ai/dsh-settings": "workspace:^",
     "@deepseek-ai/dsh-skill": "workspace:^",
@@ -81,6 +82,9 @@
       "optional": true
     },
     "@deepseek-ai/dsh-session-query": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-session-stats": {
       "optional": true
     },
     "@deepseek-ai/dsh-settings": {
@@ -113,6 +117,7 @@
     "@deepseek-ai/dsh-session-projection-cache": "workspace:^",
     "@deepseek-ai/dsh-session-query": "workspace:^",
     "@deepseek-ai/dsh-session-reference": "workspace:^",
+    "@deepseek-ai/dsh-session-stats": "workspace:^",
     "@deepseek-ai/dsh-session-title": "workspace:^",
     "@deepseek-ai/dsh-settings": "workspace:^",
     "@deepseek-ai/dsh-skill": "workspace:^",

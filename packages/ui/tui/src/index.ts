@@ -34,6 +34,9 @@ import type {} from '@deepseek-ai/dsh-agent-loop'
 import type {} from '@deepseek-ai/dsh-agent-presets'
 import type {} from '@deepseek-ai/dsh-permission-presets'
 import type {} from '@deepseek-ai/dsh-token-meter'
+import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'
+import type {} from '@deepseek-ai/dsh-session-projection'
+import type { SessionStatsProjection } from '@deepseek-ai/dsh-session-stats/types'
 import type { CommandResult } from '@deepseek-ai/dsh-commands'
 import { createUserMessage, errorChain } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, MessageId } from '@deepseek-ai/dsh-llm'
@@ -82,6 +85,7 @@ import {
   recordEventUsage,
   sessionTokens,
 } from './chat/tokens.ts'
+import { SessionStatsLineComponent } from './chat/stats.ts'
 import {
   fadeGlyph,
   formatQueuedStatus,
@@ -438,6 +442,31 @@ export function createTuiChat(
   })
   const skillAbort = new AbortController()
   const tokens = sessionTokens(agent.session)
+  const sessionStatistics = (): {
+    stats: SessionStatsProjection | undefined
+    usage: TokenUsageProjection
+  } => {
+    const projections = ctx.reflect._getImpl('sessionProjections', false)
+    const values = projections === undefined || projections.fiber.state >= FIBER_FAILED
+      ? undefined
+      : ctx.get('sessionProjections', false)?.snapshot(agent.session).values
+    return {
+      stats: values?.sessionStats,
+      // Production TUI and Web read the same durable tokenUsage projection.
+      // A custom embedding may omit token-meter; preserve its existing full-log
+      // event fold as a semantically equivalent fallback.
+      usage: values?.tokenUsage ?? {
+        uncachedInputTokens: tokens.input,
+        outputTokens: tokens.output,
+        cacheReadTokens: tokens.cacheRead,
+        cacheWriteTokens: tokens.cacheWrite,
+      },
+    }
+  }
+  const sessionStatsLine = new SessionStatsLineComponent(
+    sessionStatistics,
+    palette,
+  )
   const toolCards = new Map<string, ToolCardComponent>()
   const allToolCards = new Set<ToolCardComponent>()
   const contextCards = new Set<ContextCardComponent>()
@@ -600,6 +629,7 @@ export function createTuiChat(
       + todoContainer.render(width).length
       + compactionStatusLine.render(width).length
       + promptContext.render(width).length
+      + sessionStatsLine.render(width).length
       + questionContainer.render(width).length
       + editor.render(width).length
     return Math.max(0, runtime.terminal.rows - reservedRows)
@@ -613,6 +643,7 @@ export function createTuiChat(
   ui.addChild(questionContainer)
   ui.addChild(editor)
   ui.addChild(promptContext)
+  ui.addChild(sessionStatsLine)
   ui.setFocus(editor)
   const updateTerminalTitle = (): void => {
     runtime.terminal.setTitle(displayText(
@@ -2267,7 +2298,8 @@ export function createTuiChat(
     const firstColumn = visibleWidth(targetLine.slice(0, markerIndex)) + 1
     const allRows = ui.render(width)
     const statusRows = promptContext.render(width).length
-    const absoluteRow = allRows.length - statusRows
+    const statsRows = sessionStatsLine.render(width).length
+    const absoluteRow = allRows.length - statsRows - statusRows
     const viewportTop = Math.max(0, allRows.length - runtime.terminal.rows)
     const row = absoluteRow - viewportTop + 1
     if (row < 1 || row > runtime.terminal.rows) return undefined

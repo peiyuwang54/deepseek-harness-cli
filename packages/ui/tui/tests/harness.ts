@@ -16,6 +16,8 @@ import type {
 } from '@deepseek-ai/dsh-llm'
 import CommandService from '@deepseek-ai/dsh-commands'
 import SessionStore, { SessionId, type Session, type SessionHeader, type UserMessage } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import * as SessionStatsPlugin from '@deepseek-ai/dsh-session-stats'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRegistry, { type ToolDefinition } from '@deepseek-ai/dsh-tools'
 import UserInteractionService from '@deepseek-ai/dsh-user-questions'
@@ -125,6 +127,13 @@ export async function createTuiTestHarness<TerminalType extends Terminal, Exit e
     for (const tool of Object.values(options.tools ?? {})) ctx.tools.register(tool)
   } else {
     await options.configureContext(ctx)
+  }
+  // Most harnesses exercise the same shared statistics projection as Web.
+  // A few focused fixtures deliberately provide their own projection boundary;
+  // preserve that override instead of registering the service twice.
+  if (ctx.get('sessionProjections') === undefined) {
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(SessionStatsPlugin)
   }
   // A configureContext may mount the real LlmService; only fill the
   // advisory-catalog stub when none was provided.

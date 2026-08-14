@@ -103,7 +103,7 @@ Web 界面仍然是独立的 `base + web-app` profile。增加 TUI 不会让 Web
 | Workspace | 可搜索的持久 workspace 选择器、新进程 handoff，以及有界文件／目录 `@` 补全 |
 | Settings | 脱敏的 settings hub／文档定位，以及持久化的共享亮色、暗色与 system 主题选择 |
 | Skill 与命令 | 动态补全、`/skills` 浏览、`/skill:<name>`、默认／Vim 键位以及快速路由与实验功能入口 |
-| 诊断 | Token 与 KV-cache 计量、context 压力、当前模型、`/status` 和终端安全的错误报告 |
+| 诊断 | 与 Web 同口径的轮次／步骤、LLM／工具耗时、TTFT、吞吐、token 与 KV-cache 统计；context 压力、当前模型、`/status` 和终端安全错误 |
 | 扩展性 | Agent 作用域命令、由工具持有的展示意图、受生命周期约束的 `ctx.tui` overlay 服务 |
 | 终端生命周期 | 全屏 alternate buffer、多行 editor、鼠标输入、可滚动 transcript、raw mode 和完整恢复 |
 
@@ -232,8 +232,8 @@ pnpm dsh tui --patch ./extra.cordis.yml --resume <session-id>
 CLI/TUI baseline 在发布前已完成本地验证，结果如下：
 
 - 完整 workspace build 完成。
-- TUI 单元与 Agent/Session 集成套件：259 项测试通过。
-- 无密钥终端状态快照：28 项快照通过。
+- TUI 单元与 Agent/Session 集成套件：269 项测试通过。
+- 无密钥终端状态快照：33 项快照通过。
 - TUI bundle 与 CLI 参数套件：5 个文件内的 26 项测试通过。
 - Built CLI E2E 套件：21 项测试通过；其中包含真实 POSIX PTY 启动 `apps/cli/lib/bin.js`，证明 Loader 激活、同步帧、运行中 raw mode、`Ctrl+D` 退出、工作区进程交接与环境重建，以及完整 termios 恢复。
 - Baseline 的类型、包、Loader/配置、生成 catalog、文档链接、中英文配对、许可证和第三方声明门禁已完成。

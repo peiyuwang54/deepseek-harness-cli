@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=40 base=8 viewport=8
+terminal 92x32 buffer=normal length=41 base=9 viewport=9
 lifecycle started=1 stopped=0 progress=inactive
 title "Inspect session diagnostics — DSH snapshot"
-cursor hidden column=8 viewportRow=29 bufferRow=37
+cursor hidden column=8 viewportRow=28 bufferRow=37
 buffer
 0| " DEEPSEEK HARNESS"
   style 1-8 fg=bright-magenta bold
@@ -111,3 +111,5 @@ buffer
   style 34-56 dim
   style 59-78 dim
   style 81-91 dim
+40| "                      Cache hit 67% | Input 4.5K tok · Output 340 tok"
+  style 22-68 dim

@@ -41,4 +41,6 @@ viewport
   style 52-76 dim
   style 79-83 dim
   style 86-95 dim
-18-35| <blank>
+18| "                                        1 turn · 1 step"
+  style 40-54 dim
+19-35| <blank>

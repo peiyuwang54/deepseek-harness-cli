@@ -39,6 +39,9 @@ const CHECKPOINTS = [
   'rich-markdown',
   'shell-prompt-multiline',
   'step-timing-completed',
+  'session-stats-completed',
+  'session-stats-running',
+  'session-stats-narrow',
   'retry-scheduled',
   'retry-recovered',
   'retry-cancelled',
@@ -516,6 +519,42 @@ describe('TUI terminal-state snapshots', () => {
       harness.session.append('step/end', { turn: 1, step: 1 })
     })
     await checkpoint('step-timing-completed', harness.terminal, { includeScrollback: true })
+    nowSpy.mockRestore()
+    await disposeSnapshot(harness)
+  })
+
+  it('pins the shared Web statistics strip in completed, running, and narrow states', async () => {
+    let clock = Date.parse('2026-07-21T12:00:00.000Z')
+    const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => clock)
+    const harness = await setupSnapshot({ omitInitialLifecycle: true }, { columns: 120, rows: 36 })
+    await renderAfter(harness, () => {
+      harness.session.append('turn/start', { turn: 1 })
+      harness.session.append('step/start', { turn: 1, step: 1 })
+      clock += 1_200
+      harness.session.append('assistant/chunk', {
+        turn: 1,
+        step: 1,
+        chunk: { type: 'text-delta', index: 0, text: 'The metrics are ready.' },
+      })
+      clock += 385
+      appendAssistant(harness.session, [{ type: 'text', text: 'The metrics are ready.' }], {
+        inputTokens: 7_700,
+        outputTokens: 32,
+      })
+      harness.session.append('step/end', { turn: 1, step: 1 })
+    })
+    await checkpoint('session-stats-completed', harness.terminal, { includeScrollback: true })
+
+    await renderAfter(harness, () => {
+      harness.agent.status = 'running'
+      agentEvents(harness.ctx, harness.agent).emit('agent/status', { status: 'running' })
+      harness.session.append('turn/start', { turn: 2 })
+      harness.session.append('step/start', { turn: 2, step: 1 })
+    })
+    await checkpoint('session-stats-running', harness.terminal, { includeScrollback: true })
+
+    await renderAfter(harness, () => { harness.terminal.resize(72, 28) })
+    await checkpoint('session-stats-narrow', harness.terminal, { includeScrollback: true })
     nowSpy.mockRestore()
     await disposeSnapshot(harness)
   })

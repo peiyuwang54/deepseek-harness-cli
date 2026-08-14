@@ -21,6 +21,7 @@
     { "path": "../../session/session-persistence" },
     { "path": "../../session/session-projection" },
     { "path": "../../session/session-projection-cache" },
+    { "path": "../../session/session-stats" },
     { "path": "../../session/session-title" },
     { "path": "../../settings/settings" },
     { "path": "../../session-query/session-query" },

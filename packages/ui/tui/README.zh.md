@@ -12,7 +12,7 @@ Renderer 默认使用 alternate screen，因此对话、overlay 和不断扩展�
 
 全新的空会话会打开一张自适应、借鉴 Claude Code 编排方式的双栏欢迎卡，但不会复制 Claude 的产品文案或资产。左栏显示欢迎语、由仓库第一方 DeepSeek SVG 鲸鱼标志派生的 Braille 字符栅格，并投影已组合的 agent preset、所选模型、有效 permission preset 或 approval policy 以及 workspace。鲸鱼继承终端前景色，因此在浅色终端中呈黑色，在深色终端中仍然可见。右栏列出真实存在的 Harness 入口，并通过可选 session-query 服务显示最多两个最新会话。较窄终端使用缩小鲸鱼、紧凑状态行和操作行。第一个 turn 开始后，欢迎卡会自动收缩为普通 transcript header。最近会话行只提供信息而不直接点击；搜索与校验仍由 `/resume` 持有。
 
-提示词区域是全宽带框的多行编辑器。它的底框会根据 idle／running 状态切换发送或 steer／cancel 提示，最底部状态栏则把工作区、分支、token 用量、agent 状态、模型和上下文压力与可编辑文本分开。这些标签投影自当前服务和会话事件，不是另一套 UI 配置真相源。
+提示词区域是全宽带框的多行编辑器。它的底框会根据 idle／running 状态切换发送或 steer／cancel 提示，第一条底部状态栏则把工作区、分支、紧凑 token 用量、agent 状态、模型和上下文压力与可编辑文本分开。第二条居中统计栏会复用 Web 的全日志 `sessionStats` 投影与 token 计量，显示轮次／步骤、LLM 与工具总耗时、平均 TTFT、解码吞吐、缓存命中率以及计费输入／输出 token。缺失事实会整组省略而不是伪造为零；窄终端会在单行内省略，不会折行挤压编辑器。这些标签投影自当前服务和会话事件，不是另一套 UI 配置真相源。
 
 受 Codex 启发的开发者命令是 Harness 服务之上的终端原生适配器。`/skills` 浏览当前 Agent 作用域中面向用户可调用的 catalog；`/keymap` 与 `/vim` 在默认编辑和 Vim Insert／Normal 模式间切换 composer；`/fast` 仅选择元数据真正标识为 flash、fast、turbo 或 lite 的已公布路由，没有这类路由时不会假称加速。`/experimental` 统一启动现有的 fast、Vim、reasoning 可见性与 Loader reload action。`/ide` 报告检测到的终端宿主，并提供 `@` 文件引用或 workspace handoff；没有 IDE bridge 时仍无法捕获已打开文件与选区。`/approve` 会允许活动请求一次，或为下一个与最新交互拒绝在工具和理由上完全匹配的请求预批准一次；如果下一个请求不匹配，它会消耗该授权但不会获得批准，命令也绝不改变 permission preset。
 

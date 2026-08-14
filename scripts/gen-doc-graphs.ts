@@ -708,7 +708,12 @@ function parseExampleCordis(rel: string): ExamplePlugin[] {
       continue
     }
     const name = /^\s+name:\s+(.+?)\s*$/.exec(line)
-    if (name?.[1] !== undefined && current) current.name = stripYamlScalar(name[1])
+    // A plugin's config may contain arbitrarily nested `name` fields (for
+    // example permission-preset display labels). Only the first name after an
+    // id belongs to the plugin row itself.
+    if (name?.[1] !== undefined && current !== null && current.name === undefined) {
+      current.name = stripYamlScalar(name[1])
+    }
   }
   flush()
   return plugins

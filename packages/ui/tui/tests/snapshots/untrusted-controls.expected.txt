@@ -1,7 +1,7 @@
-terminal 100x34 buffer=normal length=40 base=6 viewport=6
+terminal 100x34 buffer=normal length=41 base=7 viewport=7
 lifecycle started=1 stopped=0 progress=inactive
 title "Unsafe terminal title \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m"
-cursor hidden column=100 viewportRow=33 bufferRow=39
+cursor hidden column=57 viewportRow=33 bufferRow=40
 buffer
 0| " DEEPSEEK HARNESS"
   style 1-8 fg=bright-magenta bold
@@ -75,3 +75,5 @@ buffer
   style 56-80 dim
   style 83-87 dim
   style 90-99 dim
+40| "                                          1 turn · 1 step"
+  style 42-56 dim

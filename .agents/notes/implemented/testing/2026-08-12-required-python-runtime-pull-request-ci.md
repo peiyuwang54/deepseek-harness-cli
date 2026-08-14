@@ -16,6 +16,8 @@ The required job and the [Python publication workflow](../process/2026-08-11-pyt
 
 The executable snapshot normalizes opaque session, message, subagent, and workflow-run identifiers before comparison. A newly persisted workflow event therefore changes the reviewed expected output without making a random run identifier part of that output.
 
+The builder deploys a production-only JSON-RPC workspace closure before creating the executable. That pruned closure deliberately omits unrelated product surfaces such as the TUI, so the deploy command allows unused workspace patches locally while the repository's ordinary installs retain pnpm's strict unused-patch validation. This prevents a patch owned by an excluded surface from breaking the SDK carrier without weakening the full-workspace check.
+
 ## Alternatives considered
 
 **Run the complete native matrix on every pull request.** This duplicates platform-independent full-turn and snapshot behavior across three jobs and consumes ARM64 Linux and macOS capacity on every change. The publication workflow retains that evidence at the point where all three artifacts are required.
@@ -29,3 +31,5 @@ The executable snapshot normalizes opaque session, message, subagent, and workfl
 Every pull request pays for one standard-hosted Linux executable and wheel build, and `all checks passed` waits for it. This makes the first-party Python distribution a merge-time contract and reuses the release implementation instead of maintaining a smaller substitute pipeline.
 
 One required architecture cannot detect macOS or Linux ARM64 packaging regressions. Explicit full release validation remains mandatory before publication and owns those platform-specific results.
+
+The deploy-specific unused-patch allowance assumes the runtime-closure verifier remains authoritative for the packages that enter the SDK carrier. A missing patch for an included dependency still fails through installation or the release-shaped runtime validation.

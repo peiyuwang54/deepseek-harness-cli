@@ -267,6 +267,16 @@ describe('Real-API e2e workflow', () => {
 })
 
 describe('Python release workflows', () => {
+  it('allows unused product-only patches only in the pruned SDK deploy', () => {
+    const builder = readFileSync(resolve(root, 'scripts/build-exe-for-python-sdk.ts'), 'utf8')
+    const deployStart = builder.indexOf('async deployStaging(): Promise<void>')
+    const deployEnd = builder.indexOf('await this.restoreLegacyHoists()', deployStart)
+    expect(deployStart).toBeGreaterThanOrEqual(0)
+    expect(deployEnd).toBeGreaterThan(deployStart)
+    expect(builder.slice(deployStart, deployEnd)).toContain("'--config.allow-unused-patches=true'")
+    expect(readFileSync(resolve(root, 'pnpm-workspace.yaml'), 'utf8')).not.toContain('allowUnusedPatches')
+  })
+
   it('keeps complete wheel validation separate from protected public publication', () => {
     const workflow = loadWorkflow('.github/workflows/python-release.yml')
     const dispatch = workflowEvent(workflow, 'workflow_dispatch')
@@ -402,22 +412,24 @@ describe('Python release workflows', () => {
   })
 })
 
-describe('Issue lifecycle workflow', () => {
-  it('uses explicit review handoff events without rerunning when a draft becomes ready', () => {
+describe('Issue automation workflows', () => {
+  it('runs only in the owning repository and uses explicit review handoff events', () => {
     const lifecycle = loadWorkflow('.github/workflows/issue-lifecycle.yml')
     const lifecyclePullRequest = workflowEvent(lifecycle, 'pull_request')
     const lifecycleReview = workflowEvent(lifecycle, 'pull_request_review')
     const lifecycleJob = workflowJob(lifecycle, 'lifecycle')
     const policy = loadWorkflow('.github/workflows/issue-policy.yml')
     const policyPullRequest = workflowEvent(policy, 'pull_request')
+    const policyJob = workflowJob(policy, 'policy')
 
     expect(lifecyclePullRequest.types).not.toContain('ready_for_review')
     expect(lifecyclePullRequest.types).toContain('review_requested')
     expect(lifecycleReview.types).toEqual(['submitted'])
     expect(lifecycleJob.if).toBe(
-      "${{ github.event_name != 'pull_request_review' || (github.event.action == 'submitted' && github.event.review.state == 'changes_requested') }}",
+      "${{ github.repository == 'deepseek-harness/deepseek-harness' && (github.event_name != 'pull_request_review' || (github.event.action == 'submitted' && github.event.review.state == 'changes_requested')) }}",
     )
     expect(policyPullRequest.types).toContain('ready_for_review')
+    expect(policyJob.if).toBe("${{ github.repository == 'deepseek-harness/deepseek-harness' }}")
   })
 })
 

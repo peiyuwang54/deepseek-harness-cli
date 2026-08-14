@@ -18,11 +18,13 @@ Issue 生命周期工作流把评审 webhook 视为命令。`pull_request.review
 
 处理器仅解析同一仓库内严格匹配的 `Fixes`、`Closes` 或 `Resolves` 引用。它不会更改终态、将没有 Project 状态的 Issue 添加到 Project、依赖 PR 元数据是否有效、查询 `reviewDecision`、重建评审轮次、从 Issue 反向查找 PR，或运行定时协调器。
 
+两个 Issue 自动化作业都是仓库所有者的控制平面工作流。它们只在 `github.repository` 为 `deepseek-harness/deepseek-harness` 时运行；Fork 会跳过它们，不会尝试使用所有者仓库的 GitHub App 凭据、Project 或策略配置。可移植的构建与测试工作流在 Fork 中仍保持启用。
+
 [Issue 生命周期](../../../../.github/workflows/issue-lifecycle.yml)仍不订阅 `pull_request.ready_for_review`；两条事件命令均不依赖该动作。[Issue 策略](../../../../.github/workflows/issue-policy.yml)保留 `ready_for_review`，因为人工提交的 PR 进入评审时，该工作流负责执行必需检查门禁。
 
 ## 验证
 
-[Issue 管理测试](../../../../.github/issue-management/policy.test.mjs)锁定事件到命令的映射、请求修改命令后重复请求评审所触发的状态转换、请求修改后的状态回退、终态保护，以及保留人工覆盖状态。[工作流测试](../../../../scripts/ci-workflow.spec.ts)锁定订阅事件、请求修改作业的条件，以及独立的 `ready_for_review` 策略触发器。
+[Issue 管理测试](../../../../.github/issue-management/policy.test.mjs)锁定事件到命令的映射、请求修改命令后重复请求评审所触发的状态转换、请求修改后的状态回退、终态保护，以及保留人工覆盖状态。[工作流测试](../../../../scripts/ci-workflow.spec.ts)锁定所有者仓库保护条件、订阅事件、请求修改作业的条件，以及独立的 `ready_for_review` 策略触发器。
 
 ## 考虑过的替代方案
 

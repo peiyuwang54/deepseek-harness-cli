@@ -256,6 +256,8 @@ class SingleExeBuild {
       '--config.node-linker=hoisted',
       '--config.auto-install-peers=false',
       '--config.link-workspace-packages=true',
+      // The SDK closure intentionally excludes product-only packages and patches.
+      '--config.allow-unused-patches=true',
       this.staging,
     ])
     await this.restoreLegacyHoists()

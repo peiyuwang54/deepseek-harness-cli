@@ -18,11 +18,13 @@ Ordinary subscribed pull-request events remain forward-only implementation signa
 
 The handler resolves only exact same-repository `Fixes`, `Closes`, or `Resolves` references. It does not alter terminal statuses, add an Issue with no Project status, depend on PR metadata validity, query `reviewDecision`, reconstruct review rounds, look up pull requests from Issues, or run a scheduled reconciler.
 
+Both Issue automation jobs are repository-owned control-plane workflows. They run only when `github.repository` is `deepseek-harness/deepseek-harness`; forks skip them instead of attempting to use the owning repository's GitHub App credentials, Project, or policy configuration. Portable build and test workflows remain enabled in forks.
+
 [Issue lifecycle](../../../../.github/workflows/issue-lifecycle.yml) remains unsubscribed from `pull_request.ready_for_review`; neither event command depends on that action. [Issue policy](../../../../.github/workflows/issue-policy.yml) retains `ready_for_review` because it owns required-check enforcement when a human pull request enters review.
 
 ## Verification
 
-[Issue-management tests](../../../../.github/issue-management/policy.test.mjs) pin the event-to-command mapping, the repeated-review-request transition after a changes-requested command, the changes-requested regression, terminal protection, and human override preservation. [Workflow tests](../../../../scripts/ci-workflow.spec.ts) pin the subscribed events, the changes-requested job condition, and the separate `ready_for_review` policy trigger.
+[Issue-management tests](../../../../.github/issue-management/policy.test.mjs) pin the event-to-command mapping, the repeated-review-request transition after a changes-requested command, the changes-requested regression, terminal protection, and human override preservation. [Workflow tests](../../../../scripts/ci-workflow.spec.ts) pin the owning-repository guards, subscribed events, the changes-requested job condition, and the separate `ready_for_review` policy trigger.
 
 ## Alternatives considered
 

@@ -16,8 +16,8 @@ const root = resolve(import.meta.dirname, '..')
 const REPO = 'peiyuwang54/deepseek-harness-cli'
 const HOMEPAGE = `https://github.com/${REPO}`
 
-export const TARGETS = ['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x64'] as const
-export type Target = (typeof TARGETS)[number]
+const TARGETS = ['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x64'] as const
+type Target = (typeof TARGETS)[number]
 
 export type PlatformShas = Record<Target, string>
 

@@ -332,6 +332,3 @@ export class ExeBuild {
     })
   }
 }
-
-export { OUT_DIR, PKG_SPEC, Target } from './config.ts'
-export type { Arch, BuildCli, ExeProduct, Platform } from './config.ts'

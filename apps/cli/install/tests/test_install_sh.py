@@ -11,6 +11,8 @@ Run directly:  python3 apps/cli/install/tests/test_install_sh.py
 or via pytest:  pnpm exec pytest apps/cli/install/tests
 """
 
+from __future__ import annotations
+
 import hashlib
 import io
 import os

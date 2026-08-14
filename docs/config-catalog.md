@@ -2884,7 +2884,7 @@ Source: [`packages/ui/tui/src/config.ts:137`](../packages/ui/tui/src/config.ts)
 
 ## `@deepseek-ai/dsh-tui-app`
 
-Requires: `tuiStartup` · `agentDefaultModel` · `agentPresets` · `agents` · `sessions` · `approval` · `commands` · `userQuestions` · `tools` · `llm` · `systemPrompt` · `tokenMeter` · `tuiPrompt`
+Requires: `tuiStartup` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `agents` · `sessions` · `approval` · `commands` · `userQuestions` · `tools` · `llm` · `systemPrompt` · `tokenMeter` · `tuiPrompt`
 
 ```ts config-catalog
 /** Renderer presentation settings; session identity belongs to `tuiStartup`. */
@@ -2893,7 +2893,7 @@ export type Config = TuiConfig
 
 Depends on: [`TuiConfig`](../packages/ui/tui/src/index.ts)
 
-Source: [`packages/bundle/tui/src/index.ts:47`](../packages/bundle/tui/src/index.ts)
+Source: [`packages/bundle/tui/src/index.ts:48`](../packages/bundle/tui/src/index.ts)
 
 <a id="deepseek-aidsh-typert-loader"></a>
 

@@ -14,6 +14,10 @@ TUI bundle 挂载现有 `dsh-client-locale` 的 Host 部分，因此 Web 与 TUI
 
 终端持有的文案集中在一个小型、有类型约束的双语字典中。欢迎面板、默认 composer placeholder、编辑器 footer、Settings hub，以及语言／外观选择器都会在渲染时读取当前 locale。模型回复、工具载荷、自定义 placeholder 与第三方命令文案保留来源语言。浏览器 React runtime 和浏览器字典仍由浏览器持有。
 
+## 考虑过的替代方案
+
+没有把浏览器 React locale runtime 复制进 TUI，因为这会让 Host renderer 耦合 client connection 与 UI slot 服务，却仍然无法提供终端原生控件。也没有另建 TUI 专用偏好文件，因为 Web 与终端的修改会产生漂移。仅用环境变量选择语言同样不合适，因为它不能实时切换，也不能持久化跨界面更新。
+
 ## 验证
 
 聚焦测试证明了共享 namespace mutate 和从外部发起的 locale 更新。Headless-terminal 快照固定中文 Settings hub 与附着 composer 的语言选择器。Bundle 测试要求 locale Host row 及其运行时依赖存在；package TypeScript 与仓库 graph 门禁覆盖新的依赖边。

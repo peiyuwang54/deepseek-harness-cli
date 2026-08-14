@@ -1993,6 +1993,11 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Fresh or persisted identity the root TUI Agent owns.',
         parameters: [],
       },
+      {
+        signature: 'readonly fullAccess: boolean',
+        description: 'Whether startup must pin the session to unrestricted execution before publication.',
+        parameters: [],
+      },
     ],
   },
   {

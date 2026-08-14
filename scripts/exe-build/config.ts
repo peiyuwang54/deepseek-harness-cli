@@ -8,27 +8,27 @@
 import { parseArgs } from 'node:util'
 
 /** Default Node major; SEA mode requires at least Node 22. */
-export const DEFAULT_NODE_RANGE = 'node24'
+const DEFAULT_NODE_RANGE = 'node24'
 /** Pinned for reproducible builds. */
 export const PKG_SPEC = '@yao-pkg/pkg@6.21.0'
 /** Executable output directory, relative to the repository root. */
 export const OUT_DIR = 'dist-exe'
 
 /** Platform tags shared by pkg targets and release channel names. */
-export const PLATFORMS = ['linux', 'macos'] as const
-export type Platform = (typeof PLATFORMS)[number]
+const PLATFORMS = ['linux', 'macos'] as const
+type Platform = (typeof PLATFORMS)[number]
 
 /** CPU tags shared by pkg targets and release channel names. */
-export const ARCHES = ['x64', 'arm64'] as const
-export type Arch = (typeof ARCHES)[number]
+const ARCHES = ['x64', 'arm64'] as const
+type Arch = (typeof ARCHES)[number]
 
 /** Whether a string is a supported platform tag. */
-export function isPlatform(value: string): value is Platform {
+function isPlatform(value: string): value is Platform {
   return (PLATFORMS as readonly string[]).includes(value)
 }
 
 /** Whether a string is a supported CPU tag. */
-export function isArch(value: string): value is Arch {
+function isArch(value: string): value is Arch {
   return (ARCHES as readonly string[]).includes(value)
 }
 

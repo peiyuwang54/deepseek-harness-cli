@@ -48,7 +48,8 @@ def rendered_tui(data):
     # contain the entire viewport.
     return (
         complete_tui_frame(data)
-        and b"HARNESS" in data
+        and b"DeepSeek" in data
+        and b"Harness CLI" in data
         and b"main-session-" in data
         and b"dsh" in data
     )
@@ -1066,9 +1067,10 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       expect(stdout).toContain("name: '@deepseek-ai/dsh-tui-app'")
       expect(stdout).toContain("name: '@deepseek-ai/dsh-tui/prompt'")
       expect(stdout).toContain("name: '@deepseek-ai/dsh-client-ui-theme'")
+      expect(stdout).toContain("name: '@deepseek-ai/dsh-client-locale'")
       expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-host-/)
       expect(stdout).not.toContain("name: '@deepseek-ai/dsh-web-app'")
-      expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-client-(?!ui-theme')/)
+      expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-client-(?!(?:ui-theme|locale)')/)
     }, 30_000)
 
     it('composes the profile user layer and a --patch overlay in order', async () => {

@@ -14,6 +14,10 @@ The TUI bundle mounts the existing Host half of `dsh-client-locale`, so Web and 
 
 Terminal-owned copy lives in a small typed bilingual dictionary. The welcome dashboard, default composer placeholder, editor footer, Settings hub, and language/appearance selectors read the current locale at render time. Model responses, tool payloads, custom placeholders, and third-party command text stay in their source language. The browser React runtime and dictionaries remain browser-owned.
 
+## Alternatives considered
+
+Copying the browser React locale runtime into the TUI was rejected because it would couple the Host renderer to client connection and UI-slot services without providing terminal-native controls. A TUI-only preference file was rejected because Web and terminal changes would drift. An environment-only language flag was also rejected because it would not support live switching or durable cross-surface updates.
+
 ## Verification
 
 Focused tests prove the shared namespace mutation and an externally initiated locale update. Headless-terminal snapshots pin the Chinese Settings hub and the composer-attached language selector. The bundle test requires the locale Host row and its runtime dependency; package TypeScript and repository graph gates cover the new dependency edge.

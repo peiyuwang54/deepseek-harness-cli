@@ -2886,7 +2886,7 @@ export interface TuiThemeConfig {
 
 ## `@deepseek-ai/dsh-tui-app`
 
-需要：`tuiStartup` · `agentDefaultModel` · `agentPresets` · `agents` · `sessions` · `approval` · `commands` · `userQuestions` · `tools` · `llm` · `systemPrompt` · `tokenMeter` · `tuiPrompt`
+需要：`tuiStartup` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `agents` · `sessions` · `approval` · `commands` · `userQuestions` · `tools` · `llm` · `systemPrompt` · `tokenMeter` · `tuiPrompt`
 
 ```ts config-catalog
 /** Renderer presentation settings; session identity belongs to `tuiStartup`. */
@@ -2895,7 +2895,7 @@ export type Config = TuiConfig
 
 依赖：[`TuiConfig`](../packages/ui/tui/src/index.ts)
 
-来源：[`packages/bundle/tui/src/index.ts:47`](../packages/bundle/tui/src/index.ts)
+来源：[`packages/bundle/tui/src/index.ts:48`](../packages/bundle/tui/src/index.ts)
 
 <a id="deepseek-aidsh-typert-loader"></a>
 

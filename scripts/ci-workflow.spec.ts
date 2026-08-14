@@ -235,6 +235,37 @@ describe('E2B e2e workflow', () => {
   })
 })
 
+describe('Real-API e2e workflow', () => {
+  it('is manual-only and fails loud before running the live suite', () => {
+    const workflow = loadWorkflow('.github/workflows/e2e.yml')
+    expect(workflow.on).toEqual({ workflow_dispatch: null })
+    expect(workflow.concurrency).toMatchObject({
+      'cancel-in-progress': true,
+    })
+    if (!isRecord(workflow.jobs) || !isRecord(workflow.jobs.e2e) || !Array.isArray(workflow.jobs.e2e.steps)) {
+      throw new TypeError('Real-API e2e workflow must define the e2e job steps')
+    }
+    expect(workflow.jobs.e2e.if).toBeUndefined()
+
+    const steps = workflow.jobs.e2e.steps.filter(isRecord)
+    const preflight = steps.find(step => step.name === 'Preflight (require DEEPSEEK_API_KEY)')
+    const e2e = steps.find(step => step.name === 'E2E tests (real DeepSeek API)')
+
+    expect(preflight).toMatchObject({
+      env: { DEEPSEEK_API_KEY: '${{ secrets.DEEPSEEK_API_KEY_EXTERNAL }}' },
+    })
+    expect(preflight?.run).toContain('Configure the repo secret DEEPSEEK_API_KEY_EXTERNAL.')
+    expect(e2e).toMatchObject({
+      env: {
+        DEEPSEEK_API_KEY: '${{ secrets.DEEPSEEK_API_KEY_EXTERNAL }}',
+        DEEPSEEK_BASE_URL: 'https://api.deepseek.com',
+        DSH_EXAMPLE_MODE: 'lib',
+      },
+      run: 'pnpm run test:e2e',
+    })
+  })
+})
+
 describe('Python release workflows', () => {
   it('keeps complete wheel validation separate from protected public publication', () => {
     const workflow = loadWorkflow('.github/workflows/python-release.yml')

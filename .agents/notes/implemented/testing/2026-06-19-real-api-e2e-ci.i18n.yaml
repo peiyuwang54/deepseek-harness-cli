@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/testing/2026-06-19-real-api-e2e-ci.md
-2026-06-19-real-api-e2e-ci.md: feb5d83f087f66dfec7e1540f6b32e33656409d4
-2026-06-19-real-api-e2e-ci.zh.md: 073490af82ec45aa47e88b5318cd1f0e0f2472b5
+2026-06-19-real-api-e2e-ci.md: f1c3d5996673793c8af116be68b81322b73efd61
+2026-06-19-real-api-e2e-ci.zh.md: 9c470e698245dad312a0bbe90c5df65b4bf8ec84

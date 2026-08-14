@@ -1,7 +1,7 @@
 terminal 92x32 buffer=normal length=32 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor hidden column=6 viewportRow=4 bufferRow=4
+cursor visible column=6 viewportRow=4 bufferRow=4
 buffer
 0| "                                                                                            "
 1| "  Resume session                                                                            "

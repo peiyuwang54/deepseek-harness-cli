@@ -1,13 +1,14 @@
 terminal 96x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor hidden column=8 viewportRow=24 bufferRow=24
+cursor visible column=8 viewportRow=25 bufferRow=25
 buffer
-0| "  ╭─ DeepSeek Harness CLI ───────────────────────────────────────────────────────────────────╮"
+0| "  ╭─ DeepSeek Harness CLI v0.1.0 ────────────────────────────────────────────────────────────╮"
   style 2-3 dim
   style 5-12 fg=bright-magenta bold
   style 14-24 bold
-  style 26-93 dim
+  style 26-31 dim
+  style 33-93 dim
 1| "  │            Welcome back!             │ What's new                                        │"
   style 2-2 dim
   style 15-27 bold
@@ -101,21 +102,21 @@ buffer
   style 0-95 dim
 21| "/permissions workspace-write                                                                    "
   style 0-27 dim
-22| <blank>
-23| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
+22-23| <blank>
+24| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
   style 0-95 dim
-24| "│ dsh > Describe a task, @ a file, or / for commands                                           │"
+25| "│ dsh > Describe a task, @ a file, or / for commands                                           │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
   style 6-51 dim
   style 95-95 dim
-25| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+26| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-95 dim
-26| "/workspace/project (tui-staging)              idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+27| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
-  style 46-49 dim
+  style 44-49 dim
   style 52-76 dim
   style 79-83 dim
   style 86-95 dim
-27-35| <blank>
+28-35| <blank>

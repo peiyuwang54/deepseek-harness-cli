@@ -1,11 +1,12 @@
 terminal 96x24 buffer=alternate length=24 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH session reference"
-cursor hidden column=8 viewportRow=21 bufferRow=21
+cursor visible column=8 viewportRow=21 bufferRow=21
 buffer
-0| " DEEPSEEK HARNESS"
+0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
+  style 18-23 dim
 1| " Session reference snapshot."
   style 1-27 dim
 2| " target-session"
@@ -33,8 +34,8 @@ buffer
   style 95-95 dim
 22| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-95 dim
-23| "/workspace/project                                                     idle  mock [alt+m]  ↑0 ↓0"
+23| "/workspace/project                                                   ▸ idle  mock [alt+m]  ↑0 ↓0"
   style 0-17 fg=bright-magenta bold
-  style 71-74 dim
+  style 69-74 dim
   style 77-88 dim
   style 91-95 dim

@@ -34,6 +34,8 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 
 富文本输出保持终端原生，而不是导入 Web React tree。pi-tui 的 GFM renderer 持有标题、强调、链接、嵌套／任务列表、引用、表格与代码围栏；一个窄范围 highlighter 把 `diff`/`patch` 元数据、hunk、删除和新增映射到工具 diff 卡片共用的语义 palette。同一路径的相邻 hunk 形成一个可见分组。KaTeX 排版、获取 Markdown 图像、Shiki token 着色、复制控件与水平滚动器仍是明确的浏览器差异，而不是终端包中的隐藏依赖。
 
+欢迎态与紧凑态的产品名旁都会渲染包的基础语义版本，避免维护第二份手写版本源。纯净零状态不再分配空 transcript viewport，而是使用固定的两行 composer 间距，避免把输入框固定到终端底部。编辑器默认公开 pi-tui 的真实硬件 cursor marker，光标形状与闪烁由终端控制。Reasoning 默认隐藏，注入上下文卡片折叠为单行详情入口，不再泄露正文预览。Footer 的 `▸`／`▾` 鼠标目标会共同驱动既有 reasoning 与工具／上下文可见性状态；Ctrl+O、Ctrl+R 和 `/details` 仍保留为相互独立的无障碍控制入口。
+
 ## 参考与来源边界
 
 我们研究了 Gemini CLI 与 OpenAI Codex 的进程模式分离、终端输入路由、已提交／实时渲染、审批、恢复、headless 输出纪律与 PTY 测试。它们的 Apache-2.0 许可证允许带署名复用，但本实现没有复制任一仓库的源码。官方 Claude Code 与检查过的第三方源码重建均为 all-rights-reserved；这里只考虑高层可观察行为，没有复制代码或非平凡表达。`@earendil-works/pi-tui` 仍是显式依赖，并带有本地兼容 patch 与生成的第三方声明。

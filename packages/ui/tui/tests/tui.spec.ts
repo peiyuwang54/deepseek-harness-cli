@@ -235,7 +235,7 @@ describe('TUI config', () => {
     expect(resolveTuiConfig(undefined)).toEqual({
       fullscreen: true,
       mouse: true,
-      showReasoning: true,
+      showReasoning: false,
       maxToolOutputLines: 6,
       maxDiffEditLength: 1000,
       maxQuestionOptions: 8,
@@ -250,12 +250,12 @@ describe('TUI config', () => {
       fileSearchMaxResults: 20,
       fileSearchMaxEntries: 10_000,
       fileSearchExcludedDirectories: ['.git', 'node_modules'],
-      showHardwareCursor: false,
+      showHardwareCursor: true,
       theme: {
         color: true,
         truecolor: false,
         leftPrompt: '${cwd}${git/worktree}',
-        rightPrompt: '${status}${model}${token_meter/cache_hit_rate}${context}${queued}',
+        rightPrompt: '${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}',
         inputPrompt: '${symbol} ${indicator}',
         inputPlaceholder: 'Describe a task, @ a file, or / for commands',
       },
@@ -264,7 +264,7 @@ describe('TUI config', () => {
     expect(resolveTuiConfig({
       fullscreen: false,
       mouse: false,
-      showReasoning: false,
+      showReasoning: true,
       maxToolOutputLines: 2,
       maxDiffEditLength: 12,
       maxQuestionOptions: 3,
@@ -279,13 +279,13 @@ describe('TUI config', () => {
       fileSearchMaxResults: 7,
       fileSearchMaxEntries: 123,
       fileSearchExcludedDirectories: ['.git', 'generated'],
-      showHardwareCursor: true,
+      showHardwareCursor: false,
       theme: { color: false, truecolor: true },
       title: 'DSH',
     })).toEqual({
       fullscreen: false,
       mouse: false,
-      showReasoning: false,
+      showReasoning: true,
       maxToolOutputLines: 2,
       maxDiffEditLength: 12,
       maxQuestionOptions: 3,
@@ -300,12 +300,12 @@ describe('TUI config', () => {
       fileSearchMaxResults: 7,
       fileSearchMaxEntries: 123,
       fileSearchExcludedDirectories: ['.git', 'generated'],
-      showHardwareCursor: true,
+      showHardwareCursor: false,
       theme: {
         color: false,
         truecolor: true,
         leftPrompt: '${cwd}${git/worktree}',
-        rightPrompt: '${status}${model}${token_meter/cache_hit_rate}${context}${queued}',
+        rightPrompt: '${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}',
         inputPrompt: '${symbol} ${indicator}',
         inputPlaceholder: 'Describe a task, @ a file, or / for commands',
       },
@@ -1880,7 +1880,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('DEEPSEEK')
     expect(result.terminal.output).toContain('Coding agent ready.')
     expect(result.terminal.output).toContain('restored prompt')
-    expect(result.terminal.output).toContain('restored thought')
+    expect(result.terminal.output).not.toContain('restored thought')
     expect(result.terminal.output).toContain('restored answer')
     expect(result.terminal.output).toContain('write tests')
     expect(result.terminal.output).toContain('/opt (tui-staging)')
@@ -1998,9 +1998,10 @@ describe('pi-tui chat lifecycle and transcript', () => {
       chunk: { type: 'usage', usage: { inputTokens: 1, outputTokens: 2 } },
     })
     await tick()
-    expect(result.terminal.output).toContain('live thought')
+    expect(result.terminal.output).not.toContain('live thought')
     result.terminal.send('\x12')
     await tick()
+    expect(result.terminal.output).toContain('live thought')
     appendAssistant(
       result.session,
       [{ type: 'text', text: 'final live answer' }],
@@ -2015,15 +2016,12 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('steering note')
     expect(result.terminal.output).toContain('user context')
     expect(result.terminal.output).toContain('Context · workspace-context')
-    // The redundant `system-reminder` frame element is dropped: the source label
-    // already names the context, so the card body starts at the instruction text.
-    expect(result.terminal.output).toContain('Additional instructions from: nested/AGENTS.md')
-    expect(result.terminal.output).toContain('Render XML context clearly.')
-    // A one-line frame has no open/close line pair to strip, so its text renders as
-    // the prose it is. The card no longer parses context, so a character reference
-    // stays literal instead of expanding to the control character it names — which
-    // is why the expanded-C1 escaping the parser needed is no longer reachable here.
-    expect(result.terminal.output).toContain('&#155;')
+    // Injected context defaults to a compact disclosure instead of filling the
+    // transcript; its content remains available through the details affordance.
+    expect(result.terminal.output).toContain('▸ 3 lines hidden')
+    expect(result.terminal.output).not.toContain('Additional instructions from: nested/AGENTS.md')
+    expect(result.terminal.output).not.toContain('Render XML context clearly.')
+    expect(result.terminal.output).not.toContain('&#155;')
     expect(result.terminal.output).not.toContain('\u009b')
     expect(result.terminal.output).toContain('Context · goal') // goal-sourced injected context labels by kind
     expect(result.terminal.output).toContain('Turn cancelled')
@@ -2054,8 +2052,8 @@ describe('pi-tui chat lifecycle and transcript', () => {
 
   it('folds an injected-context card by default and expands it with Ctrl+O', async () => {
     const result = await setup()
-    // A reminder body past the default 6-line budget so the collapsed card shows
-    // the expand marker and hides a middle line until Ctrl+O.
+    // The collapsed card shows only one disclosure row, hiding every injected
+    // instruction until Ctrl+O explicitly expands the details.
     const instructions = Array.from({ length: 10 }, (_, index) => `instruction line ${index}`).join('\n')
     result.session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: `<system-reminder>\n${instructions}\n</system-reminder>` }],
@@ -2064,11 +2062,11 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await tick()
 
     // The redundant `system-reminder` frame element is dropped; the card is
-    // collapsed by default with the shared Ctrl+O expand marker.
+    // collapsed by default with the shared details/Ctrl+O expand marker.
     expect(result.terminal.output).toContain('Context · workspace-context')
     expect(result.terminal.output).not.toContain('system-reminder')
-    expect(result.terminal.output).toContain('lines (Ctrl+O to expand)')
-    expect(result.terminal.output).toContain('instruction line 0')
+    expect(result.terminal.output).toContain('▸ 10 lines hidden · click details or Ctrl+O to expand')
+    expect(result.terminal.output).not.toContain('instruction line 0')
     expect(result.terminal.output).not.toContain('instruction line 5')
 
     result.terminal.send('\x0f')
@@ -2077,12 +2075,12 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('instruction line 5')
 
     // Third state: tool cards hide; a context card is injected instructions,
-    // not tool traffic, so it stays visible at its collapsed preview.
+    // not tool traffic, so it stays visible as its one-line disclosure.
     result.terminal.send('\x0f')
     await tick()
     expect(result.terminal.output).toContain('Tool cards hidden.')
     // A repaint proves the context card SURVIVES the hidden phase: injected
-    // instructions are not tool traffic, so they stay at the collapsed preview.
+    // instructions are not tool traffic, so they stay at the collapsed disclosure.
     result.terminal.send('\x0c')
     await tick()
     const hidden = result.terminal.output.slice(result.terminal.output.lastIndexOf('\x1b[2J'))
@@ -2110,10 +2108,12 @@ describe('pi-tui chat lifecycle and transcript', () => {
     }), { surfaceOp: 'append' })
     await tick()
     expect(result.terminal.output).toContain('Context · plain-context')
-    expect(result.terminal.output).toContain('plain reminder text, no tags')
+    expect(result.terminal.output).toContain('▸ 1 line hidden')
+    expect(result.terminal.output).not.toContain('plain reminder text, no tags')
     expect(result.terminal.output).toContain('Context · empty-context')
-    expect(result.terminal.output).toContain('<available_skills>')
-    expect(result.terminal.output).toContain('kept prose line')
+    expect(result.terminal.output).toContain('▸ 3 lines hidden')
+    expect(result.terminal.output).not.toContain('<available_skills>')
+    expect(result.terminal.output).not.toContain('kept prose line')
     // Ctrl+L invalidates the mounted tree, exercising the card's invalidate hook.
     result.terminal.send('\x0c')
     await tick()
@@ -2138,7 +2138,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
 
     expect(result.terminal.output).toContain('Context · prose-context')
     expect(result.terminal.output).not.toContain('<system-reminder>')
-    expect(result.terminal.output).toContain('lines (Ctrl+O to expand)')
+    expect(result.terminal.output).toContain('lines hidden · click details or Ctrl+O to expand')
     expect(result.terminal.output).not.toContain('prose line 5')
 
     result.terminal.send('\x0f')
@@ -3218,7 +3218,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await tick()
 
     expect(result.terminal.output).toContain('untitled')
-    expect(result.terminal.output).toContain('unset (effort unset; reasoning blocks shown)')
+    expect(result.terminal.output).toContain('unset (effort unset; reasoning blocks hidden)')
     // The /status invocation's command/run lands directly on the empty log — no turn wraps it.
     expect(result.terminal.output).toContain('idle · 1 event · 0 turns · 0 steps · 0 tool calls')
     expect(result.terminal.output).toContain('n/a (0 read + 0 write)')
@@ -3306,7 +3306,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.terminal.send('\x1b[B')
     result.terminal.send('\t')
     await tick()
-    expect(result.terminal.output).toContain('Reasoning blocks hidden.')
+    expect(result.terminal.output).toContain('Reasoning blocks shown.')
 
     // Enter closes without further changes.
     const entered = result.terminal.output.length
@@ -3317,7 +3317,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     // Esc and Ctrl+C also close; the reopened dialog shows the live values.
     const reopened = await open()
     expect(result.terminal.output.slice(reopened)).toContain('collapsed')
-    expect(result.terminal.output.slice(reopened)).toContain('hidden')
+    expect(result.terminal.output.slice(reopened)).toContain('shown')
     result.terminal.send('\x1b')
     await tick()
     const ctrlCOutput = await open()
@@ -3974,6 +3974,48 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await terminal.dispose()
   })
 
+  it('keeps injected context and reasoning folded until the prompt details target is clicked', async () => {
+    const terminal = new HeadlessTerminal(96, 28)
+    const result = await createTuiTestHarness(terminal, vi.fn(), {
+      config: { fullscreen: true, mouse: true },
+      beforeMount(session) {
+        session.append('user/message', createUserMessage({
+          content: [{ type: 'text', text: '<system-reminder>\nprivate context line\n</system-reminder>' }],
+          source: { kind: 'plugin', plugin: 'workspace-context' },
+        }), { surfaceOp: 'append' })
+        appendAssistant(session, [
+          { type: 'reasoning', text: 'private reasoning line' },
+          { type: 'text', text: 'visible answer' },
+        ])
+      },
+    })
+    await terminal.waitForFrame()
+    const before = await terminal.snapshot()
+    expect(before).toContain('▸ idle')
+    expect(before).toContain('▸ 1 line hidden')
+    expect(before).not.toContain('private context line')
+    expect(before).not.toContain('private reasoning line')
+    expect(before).toContain('visible answer')
+
+    const rowLine = before.split('\n').find(line => line.includes('▸ idle'))
+    expect(rowLine).toBeDefined()
+    const separator = rowLine?.indexOf('| ') ?? -1
+    const row = Number(rowLine?.slice(0, separator).replace('~', '')) + 1
+    const text = JSON.parse(rowLine?.slice(separator + 2) ?? '""') as string
+    const detailsOffset = text.indexOf('▸ idle')
+    const column = visibleWidth(text.slice(0, detailsOffset)) + 1
+    terminal.send(`\x1b[<0;${column};${row}M`)
+
+    await vi.waitFor(async () => {
+      const expanded = await terminal.snapshot()
+      expect(expanded).toContain('▾ idle')
+      expect(expanded).toContain('private context line')
+      expect(expanded).toContain('private reasoning line')
+    })
+    await disposeTuiTestHarness(result)
+    await terminal.dispose()
+  })
+
   it('keeps a long full-screen transcript scrollable and resumes following at the tail', async () => {
     const terminal = new HeadlessTerminal(72, 24)
     const result = await createTuiTestHarness(terminal, vi.fn(), {
@@ -4215,7 +4257,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.terminal.send('/status')
     result.terminal.send('\r')
     await tick()
-    expect(result.terminal.output).toContain('beta/b1 (effort max; reasoning blocks shown)')
+    expect(result.terminal.output).toContain('beta/b1 (effort max; reasoning blocks hidden)')
 
     const assembly = await result.ctx.systemPrompt.assemble(assembleContextFor(result.agent))
     expect(assembly.variables).toMatchObject({ provider: 'beta', model: 'b1' })

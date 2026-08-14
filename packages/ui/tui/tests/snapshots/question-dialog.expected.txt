@@ -1,39 +1,37 @@
-terminal 56x20 buffer=normal length=22 base=2 viewport=2
+terminal 56x20 buffer=normal length=23 base=3 viewport=3
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor hidden column=56 viewportRow=19 bufferRow=21
+cursor hidden column=56 viewportRow=19 bufferRow=22
 viewport
-2| " main-session"
-  style 1-12 dim
-3| <blank>
-4| "  Which advanced TUI states belong in the required      "
-5| "  matrix?                                               "
-6| "                                                        "
-7| "  Review the complete plan including every required     "
-8| "  checkpoint including every required checkpoint        "
-9| "  including every required checkpoint including every   "
-10| "  required checkpoint including every required          "
-11| "  checkpoint including every required checkpoint        "
-12| "  including every required checkpoint including every   "
-13| "  required checkpoint including every required          "
-14| "  … lines 1-10/13 • PgUp/PgDn                           "
+3-4| <blank>
+5| "  Which advanced TUI states belong in the required      "
+6| "  matrix?                                               "
+7| "                                                        "
+8| "  Review the complete plan including every required     "
+9| "  checkpoint including every required checkpoint        "
+10| "  including every required checkpoint including every   "
+11| "  required checkpoint including every required          "
+12| "  checkpoint including every required checkpoint        "
+13| "  including every required checkpoint including every   "
+14| "  required checkpoint including every required          "
+15| "  … lines 1-10/13 • PgUp/PgDn                           "
   style 2-28 dim
-15| "   › 1. [ ] Code Mode                                   "
+16| "   › 1. [ ] Code Mode                                   "
   style 2-20 fg=bright-magenta bold
-16| "            run_code programs and captured output with  "
+17| "            run_code programs and captured output with  "
   style 12-53 dim
-17| "  … lines 1-2/12 • PgUp/PgDn                            "
+18| "  … lines 1-2/12 • PgUp/PgDn                            "
   style 2-27 dim
-18| "  ↓ 3 more                                              "
+19| "  ↓ 3 more                                              "
   style 2-9 dim
-19| "  ↑↓ Tab Sp ↵Esc                                        "
+20| "  ↑↓ Tab Sp ↵Esc                                        "
   style 2-15 dim
-20| " dsh > Describe a task, @ a file, or / for commands     "
+21| " dsh > Describe a task, @ a file, or / for commands     "
   style 1-3 fg=bright-magenta bold
   style 5-50 dim
-21| "/wor  idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-3 fg=bright-magenta bold
-  style 6-9 dim
+22| "/w  ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-1 fg=bright-magenta bold
+  style 4-9 dim
   style 12-36 dim
   style 39-43 dim
   style 46-55 dim

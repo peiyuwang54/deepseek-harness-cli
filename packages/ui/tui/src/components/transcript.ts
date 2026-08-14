@@ -5,6 +5,7 @@
  * @module @deepseek-ai/dsh-tui/components/transcript
  */
 
+import { createRequire } from 'node:module'
 import {
   Container,
   Markdown,
@@ -37,6 +38,10 @@ import {
   type StepPosition,
   type StepTimingTracker,
 } from '../chat/timing.ts'
+
+const packageMetadata = createRequire(import.meta.url)('@deepseek-ai/dsh-tui/package.json') as { version: string }
+const packageVersion = packageMetadata.version
+const displayVersion = packageVersion.replace(/-.+$/u, '')
 
 /** Concatenate the text of every block of one type, separated by blank lines. */
 function textBlocks(content: readonly ContentBlock[], type: 'text' | 'reasoning'): string {
@@ -233,7 +238,7 @@ export class HeaderComponent implements Component {
     const name = this.gradient
       ? this.palette.bold(gradientText('DEEPSEEK'))
       : this.palette.bold(this.palette.accent('DEEPSEEK'))
-    const title = `${name} ${this.palette.bold('HARNESS')}`
+    const title = `${name} ${this.palette.bold('HARNESS')} ${this.palette.dim(`v${displayVersion}`)}`
     const detail = displayText(this.agent.session.id)
     const subtitle = this.subtitle()
     const lines = [
@@ -302,7 +307,7 @@ export class HeaderComponent implements Component {
       right.push('', this.palette.italic(this.palette.dim('/help for commands · @ to attach a file')))
 
       const bodyRows = Math.max(left.length, right.length)
-      const topLabel = ` ${product} ${this.palette.bold('Harness CLI')} `
+      const topLabel = ` ${product} ${this.palette.bold('Harness CLI')} ${this.palette.dim(`v${displayVersion}`)} `
       lines.push(`${this.palette.dim('╭─')}${topLabel}${this.palette.dim('─'.repeat(Math.max(0, contentWidth - visibleWidth(topLabel) - 3)))}${this.palette.dim('╮')}`)
       for (let index = 0; index < bodyRows; index += 1) {
         const leftLine = fitLine(left[index] ?? '', leftWidth)
@@ -313,7 +318,7 @@ export class HeaderComponent implements Component {
     } else {
       const mark = rows >= 20 ? DEEPSEEK_MARK_COMPACT : []
       for (const line of mark) lines.push(centered(this.palette.bold(this.palette.text(line)), contentWidth))
-      lines.push(centered(`${product} ${this.palette.bold('Harness CLI')}`, contentWidth))
+      lines.push(centered(`${product} ${this.palette.bold('Harness CLI')} ${this.palette.dim(`v${displayVersion}`)}`, contentWidth))
       const subtitle = this.subtitle()
       if (subtitle !== undefined) lines.push(centered(this.palette.dim(displayInline(subtitle)), contentWidth))
       lines.push(centered(`${displayInline(state.preset)} · ${displayInline(state.model)} · ${displayInline(state.permission)}`, contentWidth))
@@ -932,7 +937,6 @@ export class ContextCardComponent extends CachedCardComponent {
   constructor(
     private readonly label: string,
     private readonly text: string,
-    private readonly maxOutputLines: number,
     private readonly palette: Palette,
   ) {
     super()
@@ -957,7 +961,7 @@ export class ContextCardComponent extends CachedCardComponent {
       .map(line => line === '' ? line : this.palette.dim(displayText(line)))
     const visibleBody = this.expanded
       ? body
-      : preview(body, this.maxOutputLines, count => this.palette.dim(`… +${count} lines (Ctrl+O to expand)`))
+      : [this.palette.dim(`▸ ${body.length} ${body.length === 1 ? 'line' : 'lines'} hidden · click details or Ctrl+O to expand`)]
     return [header, ...new Text(visibleBody.join('\n'), 0, 0).render(width)]
   }
 }

@@ -1,11 +1,12 @@
 terminal 72x28 buffer=normal length=28 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=active
 title "DSH snapshot"
-cursor hidden column=8 viewportRow=12 bufferRow=12
+cursor visible column=8 viewportRow=13 bufferRow=13
 buffer
-0| " DEEPSEEK HARNESS"
+0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
+  style 18-23 dim
 1| " Snapshot agent ready."
   style 1-21 dim
 2| " main-session"
@@ -21,22 +22,22 @@ buffer
   style 0-8 fg=bright-magenta bold underline
 9| "Model wait 0.0s                                                         "
   style 0-14 dim
-10| <blank>
-11| "╭ Message ─────────────────────────────────────────────────────────────╮"
+10-11| <blank>
+12| "╭ Message ─────────────────────────────────────────────────────────────╮"
   style 0-71 fg=bright-magenta
-12| "│ dsh   Describe a task, @ a file, or / for commands                   │"
+13| "│ dsh   Describe a task, @ a file, or / for commands                   │"
   style 0-0 fg=bright-magenta
   style 2-4 fg=bright-magenta bold
   style 7-51 dim
   style 71-71 fg=bright-magenta
-13| "╰────────────────────── Enter steer · Esc cancel · Shift+Enter newline ╯"
+14| "╰────────────────────── Enter steer · Esc cancel · Shift+Enter newline ╯"
   style 0-71 fg=bright-magenta
-14| "/wor  running  deepseek-v4-flash [alt+m]  ↑7.7k ↓32 cache 0%  0% context"
-  style 0-3 fg=bright-magenta bold
-  style 6-12 dim
+15| "/w  ▸ running  deepseek-v4-flash [alt+m]  ↑7.7k ↓32 cache 0%  0% context"
+  style 0-1 fg=bright-magenta bold
+  style 4-12 dim
   style 15-39 dim
   style 42-59 dim
   style 62-71 dim
-15| "1 turn · 1 step | LLM 1.6s | TTFT avg 1.2s · 83 tok/s | Cache hit 0% |…"
+16| "1 turn · 1 step | LLM 1.6s | TTFT avg 1.2s · 83 tok/s | Cache hit 0% |…"
   style 0-69 dim
-16-27| <blank>
+17-27| <blank>

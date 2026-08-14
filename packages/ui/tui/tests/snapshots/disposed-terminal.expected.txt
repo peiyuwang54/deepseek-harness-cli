@@ -1,11 +1,12 @@
-terminal 92x32 buffer=normal length=54 base=22 viewport=22
+terminal 92x32 buffer=normal length=55 base=23 viewport=23
 lifecycle started=1 stopped=1 progress=inactive
 title "DSH snapshot"
-cursor visible column=0 viewportRow=31 bufferRow=53
+cursor visible column=0 viewportRow=31 bufferRow=54
 buffer
-0| " DEEPSEEK HARNESS"
+0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
+  style 18-23 dim
 1| " Snapshot agent ready."
   style 1-21 dim
 2| " main-session"
@@ -90,23 +91,23 @@ buffer
 45| <blank>
 46| "Unknown command: /unknown-advanced-command                                                  "
   style 0-41 fg=yellow
-47| <blank>
-48| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
+47-48| <blank>
+49| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
   style 0-91 dim
-49| "│ dsh > Describe a task, @ a file, or / for commands                                       │"
+50| "│ dsh > Describe a task, @ a file, or / for commands                                       │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
   style 6-51 dim
   style 91-91 dim
-50| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+51| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-91 dim
-51| "/workspace/project (tui-staging)          idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+52| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
-  style 42-45 dim
+  style 40-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-52| "                                      1 turn · 1 step"
+53| "                                      1 turn · 1 step"
   style 38-52 dim
-53| <blank>
+54| <blank>

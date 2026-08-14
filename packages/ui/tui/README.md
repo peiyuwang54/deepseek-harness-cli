@@ -8,9 +8,9 @@ The implemented [shipped TUI CLI Agent Note](../../../.agents/notes/implemented/
 
 Interactive terminals on macOS, Linux, and Windows are supported. Windows uses pi-tui's native console VT-input handling and ConPTY process verification.
 
-The renderer uses the alternate screen by default, so the conversation, overlays, and growing multiline editor occupy one full terminal viewport and the previous shell screen returns on exit. Shift/Alt+Enter inserts a newline, bracketed paste retains multiline content, and `@` completion remains available at every cursor position. Page Up/Down or the mouse wheel scrolls the transcript; reaching the newest page resumes following live output. Application mouse tracking also makes the model badge clickable and lets the wheel navigate an open selector. Hold the terminal's selection modifier (normally Shift) when selecting text for the clipboard. `fullscreen: false` restores inline scrollback rendering and leaves mouse handling to the terminal.
+The renderer uses the alternate screen by default, so the conversation, overlays, and growing multiline editor occupy one full terminal viewport and the previous shell screen returns on exit. The focused editor exposes a real hardware caret at pi-tui's cursor marker; its blink rate and shape follow the terminal's own preference. Shift/Alt+Enter inserts a newline, bracketed paste retains multiline content, and `@` completion remains available at every cursor position. Page Up/Down or the mouse wheel scrolls the transcript; reaching the newest page resumes following live output. Application mouse tracking also makes the model badge and footer disclosure glyph clickable and lets the wheel navigate an open selector. Hold the terminal's selection modifier (normally Shift) when selecting text for the clipboard. `fullscreen: false` restores inline scrollback rendering and leaves mouse handling to the terminal.
 
-A fresh, empty session opens on an adaptive, Claude Code-inspired split welcome card without copying Claude product text or assets. Its left column says welcome, renders the repository's first-party DeepSeek SVG whale as a Braille-cell raster, and projects the composed agent preset, selected model, effective permission preset or approval policy, and workspace. The whale inherits the terminal foreground, so it is black on a light terminal and remains legible on a dark one. The right column lists real Harness entry points and up to two newest sessions from the optional session-query service. Short terminals use a reduced whale, compact status line, and action row. The card contracts to the ordinary transcript header as soon as the first turn starts. Recent-session rows are informative rather than clickable; `/resume` owns searching and validation.
+A fresh, empty session opens on an adaptive, Claude Code-inspired split welcome card without copying Claude product text or assets. Its title includes the base package version, while its left column says welcome, renders the repository's first-party DeepSeek SVG whale as a Braille-cell raster, and projects the composed agent preset, selected model, effective permission preset or approval policy, and workspace. The whale inherits the terminal foreground, so it is black on a light terminal and remains legible on a dark one. The right column lists real Harness entry points and up to two newest sessions from the optional session-query service. Short terminals use a reduced whale, compact status line, and action row. Two quiet rows separate the card from the composer instead of stretching an empty transcript to the bottom of the screen. The card contracts to the ordinary transcript header as soon as the first turn starts. Recent-session rows are informative rather than clickable; `/resume` owns searching and validation.
 
 The prompt is a full-width framed multiline editor. Its footer changes between idle send hints and running steer/cancel hints, while the first bottom status bar keeps workspace, branch, compact token usage, agent state, model, and context pressure separate from editable text. A second, centered statistics strip reuses Web's whole-log `sessionStats` projection and token accounting to show turns/steps, summed LLM and tool time, average TTFT, decode throughput, cache hit rate, and billed input/output tokens. Missing facts drop out instead of becoming invented zeros, and a narrow terminal elides the single line rather than wrapping it into the editor. These labels are projections of current services and session events, not independent UI settings.
 
@@ -56,6 +56,8 @@ The exit line is launcher-owned, not configurable. A launcher provides `TUI_GOOD
 
 An embedding can seed a session by setting the direct renderer's `initialSkill` config or providing `INITIAL_SKILL_KEY` on the boot context. Once the chat is live, the TUI auto-invokes that skill exactly as a typed `/skill:<name>`; the embedding must omit it on resumed sessions when it wants fresh-session-only behavior. The shipped `dsh tui` launcher sets no initial skill, and an unknown name is reported as a notice.
 
+Reasoning is hidden on first render. Injected-context cards use a single `N lines hidden` disclosure row rather than showing a head/tail preview. The footer's clickable `▸` glyph expands context, tool cards, and reasoning together and changes to `▾`; clicking again restores the compact view. Ctrl+O, Ctrl+R, and `/details` remain the keyboard and command equivalents.
+
 ## Config
 
 `TuiConfig` is the presentation schema accepted by the shipped bundle's `tui-runner` row and by the direct renderer. The direct `@deepseek-ai/dsh-tui` plugin's full `Config` adds `welcome`, `sessionId`, and `initialSkill`; the bundle runner deliberately exposes only `TuiConfig`, while `tuiStartup` owns its session identity and the shipped launcher supplies no initial skill.
@@ -67,7 +69,7 @@ An embedding can seed a session by setting the direct renderer's `initialSkill` 
 | `initialSkill` | direct renderer only | — | Skill auto-invoked once the chat is live |
 | `fullscreen` | `TuiConfig` | `true` | Use the alternate screen and restore the previous shell screen on exit |
 | `mouse` | `TuiConfig` | `true` | Enable transcript/selector wheel input and model-badge clicks in full-screen mode |
-| `showReasoning` | `TuiConfig` | `true` | Render reasoning blocks |
+| `showReasoning` | `TuiConfig` | `false` | Render reasoning blocks initially; hidden by default and expandable through details |
 | `maxToolOutputLines` | `TuiConfig` | `6` | Output lines retained across a collapsed tool card's head/tail preview |
 | `maxDiffEditLength` | `TuiConfig` | `1000` | Maximum added and removed lines explored for an exact diff before whole-side fallback |
 | `maxQuestionOptions` | `TuiConfig` | `8` | Maximum option blocks visible at once; the row bound may reduce this further |
@@ -82,11 +84,11 @@ An embedding can seed a session by setting the direct renderer's `initialSkill` 
 | `fileSearchMaxResults` | `TuiConfig` | `20` | Maximum file and directory candidates shown for one `@` query |
 | `fileSearchMaxEntries` | `TuiConfig` | `10000` | Maximum paths retained in the bounded workspace index used by bare fuzzy queries |
 | `fileSearchExcludedDirectories` | `TuiConfig` | `['.git', 'node_modules']` | Directory basenames omitted from traversal and direct completion |
-| `showHardwareCursor` | `TuiConfig` | `false` | Show the hardware cursor at pi-tui's IME marker |
+| `showHardwareCursor` | `TuiConfig` | `true` | Show the hardware cursor at pi-tui's IME marker; blink/style follow the terminal |
 | `theme.color` | `TuiConfig` | `true` | Apply the built-in ANSI palette (see [Color](#color)) |
 | `theme.truecolor` | `TuiConfig` | process entry detects `COLORTERM`; direct runtime calls use `false` | Enable the 24-bit startup gradient and DeepSeek brand ink |
 | `theme.leftPrompt` | `TuiConfig` | `${cwd}${git/worktree}` | Left-aligned bottom status template |
-| `theme.rightPrompt` | `TuiConfig` | `${status}${model}${token_meter/cache_hit_rate}${context}${queued}` | Right-aligned bottom status template |
+| `theme.rightPrompt` | `TuiConfig` | `${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}` | Right-aligned bottom status template |
 | `theme.inputPrompt` | `TuiConfig` | `${symbol} ${indicator}` | Editor first-line prefix template |
 | `theme.inputPlaceholder` | `TuiConfig` | `Describe a task, @ a file, or / for commands` | Empty-editor placeholder |
 | `title` | `TuiConfig` | `DeepSeek Harness` | Product suffix for the terminal window title |

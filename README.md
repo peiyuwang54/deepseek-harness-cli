@@ -95,7 +95,7 @@ The terminal is an independent presentation layer over the same Agent, Session, 
 
 | Area | Implemented behavior |
 |---|---|
-| Conversation | Streaming GFM Markdown, semantic `diff`/`patch` fences, reasoning blocks, retry state, timing, and persisted-history replay |
+| Conversation | Streaming GFM Markdown, semantic `diff`/`patch` fences, default-folded context/reasoning with clickable disclosure, retry state, timing, and persisted-history replay |
 | Tools | Terminal, diff, and generic cards; pending/success/error state; collapsed, expanded, and hidden views |
 | Human in the loop | Exact-Agent FIFO approval prompts plus structured single-select, multi-select, and custom questions |
 | Models | `/model`, Alt+M, and a clickable model badge; catalog filtering, exact provider/model selection, and reasoning effort |
@@ -232,7 +232,7 @@ See the [CLI behavior reference](apps/cli/reference/README.md), the [TUI rendere
 The CLI/TUI baseline was locally validated before publication with the following results:
 
 - Full workspace build completed.
-- TUI unit and Agent/Session integration suites: 269 tests passed.
+- TUI unit and Agent/Session integration suites: 270 tests passed.
 - Keyless terminal-state snapshots: 33 snapshots passed.
 - TUI bundle and CLI argument suites: 26 tests passed across 5 files.
 - Built CLI E2E suite: 21 tests passed, including real POSIX PTY launches of `apps/cli/lib/bin.js` that prove Loader activation, synchronized frames, active raw mode, `Ctrl+D` exit, workspace process handoff with environment rebasing, and complete termios restoration.

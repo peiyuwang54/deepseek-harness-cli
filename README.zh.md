@@ -95,7 +95,7 @@ Web 界面仍然是独立的 `base + web-app` profile。增加 TUI 不会让 Web
 
 | 领域 | 已实现行为 |
 |---|---|
-| 对话 | 流式 GFM Markdown、语义化 `diff`/`patch` 围栏、reasoning 块、重试状态、计时和持久历史回放 |
+| 对话 | 流式 GFM Markdown、语义化 `diff`/`patch` 围栏、默认折叠且可点击展开的上下文／reasoning、重试状态、计时和持久历史回放 |
 | 工具 | 终端、diff 和通用卡片；进行中／成功／错误状态；折叠、展开和隐藏视图 |
 | 人机协同 | 严格限定 Agent 的 FIFO 审批提示，以及结构化单选、多选和自定义问题 |
 | 模型 | `/model`、Alt+M 与可点击模型栏；catalog 过滤、精确 provider/model 选择和 reasoning effort |
@@ -232,7 +232,7 @@ pnpm dsh tui --patch ./extra.cordis.yml --resume <session-id>
 CLI/TUI baseline 在发布前已完成本地验证，结果如下：
 
 - 完整 workspace build 完成。
-- TUI 单元与 Agent/Session 集成套件：269 项测试通过。
+- TUI 单元与 Agent/Session 集成套件：270 项测试通过。
 - 无密钥终端状态快照：33 项快照通过。
 - TUI bundle 与 CLI 参数套件：5 个文件内的 26 项测试通过。
 - Built CLI E2E 套件：21 项测试通过；其中包含真实 POSIX PTY 启动 `apps/cli/lib/bin.js`，证明 Loader 激活、同步帧、运行中 raw mode、`Ctrl+D` 退出、工作区进程交接与环境重建，以及完整 termios 恢复。

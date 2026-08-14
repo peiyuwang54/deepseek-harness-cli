@@ -545,6 +545,7 @@ export function createTuiChat(
     ctx.tuiPrompt.register('preset'),
     ctx.tuiPrompt.register('model'),
     ctx.tuiPrompt.register('permission'),
+    ctx.tuiPrompt.register('details'),
     ctx.tuiPrompt.register('context'),
     ctx.tuiPrompt.register('queued'),
     ctx.tuiPrompt.register('symbol', palette.bold(palette.accent('dsh'))),
@@ -552,11 +553,11 @@ export function createTuiChat(
   ]
   const [
     cwdValue, gitValue, tokenValue, statusValue, presetValue, modelValue,
-    permissionValue, contextValue, queuedValue, symbolValue, indicatorValue,
+    permissionValue, detailsValue, contextValue, queuedValue, symbolValue, indicatorValue,
   ] = promptValues
   /* v8 ignore next -- the fixed built-in registration list always supplies each handle. */
   if (cwdValue === undefined || gitValue === undefined || tokenValue === undefined || statusValue === undefined
-    || presetValue === undefined || modelValue === undefined || permissionValue === undefined
+    || presetValue === undefined || modelValue === undefined || permissionValue === undefined || detailsValue === undefined
     || contextValue === undefined || queuedValue === undefined || symbolValue === undefined || indicatorValue === undefined) {
     throw new Error('TUI prompt built-ins failed to initialize')
   }
@@ -571,6 +572,8 @@ export function createTuiChat(
     presetValue.set(`  ${palette.dim(displayInlineText(currentPreset()))}`)
     modelValue.set(`  ${palette.dim(`${modelLabel} [alt+m]`)}`)
     permissionValue.set(`  ${palette.dim(displayInlineText(currentPermission()))}`)
+    const detailsExpanded = toolsVisibility === 'expanded' && showReasoning
+    detailsValue.set(palette.dim(`${detailsExpanded ? '▾' : '▸'} `))
     tokenValue.set(`  ${palette.dim(rate === undefined ? usage : `${usage} cache ${rate}%`)}`)
     const contextWindow = modelController.contextWindow()
     contextValue.set(contextWindow === undefined ? undefined : `  ${palette.dim(
@@ -625,18 +628,23 @@ export function createTuiChat(
   const transcriptViewport = new TranscriptViewport(chat, (width) => {
     if (!resolved.fullscreen) return undefined
     const reservedRows = header.render(width).length
-      + 1
+      + 2
       + todoContainer.render(width).length
       + compactionStatusLine.render(width).length
       + promptContext.render(width).length
       + sessionStatsLine.render(width).length
       + questionContainer.render(width).length
       + editor.render(width).length
-    return Math.max(0, runtime.terminal.rows - reservedRows)
+    const available = Math.max(0, runtime.terminal.rows - reservedRows)
+    // A pristine welcome dashboard is already the complete zero-state body.
+    // The fixed two-row gap below is the complete pristine transcript area;
+    // do not stretch it to the screen bottom before the first conversation.
+    if (isZeroState() && chat.children.length === 0) return 0
+    return available
   })
   ui.addChild(header)
   ui.addChild(transcriptViewport)
-  ui.addChild(new Spacer(1))
+  ui.addChild(new Spacer(2))
   todoContainer.addChild(todo)
   ui.addChild(todoContainer)
   ui.addChild(compactionStatusLine)
@@ -1026,7 +1034,7 @@ export function createTuiChat(
             const label = typeof labelled.plugin === 'string' ? labelled.plugin
               : typeof labelled.kind === 'string' ? labelled.kind
                 : 'context'
-            const card = new ContextCardComponent(label, text, resolved.maxToolOutputLines, palette)
+            const card = new ContextCardComponent(label, text, palette)
             card.setExpanded(toolsVisibility === 'expanded')
             contextCards.add(card)
             chat.addChild(new Spacer(1))
@@ -1448,7 +1456,7 @@ export function createTuiChat(
   // same reason.
   ui.queryTerminalColorScheme({ timeoutMs: 2000 }).catch(() => {})
 
-  const setToolsVisibility = (next: ToolCardVisibility): void => {
+  const setToolsVisibility = (next: ToolCardVisibility, announce = true): void => {
     toolsVisibility = next
     for (const card of allToolCards) card.setVisibility(toolsVisibility)
     // Context cards carry injected instructions rather than tool traffic, so
@@ -1457,7 +1465,9 @@ export function createTuiChat(
     // Hidden mode folds each turn's steps into one assistant message; other
     // modes restore the per-step Assistant headers.
     for (const turn of assistantSteps.keys()) applyTurnFolding(turn)
-    appendNotice(toolsVisibility === 'hidden' ? 'Tool cards hidden.' : `Tool and context cards ${toolsVisibility}.`)
+    if (announce) {
+      appendNotice(toolsVisibility === 'hidden' ? 'Tool cards hidden.' : `Tool and context cards ${toolsVisibility}.`)
+    }
   }
 
   const toggleTools = (): void => {
@@ -1467,13 +1477,23 @@ export function createTuiChat(
       : toolsVisibility === 'expanded' ? 'hidden' : 'collapsed')
   }
 
-  const setReasoning = (show: boolean): void => {
+  const setReasoning = (show: boolean, announce = true): void => {
     showReasoning = show
     rebuildPreservingStreaming()
-    appendNotice(`Reasoning blocks ${showReasoning ? 'shown' : 'hidden'}.`)
+    if (announce) appendNotice(`Reasoning blocks ${showReasoning ? 'shown' : 'hidden'}.`)
   }
 
   const toggleReasoning = (): void => { setReasoning(!showReasoning) }
+
+  /** Disclosure action shared by the prompt's mouse target and its glyph. */
+  const toggleAllDetails = (): void => {
+    const expand = toolsVisibility !== 'expanded' || !showReasoning
+    setReasoning(expand, false)
+    setToolsVisibility(expand ? 'expanded' : 'collapsed', false)
+    appendNotice(expand
+      ? 'Context, tool, and reasoning details expanded.'
+      : 'Context and tool details collapsed; reasoning hidden.')
+  }
 
   // The selector and the argument grammar mutate the same closure state the
   // Ctrl+O cycle and Ctrl+R toggle drive, so every entry converges.
@@ -2272,14 +2292,14 @@ export function createTuiChat(
     })
   }
 
-  const modelMouseTarget = (): { row: number; firstColumn: number; lastColumn: number } | undefined => {
+  const promptMouseTarget = (valueName: string): { row: number; firstColumn: number; lastColumn: number } | undefined => {
     if (!resolved.fullscreen || !resolved.mouse) return undefined
     const width = runtime.terminal.columns
-    const model = ctx.tuiPrompt.get('model')
-    if (model === undefined) return undefined
-    const marker = '\ue000'.repeat(Math.max(1, visibleWidth(model)))
-    const markerValue = (valueName: string): string | undefined =>
-      valueName === 'model' ? marker : ctx.tuiPrompt.get(valueName)
+    const value = ctx.tuiPrompt.get(valueName)
+    if (value === undefined) return undefined
+    const marker = '\ue000'.repeat(Math.max(1, visibleWidth(value)))
+    const markerValue = (name: string): string | undefined =>
+      name === valueName ? marker : ctx.tuiPrompt.get(name)
     const right = truncateToWidth(renderTuiPromptTemplate(
       parseTuiPromptTemplate(displayInlineText(resolved.theme.rightPrompt)),
       markerValue,
@@ -2303,7 +2323,7 @@ export function createTuiChat(
     const viewportTop = Math.max(0, allRows.length - runtime.terminal.rows)
     const row = absoluteRow - viewportTop + 1
     if (row < 1 || row > runtime.terminal.rows) return undefined
-    return { row, firstColumn, lastColumn: firstColumn + visibleWidth(model) - 1 }
+    return { row, firstColumn, lastColumn: firstColumn + visibleWidth(value) - 1 }
   }
 
   const removeInputListener = ui.addInputListener((data) => {
@@ -2317,10 +2337,15 @@ export function createTuiChat(
         requestRender()
         return { consume: true }
       }
-      const target = modelMouseTarget()
+      const detailsTarget = promptMouseTarget('details')
+      const modelTarget = promptMouseTarget('model')
       if (!overlayManager.hasActiveOverlay() && mouseEvent.action === 'press' && mouseEvent.button === 'left'
-        && target !== undefined && mouseEvent.row === target.row
-        && mouseEvent.column >= target.firstColumn && mouseEvent.column <= target.lastColumn) {
+        && detailsTarget !== undefined && mouseEvent.row === detailsTarget.row
+        && mouseEvent.column >= detailsTarget.firstColumn && mouseEvent.column <= detailsTarget.lastColumn) {
+        toggleAllDetails()
+      } else if (!overlayManager.hasActiveOverlay() && mouseEvent.action === 'press' && mouseEvent.button === 'left'
+        && modelTarget !== undefined && mouseEvent.row === modelTarget.row
+        && mouseEvent.column >= modelTarget.firstColumn && mouseEvent.column <= modelTarget.lastColumn) {
         modelController.queueModelCommand('')
       }
       return { consume: true }

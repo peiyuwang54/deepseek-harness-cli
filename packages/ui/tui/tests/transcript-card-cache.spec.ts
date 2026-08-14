@@ -54,14 +54,17 @@ describe('transcript card render caches', () => {
   })
 
   it('context card: caches by width and drops on setExpanded and invalidate()', () => {
-    const card = new ContextCardComponent('workspace-context', 'line one\nline two', 10, palette)
+    const card = new ContextCardComponent('workspace-context', 'line one\nline two', palette)
     const first = card.render(80)
     expect(card.render(80)).toBe(first)
+    expect(first.join('\n')).toContain('▸ 2 lines hidden')
+    expect(first.join('\n')).not.toContain('line one')
 
     // Same width across the mutation, so a hit here would prove a kept cache.
     card.setExpanded(true)
     const expanded = card.render(80)
     expect(expanded).not.toBe(first)
+    expect(expanded.join('\n')).toContain('line one')
     expect(card.render(80)).toBe(expanded)
 
     card.invalidate()

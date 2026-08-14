@@ -702,6 +702,12 @@ describe('TUI terminal-state snapshots', () => {
     await vi.waitFor(async () => {
       expect(await harness.terminal.snapshot()).toContain('Refactor terminal welcome screen')
     })
+    const frame = await harness.terminal.snapshot()
+    expect(frame).toContain('DeepSeek Harness CLI v0.1.0')
+    expect(frame).toContain('cursor visible')
+    const shortcutRow = Number(/^([0-9]+)\| .*Enter sends/mu.exec(frame)?.[1])
+    const composerRow = Number(/^([0-9]+)\| "╭ Message/mu.exec(frame)?.[1])
+    expect(composerRow - shortcutRow).toBe(3)
     await checkpoint('welcome-dashboard', harness.terminal)
     await disposeSnapshot(harness)
   })

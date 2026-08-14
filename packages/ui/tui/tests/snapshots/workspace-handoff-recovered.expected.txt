@@ -1,11 +1,12 @@
 terminal 92x32 buffer=alternate length=32 base=0 viewport=0
 lifecycle started=2 stopped=1 progress=inactive
 title "DSH snapshot"
-cursor hidden column=8 viewportRow=29 bufferRow=29
+cursor visible column=8 viewportRow=29 bufferRow=29
 buffer
-0| " DEEPSEEK HARNESS"
+0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
+  style 18-23 dim
 1| " Snapshot agent ready."
   style 1-21 dim
 2| " main-session"
@@ -23,10 +24,10 @@ buffer
   style 91-91 dim
 30| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-91 dim
-31| "/workspace/project (tui-staging)          idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+31| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
-  style 42-45 dim
+  style 40-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim

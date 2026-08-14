@@ -11,24 +11,25 @@ viewport
 2| " main-session"
   style 1-12 dim
 3| <blank>
-4| "/workspace/project (tui-staging)  deepseek-v4-flash [alt"
-  style 0-17 fg=bright-magenta bold
-  style 18-31 dim
-  style 34-55 dim
-5| "                                                        "
-6| "  Question 1/1 (1 unanswered) · Confirm                 "
+4| "                                                        "
+5| "  Question 1/1 (1 unanswered) · Confirm                 "
   style 2-38 dim
-7| "  Continue with this change?                            "
-8| "                                                        "
-9| "   › 1. Proceed                                         "
+6| "  Continue with this change?                            "
+7| "                                                        "
+8| "   › 1. Proceed                                         "
   style 2-14 fg=bright-magenta bold
-10| "        Apply the proposed change                       "
+9| "        Apply the proposed change                       "
   style 8-32 dim
-11| "  Tab custom answer • Enter submit • Esc interrupt      "
+10| "  Tab custom answer • Enter submit • Esc interrupt      "
   style 2-49 dim
-12| "                                                        "
-13| " dsh >                                                  "
+11| "                                                        "
+12| " dsh > Describe a task, @ a file, or / for commands     "
   style 1-3 fg=bright-magenta bold
-  style 5-6 dim
-  style 7-7 inverse
+  style 5-50 dim
+13| "/wor  idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-3 fg=bright-magenta bold
+  style 6-9 dim
+  style 12-36 dim
+  style 39-43 dim
+  style 46-55 dim
 14-19| <blank>

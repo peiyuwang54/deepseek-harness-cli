@@ -1,7 +1,7 @@
-terminal 44x18 buffer=normal length=24 base=6 viewport=6
+terminal 44x18 buffer=normal length=26 base=8 viewport=8
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor hidden column=7 viewportRow=17 bufferRow=23
+cursor hidden column=8 viewportRow=15 bufferRow=23
 buffer
 0| " DEEPSEEK HARNESS"
   style 1-8 fg=bright-magenta bold
@@ -41,11 +41,16 @@ buffer
 20| "… earlier context was compacted …           "
   style 0-32 dim
 21| <blank>
-22| "/workspace/project (tui-staging)  deepseek-v"
-  style 0-17 fg=bright-magenta bold
-  style 18-31 dim
-  style 34-43 dim
-23| " dsh >                                      "
-  style 1-3 fg=bright-magenta bold
-  style 5-6 dim
-  style 7-7 inverse
+22| "╭ Message ─────────────────────────────────╮"
+  style 0-43 dim
+23| "│ dsh > Describe a task, @ a file, or / for│"
+  style 0-0 dim
+  style 2-4 fg=bright-magenta bold
+  style 6-43 dim
+24| "╰ Enter send · Shift+Enter newline · / comm╯"
+  style 0-42 dim
+25| "idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% c"
+  style 0-3 dim
+  style 6-30 dim
+  style 33-37 dim
+  style 40-43 dim

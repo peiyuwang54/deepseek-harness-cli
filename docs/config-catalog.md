@@ -2873,7 +2873,7 @@ export interface TuiThemeConfig {
   rightPrompt?: string
   /** Template used as the editor's first-line prefix. */
   inputPrompt?: string
-  /** Static placeholder shown in an empty editor while the agent is running. */
+  /** Static placeholder shown in an empty editor. */
   inputPlaceholder?: string
 }
 ```

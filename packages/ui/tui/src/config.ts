@@ -24,7 +24,7 @@ export interface TuiThemeConfig {
   rightPrompt?: string
   /** Template used as the editor's first-line prefix. */
   inputPrompt?: string
-  /** Static placeholder shown in an empty editor while the agent is running. */
+  /** Static placeholder shown in an empty editor. */
   inputPlaceholder?: string
 }
 
@@ -93,10 +93,10 @@ const showHardwareCursorSchema = z.boolean().default(false)
 const colorSchema = z.boolean().default(true)
 // No default: an unset value auto-detects truecolor from COLORTERM in `apply`.
 const truecolorSchema = z.boolean()
-const DEFAULT_LEFT_PROMPT = '${cwd}${git/worktree}${model}${token_meter/cache_hit_rate}${context}'
-const DEFAULT_RIGHT_PROMPT = '${queued}'
+const DEFAULT_LEFT_PROMPT = '${cwd}${git/worktree}'
+const DEFAULT_RIGHT_PROMPT = '${status}${model}${token_meter/cache_hit_rate}${context}${queued}'
 const DEFAULT_INPUT_PROMPT = '${symbol} ${indicator}'
-const DEFAULT_INPUT_PLACEHOLDER = 'press enter to steer and esc to cancel'
+const DEFAULT_INPUT_PLACEHOLDER = 'Describe a task, @ a file, or / for commands'
 const TuiThemeConfigSchema: z<TuiThemeConfig> = z.object({
   color: colorSchema,
   truecolor: truecolorSchema,

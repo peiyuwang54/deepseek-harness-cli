@@ -1,7 +1,7 @@
 terminal 96x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=active
 title "DSH snapshot"
-cursor hidden column=7 viewportRow=18 bufferRow=18
+cursor hidden column=8 viewportRow=18 bufferRow=18
 viewport
 0| " DEEPSEEK HARNESS"
   style 1-8 fg=bright-magenta bold
@@ -32,13 +32,20 @@ viewport
 15| "Model wait 1.0s · Thinking 2.0s                                                                 "
   style 0-30 dim
 16| <blank>
-17| "/workspace/project (tui-staging)  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+17| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
+  style 0-95 fg=bright-magenta
+18| "│ dsh ● Describe a task, @ a file, or / for commands                                           │"
+  style 0-0 fg=bright-magenta
+  style 2-4 fg=bright-magenta bold
+  style 6-51 dim
+  style 95-95 fg=bright-magenta
+19| "╰────────────────────────────────────────────── Enter steer · Esc cancel · Shift+Enter newline ╯"
+  style 0-95 fg=bright-magenta
+20| "/workspace/project (tui-staging)           running  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
-  style 34-58 dim
-  style 61-65 dim
-  style 68-77 dim
-18| " dsh ● press enter to steer and esc to cancel                                                   "
-  style 1-3 fg=bright-magenta bold
-  style 5-44 dim
-19-35| <blank>
+  style 43-49 dim
+  style 52-76 dim
+  style 79-83 dim
+  style 86-95 dim
+21-35| <blank>

@@ -11,17 +11,23 @@ buffer
 2| " main-session"
   style 1-12 dim
 3| <blank>
-4| "/workspace/project (tui-staging)  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+4| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
+  style 0-91 dim
+5| "│ dsh > Describe a task, @ a file, or / for commands                                       │"
+  style 0-0 dim
+  style 2-4 fg=bright-magenta bold
+  style 6-51 dim
+  style 91-91 dim
+6| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+  style 0-91 dim
+7| "/workspace/project (tui-staging)          idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
-  style 34-58 dim
-  style 61-65 dim
-  style 68-77 dim
-5| " dsh >                                                                                      "
-  style 1-3 fg=bright-magenta bold
-  style 5-6 dim
-  style 7-7 inverse
-6-11| <blank>
+  style 42-45 dim
+  style 48-72 dim
+  style 75-79 dim
+  style 82-91 dim
+8-11| <blank>
 12| "        ╭ Select model ────────────────────────────────────────────────────────────╮        "
   style 8-83 fg=bright-magenta
 13| "        │ > pro                                                                    │        "

@@ -69,10 +69,10 @@ export const Config: z<Config> = z.object({
   theme: z.object({
     color: z.boolean().default(true),
     truecolor: z.boolean(),
-    leftPrompt: z.string().default('${cwd}${git/worktree}${model}${token_meter/cache_hit_rate}${context}'),
-    rightPrompt: z.string().default('${queued}'),
+    leftPrompt: z.string().default('${cwd}${git/worktree}'),
+    rightPrompt: z.string().default('${status}${model}${token_meter/cache_hit_rate}${context}${queued}'),
     inputPrompt: z.string().default('${symbol} ${indicator}'),
-    inputPlaceholder: z.string().default('press enter to steer and esc to cancel'),
+    inputPlaceholder: z.string().default('Describe a task, @ a file, or / for commands'),
   }),
   title: z.string().default('DeepSeek Harness'),
 })

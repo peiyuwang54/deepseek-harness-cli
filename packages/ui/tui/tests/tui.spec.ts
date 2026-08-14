@@ -254,10 +254,10 @@ describe('TUI config', () => {
       theme: {
         color: true,
         truecolor: false,
-        leftPrompt: '${cwd}${git/worktree}${model}${token_meter/cache_hit_rate}${context}',
-        rightPrompt: '${queued}',
+        leftPrompt: '${cwd}${git/worktree}',
+        rightPrompt: '${status}${model}${token_meter/cache_hit_rate}${context}${queued}',
         inputPrompt: '${symbol} ${indicator}',
-        inputPlaceholder: 'press enter to steer and esc to cancel',
+        inputPlaceholder: 'Describe a task, @ a file, or / for commands',
       },
       title: 'DeepSeek Harness',
     })
@@ -304,10 +304,10 @@ describe('TUI config', () => {
       theme: {
         color: false,
         truecolor: true,
-        leftPrompt: '${cwd}${git/worktree}${model}${token_meter/cache_hit_rate}${context}',
-        rightPrompt: '${queued}',
+        leftPrompt: '${cwd}${git/worktree}',
+        rightPrompt: '${status}${model}${token_meter/cache_hit_rate}${context}${queued}',
         inputPrompt: '${symbol} ${indicator}',
-        inputPlaceholder: 'press enter to steer and esc to cancel',
+        inputPlaceholder: 'Describe a task, @ a file, or / for commands',
       },
       title: 'DSH',
     })
@@ -1771,6 +1771,24 @@ describe('goodbye message and /resume', () => {
 })
 
 describe('pi-tui chat lifecycle and transcript', () => {
+  it('shows the centered zero-state dashboard until the first turn begins', async () => {
+    const result = await setup({ omitInitialLifecycle: true })
+    await tick()
+    expect(result.terminal.output).toContain('Quick actions')
+    expect(result.terminal.output).toContain('Recent sessions')
+    expect(result.terminal.output).toContain('PERMISSIONS')
+    expect(result.terminal.output).toContain('╭ Message ')
+
+    result.terminal.output = ''
+    result.session.append('turn/start', { turn: 1 })
+    result.session.append('step/start', { turn: 1, step: 1 })
+    await tick()
+    expect(result.terminal.output).toContain('DEEPSEEK HARNESS')
+    expect(result.terminal.output).not.toContain('Quick actions')
+    expect(result.terminal.output).not.toContain('Recent sessions')
+    await dispose(result)
+  })
+
   it('restores durable goal phase without implying automatic continuation', async () => {
     const change: GoalSnapshotChangeMeta = {
       kind: 'goal/change',
@@ -1862,7 +1880,9 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('restored thought')
     expect(result.terminal.output).toContain('restored answer')
     expect(result.terminal.output).toContain('write tests')
-    expect(result.terminal.output).toContain('/opt (tui-staging)  deepseek-v4-flash [alt+m]  ↑1.3k ↓42')
+    expect(result.terminal.output).toContain('/opt (tui-staging)')
+    expect(result.terminal.output).toContain('↑1.3k ↓42')
+    expect(result.terminal.output).toContain('deepseek-v4-flash [alt+m]')
     expect(result.terminal.output).toContain('dsh > ')
     expect(result.terminal.output).not.toContain('main-session  deepseek-v4-flash')
     // Context resolution is async (resolveModelContext); settle before reading.
@@ -1988,7 +2008,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
       expect(result.terminal.output).toContain('final live answer')
     })
 
-    expect(result.terminal.output).toContain('press enter to steer and esc to cancel')
+    expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
     expect(result.terminal.output).toContain('steering note')
     expect(result.terminal.output).toContain('user context')
     expect(result.terminal.output).toContain('Context · workspace-context')
@@ -2221,17 +2241,18 @@ describe('pi-tui chat lifecycle and transcript', () => {
     // Running with nothing queued: the badge is absent and the editor keeps its hint.
     expect(result.terminal.output).toContain('Assistant')
     expect(result.terminal.output).toContain('Model wait 0.0s')
-    expect(result.terminal.output).toContain('press enter to steer and esc to cancel')
-    expect(result.terminal.output).not.toContain('│')
+    expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
+    expect(result.terminal.output).toContain('Enter steer · Esc cancel')
+    expect(result.terminal.output).toContain('│')
     expect(result.terminal.output).not.toContain('queued')
 
     result.terminal.output = ''
     result.terminal.send('x')
     await tick()
-    expect(result.terminal.output).not.toContain('press enter to steer and esc to cancel')
+    expect(result.terminal.output).not.toContain('Describe a task, @ a file, or / for commands')
     result.terminal.send('\x7f')
     await tick()
-    expect(result.terminal.output).toContain('press enter to steer and esc to cancel')
+    expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
 
     const submitSteering = (text: string): void => {
       result.terminal.send(text)
@@ -2283,8 +2304,8 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.terminal.output = ''
     drainSteering('second')
     await tick()
-    expect(result.terminal.output).toContain('press enter to steer and esc to cancel')
-    expect(result.terminal.output).not.toContain('│')
+    expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
+    expect(result.terminal.output).toContain('│')
     expect(result.terminal.output).not.toContain('queued')
 
     // A drain with no matching queued entry is ignored rather than underflowing.
@@ -2315,7 +2336,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.terminal.output = ''
     agentEvents(result.ctx, result.agent).emit('agent/status', { status: 'running' })
     await tick()
-    expect(result.terminal.output).not.toContain('│')
+    expect(result.terminal.output).toContain('│')
     expect(result.terminal.output).not.toContain('queued')
 
     // A cancellation discards queued steering: the badge clears without drains.
@@ -2450,8 +2471,8 @@ describe('pi-tui chat lifecycle and transcript', () => {
       agentEvents(result.ctx, result.agent).emit('agent/status', { status: 'running' })
       await tick()
       expect(result.terminal.output).not.toContain('Model wait')
-      expect(result.terminal.output).toContain('press enter to steer and esc to cancel')
-      expect(result.terminal.output).not.toContain('│')
+      expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
+      expect(result.terminal.output).toContain('│')
       expect(result.terminal.output).not.toContain('Response 1s')
 
       result.session.append('turn/start', { turn: 2 })
@@ -3019,7 +3040,9 @@ describe('pi-tui chat lifecycle and transcript', () => {
       },
     })
     await vi.waitFor(() => {
-      expect(homeResult.terminal.output).toContain('~ (tui-staging)  deepseek-v4-flash [alt+m]  ↑25k ↓10k')
+      expect(homeResult.terminal.output).toContain('~ (tui-staging)')
+      expect(homeResult.terminal.output).toContain('↑25k ↓10k')
+      expect(homeResult.terminal.output).toContain('deepseek-v4-flash [alt+m]')
     })
     await dispose(homeResult)
 
@@ -4250,7 +4273,8 @@ describe('pi-tui chat lifecycle and transcript', () => {
         })
       },
     })
-    expect(resumedDefault.terminal.output).toContain('default [alt+m]  ↑0 ↓0')
+    expect(resumedDefault.terminal.output).toContain('default [alt+m]')
+    expect(resumedDefault.terminal.output).toContain('↑0 ↓0')
     await dispose(resumedDefault)
 
     const unset = await setup({
@@ -7238,7 +7262,7 @@ describe('banner sweep reveal', () => {
     await dispose(result)
   })
 
-  it('sweeps the whole borderless banner in when no welcome is configured, ending complete', async () => {
+  it('sweeps the compact banner in when no welcome is configured, ending complete', async () => {
     const intervals = vi.spyOn(globalThis, 'setInterval')
     const cleared = vi.spyOn(globalThis, 'clearInterval')
     const result = await setup({ omitWelcome: true })
@@ -7253,9 +7277,8 @@ describe('banner sweep reveal', () => {
     expect(result.terminal.output).toContain('DEEPSEEK')
     expect(result.terminal.output).toContain('HARNESS')
     expect(result.terminal.output).toContain('main-session')
-    // Borderless: no box-drawing frame around the banner.
-    expect(result.terminal.output).not.toContain('╭')
-    expect(result.terminal.output).not.toContain('╮')
+    // The input frame is independent of the compact, borderless banner.
+    expect(result.terminal.output).toContain('╭ Message ')
     // A mid-sweep frame rendered a clipped title: `DEEPSEEK` with no `HARNESS`
     // on the same line.
     const clipped = result.terminal.output
@@ -7270,7 +7293,7 @@ describe('banner sweep reveal', () => {
     await tick()
     expect(result.terminal.output).toContain('Coding agent ready.')
     expect(result.terminal.output).toContain('DEEPSEEK')
-    expect(result.terminal.output).not.toContain('╭')
+    expect(result.terminal.output).toContain('╭ Message ')
     // No reveal frames: the banner is drawn whole from the first render, so no
     // clipped-title frame ever appears.
     const clipped = result.terminal.output

@@ -30,6 +30,9 @@ import {
   type AgentStatus,
 } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-loop'
+// Optional host composition services used only for zero-state labels.
+import type {} from '@deepseek-ai/dsh-agent-presets'
+import type {} from '@deepseek-ai/dsh-permission-presets'
 import type {} from '@deepseek-ai/dsh-token-meter'
 import type { CommandResult } from '@deepseek-ai/dsh-commands'
 import { createUserMessage, errorChain } from '@deepseek-ai/dsh-llm'
@@ -50,6 +53,7 @@ import { foldSessionTitle } from '@deepseek-ai/dsh-session-title'
 // Type import also declaration-merges the optional `sessionPersistence`
 // service onto `Context` so `ctx.get('sessionPersistence')` is typed.
 import type {} from '@deepseek-ai/dsh-session-persistence'
+import type { SessionQueryEngine } from '@deepseek-ai/dsh-session-query'
 import type { SkillRegistry } from '@deepseek-ai/dsh-skill'
 // Type import declaration-merges the `userQuestions` service onto `Context`;
 // the ask-user-question queue is registered by ./chat/questions.
@@ -104,6 +108,7 @@ import {
   ToolCardComponent,
   TodoComponent,
   UserMessageComponent,
+  type WelcomeRecentSession,
 } from './components/transcript.ts'
 import {
   compactTargetLabel,
@@ -369,6 +374,8 @@ export function createTuiChat(
     },
   })
   editor.hintPrefix = initialInputPrompt
+  editor.hint = palette.dim(displayInlineText(resolved.theme.inputPlaceholder))
+  editor.frameFooter = 'Enter send · Shift+Enter newline · / commands'
   const todo = new TodoComponent(palette)
   const compactionStatusLine = new Text('', 0, 0)
   let showReasoning = resolved.showReasoning
@@ -432,6 +439,30 @@ export function createTuiChat(
   const now = (): number => runtime.now?.() ?? Date.now()
   const agentStatus = (): AgentStatus => agent.status
   const isDisposed = (): boolean => disposed
+  const sessionQuery = (): SessionQueryEngine | undefined => {
+    const implementation = ctx.reflect._getImpl('sessionQuery', false)
+    if (implementation === undefined || implementation.fiber.state >= FIBER_FAILED) return undefined
+    return ctx.get('sessionQuery', false)
+  }
+  const isZeroState = (): boolean => !agent.session.events.some(event =>
+    event.type === 'turn/start'
+    || event.type === 'user/message'
+    || event.type === 'assistant/message'
+    || event.type === 'tool/call'
+    || event.type === 'tool/result')
+  const currentPreset = (): string =>
+    ctx.get('agentPresets')?.composedPreset(agent.ctx)
+    ?? agent.session.header.agentPreset
+    ?? 'not composed'
+  const currentPermission = (): string => {
+    const approval = ctx.get('approval')
+    const preset = ctx.get('permissionPresets')?.current(agent.session.events)
+    if (preset !== undefined) return preset
+    const approvalPolicy = approval?.overrideOf(agent.session) ?? approval?.config.policy ?? 'ask'
+    return `approval ${approvalPolicy}`
+  }
+  let recentSessions: readonly WelcomeRecentSession[] | null | undefined
+  const welcomeAbort = new AbortController()
 
   // A configured subtitle renders as a banner line; when absent, the banner has
   // no subtitle. The banner itself sweeps in on start (see startBannerReveal).
@@ -441,6 +472,14 @@ export function createTuiChat(
     () => sessionTitle ?? config.welcome,
     palette,
     resolved.theme.color && resolved.theme.truecolor,
+    () => ({
+      expanded: isZeroState(),
+      preset: currentPreset(),
+      model: target.current === undefined ? 'model unset' : compactTargetLabel(target.current),
+      permission: currentPermission(),
+      recentSessions,
+    }),
+    () => runtime.terminal.rows,
   )
   const formattedCwd = displayText(runtime.formatCwd?.(agent.session.header.cwd) ?? formatCwd(agent.session.header.cwd))
   const branch = runtime.gitBranch?.(cwd) ?? gitBranch(cwd)
@@ -448,15 +487,22 @@ export function createTuiChat(
     ctx.tuiPrompt.register('cwd', palette.bold(palette.accent(formattedCwd))),
     ctx.tuiPrompt.register('git/worktree', branch === undefined ? undefined : palette.dim(` (${displayText(branch)})`)),
     ctx.tuiPrompt.register('token_meter/cache_hit_rate'),
+    ctx.tuiPrompt.register('status'),
+    ctx.tuiPrompt.register('preset'),
     ctx.tuiPrompt.register('model'),
+    ctx.tuiPrompt.register('permission'),
     ctx.tuiPrompt.register('context'),
     ctx.tuiPrompt.register('queued'),
     ctx.tuiPrompt.register('symbol', palette.bold(palette.accent('dsh'))),
     ctx.tuiPrompt.register('indicator', palette.dim('> ')),
   ]
-  const [cwdValue, gitValue, tokenValue, modelValue, contextValue, queuedValue, symbolValue, indicatorValue] = promptValues
+  const [
+    cwdValue, gitValue, tokenValue, statusValue, presetValue, modelValue,
+    permissionValue, contextValue, queuedValue, symbolValue, indicatorValue,
+  ] = promptValues
   /* v8 ignore next -- the fixed built-in registration list always supplies each handle. */
-  if (cwdValue === undefined || gitValue === undefined || tokenValue === undefined || modelValue === undefined
+  if (cwdValue === undefined || gitValue === undefined || tokenValue === undefined || statusValue === undefined
+    || presetValue === undefined || modelValue === undefined || permissionValue === undefined
     || contextValue === undefined || queuedValue === undefined || symbolValue === undefined || indicatorValue === undefined) {
     throw new Error('TUI prompt built-ins failed to initialize')
   }
@@ -467,8 +513,11 @@ export function createTuiChat(
     const rate = cacheHitRate(tokens)
     const usage = `↑${formatTokens(tokens.input)} ↓${formatTokens(tokens.output)}`
     const modelLabel = displayText(target.current === undefined ? 'model unset' : compactTargetLabel(target.current))
+    statusValue.set(palette.dim(agent.status))
+    presetValue.set(`  ${palette.dim(displayInlineText(currentPreset()))}`)
     modelValue.set(`  ${palette.dim(`${modelLabel} [alt+m]`)}`)
-    tokenValue.set(`  ${palette.dim(rate === undefined ? usage : `${usage}  cache ${rate}%`)}`)
+    permissionValue.set(`  ${palette.dim(displayInlineText(currentPermission()))}`)
+    tokenValue.set(`  ${palette.dim(rate === undefined ? usage : `${usage} cache ${rate}%`)}`)
     const contextWindow = modelController.contextWindow()
     contextValue.set(contextWindow === undefined ? undefined : `  ${palette.dim(
       `${Math.min(100, Math.round(ctx.tokenMeter.measure(agent.session).totalTokens / contextWindow * 100))}% context`,
@@ -536,9 +585,9 @@ export function createTuiChat(
   todoContainer.addChild(todo)
   ui.addChild(todoContainer)
   ui.addChild(compactionStatusLine)
-  ui.addChild(promptContext)
   ui.addChild(questionContainer)
   ui.addChild(editor)
+  ui.addChild(promptContext)
   ui.setFocus(editor)
   const updateTerminalTitle = (): void => {
     runtime.terminal.setTitle(displayText(
@@ -561,6 +610,41 @@ export function createTuiChat(
   // built-ins are already covered by the state-change callers of requestRender.
   const disposePromptChanges = ctx.tuiPrompt.subscribe(requestRender)
 
+  const loadWelcomeSessions = async (): Promise<void> => {
+    const query = sessionQuery()
+    if (query === undefined) {
+      recentSessions = null
+      requestRender()
+      return
+    }
+    try {
+      const records = (await query.listSessions(welcomeAbort.signal))
+        .filter(record => record.header.id !== agent.session.id)
+        .slice(0, 3)
+      const titles = await query.readTitleSnapshots(
+        records.map(record => record.header.id),
+        welcomeAbort.signal,
+      )
+      if (welcomeAbort.signal.aborted || disposed) return
+      recentSessions = records.map((record, index): WelcomeRecentSession => {
+        const result = titles[index]
+        const title = result?.status === 'fulfilled'
+          ? result.value.title?.title ?? record.header.id
+          : record.header.id
+        return {
+          title,
+          workspace: runtime.formatCwd?.(record.header.cwd) ?? formatCwd(record.header.cwd),
+          date: new Date(record.header.createdAt).toISOString().slice(0, 10),
+        }
+      })
+      requestRender()
+    } catch (error: unknown) {
+      if (welcomeAbort.signal.aborted || disposed) return
+      recentSessions = null
+      ctx.logger.warn(`ui-tui: could not load welcome session history: ${errorChain(error)}`)
+      requestRender()
+    }
+  }
   const appendNotice = (message: string, kind: 'info' | 'warning' | 'error' = 'info'): void => {
     const color = kind === 'error' ? palette.error : kind === 'warning' ? palette.warning : palette.dim
     chat.addChild(new Spacer(1))
@@ -603,12 +687,14 @@ export function createTuiChat(
         resolved.questionDialogWidth,
         resolved.questionDialogMaxHeight,
       )
+      editor.frameVisible = false
       questionContainer.clear()
       questionContainer.addChild(modal)
       ui.setFocus(component)
       return {
         hide(): void {
           questionContainer.clear()
+          editor.frameVisible = true
           ui.setFocus(editor)
         },
       }
@@ -636,6 +722,7 @@ export function createTuiChat(
     isDisposed,
   })
   updatePromptValues()
+  if (isZeroState()) void loadWelcomeSessions()
 
   const renderStatus = (): void => {
     streaming?.invalidate()
@@ -689,7 +776,10 @@ export function createTuiChat(
     else if (fadeOutGlyph !== undefined) beginFadeOut(fadeOutGlyph)
     else clearTurnStatus()
     editor.borderColor = status === 'running' ? text => palette.accent(text) : text => palette.dim(text)
-    editor.hint = status === 'running' ? palette.dim(displayInlineText(resolved.theme.inputPlaceholder)) : undefined
+    editor.hint = palette.dim(displayInlineText(resolved.theme.inputPlaceholder))
+    editor.frameFooter = status === 'running'
+      ? 'Enter steer · Esc cancel · Shift+Enter newline'
+      : 'Enter send · Shift+Enter newline · / commands'
     if (status === 'running') {
       const turn = priorTurn ?? openTurn(agent.session.events)
       const running: RunningStatus = {
@@ -1191,14 +1281,9 @@ export function createTuiChat(
     resolved,
     palette,
     overlayManager,
-    // Optional and independently mounted. Cordis transiently leaves this sibling
-    // non-ACTIVE during command callbacks, so the non-strict read is intentional;
-    // terminal fiber states still exclude failed, closing, and closed providers.
-    sessionQuery: () => {
-      const implementation = ctx.reflect._getImpl('sessionQuery', false)
-      if (implementation === undefined || implementation.fiber.state >= FIBER_FAILED) return undefined
-      return ctx.get('sessionQuery', false)
-    },
+    // Optional and independently mounted. The shared non-strict resolver also
+    // feeds the welcome dashboard without capturing a transient sibling state.
+    sessionQuery,
     appendNotice,
     requestRender,
     isDisposed,
@@ -1210,6 +1295,7 @@ export function createTuiChat(
   const shutdown = (exitProcess: boolean): Promise<void> => {
     shuttingDown ??= (async () => {
       disposed = true
+      welcomeAbort.abort(new Error('TUI disposed'))
       overlayManager.beginShutdown()
       modelController.resetContextResolution()
       settingsController.clearOverlays()
@@ -1882,26 +1968,27 @@ export function createTuiChat(
     const model = ctx.tuiPrompt.get('model')
     if (model === undefined) return undefined
     const marker = '\ue000'.repeat(Math.max(1, visibleWidth(model)))
-    const right = truncateToWidth(
-      renderTuiPromptTemplate(
-        parseTuiPromptTemplate(displayInlineText(resolved.theme.rightPrompt)),
-        valueName => ctx.tuiPrompt.get(valueName),
-      ),
-      width,
-      '',
-    )
+    const markerValue = (valueName: string): string | undefined =>
+      valueName === 'model' ? marker : ctx.tuiPrompt.get(valueName)
+    const right = truncateToWidth(renderTuiPromptTemplate(
+      parseTuiPromptTemplate(displayInlineText(resolved.theme.rightPrompt)),
+      markerValue,
+    ), width, '')
     const rightWidth = visibleWidth(right)
     const leftCapacity = Math.max(0, width - rightWidth - (rightWidth === 0 ? 0 : 2))
-    const targetLine = truncateToWidth(renderTuiPromptTemplate(
+    const left = truncateToWidth(renderTuiPromptTemplate(
       parseTuiPromptTemplate(displayInlineText(resolved.theme.leftPrompt)),
-      valueName => valueName === 'model' ? marker : ctx.tuiPrompt.get(valueName),
+      markerValue,
     ), leftCapacity, '')
+    const targetLine = rightWidth === 0
+      ? left
+      : `${left}${' '.repeat(Math.max(0, width - visibleWidth(left) - rightWidth))}${right}`
     const markerIndex = targetLine.indexOf(marker)
     if (markerIndex < 0) return undefined
     const firstColumn = visibleWidth(targetLine.slice(0, markerIndex)) + 1
     const allRows = ui.render(width)
-    const trailingRows = questionContainer.render(width).length + editor.render(width).length
-    const absoluteRow = allRows.length - trailingRows - 1
+    const statusRows = promptContext.render(width).length
+    const absoluteRow = allRows.length - statusRows
     const viewportTop = Math.max(0, allRows.length - runtime.terminal.rows)
     const row = absoluteRow - viewportTop + 1
     if (row < 1 || row > runtime.terminal.rows) return undefined

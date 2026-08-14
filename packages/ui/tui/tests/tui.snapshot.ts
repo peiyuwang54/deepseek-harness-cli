@@ -41,6 +41,7 @@ const CHECKPOINTS = [
   'retry-recovered',
   'retry-cancelled',
   'retry-exhausted',
+  'welcome-dashboard',
   'banner-gradient',
   'file-autocomplete',
   'session-title-autocomplete',
@@ -569,6 +570,36 @@ describe('TUI terminal-state snapshots', () => {
   it('paints the startup banner product name in the DeepSeek brand gradient on truecolor terminals', async () => {
     const harness = await setupSnapshot({ config: { theme: { truecolor: true } } })
     await checkpoint('banner-gradient', harness.terminal, {}, true)
+    await disposeSnapshot(harness)
+  })
+
+  it('pins the fresh-session welcome dashboard with recent sessions and framed input', async () => {
+    const recent = [
+      { version: 0, id: SessionId('recent-refactor'), createdAt: Date.parse('2026-08-13T09:30:00Z'), cwd: '/workspace/project' },
+      { version: 0, id: SessionId('recent-tests'), createdAt: Date.parse('2026-08-12T14:00:00Z'), cwd: '/workspace/other' },
+    ]
+    const titled = (meta: typeof recent[number], title: string): { meta: typeof meta; events: SessionEvent[] } => ({
+      meta,
+      events: [{
+        type: 'session/title',
+        seq: 0,
+        time: meta.createdAt,
+        data: { title, messageSeqs: [], source: { kind: 'fallback' } },
+      }],
+    })
+    const harness = await setupSnapshot({
+      omitInitialLifecycle: true,
+      sessionPersistence: {
+        list: () => Promise.resolve(recent),
+        load: id => Promise.resolve(id === recent[0]?.id
+          ? titled(recent[0], 'Refactor terminal welcome screen')
+          : titled(recent[1]!, 'Stabilize CLI release tests')),
+      },
+    }, { columns: 104, rows: 38 })
+    await vi.waitFor(async () => {
+      expect(await harness.terminal.snapshot()).toContain('Refactor terminal welcome screen')
+    })
+    await checkpoint('welcome-dashboard', harness.terminal)
     await disposeSnapshot(harness)
   })
 

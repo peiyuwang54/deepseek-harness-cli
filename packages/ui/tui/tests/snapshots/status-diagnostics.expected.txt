@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=38 base=6 viewport=6
+terminal 92x32 buffer=normal length=40 base=8 viewport=8
 lifecycle started=1 stopped=0 progress=inactive
 title "Inspect session diagnostics — DSH snapshot"
-cursor hidden column=7 viewportRow=31 bufferRow=37
+cursor hidden column=8 viewportRow=29 bufferRow=37
 buffer
 0| " DEEPSEEK HARNESS"
   style 1-8 fg=bright-magenta bold
@@ -95,13 +95,19 @@ buffer
   style 0-15 fg=bright-magenta bold
 34| "read, write                                                                                 "
 35| <blank>
-36| "/workspace/project (tui-staging)  deepseek-v4-pro [alt+m]  ↑1.3k ↓340  cache 67%  33% contex"
+36| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
+  style 0-91 dim
+37| "│ dsh > Describe a task, @ a file, or / for commands                                       │"
+  style 0-0 dim
+  style 2-4 fg=bright-magenta bold
+  style 6-51 dim
+  style 91-91 dim
+38| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+  style 0-91 dim
+39| "/workspace/project (tui-st  idle  deepseek-v4-pro [alt+m]  ↑1.3k ↓340 cache 67%  33% context"
   style 0-17 fg=bright-magenta bold
-  style 18-31 dim
+  style 18-25 dim
+  style 28-31 dim
   style 34-56 dim
-  style 59-79 dim
-  style 82-91 dim
-37| " dsh >                                                                                      "
-  style 1-3 fg=bright-magenta bold
-  style 5-6 dim
-  style 7-7 inverse
+  style 59-78 dim
+  style 81-91 dim

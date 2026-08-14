@@ -20,27 +20,48 @@ import { isAppendSurfaceEvent, isReplacementSurfaceEvent } from '@deepseek-ai/ds
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
 
-/** Editor that shows a placeholder without making it editable content. */
+/** Editor with a full terminal frame and a placeholder that never becomes editable content. */
 export class HintEditor extends Editor {
   /** Placeholder shown in the empty input row; `undefined` hides it. */
   hint: string | undefined
   /** Prompt text rendered before the placeholder, matching the live prompt width. */
   hintPrefix = ''
+  /** Short label embedded in the top frame. */
+  frameTitle = 'Message'
+  /** Current keyboard guidance embedded in the bottom frame. */
+  frameFooter = 'Enter send · Shift+Enter newline'
+  /** Whether the full frame is visible; modal prompts temporarily reclaim its two rows. */
+  frameVisible = true
 
   override render(width: number): string[] {
-    const lines = super.render(width)
-    if (this.hint === undefined || this.getText() !== '') return lines
-    const content = lines[0]
-    /* v8 ignore next -- Editor always renders one content row. */
-    if (content === undefined) return lines
-    const padding = ' '.repeat(this.getPaddingX())
-    /* v8 ignore next -- the mounted editor is focused whenever its empty-input hint is rendered. */
-    const marker = this.focused ? CURSOR_MARKER : ''
-    const available = Math.max(0, width - visibleWidth(padding) - visibleWidth(this.hintPrefix))
-    const placeholder = truncateToWidth(this.hint, available, '')
-    const used = visibleWidth(padding) + visibleWidth(this.hintPrefix) + visibleWidth(placeholder)
-    lines[0] = `${padding}${this.hintPrefix}${marker}${placeholder}${' '.repeat(Math.max(0, width - used))}`
-    return lines
+    const framed = this.frameVisible && width >= 4
+    const contentWidth = framed ? width - 2 : width
+    const lines = super.render(contentWidth)
+    if (this.hint !== undefined && this.getText() === '') {
+      const content = lines[0]
+      /* v8 ignore next -- Editor always renders one content row. */
+      if (content !== undefined) {
+        const padding = ' '.repeat(this.getPaddingX())
+        /* v8 ignore next -- the mounted editor is focused whenever its empty-input hint is rendered. */
+        const marker = this.focused ? CURSOR_MARKER : ''
+        const available = Math.max(0, contentWidth - visibleWidth(padding) - visibleWidth(this.hintPrefix))
+        const placeholder = truncateToWidth(this.hint, available, '')
+        const used = visibleWidth(padding) + visibleWidth(this.hintPrefix) + visibleWidth(placeholder)
+        lines[0] = `${padding}${this.hintPrefix}${marker}${placeholder}${' '.repeat(Math.max(0, contentWidth - used))}`
+      }
+    }
+    if (!framed) return lines
+
+    const title = truncateToWidth(` ${this.frameTitle} `, Math.max(0, width - 2), '')
+    const footer = truncateToWidth(` ${this.frameFooter} `, Math.max(0, width - 2), '')
+    const top = this.borderColor(`╭${title}${'─'.repeat(Math.max(0, width - visibleWidth(title) - 2))}╮`)
+    const bottomFill = Math.max(0, width - visibleWidth(footer) - 2)
+    const bottom = this.borderColor(`╰${'─'.repeat(bottomFill)}${footer}╯`)
+    const body = lines.map((line) => {
+      const clipped = truncateToWidth(line, contentWidth, '')
+      return `${this.borderColor('│')}${clipped}${' '.repeat(Math.max(0, contentWidth - visibleWidth(clipped)))}${this.borderColor('│')}`
+    })
+    return [top, ...body, bottom]
   }
 }
 

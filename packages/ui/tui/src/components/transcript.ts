@@ -11,6 +11,7 @@ import {
   Spacer,
   Text,
   truncateToWidth,
+  visibleWidth,
   wrapTextWithAnsi,
   type Component,
   type MarkdownTheme,
@@ -28,7 +29,7 @@ import type {
 import type { FileDiff } from '@deepseek-ai/dsh-tools'
 import { preview, renderUnknownXml } from './xml-tool-output.ts'
 import { displayInlineText, displayText } from './text.ts'
-import { gradientText, type Palette } from './theme.ts'
+import { brandText, gradientText, type Palette } from './theme.ts'
 import { contentText, type ParsedArguments } from './content.ts'
 import {
   formatCompletionTime,
@@ -128,10 +129,57 @@ function messageHeader(label: string, color: (text: string) => string, palette: 
   return palette.bold(palette.underline(color(displayText(label))))
 }
 
+/** One detached session row shown on the zero-state welcome dashboard. */
+export interface WelcomeRecentSession {
+  /** Session title, or its id when no title was recorded. */
+  readonly title: string
+  /** Compact workspace label. */
+  readonly workspace: string
+  /** Stable creation-date label. */
+  readonly date: string
+}
+
+/** Live values rendered by the zero-state welcome dashboard. */
+export interface WelcomeDashboardState {
+  /** Whether the current session has not started its first turn. */
+  readonly expanded: boolean
+  /** Agent composition id. */
+  readonly preset: string
+  /** Selected provider/model route. */
+  readonly model: string
+  /** Effective sandbox/approval preset or approval policy. */
+  readonly permission: string
+  /** Newest detached sessions; `undefined` while loading, `null` when history is unavailable. */
+  readonly recentSessions: readonly WelcomeRecentSession[] | null | undefined
+}
+
+/** Center one ANSI-decorated line inside `width` terminal columns. */
+function centered(line: string, width: number): string {
+  const clipped = truncateToWidth(line, Math.max(1, width), '')
+  return `${' '.repeat(Math.max(0, Math.floor((width - visibleWidth(clipped)) / 2)))}${clipped}`
+}
+
+/** Render one compact titled field used by the welcome status row. */
+function welcomeField(label: string, value: string, width: number, palette: Palette): string[] {
+  const innerWidth = Math.max(1, width - 4)
+  const title = ` ${displayInline(label)} `
+  const top = `╭${title}${'─'.repeat(Math.max(0, width - visibleWidth(title) - 2))}╮`
+  const clipped = truncateToWidth(displayInline(value), innerWidth, '')
+  return [
+    palette.dim(top),
+    `${palette.dim('│')} ${clipped}${' '.repeat(Math.max(0, innerWidth - visibleWidth(clipped)))} ${palette.dim('│')}`,
+    palette.dim(`╰${'─'.repeat(Math.max(0, width - 2))}╯`),
+  ]
+}
+
+/** Escape one trusted-as-data field without allowing line breaks into a dashboard row. */
+function displayInline(value: string): string {
+  return displayText(value).replaceAll('\n', ' ')
+}
+
 /**
- * Borderless startup banner: product title, an optional configured subtitle,
- * and the session id. No box frame — each line renders as plain left-padded
- * text (matching transcript notices) so it reads on any theme.
+ * Startup header. A fresh session gets a centered DeepSeek dashboard; after
+ * its first turn starts, the same component contracts to the transcript title.
  */
 export class HeaderComponent implements Component {
   /** Columns of the banner currently revealed; `undefined` renders it whole. */
@@ -142,6 +190,8 @@ export class HeaderComponent implements Component {
     private readonly subtitle: () => string | undefined,
     private readonly palette: Palette,
     private readonly gradient: boolean,
+    private readonly dashboard?: () => WelcomeDashboardState,
+    private readonly terminalRows?: () => number,
   ) {}
 
   /**
@@ -155,6 +205,12 @@ export class HeaderComponent implements Component {
   invalidate(): void {}
 
   render(width: number): string[] {
+    const state = this.dashboard?.()
+    if (state?.expanded === true) return this.renderDashboard(width, state)
+    return this.renderCompact(width)
+  }
+
+  private renderCompact(width: number): string[] {
     const usable = Math.max(1, width - 2)
     const name = this.gradient
       ? this.palette.bold(gradientText('DEEPSEEK'))
@@ -172,6 +228,90 @@ export class HeaderComponent implements Component {
     if (this.revealWidth === undefined) return lines
     const revealed = this.revealWidth
     return lines.map(line => truncateToWidth(line, revealed, ''))
+  }
+
+  private renderDashboard(width: number, state: WelcomeDashboardState): string[] {
+    const contentWidth = Math.max(1, Math.min(88, width - 2))
+    const rows = this.terminalRows?.() ?? 36
+    const spacious = contentWidth >= 72 && rows >= 28
+    const brand = (value: string): string => this.gradient ? brandText(value) : this.palette.brand(value)
+    const product = this.gradient
+      ? this.palette.bold(gradientText('DEEPSEEK'))
+      : this.palette.bold(this.palette.accent('DEEPSEEK'))
+    const lines: string[] = []
+    if (spacious) {
+      for (const line of [
+        '              ╭╮',
+        '         ╭────╯╰─╮',
+        '    ╭────╯  ●    ╰────╮',
+        '    ╰─────────────────╯',
+      ]) lines.push(centered(brand(line), contentWidth))
+    } else {
+      lines.push(centered(brand('◖◉━━━━━━━━━━━━◗'), contentWidth))
+    }
+    lines.push(centered(`${product} ${this.palette.bold('HARNESS')}`, contentWidth))
+    const subtitle = this.subtitle()
+    if (subtitle !== undefined) lines.push(centered(this.palette.dim(displayInline(subtitle)), contentWidth))
+    lines.push('')
+
+    const fields = [
+      ['PRESET', state.preset],
+      ['MODEL', state.model],
+      ['PERMISSIONS', state.permission],
+    ] as const
+    if (contentWidth >= 66) {
+      const gap = 2
+      const baseWidth = Math.floor((contentWidth - gap * 2) / 3)
+      const widths = [baseWidth, baseWidth, contentWidth - gap * 2 - baseWidth * 2]
+      const cards = fields.map(([label, value], index) =>
+        welcomeField(label, value, widths[index] as number, this.palette))
+      for (let row = 0; row < 3; row += 1) {
+        lines.push(cards.map(card => card[row] as string).join(' '.repeat(gap)))
+      }
+    } else {
+      lines.push(centered(fields.map(([label, value]) =>
+        `${this.palette.dim(`${label.toLowerCase()}:`)} ${displayInline(value)}`).join(this.palette.dim(' · ')), contentWidth))
+    }
+
+    if (spacious) {
+      lines.push('')
+      lines.push(this.palette.bold('Recent sessions'))
+      const recents = state.recentSessions
+      if (recents === undefined) {
+        lines.push(this.palette.dim('  Loading session history…'))
+      } else if (recents === null) {
+        lines.push(this.palette.dim('  Session history is unavailable in this profile.'))
+      } else if (recents.length === 0) {
+        lines.push(this.palette.dim('  No previous sessions in this profile.'))
+      } else {
+        for (const recent of recents.slice(0, 3)) {
+          const date = displayInline(recent.date)
+          const workspace = displayInline(recent.workspace)
+          const suffix = this.palette.dim(`${date} · ${workspace}`)
+          const suffixWidth = visibleWidth(suffix)
+          const titleWidth = Math.max(1, contentWidth - suffixWidth - 5)
+          const title = truncateToWidth(displayInline(recent.title), titleWidth, '…')
+          const gap = ' '.repeat(Math.max(1, contentWidth - 4 - visibleWidth(title) - suffixWidth))
+          lines.push(`  ${this.palette.accent('•')} ${title}${gap}${suffix}`)
+        }
+      }
+      lines.push(this.palette.dim('  /resume opens searchable session history'))
+      lines.push('')
+      lines.push(this.palette.bold('Quick actions'))
+      lines.push(`  ${this.palette.accent('/model')} switch model    ${this.palette.accent('/workspace')} change workspace    ${this.palette.accent('/settings')} preferences`)
+      lines.push(`  ${this.palette.accent('/resume')} recent sessions  ${this.palette.accent('/help')} commands and shortcuts  ${this.palette.accent('@')} attach a file`)
+    } else {
+      lines.push('')
+      lines.push(centered(`${this.palette.accent('/model')} model  ${this.palette.accent('/resume')} sessions  ${this.palette.accent('/workspace')} workspace  ${this.palette.accent('/help')} help`, contentWidth))
+    }
+    lines.push('')
+    lines.push(centered(this.palette.dim('Ready · Enter sends · Shift+Enter adds a line · Alt+M switches model'), contentWidth))
+    lines.push(centered(this.palette.dim(displayInline(this.agent.session.id)), contentWidth))
+
+    const margin = ' '.repeat(Math.max(0, Math.floor((width - contentWidth) / 2)))
+    const rendered = lines.map(line => `${margin}${truncateToWidth(line, contentWidth, '')}`)
+    if (this.revealWidth === undefined) return rendered
+    return rendered.map(line => truncateToWidth(line, this.revealWidth as number, ''))
   }
 }
 

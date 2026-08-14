@@ -1771,12 +1771,14 @@ describe('goodbye message and /resume', () => {
 })
 
 describe('pi-tui chat lifecycle and transcript', () => {
-  it('shows the centered zero-state dashboard until the first turn begins', async () => {
+  it('shows the split zero-state welcome card until the first turn begins', async () => {
     const result = await setup({ omitInitialLifecycle: true })
     await tick()
-    expect(result.terminal.output).toContain('Quick actions')
+    expect(result.terminal.output).toContain('Welcome back!')
+    expect(result.terminal.output).toContain("What's new")
     expect(result.terminal.output).toContain('Recent sessions')
-    expect(result.terminal.output).toContain('PERMISSIONS')
+    expect(result.terminal.output).toContain('permissions:')
+    expect(result.terminal.output).toContain('/skills')
     expect(result.terminal.output).toContain('╭ Message ')
 
     result.terminal.output = ''
@@ -1784,7 +1786,8 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.session.append('step/start', { turn: 1, step: 1 })
     await tick()
     expect(result.terminal.output).toContain('DEEPSEEK HARNESS')
-    expect(result.terminal.output).not.toContain('Quick actions')
+    expect(result.terminal.output).not.toContain('Welcome back!')
+    expect(result.terminal.output).not.toContain("What's new")
     expect(result.terminal.output).not.toContain('Recent sessions')
     await dispose(result)
   })

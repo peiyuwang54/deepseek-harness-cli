@@ -29,7 +29,7 @@ import type {
 import type { FileDiff } from '@deepseek-ai/dsh-tools'
 import { preview, renderUnknownXml } from './xml-tool-output.ts'
 import { displayInlineText, displayText } from './text.ts'
-import { brandText, gradientText, type Palette } from './theme.ts'
+import { gradientText, type Palette } from './theme.ts'
 import { contentText, type ParsedArguments } from './content.ts'
 import {
   formatCompletionTime,
@@ -159,17 +159,10 @@ function centered(line: string, width: number): string {
   return `${' '.repeat(Math.max(0, Math.floor((width - visibleWidth(clipped)) / 2)))}${clipped}`
 }
 
-/** Render one compact titled field used by the welcome status row. */
-function welcomeField(label: string, value: string, width: number, palette: Palette): string[] {
-  const innerWidth = Math.max(1, width - 4)
-  const title = ` ${displayInline(label)} `
-  const top = `╭${title}${'─'.repeat(Math.max(0, width - visibleWidth(title) - 2))}╮`
-  const clipped = truncateToWidth(displayInline(value), innerWidth, '')
-  return [
-    palette.dim(top),
-    `${palette.dim('│')} ${clipped}${' '.repeat(Math.max(0, innerWidth - visibleWidth(clipped)))} ${palette.dim('│')}`,
-    palette.dim(`╰${'─'.repeat(Math.max(0, width - 2))}╯`),
-  ]
+/** Pad or clip one ANSI-decorated line to an exact terminal width. */
+function fitLine(line: string, width: number): string {
+  const clipped = truncateToWidth(line, Math.max(1, width), '')
+  return `${clipped}${' '.repeat(Math.max(0, width - visibleWidth(clipped)))}`
 }
 
 /** Escape one trusted-as-data field without allowing line breaks into a dashboard row. */
@@ -178,9 +171,10 @@ function displayInline(value: string): string {
 }
 
 /**
- * Braille-cell raster of the first-party DeepSeek mark in
- * `website/public/favicon.svg`. Braille's 2x4 dot grid preserves the official
- * silhouette without depending on terminal-specific image protocols.
+ * Braille-cell raster of the first-party DeepSeek whale in
+ * `website/public/favicon.svg`. The mark deliberately inherits the terminal's
+ * default foreground: it is black on a light terminal, while remaining legible
+ * on dark themes without a fixed-color escape.
  */
 const DEEPSEEK_MARK = [
   '     ⣀⣀⣀⣀⣤⡄  ⢠⡄',
@@ -255,74 +249,79 @@ export class HeaderComponent implements Component {
   }
 
   private renderDashboard(width: number, state: WelcomeDashboardState): string[] {
-    const contentWidth = Math.max(1, Math.min(88, width - 2))
+    const contentWidth = Math.max(1, Math.min(100, width - 4))
     const rows = this.terminalRows?.() ?? 36
-    const spacious = contentWidth >= 72 && rows >= 32
-    const brand = (value: string): string => this.gradient ? brandText(value) : this.palette.brand(value)
+    const spacious = contentWidth >= 80 && rows >= 28
     const product = this.gradient
-      ? this.palette.bold(gradientText('DEEPSEEK'))
-      : this.palette.bold(this.palette.accent('DEEPSEEK'))
+      ? this.palette.bold(gradientText('DeepSeek'))
+      : this.palette.bold(this.palette.accent('DeepSeek'))
     const lines: string[] = []
-    const mark = spacious ? DEEPSEEK_MARK : rows >= 20 ? DEEPSEEK_MARK_COMPACT : []
-    for (const line of mark) lines.push(centered(brand(line), contentWidth))
-    lines.push(centered(`${product} ${this.palette.bold('HARNESS')}`, contentWidth))
-    const subtitle = this.subtitle()
-    if (subtitle !== undefined) lines.push(centered(this.palette.dim(displayInline(subtitle)), contentWidth))
-    lines.push('')
-
-    const fields = [
-      ['PRESET', state.preset],
-      ['MODEL', state.model],
-      ['PERMISSIONS', state.permission],
-    ] as const
-    if (contentWidth >= 66) {
-      const gap = 2
-      const baseWidth = Math.floor((contentWidth - gap * 2) / 3)
-      const widths = [baseWidth, baseWidth, contentWidth - gap * 2 - baseWidth * 2]
-      const cards = fields.map(([label, value], index) =>
-        welcomeField(label, value, widths[index] as number, this.palette))
-      for (let row = 0; row < 3; row += 1) {
-        lines.push(cards.map(card => card[row] as string).join(' '.repeat(gap)))
-      }
-    } else {
-      lines.push(centered(fields.map(([label, value]) =>
-        `${this.palette.dim(`${label.toLowerCase()}:`)} ${displayInline(value)}`).join(this.palette.dim(' · ')), contentWidth))
-    }
-
     if (spacious) {
-      lines.push('')
-      lines.push(this.palette.bold('Recent sessions'))
+      const leftWidth = Math.min(40, Math.max(32, Math.floor(contentWidth * 0.4)))
+      const rightWidth = contentWidth - leftWidth - 7
+      const subtitle = this.subtitle()
+      const left: string[] = [
+        centered(this.palette.bold('Welcome back!'), leftWidth),
+        centered(subtitle === undefined ? '' : this.palette.dim(displayInline(subtitle)), leftWidth),
+        ...DEEPSEEK_MARK.map(line => centered(this.palette.bold(this.palette.text(line)), leftWidth)),
+        '',
+        centered(`${this.palette.dim('preset:')} ${displayInline(state.preset)}`, leftWidth),
+        centered(`${this.palette.dim('model:')} ${displayInline(state.model)}`, leftWidth),
+        centered(`${this.palette.dim('permissions:')} ${displayInline(state.permission)}`, leftWidth),
+        centered(this.palette.dim(displayInline(this.agent.session.header.cwd ?? 'workspace unset')), leftWidth),
+      ]
+
+      const right: string[] = [
+        this.palette.bold(this.palette.accent("What's new")),
+        `${this.palette.accent('/skills')} browse and run agent skills`,
+        `${this.palette.accent('/permissions')} choose approval and sandbox mode`,
+        `${this.palette.accent('/model')} switch model and reasoning effort`,
+        `${this.palette.accent('/workspace')} start in another workspace`,
+        `${this.palette.accent('/resume')} search previous sessions`,
+        '',
+        this.palette.bold('Recent sessions'),
+      ]
       const recents = state.recentSessions
       if (recents === undefined) {
-        lines.push(this.palette.dim('  Loading session history…'))
+        right.push(this.palette.dim('Loading session history…'))
       } else if (recents === null) {
-        lines.push(this.palette.dim('  Session history is unavailable in this profile.'))
+        right.push(this.palette.dim('Session history unavailable in this profile.'))
       } else if (recents.length === 0) {
-        lines.push(this.palette.dim('  No previous sessions in this profile.'))
+        right.push(this.palette.dim('No previous sessions in this profile.'))
       } else {
-        for (const recent of recents.slice(0, 3)) {
+        for (const recent of recents.slice(0, 2)) {
           const date = displayInline(recent.date)
-          const workspace = displayInline(recent.workspace)
-          const suffix = this.palette.dim(`${date} · ${workspace}`)
+          const suffix = this.palette.dim(date)
           const suffixWidth = visibleWidth(suffix)
-          const titleWidth = Math.max(1, contentWidth - suffixWidth - 5)
+          const titleWidth = Math.max(1, rightWidth - suffixWidth - 3)
           const title = truncateToWidth(displayInline(recent.title), titleWidth, '…')
-          const gap = ' '.repeat(Math.max(1, contentWidth - 4 - visibleWidth(title) - suffixWidth))
-          lines.push(`  ${this.palette.accent('•')} ${title}${gap}${suffix}`)
+          const gap = ' '.repeat(Math.max(1, rightWidth - 2 - visibleWidth(title) - suffixWidth))
+          right.push(`${this.palette.accent('•')} ${title}${gap}${suffix}`)
         }
       }
-      lines.push(this.palette.dim('  /resume opens searchable session history'))
-      lines.push('')
-      lines.push(this.palette.bold('Quick actions'))
-      lines.push(`  ${this.palette.accent('/model')} switch model    ${this.palette.accent('/workspace')} change workspace    ${this.palette.accent('/settings')} preferences`)
-      lines.push(`  ${this.palette.accent('/resume')} recent sessions  ${this.palette.accent('/help')} commands and shortcuts  ${this.palette.accent('@')} attach a file`)
+      right.push('', this.palette.italic(this.palette.dim('/help for commands · @ to attach a file')))
+
+      const bodyRows = Math.max(left.length, right.length)
+      const topLabel = ` ${product} ${this.palette.bold('Harness CLI')} `
+      lines.push(`${this.palette.dim('╭─')}${topLabel}${this.palette.dim('─'.repeat(Math.max(0, contentWidth - visibleWidth(topLabel) - 3)))}${this.palette.dim('╮')}`)
+      for (let index = 0; index < bodyRows; index += 1) {
+        const leftLine = fitLine(left[index] ?? '', leftWidth)
+        const rightLine = fitLine(right[index] ?? '', rightWidth)
+        lines.push(`${this.palette.dim('│')} ${leftLine} ${this.palette.dim('│')} ${rightLine} ${this.palette.dim('│')}`)
+      }
+      lines.push(`${this.palette.dim('╰')}${this.palette.dim('─'.repeat(leftWidth + 2))}${this.palette.dim('┴')}${this.palette.dim('─'.repeat(rightWidth + 2))}${this.palette.dim('╯')}`)
     } else {
+      const mark = rows >= 20 ? DEEPSEEK_MARK_COMPACT : []
+      for (const line of mark) lines.push(centered(this.palette.bold(this.palette.text(line)), contentWidth))
+      lines.push(centered(`${product} ${this.palette.bold('Harness CLI')}`, contentWidth))
+      const subtitle = this.subtitle()
+      if (subtitle !== undefined) lines.push(centered(this.palette.dim(displayInline(subtitle)), contentWidth))
+      lines.push(centered(`${displayInline(state.preset)} · ${displayInline(state.model)} · ${displayInline(state.permission)}`, contentWidth))
       lines.push('')
       lines.push(centered(`${this.palette.accent('/model')} model  ${this.palette.accent('/resume')} sessions  ${this.palette.accent('/workspace')} workspace  ${this.palette.accent('/help')} help`, contentWidth))
     }
     lines.push('')
-    lines.push(centered(this.palette.dim('Ready · Enter sends · Shift+Enter adds a line · Alt+M switches model'), contentWidth))
-    lines.push(centered(this.palette.dim(displayInline(this.agent.session.id)), contentWidth))
+    lines.push(centered(this.palette.dim('Enter sends · Shift+Enter newline · Alt+M model · ? shortcuts'), contentWidth))
 
     const margin = ' '.repeat(Math.max(0, Math.floor((width - contentWidth) / 2)))
     const rendered = lines.map(line => `${margin}${truncateToWidth(line, contentWidth, '')}`)

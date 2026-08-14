@@ -10,7 +10,7 @@ DeepSeek Harness agent（智能体）的交互式终端入口，基于 [`@earend
 
 Renderer 默认使用 alternate screen，因此对话、overlay 和不断扩展的多行编辑器会占据一个完整终端 viewport，退出时恢复此前的 shell 画面。Shift/Alt+Enter 插入换行，bracketed paste 保留多行内容，任意光标位置仍可使用 `@` 补全。Page Up/Down 或鼠标滚轮滚动 transcript；到达最新页后会恢复跟随实时输出。应用鼠标跟踪也会让模型徽标可点击，并允许滚轮在已打开的选择器中导航。如需框选文本复制，请按住终端的选择修饰键（通常是 Shift）。设置 `fullscreen: false` 会恢复 inline scrollback 渲染，并把鼠标处理交还终端。
 
-全新的空会话会打开一张自适应欢迎面板。宽终端会在中央显示由仓库第一方官方 DeepSeek SVG 标志派生的 Braille 字符栅格和字标，下方三张卡片分别显示已组合的 agent preset、所选模型，以及有效 permission preset 或 approval policy。可选 session-query 服务会提供最多三个最新创建的会话，随后显示 `/model`、`/workspace`、`/settings`、`/resume`、`/help` 与 `@` 的直接提示；较矮的终端会使用缩小的官方标志栅格和紧凑操作行，极矮终端则只保留字标。第一个 turn 开始后，欢迎面板会自动收缩为普通 transcript header。最近会话行只提供信息而不直接点击；搜索与校验仍由 `/resume` 持有。
+全新的空会话会打开一张自适应、借鉴 Claude Code 编排方式的双栏欢迎卡，但不会复制 Claude 的产品文案或资产。左栏显示欢迎语、由仓库第一方 DeepSeek SVG 鲸鱼标志派生的 Braille 字符栅格，并投影已组合的 agent preset、所选模型、有效 permission preset 或 approval policy 以及 workspace。鲸鱼继承终端前景色，因此在浅色终端中呈黑色，在深色终端中仍然可见。右栏列出真实存在的 Harness 入口，并通过可选 session-query 服务显示最多两个最新会话。较窄终端使用缩小鲸鱼、紧凑状态行和操作行。第一个 turn 开始后，欢迎卡会自动收缩为普通 transcript header。最近会话行只提供信息而不直接点击；搜索与校验仍由 `/resume` 持有。
 
 提示词区域是全宽带框的多行编辑器。它的底框会根据 idle／running 状态切换发送或 steer／cancel 提示，最底部状态栏则把工作区、分支、token 用量、agent 状态、模型和上下文压力与可编辑文本分开。这些标签投影自当前服务和会话事件，不是另一套 UI 配置真相源。
 

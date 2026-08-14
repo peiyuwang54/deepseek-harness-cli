@@ -358,24 +358,53 @@ export class ModelDialog implements Component {
     ].join(' — ')
   }
 
-  private cycleReasoningEffort(): void {
+  /** Ordered selectable efforts for one model, including provider default when it is a real choice. */
+  private reasoningEfforts(choice: ModelChoice): Array<ReasoningEffortId | undefined> {
+    if (choice.reasoning === undefined) return []
+    return [
+      ...choice.reasoning.defaultEffort === undefined ? [undefined] : [],
+      ...choice.reasoning.efforts.map(effort => effort.id),
+    ]
+  }
+
+  /** Cycle the selected model's effort in either direction. */
+  private cycleReasoningEffort(direction = 1): void {
     const selectedItem = this.list.getSelectedItem()
     /* v8 ignore next -- the dialog is opened only for a non-empty catalog. */
     if (selectedItem === null) return
     const choice = this.choices.get(selectedItem.value)
     if (choice?.reasoning === undefined) return
     const current = this.efforts.get(selectedItem.value)
-    const efforts: Array<ReasoningEffortId | undefined> = [
-      ...choice.reasoning.defaultEffort === undefined ? [undefined] : [],
-      ...choice.reasoning.efforts.map(effort => effort.id),
-    ]
+    const efforts = this.reasoningEfforts(choice)
+    if (efforts.length === 0) return
     const currentIndex = efforts.indexOf(current)
-    const next = efforts[(currentIndex + 1) % efforts.length]
+    const baseIndex = currentIndex < 0 ? 0 : currentIndex
+    const next = efforts[(baseIndex + direction + efforts.length) % efforts.length]
     this.efforts.set(selectedItem.value, next)
     const item = this.items.get(selectedItem.value)
     /* v8 ignore next -- items and choices are constructed from the same values. */
     if (item === undefined) return
     item.description = this.describeChoice(choice, selectedItem.value === this.currentValue)
+  }
+
+  /** Render every selectable effort for the highlighted model instead of hiding it behind a shortcut. */
+  private renderReasoningEfforts(width: number): string {
+    const selectedItem = this.list.getSelectedItem()
+    if (selectedItem === null) {
+      return this.palette.dim(truncateToWidth('Reasoning effort  Not available', width, ''))
+    }
+    const choice = this.choices.get(selectedItem.value)
+    if (choice?.reasoning === undefined) {
+      return this.palette.dim(truncateToWidth('Reasoning effort  Not available', width, ''))
+    }
+    const current = this.efforts.get(selectedItem.value)
+    const choices = this.reasoningEfforts(choice).map((effort) => {
+      const label = targetReasoningLabel(choice, effort) ?? 'Default'
+      return effort === current
+        ? this.palette.bold(this.palette.accent(`[${displayText(label)}]`))
+        : this.palette.dim(displayText(label))
+    })
+    return truncateToWidth(`Reasoning effort  ${choices.join('  ')}`, width, '')
   }
 
   invalidate(): void {
@@ -385,6 +414,12 @@ export class ModelDialog implements Component {
 
   handleInput(data: string): void {
     if (matchesKey(data, Key.shift(Key.tab))) {
+      this.cycleReasoningEffort(-1)
+    } else if (matchesKey(data, Key.tab)) {
+      this.cycleReasoningEffort()
+    } else if (this.filter.getValue() === '' && matchesKey(data, Key.left)) {
+      this.cycleReasoningEffort(-1)
+    } else if (this.filter.getValue() === '' && matchesKey(data, Key.right)) {
       this.cycleReasoningEffort()
     } else if (matchesKey(data, Key.escape)) {
       if (this.filter.getValue() === '') this.cancel()
@@ -422,7 +457,8 @@ export class ModelDialog implements Component {
         ? [this.palette.dim('  No models match the filter')]
         : this.list.render(innerWidth),
       '',
-      this.palette.dim('type to filter • ↑/↓ move • Shift+Tab reasoning • Enter select • Esc'),
+      this.renderReasoningEfforts(innerWidth),
+      this.palette.dim('type to filter • ↑/↓ model • Tab/←/→ effort • Enter select • Esc'),
     ], width, this.palette)
   }
 }

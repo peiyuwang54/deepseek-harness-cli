@@ -1,7 +1,7 @@
 terminal 92x32 buffer=normal length=32 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=12 viewportRow=13 bufferRow=13
+cursor visible column=12 viewportRow=12 bufferRow=12
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -28,30 +28,36 @@ buffer
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-9-11| <blank>
-12| "        ╭ Select model ────────────────────────────────────────────────────────────╮        "
+9-10| <blank>
+11| "        ╭ Select model ────────────────────────────────────────────────────────────╮        "
   style 8-83 fg=bright-magenta
-13| "        │ >                                                                        │        "
+12| "        │ >                                                                        │        "
   style 8-8 fg=bright-magenta
   style 12-12 inverse
   style 83-83 fg=bright-magenta
-14| "        │                                                                          │        "
+13| "        │                                                                          │        "
   style 8-8 fg=bright-magenta
   style 83-83 fg=bright-magenta
-15| "        │ → deepseek-official/deepseek-v4-  DeepSeek V4 Flash — current            │        "
+14| "        │ → deepseek-official/deepseek-v4-  DeepSeek V4 Flash — High — current     │        "
   style 8-8 fg=bright-magenta
   style 10-41 fg=bright-magenta inverse
   style 83-83 fg=bright-magenta
-16| "        │   deepseek-official/deepseek-v4-  DeepSeek V4 Pro                        │        "
+15| "        │   deepseek-official/deepseek-v4-  DeepSeek V4 Pro — High                 │        "
   style 8-8 fg=bright-magenta
-  style 42-58 dim
+  style 42-65 dim
   style 83-83 fg=bright-magenta
-17| "        │                                                                          │        "
+16| "        │                                                                          │        "
   style 8-8 fg=bright-magenta
   style 83-83 fg=bright-magenta
-18| "        │ type to filter • ↑/↓ move • Shift+Tab reasoning • Enter select • Esc     │        "
+17| "        │ Reasoning effort  Off  [High]  Max                                       │        "
   style 8-8 fg=bright-magenta
-  style 10-77 dim
+  style 28-30 dim
+  style 33-38 fg=bright-magenta bold
+  style 41-43 dim
+  style 83-83 fg=bright-magenta
+18| "        │ type to filter • ↑/↓ model • Tab/←/→ effort • Enter select • Esc         │        "
+  style 8-8 fg=bright-magenta
+  style 10-73 dim
   style 83-83 fg=bright-magenta
 19| "        ╰──────────────────────────────────────────────────────────────────────────╯        "
   style 8-83 fg=bright-magenta

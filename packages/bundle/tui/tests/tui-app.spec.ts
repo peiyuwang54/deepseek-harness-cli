@@ -145,6 +145,7 @@ describe('tui runner', () => {
 
   it('keeps the statically catalogued bundle schema aligned with renderer defaults', () => {
     expect(new Config({})).toEqual(new TuiConfigSchema({}))
+    expect(new Config({})).toMatchObject({ showHardwareCursor: true })
     expect(new Config({ showReasoning: false, maxToolOutputLines: 9 })).toMatchObject({
       showReasoning: false,
       maxToolOutputLines: 9,

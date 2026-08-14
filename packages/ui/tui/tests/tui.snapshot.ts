@@ -7,7 +7,14 @@ import type { Context } from '@deepseek-ai/cordis'
 import { agentEvents } from '@deepseek-ai/dsh-agent'
 import DynamicCordisRunner from '@deepseek-ai/dsh-cordis-host-runner'
 import { compactCheckpointSource, CompactionId } from '@deepseek-ai/dsh-compaction'
-import { createUserMessage, CallId, type ContentBlock , createMessage, createToolResultMessage } from '@deepseek-ai/dsh-llm'
+import {
+  CallId,
+  createMessage,
+  createToolResultMessage,
+  createUserMessage,
+  ReasoningEffortId,
+  type ContentBlock,
+} from '@deepseek-ai/dsh-llm'
 import { RetryId } from '@deepseek-ai/dsh-llm-retry'
 import PermissionPresetService from '@deepseek-ai/dsh-permission-presets'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
@@ -1159,7 +1166,24 @@ describe('TUI terminal-state snapshots', () => {
   })
 
   it('pins the model selector and selection notice', async () => {
-    const harness = await setupSnapshot({}, { columns: 92, rows: 32 })
+    const efforts = [
+      { id: ReasoningEffortId('off'), name: 'Off' },
+      { id: ReasoningEffortId('high'), name: 'High' },
+      { id: ReasoningEffortId('max'), name: 'Max' },
+    ]
+    const harness = await setupSnapshot({
+      catalog: {
+        providers: [{ id: 'deepseek-official', name: 'DeepSeek' }],
+        models: [
+          { provider: 'deepseek-official', id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash' },
+          { provider: 'deepseek-official', id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro' },
+        ],
+        resolveModelInfo: () => Promise.resolve({
+          context: { contextWindow: 128_000 },
+          reasoning: { efforts, defaultEffort: ReasoningEffortId('high') },
+        }),
+      },
+    }, { columns: 92, rows: 32 })
     await renderAfter(harness, () => {
       harness.terminal.send('/model')
       harness.terminal.send('\r')

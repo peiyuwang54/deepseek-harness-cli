@@ -50,7 +50,7 @@ export type Config = TuiConfig
 export const Config: z<Config> = z.object({
   fullscreen: z.boolean().default(true),
   mouse: z.boolean().default(true),
-  showReasoning: z.boolean().default(true),
+  showReasoning: z.boolean().default(false),
   maxToolOutputLines: z.number().step(1).min(1).default(6),
   maxDiffEditLength: z.number().step(1).min(1).default(1000),
   maxQuestionOptions: z.number().step(1).min(1).default(8),
@@ -65,12 +65,12 @@ export const Config: z<Config> = z.object({
   fileSearchMaxResults: z.number().step(1).min(1).default(20),
   fileSearchMaxEntries: z.number().step(1).min(1).default(10000),
   fileSearchExcludedDirectories: z.array(z.string()).default(['.git', 'node_modules']),
-  showHardwareCursor: z.boolean().default(false),
+  showHardwareCursor: z.boolean().default(true),
   theme: z.object({
     color: z.boolean().default(true),
     truecolor: z.boolean(),
     leftPrompt: z.string().default('${cwd}${git/worktree}'),
-    rightPrompt: z.string().default('${status}${model}${token_meter/cache_hit_rate}${context}${queued}'),
+    rightPrompt: z.string().default('${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}'),
     inputPrompt: z.string().default('${symbol} ${indicator}'),
     inputPlaceholder: z.string().default('Describe a task, @ a file, or / for commands'),
   }),

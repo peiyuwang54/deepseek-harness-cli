@@ -28,13 +28,13 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 
 终端渲染把稳定历史与实时 projection 分开，保留首 token 前与分阶段计时，把空的 Assistant 行重排到已认领的用户／上下文消息之后，渲染工具持有的展示意图，支持会话恢复与作用域 skill，并在 dispose 时恢复 raw mode。按宽度索引的卡片缓存避免每一帧都重新换行已结算输出，一个只向前推进的计时 cursor 则为所有 step footer 提供数据，无需反复扫描完整日志。颜色方案或 reasoning 重建会保留当前 streaming component 并使其计时缓存失效，因此轮次中的重绘不会丢失累计 response 时间。
 
-随附展示默认使用 alternate screen，并把 transcript 位置作为显式 view state：有界 viewport 会跟随新输出，直到 Page Up／Page Down 或鼠标滚轮移开；用户通过 Ctrl+End 或回到最新页时，它会恢复跟随尾部。Alternate-screen 和 SGR mouse mode 在 pi-tui 启动前进入，仅在它停止后退出；启动失败、常规 dispose 与进程 handoff 都使用同一恢复边界。现有多行 editor、bracketed paste 与感知 cursor 的 `@` 补全仍是输入权威。`/model`、Alt+M 与 footer 的鼠标目标都进入同一 model controller，因此快捷键和可见操作点不会与命令行为分叉。该 footer 下方的详细统计栏不会重新折叠浏览器节点：TUI bundle 会挂载 Web 的 `sessionStats` 投影，并把它的全日志计数、LLM／工具时间、TTFT 与解码时长同共享的不相交 token 桶组合。终端只持有单行格式化、宽度省略和主题安全的暗色样式。
+随附展示默认使用 alternate screen，并把 transcript 位置作为显式 view state：有界 viewport 会跟随新输出，直到 Page Up／Page Down 或鼠标滚轮移开；用户通过 Ctrl+End 或回到最新页时，它会恢复跟随尾部。Alternate-screen 和 SGR mouse mode 在 pi-tui 启动前进入，仅在它停止后退出；启动失败、常规 dispose 与进程 handoff 都使用同一恢复边界。现有多行 editor、bracketed paste 与感知 cursor 的 `@` 补全仍是输入权威。`/model`、Alt+M 与 footer 的鼠标目标都进入同一 model controller，因此快捷键和可见操作点不会与命令行为分叉。选择器会把高亮适配器公布的精确 reasoning-effort 选项渲染为专用行，以方括号标记实时选择，并支持用 Tab 或方向键前后移动，最后由 Enter 一次提交模型与强度。该 footer 下方的详细统计栏不会重新折叠浏览器节点：TUI bundle 会挂载 Web 的 `sessionStats` 投影，并把它的全日志计数、LLM／工具时间、TTFT 与解码时长同共享的不相交 token 桶组合。终端只持有单行格式化、宽度省略和主题安全的暗色样式。
 
 真正处于零状态的会话会使用自适应双栏欢迎卡，而不是让紧凑 transcript header 横跨空白 viewport。其编排借鉴 Claude Code 左侧身份／右侧更新的节奏，但只保留第一方 DeepSeek 内容：左栏以终端前景色渲染从官方 SVG 派生的 Braille 鲸鱼，并从各自权威服务投影 preset、模型、权限和 workspace；右栏列出真实 Harness 命令与最新可查询会话。该标志在浅色终端中呈黑色，在深色主题中不会消失，缩小档位也不依赖 Kitty／iTerm 图像协议。第一个持久 turn 会将欢迎卡收缩为普通 header，因此不会让重复欢迎状态进入对话。多行 editor 持有一圈完整边框，其底框承载随状态变化的发送／steer 提示；独立底部状态栏则把工作区和用量与 agent 状态、模型、上下文压力及排队工作对齐。
 
 富文本输出保持终端原生，而不是导入 Web React tree。pi-tui 的 GFM renderer 持有标题、强调、链接、嵌套／任务列表、引用、表格与代码围栏；一个窄范围 highlighter 把 `diff`/`patch` 元数据、hunk、删除和新增映射到工具 diff 卡片共用的语义 palette。同一路径的相邻 hunk 形成一个可见分组。KaTeX 排版、获取 Markdown 图像、Shiki token 着色、复制控件与水平滚动器仍是明确的浏览器差异，而不是终端包中的隐藏依赖。
 
-欢迎态与紧凑态的产品名旁都会渲染包的基础语义版本，避免维护第二份手写版本源。纯净零状态不再分配空 transcript viewport，而是使用固定的两行 composer 间距，避免把输入框固定到终端底部。编辑器保留 pi-tui 的硬件 cursor marker 作为 IME 锚点，并每隔 530 ms 切换一个预留单字符宽度的软件光标。按键和状态重绘会重新开始可见阶段，因此忽略 DECSCUSR 的终端仍能明确显示焦点，且 placeholder 不会在闪烁时移位。该 timer 在获取终端后启动，并在共享释放边界中清理。Reasoning 默认隐藏，注入上下文卡片折叠为单行详情入口，不再泄露正文预览。Footer 的 `▸`／`▾` 鼠标目标会共同驱动既有 reasoning 与工具／上下文可见性状态；Ctrl+O、Ctrl+R 和 `/details` 仍保留为相互独立的无障碍控制入口。
+欢迎态与紧凑态的产品名旁都会渲染包的基础语义版本，避免维护第二份手写版本源。纯净零状态不再分配空 transcript viewport，而是使用固定的两行 composer 间距，避免把输入框固定到终端底部。编辑器保留 pi-tui 的硬件 cursor marker 作为 IME 锚点，并每隔 530 ms 切换一个预留单字符宽度的软件光标。按键和状态重绘会重新开始可见阶段，因此忽略 DECSCUSR 的终端仍能明确显示焦点，且 placeholder 不会在闪烁时移位。随附 bundle 会保持 `showHardwareCursor` 启用，不再覆盖 renderer 默认值，从而保证真实 `dsh tui` 路径确实挂载两套光标后备。该 timer 在获取终端后启动，并在共享释放边界中清理。Reasoning 默认隐藏，注入上下文卡片折叠为单行详情入口，不再泄露正文预览。Footer 的 `▸`／`▾` 鼠标目标会共同驱动既有 reasoning 与工具／上下文可见性状态；Ctrl+O、Ctrl+R 和 `/details` 仍保留为相互独立的无障碍控制入口。
 
 ## 参考与来源边界
 
@@ -46,7 +46,7 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 
 专用命令 checkpoint 固定 skill 浏览器、keymap 选择器、Vim Normal footer、真实 fast-route 切换、experiment 启动器、IDE 降级界面与空审批状态。Approval-service 测试证明程序化命令授权会产生与对话框相同的持久 asked／decided 配对。
 
-Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服务测试、ANSI 感知的 headless-terminal 组件测试与无密钥终端状态快照覆盖。专用零状态 checkpoint 锁定双栏欢迎卡、继承终端前景色的鲸鱼、真实状态标签、最近会话投影、带框 editor 与底部状态栏；交互测试则锁定它在第一个 turn 时收缩。一项行为测试会调用由 TUI 持有的 interval，锁定 placeholder 的可见—隐藏—可见阶段及 dispose；终端快照则锁定输入框中的可见光标。完成态、运行态与窄屏 checkpoint 会锁定共享统计栏，包括不折行的宽度边界。权限选择器与一次已提交的 preset 切换通过真实 Command 和 Projection 服务各有一份终端状态 checkpoint。Settings、Appearance、workspace picker 与 handoff 失败恢复各有一份终端状态 checkpoint；交互测试还锁定仅字段 theme mutate、设置文档发现、不可变 cwd，以及重复 Enter 下在首个 await 前占用的 single-flight latch。应用 bundle 具有启动、身份、非 TTY、preset 安全的 Agent 创建／恢复、session-stats 组合与 patch 形状测试。CLI 测试覆盖别名、profile 选择、help、非 TTY 失败、随发行版配置、替换参数忠实度、shutdown 前校验、POSIX exec 与受监督子进程后备。软件包 typecheck、host typecheck、Loader／配置约束、软件包发布约束、生成 catalog、文档链接、许可证与第三方声明均为必需门禁。
+Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服务测试、ANSI 感知的 headless-terminal 组件测试与无密钥终端状态快照覆盖。专用零状态 checkpoint 锁定双栏欢迎卡、继承终端前景色的鲸鱼、真实状态标签、最近会话投影、带框 editor 与底部状态栏；交互测试则锁定它在第一个 turn 时收缩。一项行为测试会调用由 TUI 持有的 interval，锁定 placeholder 的可见—隐藏—可见阶段及 dispose；终端快照则锁定输入框中的可见光标。以真实 tmux 终端启动编译后 CLI 还确认了光标可见／空白交替抓帧，以及模型选择器能从 `[High]` 移动到 `[Max]`。完成态、运行态与窄屏 checkpoint 会锁定共享统计栏，包括不折行的宽度边界。权限选择器与一次已提交的 preset 切换通过真实 Command 和 Projection 服务各有一份终端状态 checkpoint。Settings、Appearance、workspace picker 与 handoff 失败恢复各有一份终端状态 checkpoint；交互测试还锁定仅字段 theme mutate、设置文档发现、不可变 cwd，以及重复 Enter 下在首个 await 前占用的 single-flight latch。应用 bundle 具有启动、身份、非 TTY、preset 安全的 Agent 创建／恢复、session-stats 组合与 patch 形状测试。CLI 测试覆盖别名、profile 选择、help、非 TTY 失败、随发行版配置、替换参数忠实度、shutdown 前校验、POSIX exec 与受监督子进程后备。软件包 typecheck、host typecheck、Loader／配置约束、软件包发布约束、生成 catalog、文档链接、许可证与第三方声明均为必需门禁。
 
 ## 考虑过的替代方案
 

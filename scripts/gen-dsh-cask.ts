@@ -23,21 +23,21 @@ export type PlatformShas = Record<Target, string>
 
 /**
  * Render the cask. `version` is the release version without a leading `v`; the
- * tag is always `dsh-cli-v#{version}`.
+ * tag is always `deepseek-harness-cli-v#{version}`.
  * @param version - the release version.
  * @param shas - the four tarball sha256 digests, keyed by target.
  * @returns the cask source.
  */
 export function generateCask(version: string, shas: PlatformShas): string {
-  return `cask "dsh" do
+  return `cask "deepseek-harness-cli" do
   version "${version}"
 
   arch arm: "arm64", intel: "x64"
   os macos: "macos", linux: "linux"
 
-  url "https://github.com/${REPO}/releases/download/dsh-cli-v#{version}/dsh-#{arch}-#{os}.tar.gz"
-  name "dsh"
-  desc "dsh CLI: profile boot, plugin management, and shipped terminal/browser aliases"
+  url "https://github.com/${REPO}/releases/download/deepseek-harness-cli-v#{version}/deepseek-harness-cli-#{arch}-#{os}.tar.gz"
+  name "deepseek-harness-cli"
+  desc "deepseek-harness-cli: profile boot, plugin management, and shipped terminal/browser aliases"
   homepage "${HOMEPAGE}"
 
   on_macos do
@@ -58,12 +58,12 @@ export function generateCask(version: string, shas: PlatformShas): string {
     end
   end
 
-  binary "bin/dsh"
+  binary "bin/deepseek-harness-cli"
 
   livecheck do
     url :url
     strategy :github_releases
-    regex(/^dsh-cli-v(\\d+\\.\\d+\\.\\d+(?:-rc\\.\\d+)?)$/i)
+    regex(/^deepseek-harness-cli-v(\\d+\\.\\d+\\.\\d+(?:-rc\\.\\d+)?)$/i)
   end
 end
 `
@@ -78,7 +78,7 @@ end
 export async function readPlatformShas(dir: string): Promise<PlatformShas> {
   const shas = {} as PlatformShas
   for (const target of TARGETS) {
-    const sidecar = join(dir, `dsh-${target}.sha256`)
+    const sidecar = join(dir, `deepseek-harness-cli-${target}.sha256`)
     if (!existsSync(sidecar)) throw new Error(`gen-dsh-cask: ${sidecar} missing — build ${target} first.`)
     const digest = (await readFile(sidecar, 'utf8')).trim().split(/\s+/)[0]
     if (digest === undefined || !/^[0-9a-f]{64}$/.test(digest)) {

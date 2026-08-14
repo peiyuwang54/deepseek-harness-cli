@@ -49,16 +49,16 @@ profile 目录包含一个 `package.json`，其中记录树外插件依赖，以
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-web-to-cli/master/apps/cli/install/install.sh | sh
-npm install -g @peiyuwang54/dsh-cli
-brew install peiyuwang54/dsh/dsh
+npm install -g @peiyuwang54/deepseek-harness-cli
+brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-第一个命令运行 curl 安装器：它下载最新的 `dsh-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，并安装到 `$HOME/.dsh/bin`（`sh -s -- --to <dir>` 可覆盖目录，`--version <ver>` 可固定版本）。npm 包是覆盖各平台可执行程序的 shim；Homebrew cask 由 `peiyuwang54/homebrew-dsh` tap 提供。完整契约与计划中的 minisign 签名升级见[安装器 README](install/README.md)。
+第一个命令运行 curl 安装器：它下载最新的 `deepseek-harness-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，并安装到 `$HOME/.deepseek-harness-cli/bin`（`sh -s -- --to <dir>` 可覆盖目录，`--version <ver>` 可固定版本）。npm 包是覆盖各平台可执行程序的 shim；Homebrew cask 由 `peiyuwang54/homebrew-dsh` tap 提供。完整契约与计划中的 minisign 签名升级见[安装器 README](install/README.md)。
 
-升级只需重新运行同一命令——curl 安装器原地替换二进制、`npm update -g @peiyuwang54/dsh-cli` 拉取最新版本、`brew upgrade dsh` 刷新 cask。
+升级只需重新运行同一命令——curl 安装器原地替换二进制、`npm update -g @peiyuwang54/deepseek-harness-cli` 拉取最新版本、`brew upgrade deepseek-harness-cli` 刷新 cask。
 
 ## 开发
 
 生产运行需要已构建的包与前端产物。请在仓库根目录单独运行 `pnpm run build`，然后使用 `pnpm dsh <args...>` 运行 TypeScript 入口并转发所有参数；模块解析约定以[源码执行参考](reference/README.md#source-execution)为准。
 
-在 Windows 上，[`scripts/install/install.ps1`](../../scripts/install/install.ps1) 会把这份 CLI 的打包副本安装到 `%LOCALAPPDATA%\Programs\dsh`。用户不带参数时，该启动器会启动 `tui`；[`src/args.ts`](src/args.ts) 中的语法不变。见[根目录 Windows 安装一节](../../README.md#install-windows)。
+在 Windows 上，[`scripts/install/install.ps1`](../../scripts/install/install.ps1) 会把这份 CLI 的打包副本安装到 `%LOCALAPPDATA%\Programs\dsh`。用户不带参数时，该启动器会启动 `tui`；[`src/args.ts`](src/args.ts) 中的语法不变。

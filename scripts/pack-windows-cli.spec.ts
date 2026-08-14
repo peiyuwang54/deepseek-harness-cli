@@ -53,10 +53,10 @@ describe('pack-windows-cli', () => {
   it('refuses a live pack on a non-Windows host and accepts the current Windows CPU', () => {
     const pipeline = new WindowsCliPack({ skipBuild: true, dryRun: false, skipZip: true })
     if (process.platform === 'win32') {
-      expect(() => pipeline.assertHost()).not.toThrow()
+      expect(() => { pipeline.assertHost() }).not.toThrow()
       return
     }
-    expect(() => pipeline.assertHost()).toThrow('must run on Windows')
+    expect(() => { pipeline.assertHost() }).toThrow('must run on Windows')
   })
 
   it('prints usage and sets a nonzero exit code for unknown flags', async () => {

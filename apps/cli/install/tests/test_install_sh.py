@@ -66,7 +66,7 @@ for path in sys.argv[1:]:
 
 
 class MockReleaseServer:
-    """Serves a fake dsh-cli-v<version> release directory over HTTP."""
+    """Serves a fake deepseek-harness-cli-v<version> release directory over HTTP."""
 
     def __init__(self) -> None:
         self.files: dict[str, bytes] = {}
@@ -98,9 +98,9 @@ class MockReleaseServer:
         return f"http://127.0.0.1:{self.httpd.server_address[1]}"
 
     def register(self, version: str, os_name: str, arch: str, tarball: bytes, digest: str) -> None:
-        stem = f"/dsh-cli-v{version}/dsh-{arch}-{os_name}"
+        stem = f"/deepseek-harness-cli-v{version}/deepseek-harness-cli-{arch}-{os_name}"
         self.files[f"{stem}.tar.gz"] = tarball
-        self.files[f"{stem}.sha256"] = f"{digest}  dsh-{arch}-{os_name}.tar.gz\n".encode()
+        self.files[f"{stem}.sha256"] = f"{digest}  deepseek-harness-cli-{arch}-{os_name}.tar.gz\n".encode()
 
     def start(self) -> None:
         self.thread.start()
@@ -135,13 +135,13 @@ class InstallerTestCase(unittest.TestCase):
         path.chmod(0o755)
 
     def make_tarball(self, os_name: str, version: str = VERSION) -> bytes:
-        """Real tar.gz with bin/dsh (+ bin/dsh-spawn-helper on macOS)."""
+        """Real tar.gz with bin/deepseek-harness-cli (+ bin/deepseek-harness-cli-spawn-helper on macOS)."""
         buf = io.BytesIO()
         with tarfile.open(fileobj=buf, mode="w:gz") as tar:
             dsh = f"#!/bin/sh\necho fake-dsh {version}\n"
-            self._add_to_tar(tar, "bin/dsh", dsh)
+            self._add_to_tar(tar, "bin/deepseek-harness-cli", dsh)
             if os_name == "macos":
-                self._add_to_tar(tar, "bin/dsh-spawn-helper", "#!/bin/sh\necho helper\n")
+                self._add_to_tar(tar, "bin/deepseek-harness-cli-spawn-helper", "#!/bin/sh\necho helper\n")
         return buf.getvalue()
 
     @staticmethod
@@ -162,10 +162,10 @@ class InstallerTestCase(unittest.TestCase):
                       extra_env: dict[str, str] | None = None,
                       use_fake_uname: bool = True, register: bool = True) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
-        env["DSH_BASE_URL"] = self.server.base_url
-        env["DSH_VERSION"] = VERSION
+        env["DEEPSEEK_HARNESS_CLI_BASE_URL"] = self.server.base_url
+        env["DEEPSEEK_HARNESS_CLI_VERSION"] = VERSION
         env["HOME"] = str(self.tmp / "home")
-        env["DSH_INSTALL_DIR"] = str(self.tmp / "install")
+        env["DEEPSEEK_HARNESS_CLI_INSTALL_DIR"] = str(self.tmp / "install")
         env["SHELL"] = "/bin/zsh"
         env["PATH"] = str(self.fake_bin) + os.pathsep + env["PATH"]
         if use_fake_uname:
@@ -185,7 +185,7 @@ class InstallerTestCase(unittest.TestCase):
 
     # --- shared assertions --------------------------------------------------
     def assert_installed(self, os_name: str, install_dir: Path) -> None:
-        binary = install_dir / "bin" / "dsh"
+        binary = install_dir / "bin" / "deepseek-harness-cli"
         self.assertTrue(binary.exists(), f"{binary} not installed")
         self.assertTrue(os.access(binary, os.X_OK), f"{binary} not executable")
         self.assertEqual(
@@ -193,10 +193,10 @@ class InstallerTestCase(unittest.TestCase):
             f"fake-dsh {VERSION}",
         )
         if os_name == "macos":
-            helper = install_dir / "bin" / "dsh-spawn-helper"
+            helper = install_dir / "bin" / "deepseek-harness-cli-spawn-helper"
             self.assertTrue(helper.exists(), "macOS spawn-helper not installed")
         else:
-            self.assertFalse((install_dir / "bin" / "dsh-spawn-helper").exists())
+            self.assertFalse((install_dir / "bin" / "deepseek-harness-cli-spawn-helper").exists())
 
     # --- target detection ---------------------------------------------------
     def test_host_target(self) -> None:
@@ -205,7 +205,7 @@ class InstallerTestCase(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assert_installed(_HOST_OS, self.tmp / "install")
         requested = self.server.requests[0]
-        self.assertIn(f"/dsh-cli-v{VERSION}/dsh-{_HOST_ARCH}-{_HOST_OS}.tar.gz", requested)
+        self.assertIn(f"/deepseek-harness-cli-v{VERSION}/deepseek-harness-cli-{_HOST_ARCH}-{_HOST_OS}.tar.gz", requested)
 
     def test_target_macos_arm64(self) -> None:
         result = self.run_installer(os_name="macos", arch="arm64")
@@ -247,10 +247,10 @@ class InstallerTestCase(unittest.TestCase):
 
     def _env_with(self, os_name: str, arch: str) -> dict[str, str]:
         env = os.environ.copy()
-        env["DSH_BASE_URL"] = self.server.base_url
-        env["DSH_VERSION"] = VERSION
+        env["DEEPSEEK_HARNESS_CLI_BASE_URL"] = self.server.base_url
+        env["DEEPSEEK_HARNESS_CLI_VERSION"] = VERSION
         env["HOME"] = str(self.tmp / "home")
-        env["DSH_INSTALL_DIR"] = str(self.tmp / "install")
+        env["DEEPSEEK_HARNESS_CLI_INSTALL_DIR"] = str(self.tmp / "install")
         env["SHELL"] = "/bin/zsh"
         env["PATH"] = str(self.fake_bin) + os.pathsep + env["PATH"]
         env["DSH_FAKE_OS"] = {"macos": "Darwin", "linux": "Linux"}[os_name]
@@ -260,23 +260,23 @@ class InstallerTestCase(unittest.TestCase):
     # --- integrity and failure handling ------------------------------------
     def test_checksum_mismatch_aborts(self) -> None:
         tarball = self.make_tarball("macos", VERSION)
-        stem = f"/dsh-cli-v{VERSION}/dsh-arm64-macos"
+        stem = f"/deepseek-harness-cli-v{VERSION}/deepseek-harness-cli-arm64-macos"
         self.server.files[f"{stem}.tar.gz"] = tarball
-        self.server.files[f"{stem}.sha256"] = f"{'0' * 64}  dsh-arm64-macos.tar.gz\n".encode()
+        self.server.files[f"{stem}.sha256"] = f"{'0' * 64}  deepseek-harness-cli-arm64-macos.tar.gz\n".encode()
         result = self.run_installer(os_name="macos", arch="arm64", register=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("checksum mismatch", result.stderr)
-        self.assertFalse((self.tmp / "install" / "bin" / "dsh").exists())
+        self.assertFalse((self.tmp / "install" / "bin" / "deepseek-harness-cli").exists())
 
     def test_missing_release_404(self) -> None:
         result = self.run_installer(os_name="macos", arch="arm64", register=False)
         self.assertNotEqual(result.returncode, 0)
-        self.assertFalse((self.tmp / "install" / "bin" / "dsh").exists())
+        self.assertFalse((self.tmp / "install" / "bin" / "deepseek-harness-cli").exists())
 
     def test_failure_preserves_existing_binary(self) -> None:
         install_dir = self.tmp / "install"
         (install_dir / "bin").mkdir(parents=True)
-        old = install_dir / "bin" / "dsh"
+        old = install_dir / "bin" / "deepseek-harness-cli"
         old.write_text("#!/bin/sh\necho old-binary\n")
         old.chmod(0o755)
         env = self._env_with(os_name="macos", arch="arm64")
@@ -291,7 +291,7 @@ class InstallerTestCase(unittest.TestCase):
         result = self.run_installer(os_name="macos", arch="arm64", args=("--version", f"v{VERSION}"))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(
-            any(f"/dsh-cli-v{VERSION}/" in req for req in self.server.requests),
+            any(f"/deepseek-harness-cli-v{VERSION}/" in req for req in self.server.requests),
             "installer requested the wrong version tag",
         )
 
@@ -304,7 +304,7 @@ class InstallerTestCase(unittest.TestCase):
     def test_help(self) -> None:
         result = self.run_installer(os_name="macos", arch="arm64", args=("--help",), register=False)
         self.assertEqual(result.returncode, 0)
-        self.assertIn("dsh installer", result.stdout)
+        self.assertIn("deepseek-harness-cli installer", result.stdout)
         self.assertIn("--to <dir>", result.stdout)
 
     def test_unknown_argument(self) -> None:

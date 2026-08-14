@@ -49,16 +49,16 @@ The [CLI behavior reference](reference/README.md) owns exact layer precedence, f
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-web-to-cli/master/apps/cli/install/install.sh | sh
-npm install -g @peiyuwang54/dsh-cli
-brew install peiyuwang54/dsh/dsh
+npm install -g @peiyuwang54/deepseek-harness-cli
+brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-The first command runs the curl installer, which downloads the newest `dsh-cli-v*` release, verifies the tarball against the release's sha256 sidecar, and installs to `$HOME/.dsh/bin` (`sh -s -- --to <dir>` overrides the directory, `--version <ver>` pins a version). The npm package is a shim over the per-platform executable; the Homebrew cask is served from the `peiyuwang54/homebrew-dsh` tap. See [the installer README](install/README.md) for the full contract and the planned minisign signature upgrade.
+The first command runs the curl installer, which downloads the newest `deepseek-harness-cli-v*` release, verifies the tarball against the release's sha256 sidecar, and installs to `$HOME/.deepseek-harness-cli/bin` (`sh -s -- --to <dir>` overrides the directory, `--version <ver>` pins a version). The npm package is a shim over the per-platform executable; the Homebrew cask is served from the `peiyuwang54/homebrew-dsh` tap. See [the installer README](install/README.md) for the full contract and the planned minisign signature upgrade.
 
-Upgrading re-runs the same command — the curl installer replaces the binaries in place, `npm update -g @peiyuwang54/dsh-cli` pulls the newest version, and `brew upgrade dsh` refreshes the cask.
+Upgrading re-runs the same command — the curl installer replaces the binaries in place, `npm update -g @peiyuwang54/deepseek-harness-cli` pulls the newest version, and `brew upgrade deepseek-harness-cli` refreshes the cask.
 
 ## Development
 
 Production runs require built package and frontend artifacts. From the repository root, run `pnpm run build` separately, then use `pnpm dsh <args...>` to run the TypeScript entry and forward every argument; the [source-execution reference](reference/README.md#source-execution) owns the module-resolution contract.
 
-On Windows, [`scripts/install/install.ps1`](../../scripts/install/install.ps1) installs a packed copy of this CLI into `%LOCALAPPDATA%\Programs\dsh`. That launcher boots `tui` when the user passes no arguments; the grammar in [`src/args.ts`](src/args.ts) is unchanged. See the [root Windows install section](../../README.md#install-windows).
+On Windows, [`scripts/install/install.ps1`](../../scripts/install/install.ps1) installs a packed copy of this CLI into `%LOCALAPPDATA%\Programs\dsh`. That launcher boots `tui` when the user passes no arguments; the grammar in [`src/args.ts`](src/args.ts) is unchanged.

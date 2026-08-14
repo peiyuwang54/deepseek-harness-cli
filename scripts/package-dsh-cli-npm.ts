@@ -1,7 +1,7 @@
 /**
- * Lay out the npm distribution of the dsh CLI: one main shim package at
- * `@peiyuwang54/dsh-cli@<ver>` and one per-platform package at
- * `@peiyuwang54/dsh-cli@<ver>-<os>-<cpu>`. The per-platform packages carry the
+ * Lay out the npm distribution of the deepseek-harness-cli: one main shim package at
+ * `@peiyuwang54/deepseek-harness-cli@<ver>` and one per-platform package at
+ * `@peiyuwang54/deepseek-harness-cli@<ver>-<os>-<cpu>`. The per-platform packages carry the
  * single-file exe under `bin/` (plus the macOS spawn-helper) and are selected by
  * npm through `os`/`cpu` plus optionalDependencies aliases — the same contract
  * OpenAI Codex uses. The layout is importable so tests can package the host
@@ -15,13 +15,13 @@ import { parseArgs } from 'node:util'
 
 const root = resolve(import.meta.dirname, '..')
 
-export const PACKAGE_NAME = '@peiyuwang54/dsh-cli'
+export const PACKAGE_NAME = '@peiyuwang54/deepseek-harness-cli'
 export const REPOSITORY = 'git+https://github.com/peiyuwang54/deepseek-harness-web-to-cli.git'
 
 export interface PlatformTarget {
   readonly os: 'macos' | 'linux'
   readonly cpu: 'arm64' | 'x64'
-  /** optionalDependencies alias key and shim package name, e.g. @peiyuwang54/dsh-cli-macos-arm64. */
+  /** optionalDependencies alias key and shim package name, e.g. @peiyuwang54/deepseek-harness-cli-macos-arm64. */
   readonly name: string
 }
 
@@ -52,11 +52,12 @@ function platformManifest(target: PlatformTarget, version: string) {
   return {
     name: PACKAGE_NAME,
     version: `${version}-${target.os}-${target.cpu}`,
-    description: `dsh CLI single-file executable for ${target.os}-${target.cpu}`,
+    description: `deepseek-harness-cli single-file executable for ${target.os}-${target.cpu}`,
     os: [target.os],
     cpu: [target.cpu],
     // No `bin` field: the platform exe would collide with the main shim's
-    // `dsh` in node_modules/.bin. The shim resolves bin/dsh by package path.
+    // `deepseek-harness-cli` in node_modules/.bin. The shim resolves
+    // bin/deepseek-harness-cli by package path.
     files: ['bin'],
     repository: { type: 'git', url: REPOSITORY },
     license: 'MIT',
@@ -83,20 +84,20 @@ export async function layoutPlatformPackage(
   const binDir = join(packageDir, 'bin')
   await mkdir(binDir, { recursive: true })
 
-  const exeSource = resolve(distDir, `dsh-${target.os}-${target.cpu}`)
+  const exeSource = resolve(distDir, `deepseek-harness-cli-${target.os}-${target.cpu}`)
   if (!existsSync(exeSource)) {
     throw new Error(`package-dsh-cli-npm: ${exeSource} missing — build ${target.os}-${target.cpu} first.`)
   }
-  await copyFile(exeSource, join(binDir, 'dsh'))
-  await chmod(join(binDir, 'dsh'), 0o755)
+  await copyFile(exeSource, join(binDir, 'deepseek-harness-cli'))
+  await chmod(join(binDir, 'deepseek-harness-cli'), 0o755)
 
   if (target.os === 'macos') {
     const helperSource = `${exeSource}-spawn-helper`
     if (!existsSync(helperSource)) {
       throw new Error(`package-dsh-cli-npm: ${helperSource} missing — build the macOS target first.`)
     }
-    await copyFile(helperSource, join(binDir, 'dsh-spawn-helper'))
-    await chmod(join(binDir, 'dsh-spawn-helper'), 0o755)
+    await copyFile(helperSource, join(binDir, 'deepseek-harness-cli-spawn-helper'))
+    await chmod(join(binDir, 'deepseek-harness-cli-spawn-helper'), 0o755)
   }
 
   await writeFile(join(packageDir, 'package.json'), `${JSON.stringify(platformManifest(target, version), null, 2)}\n`)
@@ -113,8 +114,8 @@ function mainManifest(version: string) {
     version,
     type: 'module',
     description:
-      'dsh CLI: profile boot, plugin management, and shipped terminal/browser aliases — npm shim over per-platform single-file executables',
-    bin: { dsh: 'bin/dsh.js' },
+      'deepseek-harness-cli: profile boot, plugin management, and shipped terminal/browser aliases — npm shim over per-platform single-file executables',
+    bin: { 'deepseek-harness-cli': 'bin/deepseek-harness-cli.js' },
     files: ['bin'],
     optionalDependencies,
     repository: { type: 'git', url: REPOSITORY },
@@ -135,8 +136,8 @@ export async function layoutMainPackage(outDir: string, version: string): Promis
   const binDir = join(packageDir, 'bin')
   await mkdir(binDir, { recursive: true })
   const shimSource = join(root, 'scripts', 'dsh-npm-shim.js')
-  await copyFile(shimSource, join(binDir, 'dsh.js'))
-  await chmod(join(binDir, 'dsh.js'), 0o755)
+  await copyFile(shimSource, join(binDir, 'deepseek-harness-cli.js'))
+  await chmod(join(binDir, 'deepseek-harness-cli.js'), 0o755)
   await writeFile(join(packageDir, 'package.json'), `${JSON.stringify(mainManifest(version), null, 2)}\n`)
   return packageDir
 }

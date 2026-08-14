@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `dsh` npm shim: resolve the per-platform single-file executable installed
+ * `deepseek-harness-cli` npm shim: resolve the per-platform single-file executable installed
  * through the main package's optionalDependencies aliases and hand control to
  * it, forwarding stdio and signals. npm installs only the alias whose `os`/`cpu`
  * match the host, so exactly one platform package is present on a supported
@@ -19,20 +19,20 @@ const os = OS[process.platform]
 const cpu = CPU[process.arch]
 if (!os || !cpu) {
   console.error(
-    `dsh: unsupported platform ${process.platform}-${process.arch}. ` +
+    `deepseek-harness-cli: unsupported platform ${process.platform}-${process.arch}. ` +
       'Supported: macOS (arm64, x64) and Linux (arm64, x64).',
   )
   process.exit(1)
 }
 
-const packageName = `@peiyuwang54/dsh-cli-${os}-${cpu}`
+const packageName = `@peiyuwang54/deepseek-harness-cli-${os}-${cpu}`
 let executable
 try {
-  executable = require.resolve(`${packageName}/bin/dsh`)
+  executable = require.resolve(`${packageName}/bin/deepseek-harness-cli`)
 } catch {
   console.error(
-    `dsh: the ${packageName} package is not installed. ` +
-      'Reinstall with: npm install -g @peiyuwang54/dsh-cli',
+    `deepseek-harness-cli: the ${packageName} package is not installed. ` +
+      'Reinstall with: npm install -g @peiyuwang54/deepseek-harness-cli',
   )
   process.exit(1)
 }

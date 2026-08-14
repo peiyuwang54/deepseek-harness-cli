@@ -1,5 +1,5 @@
 /**
- * Build the dsh CLI single-file executable for the curl|sh, npm, and brew
+ * Build the deepseek-harness-cli single-file executable for the curl|sh, npm, and brew
  * distribution channels. The fixed `@yao-pkg/pkg --sea` route, deploy flags,
  * and artifact layout are owned by
  * .agents/notes/implemented/feature/2026-08-15-dsh-cli-exe-distribution.md.
@@ -13,12 +13,12 @@ import { ExeBuild } from './exe-build/pipeline.ts'
 /** Short product name used in CLI and log prefixes. */
 const LABEL = 'build-dsh-cli-exe'
 
-/** The dsh CLI product: the `@deepseek-ai/dsh` app packaged as a single exe. */
+/** The deepseek-harness-cli product: the `@deepseek-ai/dsh` app packaged as a single exe. */
 const CLI_PRODUCT: ExeProduct = {
   label: LABEL,
-  deployFilter: 'dsh-cli-exe-pkg',
+  deployFilter: 'deepseek-harness-cli-exe-pkg',
   entryBin: 'node_modules/@deepseek-ai/dsh/lib/bin.js',
-  outputBasename: 'dsh',
+  outputBasename: 'deepseek-harness-cli',
   // Transient staging under the gitignored dist-exe/ tree; unlike the Python
   // node carrier, the CLI closure is never a published artifact.
   stagingDir: 'dist-exe/.staging/cli',

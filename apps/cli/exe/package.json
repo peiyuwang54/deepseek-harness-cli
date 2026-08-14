@@ -1,6 +1,6 @@
 {
-  "name": "dsh-cli-exe-pkg",
-  "description": "Dependency-only deploy root defining the dsh CLI executable closure; pnpm deploy materializes this manifest and node_modules.",
+  "name": "deepseek-harness-cli-exe-pkg",
+  "description": "Dependency-only deploy root defining the deepseek-harness-cli executable closure; pnpm deploy materializes this manifest and node_modules.",
   "version": "0.0.1",
   "private": true,
   "type": "module",

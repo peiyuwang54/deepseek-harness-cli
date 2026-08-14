@@ -1,11 +1,11 @@
-# Build and distribute the dsh CLI single-file executable across three
-# channels: GitHub Releases (curl|sh), npm (@peiyuwang54/dsh-cli), and a
-# Homebrew cask pushed to peiyuwang54/homebrew-dsh. Runs on every dsh-cli-v*
+# Build and distribute the deepseek-harness-cli single-file executable across three
+# channels: GitHub Releases (curl|sh), npm (@peiyuwang54/deepseek-harness-cli), and a
+# Homebrew cask pushed to peiyuwang54/homebrew-dsh. Runs on every deepseek-harness-cli-v*
 # tag push or from a manual dispatch; a manual dispatch is also the only way to
 # release without pushing a tag first. The build/package/release jobs are
 # keyless; npm-publish requires the npm-publish environment and brew-tap the
 # HOMEBREW_TAP_TOKEN secret.
-name: Release dsh CLI
+name: Release deepseek-harness-cli
 
 on:
   workflow_dispatch:
@@ -16,14 +16,14 @@ on:
         type: string
   push:
     tags:
-      - 'dsh-cli-v*'
+      - 'deepseek-harness-cli-v*'
 
 permissions:
   contents: read
 
 concurrency:
   # A release must not cancel its own rerun on the same ref.
-  group: dsh-cli-release-${{ github.ref }}
+  group: deepseek-harness-cli-release-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -48,7 +48,7 @@ jobs:
           if [ -n "${{ github.event.inputs.version }}" ]; then
             version="${{ github.event.inputs.version }}"
           elif [ "$GITHUB_REF_TYPE" = "tag" ]; then
-            version="${GITHUB_REF_NAME#dsh-cli-v}"
+            version="${GITHUB_REF_NAME#deepseek-harness-cli-v}"
           else
             version="$(node -p "require('./apps/cli/package.json').version")"
           fi
@@ -99,9 +99,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.pkg-cache
-          key: pkg-fetch-dsh-cli-${{ matrix.target }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: pkg-fetch-deepseek-harness-cli-${{ matrix.target }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
-            pkg-fetch-dsh-cli-${{ matrix.target }}-
+            pkg-fetch-deepseek-harness-cli-${{ matrix.target }}-
 
       - name: Install (immutable)
         run: pnpm install --frozen-lockfile
@@ -149,7 +149,7 @@ jobs:
       - name: Smoke test --version
         run: |
           set -euo pipefail
-          exe="$PWD/dist-exe/dsh-${{ steps.product.outputs.platform }}"
+          exe="$PWD/dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}"
           [ -x "$exe" ] || { echo "::error::$exe missing or not executable"; exit 1; }
           actual="$(DSH_TELEMETRY_DISABLED=1 "$exe" --version)"
           [ "$actual" = "$VERSION" ] || {
@@ -161,7 +161,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           set -euo pipefail
-          exe="$PWD/dist-exe/dsh-${{ steps.product.outputs.platform }}"
+          exe="$PWD/dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}"
           readelf --version-info "$exe" | tee glibc-versions.txt
           maximum="$(sed -n 's/.*Name: GLIBC_\([0-9.]*\).*/\1/p' glibc-versions.txt | sort -V | tail -1)"
           [ -n "$maximum" ] || { echo "::error::No GLIBC requirements found"; exit 1; }
@@ -173,15 +173,15 @@ jobs:
       - name: Check macOS deployment target
         if: runner.os == 'macOS'
         env:
-          EXE: ${{ github.workspace }}/dist-exe/dsh-${{ steps.product.outputs.platform }}
+          EXE: ${{ github.workspace }}/dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}
         run: python3 scripts/check-macos-deployment-target.py "$EXE" "$EXE-spawn-helper"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dsh-exe-${{ steps.product.outputs.platform }}
+          name: deepseek-harness-cli-exe-${{ steps.product.outputs.platform }}
           path: |
-            dist-exe/dsh-${{ steps.product.outputs.platform }}
-            dist-exe/dsh-${{ steps.product.outputs.platform }}-spawn-helper
+            dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}
+            dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}-spawn-helper
           if-no-files-found: error
           retention-days: 7
 
@@ -220,40 +220,40 @@ jobs:
             arch="${target%-*}"; os="${target#*-}"
             stage="$RUNNER_TEMP/stage-$target"
             mkdir -p "$stage/bin"
-            cp "dist-exe/dsh-$target" "$stage/bin/dsh"
-            chmod +x "$stage/bin/dsh"
+            cp "dist-exe/deepseek-harness-cli-$target" "$stage/bin/deepseek-harness-cli"
+            chmod +x "$stage/bin/deepseek-harness-cli"
             if [ "$os" = macos ]; then
-              cp "dist-exe/dsh-$target-spawn-helper" "$stage/bin/dsh-spawn-helper"
-              chmod +x "$stage/bin/dsh-spawn-helper"
+              cp "dist-exe/deepseek-harness-cli-$target-spawn-helper" "$stage/bin/deepseek-harness-cli-spawn-helper"
+              chmod +x "$stage/bin/deepseek-harness-cli-spawn-helper"
             fi
-            (cd "$stage" && tar -czf "$GITHUB_WORKSPACE/dist-release/dsh-${arch}-${os}.tar.gz" bin)
-            (cd dist-release && sha256sum "dsh-${arch}-${os}.tar.gz" > "dsh-${arch}-${os}.sha256")
+            (cd "$stage" && tar -czf "$GITHUB_WORKSPACE/dist-release/deepseek-harness-cli-${arch}-${os}.tar.gz" bin)
+            (cd dist-release && sha256sum "deepseek-harness-cli-${arch}-${os}.tar.gz" > "deepseek-harness-cli-${arch}-${os}.sha256")
           done
 
       - name: Lay out npm packages
         run: pnpm exec tsx scripts/package-dsh-cli-npm.ts --version "$VERSION" --dir dist-exe --out dist-npm
 
       - name: Generate Homebrew cask
-        run: pnpm exec tsx scripts/gen-dsh-cask.ts --version "$VERSION" --dir dist-exe --out dsh.rb
+        run: pnpm exec tsx scripts/gen-deepseek-harness-cli-cask.ts --version "$VERSION" --dir dist-exe --out deepseek-harness-cli.rb
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dsh-release-assets
+          name: deepseek-harness-cli-release-assets
           path: dist-release/*
           if-no-files-found: error
           retention-days: 7
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dsh-npm-packages
+          name: deepseek-harness-cli-npm-packages
           path: dist-npm/*
           if-no-files-found: error
           retention-days: 7
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dsh-cask
-          path: dsh.rb
+          name: deepseek-harness-cli-cask
+          path: deepseek-harness-cli.rb
           if-no-files-found: error
           retention-days: 7
 
@@ -267,7 +267,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: dsh-release-assets
+          name: deepseek-harness-cli-release-assets
           path: dist-release
 
       - name: Create or refresh the release with assets
@@ -276,7 +276,7 @@ jobs:
           VERSION: ${{ needs.plan.outputs.version }}
         run: |
           set -euo pipefail
-          tag="dsh-cli-v$VERSION"
+          tag="deepseek-harness-cli-v$VERSION"
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" dist-release/*.tar.gz dist-release/*.sha256 --clobber
           else
@@ -305,7 +305,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: dsh-npm-packages
+          name: deepseek-harness-cli-npm-packages
           path: dist-npm
 
       - name: Publish the main shim and per-platform packages
@@ -328,7 +328,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: dsh-cask
+          name: deepseek-harness-cli-cask
           path: cask-artifact
 
       - name: Push the cask to peiyuwang54/homebrew-dsh
@@ -339,13 +339,13 @@ jobs:
           set -euo pipefail
           git clone "https://x-access-token:${TAP_TOKEN}@github.com/peiyuwang54/homebrew-dsh.git" tap
           mkdir -p tap/Casks/d
-          cp cask-artifact/dsh.rb tap/Casks/d/dsh.rb
-          git -C tap config user.name "dsh-cli-release[bot]"
+          cp cask-artifact/deepseek-harness-cli.rb tap/Casks/d/deepseek-harness-cli.rb
+          git -C tap config user.name "deepseek-harness-cli-release[bot]"
           git -C tap config user.email "noreply@github.com"
-          git -C tap add Casks/d/dsh.rb
+          git -C tap add Casks/d/deepseek-harness-cli.rb
           if git -C tap diff --cached --quiet; then
-            echo "Casks/d/dsh.rb is unchanged; nothing to push."
+            echo "Casks/d/deepseek-harness-cli.rb is unchanged; nothing to push."
           else
-            git -C tap -c commit.gpgsign=false commit -m "dsh v${VERSION}"
+            git -C tap -c commit.gpgsign=false commit -m "deepseek-harness-cli v${VERSION}"
             git -C tap push
           fi

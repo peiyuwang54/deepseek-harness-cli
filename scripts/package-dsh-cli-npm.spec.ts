@@ -22,7 +22,7 @@ import {
 
 const root = resolve(import.meta.dirname, '..')
 const host = platformTarget()
-const hostExe = host === null ? undefined : resolve(root, 'dist-exe', `dsh-${host.os}-${host.cpu}`)
+const hostExe = host === null ? undefined : resolve(root, 'dist-exe', `deepseek-harness-cli-${host.os}-${host.cpu}`)
 const HOST_EXE_PRESENT = hostExe !== undefined && existsSync(hostExe)
 
 function runIn(dir: string, command: string, args: string[]): string {
@@ -93,7 +93,7 @@ describe.skipIf(!HOST_EXE_PRESENT)('packaging e2e', () => {
 
     // The shim must resolve the platform exe and reproduce its --version output.
     const expected = runIn(root, hostExe!, ['--version'])
-    const actual = runIn(consumer, 'node', [join(mainInstall, 'bin', 'dsh.js'), '--version'])
+    const actual = runIn(consumer, 'node', [join(mainInstall, 'bin', 'deepseek-harness-cli.js'), '--version'])
     expect(actual).toBe(expected)
   }, 120_000)
 })

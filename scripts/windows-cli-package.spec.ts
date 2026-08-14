@@ -23,9 +23,9 @@ describe('windows-cli-package', () => {
   })
 
   it('rejects a destination that is or contains the repository root', () => {
-    expect(() => assertSafePackageDestination('C:\\repo', 'C:\\repo')).toThrow('repository root')
-    expect(() => assertSafePackageDestination('C:\\repo', 'C:\\')).toThrow('contains the repository root')
-    expect(() => assertSafePackageDestination('C:\\repo', 'C:\\repo\\dist-windows\\dsh')).not.toThrow()
+    expect(() => { assertSafePackageDestination('C:\\repo', 'C:\\repo') }).toThrow('repository root')
+    expect(() => { assertSafePackageDestination('C:\\repo', 'C:\\') }).toThrow('contains the repository root')
+    expect(() => { assertSafePackageDestination('C:\\repo', 'C:\\repo\\dist-windows\\dsh') }).not.toThrow()
   })
 
   it('writes a cmd launcher that boots tui only when the user passed no arguments', () => {

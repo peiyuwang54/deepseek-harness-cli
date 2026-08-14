@@ -24,20 +24,20 @@ describe('generateCask', () => {
     expect(cask).toContain('version "0.1.0-rc.5"')
     expect(cask).toContain('arch arm: "arm64", intel: "x64"')
     expect(cask).toContain('os macos: "macos", linux: "linux"')
-    expect(cask).toContain('dsh-cli-v#{version}/dsh-#{arch}-#{os}.tar.gz')
+    expect(cask).toContain('deepseek-harness-cli-v#{version}/deepseek-harness-cli-#{arch}-#{os}.tar.gz')
   })
 
   it('nests the four distinct digests under on_macos/on_linux and on_arm/on_intel', () => {
     const cask = generateCask('0.1.0-rc.5', SHAS)
     for (const digest of Object.values(SHAS)) expect(cask).toContain(digest)
     expect(cask.indexOf('on_macos')).toBeLessThan(cask.indexOf('on_linux'))
-    expect(cask).toContain('binary "bin/dsh"')
+    expect(cask).toContain('binary "bin/deepseek-harness-cli"')
   })
 
-  it('adds a livecheck that matches dsh-cli-v<version> tags', () => {
+  it('adds a livecheck that matches deepseek-harness-cli-v<version> tags', () => {
     const cask = generateCask('0.1.0-rc.5', SHAS)
     expect(cask).toContain('strategy :github_releases')
-    expect(cask).toContain(String.raw`regex(/^dsh-cli-v(\d+\.\d+\.\d+(?:-rc\.\d+)?)$/i)`)
+    expect(cask).toContain(String.raw`regex(/^deepseek-harness-cli-v(\d+\.\d+\.\d+(?:-rc\.\d+)?)$/i)`)
   })
 })
 
@@ -45,7 +45,7 @@ describe('readPlatformShas', () => {
   it('parses the published sidecar format', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-cask-spec-'))
     for (const [target, digest] of Object.entries(SHAS)) {
-      writeFileSync(join(dir, `dsh-${target}.sha256`), `${digest}  dsh-${target}.tar.gz\n`)
+      writeFileSync(join(dir, `deepseek-harness-cli-${target}.sha256`), `${digest}  deepseek-harness-cli-${target}.tar.gz\n`)
     }
     expect(await readPlatformShas(dir)).toEqual(SHAS)
   })
@@ -53,12 +53,12 @@ describe('readPlatformShas', () => {
   it('rejects a missing sidecar', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-cask-spec-'))
     mkdirSync(dir, { recursive: true })
-    await expect(readPlatformShas(dir)).rejects.toThrow(/dsh-macos-arm64\.sha256 missing/)
+    await expect(readPlatformShas(dir)).rejects.toThrow(/deepseek-harness-cli-macos-arm64\.sha256 missing/)
   })
 
   it('rejects a non-hex digest', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-cask-spec-'))
-    writeFileSync(join(dir, 'dsh-macos-arm64.sha256'), 'not-a-digest\n')
+    writeFileSync(join(dir, 'deepseek-harness-cli-macos-arm64.sha256'), 'not-a-digest\n')
     await expect(readPlatformShas(dir)).rejects.toThrow(/64-hex sha256/)
   })
 })

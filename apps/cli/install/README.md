@@ -14,7 +14,7 @@ runs on plain POSIX `sh`; it needs only `curl`, `tar`, and a sha256 tool
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-web-to-cli/master/apps/cli/install/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
 ```
 
 After it finishes, restart your shell (or run the `export PATH=…` line it prints)

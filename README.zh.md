@@ -25,7 +25,7 @@ deepseek-harness-cli web
 macOS（`arm64`、`x64`）与 Linux（`arm64`、`x64`）——任选一种方式：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-web-to-cli/master/apps/cli/install/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
 npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
@@ -37,8 +37,8 @@ curl|sh 一行会用同一 release 的 sha256 sidecar 校验 tarball，并安装
 ## 从源码运行
 
 ```sh
-git clone https://github.com/peiyuwang54/deepseek-harness-web-to-cli.git
-cd deepseek-harness-web-to-cli
+git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
+cd deepseek-harness-cli
 pnpm install --frozen-lockfile
 pnpm run build
 pnpm dsh tui
@@ -52,7 +52,7 @@ pnpm dsh tui
 - [终端 UI 详情](packages/ui/tui/README.md)
 - [架构](docs/architecture.md)
 - [开发指南](docs/development.md)
-- [Issues](https://github.com/peiyuwang54/deepseek-harness-web-to-cli/issues)
+- [Issues](https://github.com/peiyuwang54/deepseek-harness-cli/issues)
 
 ## 安全
 

@@ -13,7 +13,7 @@ import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 
 const root = resolve(import.meta.dirname, '..')
-const REPO = 'peiyuwang54/deepseek-harness-web-to-cli'
+const REPO = 'peiyuwang54/deepseek-harness-cli'
 const HOMEPAGE = `https://github.com/${REPO}`
 
 export const TARGETS = ['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x64'] as const

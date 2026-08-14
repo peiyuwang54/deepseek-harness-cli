@@ -9,7 +9,7 @@
 ## 安装
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-web-to-cli/master/apps/cli/install/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
 ```
 
 完成后请重启 shell（或运行它打印的 `export PATH=…` 那一行），让 `deepseek-harness-cli` 二进制进入 `PATH`。

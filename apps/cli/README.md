@@ -48,7 +48,7 @@ The [CLI behavior reference](reference/README.md) owns exact layer precedence, f
 `dsh` ships as a single-file executable for macOS (`arm64`, `x64`) and Linux (`arm64`, `x64`). Install it with any one of these:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-web-to-cli/master/apps/cli/install/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
 npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```

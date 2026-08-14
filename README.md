@@ -25,7 +25,7 @@ The directory you run the command from is the workspace. Profiles, credentials, 
 macOS (`arm64`, `x64`) and Linux (`arm64`, `x64`) — pick one channel:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-web-to-cli/master/apps/cli/install/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
 npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
@@ -37,8 +37,8 @@ The curl|sh line verifies the tarball against the release's sha256 sidecar and i
 ## Run from source
 
 ```sh
-git clone https://github.com/peiyuwang54/deepseek-harness-web-to-cli.git
-cd deepseek-harness-web-to-cli
+git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
+cd deepseek-harness-cli
 pnpm install --frozen-lockfile
 pnpm run build
 pnpm dsh tui
@@ -52,7 +52,7 @@ Requires Node.js `^22.19` or `>=24` and pnpm `11.7.0`. Once on `PATH`, `deepseek
 - [Terminal UI details](packages/ui/tui/README.md)
 - [Architecture](docs/architecture.md)
 - [Development guide](docs/development.md)
-- [Issues](https://github.com/peiyuwang54/deepseek-harness-web-to-cli/issues)
+- [Issues](https://github.com/peiyuwang54/deepseek-harness-cli/issues)
 
 ## Security
 

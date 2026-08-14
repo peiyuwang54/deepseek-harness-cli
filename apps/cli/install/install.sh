@@ -1,10 +1,10 @@
 #!/bin/sh
 #
 # deepseek-harness-cli installer — download and install the single-file deepseek-harness-cli executable from
-# the deepseek-harness-cli-v* GitHub Releases of peiyuwang54/deepseek-harness-web-to-cli.
+# the deepseek-harness-cli-v* GitHub Releases of peiyuwang54/deepseek-harness-cli.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-web-to-cli/master/apps/cli/install/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
 #   # flags are passed after `--`:
 #   curl -fsSL <install-url> | sh -s -- --to /usr/local --version 0.1.0-rc.5
 #
@@ -17,7 +17,7 @@
 # signature verification (minisign) is the planned upgrade path.
 set -eu
 
-REPO="peiyuwang54/deepseek-harness-web-to-cli"
+REPO="peiyuwang54/deepseek-harness-cli"
 BASE_URL="${DEEPSEEK_HARNESS_CLI_BASE_URL:-https://github.com/${REPO}/releases/download}"
 
 usage() {

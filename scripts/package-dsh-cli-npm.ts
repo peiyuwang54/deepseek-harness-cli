@@ -16,7 +16,7 @@ import { parseArgs } from 'node:util'
 const root = resolve(import.meta.dirname, '..')
 
 export const PACKAGE_NAME = '@peiyuwang54/deepseek-harness-cli'
-export const REPOSITORY = 'git+https://github.com/peiyuwang54/deepseek-harness-web-to-cli.git'
+export const REPOSITORY = 'git+https://github.com/peiyuwang54/deepseek-harness-cli.git'
 
 export interface PlatformTarget {
   readonly os: 'macos' | 'linux'

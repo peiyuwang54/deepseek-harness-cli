@@ -18,7 +18,7 @@ Loader 会先导入变化后的模块名，再 dispose（资源释放）活动 f
 
 Include 读取并校验尚未提交的候选内容，把补丁应用到其副本，对账 Loader 树，然后才提交缓存内容和解析数据。解析、校验、应用或回滚失败后，`refresh()` 会向调用方 reject。初始加载仍会明确报错；只有文件不存在时才可以使用 `initial`。YAML/JSON 结果若不是数组即为无效；文件刷新和 Include 配置更新都会重新应用补丁，且不修改缓存的解析结果。
 
-HMR 收容实时刷新 rejection。其 `registerConfig(filename, refresh)` 方法从最近的现有祖先目录开始监听一个确切路径，串行化并合并刷新，并返回一个异步 disposer；该 disposer 会关闭 watcher 并排空活跃工作。确切路径和普通配置文件的刷新都使用此队列。失败会被规范化为 `Error`、记入日志，并通过并行事件 `hmr/config-update-failed(filename, error)` 广播；发生 rejection 的观察者会被记录，但不会阻止后续刷新。创建、变更和移除均会被观察。
+HMR 收容实时刷新 rejection。其 `registerConfig(filename, refresh)` 方法从最近的现有祖先目录开始监听一个确切路径，串行化并合并刷新，并返回一个异步 disposer；该 disposer 会关闭 watcher 并排空活跃工作。确切路径和普通配置文件的刷新都使用此队列。失败会被规范化为 `Error`、记入日志，并通过并行事件 `hmr/config-update-failed(filename, error)` 广播；发生 rejection 的观察者会被记录，但不会阻止后续刷新。创建、变更和移除均会被观察。由于进程同时持有大量 watcher 时，macOS 原生 FSEvents 可能漏掉新建路径，确切路径注册在 macOS 上默认使用 Chokidar 轮询；调用者仍可显式设置 `usePolling`，普通模块 HMR 则继续使用原生事件。
 
 ## Alternatives considered
 
@@ -34,8 +34,9 @@ HMR 收容实时刷新 rejection。其 `registerConfig(filename, refresh)` 方�
 - 回滚失败可见，并可能使一个配置项不可用；事件和日志不会误称其已恢复。
 - 等待已声明依赖的 fiber 仍是有效的 pending 配置项：生命周期完成只表示当前工作均未失败，而不表示每项依赖都存在。
 - 确切配置 watcher 只为已注册路径增加文件系统资源，并随其所属 HMR fiber 一起释放。
+- 在 macOS 上，确切配置 watcher 以有界轮询间隔换取可靠的创建事件；模块树监听不承担这项开销。
 - vendor 中的 Loader、Include、HMR 与核心事件类型定义进一步偏离上游；全部分叉均维护在 vendor manifest（元数据清单）中。
 
 ## Testing
 
-`packages/boot/app-boot/tests/config-reload.spec.ts` 启动真实的临时 Loader/Include 树，并覆盖对解析和形状错误的拒绝、先导入再 dispose、插件/配置恢复、多配置项回滚、祖先禁用、overlay 收敛、option 对象身份、失败的直接更新不持久化以及失败的程序化移动。`packages/boot/app-boot/tests/hmr-config.spec.ts` 覆盖现有和缺失的确切路径、添加/变更/移除、串行化合并、dispose 排空、非 `Error` 值的规范化、失败广播以及对发生 rejection 的观察者的收容。`packages/host/webserver/tests/webserver.spec.ts` 证明受服务门控的启动失败会让 Loader 组合以其 bind 诊断 reject；`packages/typert/loader/tests/loader.spec.ts` 则通过真实 Loader 消费方演练可等待的程序化移除；ACP（Agent Client Protocol）的 `pty-tools` 快照会防止并发组合改变同优先级提示词段的顺序。
+`packages/boot/app-boot/tests/config-reload.spec.ts` 启动真实的临时 Loader/Include 树，并覆盖对解析和形状错误的拒绝、先导入再 dispose、插件/配置恢复、多配置项回滚、祖先禁用、overlay 收敛、option 对象身份、失败的直接更新不持久化以及失败的程序化移动。`packages/boot/app-boot/tests/hmr-config.spec.ts` 覆盖现有和缺失的确切路径、添加/变更/移除、串行化合并、dispose 排空、非 `Error` 值的规范化、失败广播以及对发生 rejection 的观察者的收容。`packages/boot/app-boot/tests/user-patches.spec.ts` 通过用户 patch 层的添加、无效更新、恢复与移除，演练同一个确切路径 watcher。聚焦的 HMR 和用户 patch 套件在 macOS 上使用生产 watcher 选择，而全量单测提供了暴露 FSEvents 漏事件的并发 watcher 压力。`packages/host/webserver/tests/webserver.spec.ts` 证明受服务门控的启动失败会让 Loader 组合以其 bind 诊断 reject；`packages/typert/loader/tests/loader.spec.ts` 则通过真实 Loader 消费方演练可等待的程序化移除；ACP（Agent Client Protocol）的 `pty-tools` 快照会防止并发组合改变同优先级提示词段的顺序。

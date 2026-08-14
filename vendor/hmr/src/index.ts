@@ -145,6 +145,12 @@ class Hmr extends Service {
       depth,
       ignored: undefined,
       ignoreInitial: false,
+      // Native FSEvents can miss creation of an exact path while a macOS
+      // process owns many concurrent watchers. Exact config registrations are
+      // few and correctness-sensitive, so prefer Chokidar's bounded polling
+      // there by default. Keep an explicit caller choice authoritative, and
+      // leave the ordinary module watcher on native events.
+      usePolling: this.config.usePolling ?? process.platform === 'darwin',
     })
     const registration = { watcher }
     this.configs.set(watchFilename, registration)

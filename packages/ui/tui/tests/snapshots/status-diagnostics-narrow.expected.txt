@@ -1,0 +1,128 @@
+terminal 56x36 buffer=normal length=47 base=11 viewport=11
+lifecycle started=1 stopped=0 progress=inactive
+title "Inspect session diagnostics — DSH snapshot"
+cursor hidden column=8 viewportRow=33 bufferRow=44
+buffer
+0| " DEEPSEEK HARNESS"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+1| " Inspect session diagnostics"
+  style 1-27 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "You                                                     "
+  style 0-2 fg=bright-magenta bold underline
+5| "inspect this session                                    "
+6| <blank>
+7| "Assistant                                               "
+  style 0-8 fg=bright-magenta bold underline
+8| "Session inspected.                                      "
+9| "Model wait 0.0s                                         "
+  style 0-14 dim
+10| <blank>
+11| "╭─ Session status ─────────────────────────────────────╮"
+  style 0-2 dim
+  style 3-16 fg=bright-magenta bold
+  style 17-55 dim
+12| "│  Session:    main-session                            │"
+  style 0-0 dim
+  style 3-12 dim
+  style 55-55 dim
+13| "│  Title:      Inspect session diagnostics             │"
+  style 0-0 dim
+  style 3-12 dim
+  style 55-55 dim
+14| "│  Directory:  /workspace/project                      │"
+  style 0-0 dim
+  style 3-12 dim
+  style 55-55 dim
+15| "│  Model:      deepseek-official/deepseek-v4-pro       │"
+  style 0-0 dim
+  style 3-12 dim
+  style 55-55 dim
+16| "│              (effort default; reasoning blocks       │"
+  style 0-0 dim
+  style 15-55 dim
+17| "│              shown)                                  │"
+  style 0-0 dim
+  style 15-20 dim
+  style 55-55 dim
+18| "│                                                      │"
+  style 0-0 dim
+  style 55-55 dim
+19| "│  Agent:      idle · 8 events · 1 turn · 1 step · 1   │"
+  style 0-0 dim
+  style 3-12 dim
+  style 55-55 dim
+20| "│              tool call                               │"
+  style 0-0 dim
+  style 55-55 dim
+21| "│                                                      │"
+  style 0-0 dim
+  style 55-55 dim
+22| "│  Tokens:     1,250 input + 340 output                │"
+  style 0-0 dim
+  style 3-12 dim
+  style 55-55 dim
+23| "│  KV cache:   [███████████░░░░░] 67% hit (3,000 read  │"
+  style 0-0 dim
+  style 3-12 dim
+  style 15-15 dim
+  style 16-26 fg=bright-magenta
+  style 27-32 dim
+  style 55-55 dim
+24| "│              + 250 write)                            │"
+  style 0-0 dim
+  style 55-55 dim
+25| "│  Context:    [█████░░░░░░░░░░░] 33% used (42,000 /   │"
+  style 0-0 dim
+  style 3-12 dim
+  style 15-15 dim
+  style 16-20 fg=bright-magenta
+  style 21-32 dim
+  style 55-55 dim
+26| "│              128,000)                                │"
+  style 0-0 dim
+  style 55-55 dim
+27| "│                                                      │"
+  style 0-0 dim
+  style 55-55 dim
+28| "│  Created:    2026-07-22 09:10:11 UTC                 │"
+  style 0-0 dim
+  style 3-12 dim
+  style 55-55 dim
+29| "│  Active:     2026-07-22 09:10:11 UTC                 │"
+  style 0-0 dim
+  style 3-12 dim
+  style 55-55 dim
+30| "╰──────────────────────────────────────────────────────╯"
+  style 0-55 dim
+31| <blank>
+32| "System prompt                                           "
+  style 0-12 fg=bright-magenta bold
+33| "You are an AI agent powered by DeepSeek Harness.        "
+34| "                                                        "
+35| "Paths prefixed with @ are files explicitly referenced by"
+36| "the user. Use the read tool when their contents are     "
+37| "needed; do not claim to have inspected a file before    "
+38| "reading it.                                             "
+39| <blank>
+40| "Registered tools                                        "
+  style 0-15 fg=bright-magenta bold
+41| "read, write                                             "
+42| <blank>
+43| "╭ Message ─────────────────────────────────────────────╮"
+  style 0-55 dim
+44| "│ dsh > Describe a task, @ a file, or / for commands   │"
+  style 0-0 dim
+  style 2-4 fg=bright-magenta bold
+  style 6-51 dim
+  style 55-55 dim
+45| "╰─────── Enter send · Shift+Enter newline · / commands ╯"
+  style 0-55 dim
+46| "idle  deepseek-v4-pro [alt+m]  ↑1.3k ↓340 cache 67%  33%"
+  style 0-3 dim
+  style 6-28 dim
+  style 31-50 dim
+  style 53-55 dim

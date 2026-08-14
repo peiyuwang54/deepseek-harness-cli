@@ -1,0 +1,43 @@
+terminal 44x18 buffer=normal length=18 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=39 viewportRow=10 bufferRow=10
+viewport
+0| " DEEPSEEK HARNESS"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+1| " Snapshot agent ready."
+  style 1-21 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "╭ Message ─────────────────────────────────╮"
+  style 0-43 dim
+5| "│       ↑ 1 more                           │"
+  style 0-0 dim
+  style 2-15 dim
+  style 43-43 dim
+6| "│ enough detail to wrap across multiple    │"
+  style 0-0 dim
+  style 43-43 dim
+7| "│ full-width continuation rows without     │"
+  style 0-0 dim
+  style 43-43 dim
+8| "│ leaving a prompt-sized gap at the right  │"
+  style 0-0 dim
+  style 43-43 dim
+9| "│ edge.                                    │"
+  style 0-0 dim
+  style 43-43 dim
+10| "│       Then suggest a simpler version.    │"
+  style 0-0 dim
+  style 39-39 inverse
+  style 43-43 dim
+11| "╰ Enter send · Shift+Enter newline · / comm╯"
+  style 0-42 dim
+12| "idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% c"
+  style 0-3 dim
+  style 6-30 dim
+  style 33-37 dim
+  style 40-43 dim
+13-17| <blank>

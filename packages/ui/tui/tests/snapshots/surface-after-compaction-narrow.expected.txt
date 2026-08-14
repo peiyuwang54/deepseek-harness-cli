@@ -1,0 +1,56 @@
+terminal 44x18 buffer=normal length=26 base=8 viewport=8
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=8 viewportRow=15 bufferRow=23
+buffer
+0| " DEEPSEEK HARNESS"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+1| " Snapshot agent ready."
+  style 1-21 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "You                                         "
+  style 0-2 fg=bright-magenta bold underline
+5| "Old prompt with a long line that exercises  "
+6| "wrapping and stays visible after compaction."
+7| <blank>
+8| "Assistant                                   "
+  style 0-8 fg=bright-magenta bold underline
+9| <blank>
+10| "● Tool / bash / Run the coverage gate"
+  style 0-36 fg=green
+11| "$ pnpm run test:coverage                    "
+  style 0-23 dim
+12| "/workspace/project                          "
+  style 0-17 dim
+13| "packages/ui/tui 100%                        "
+  style 0-19 dim
+14| "… +1 lines (Ctrl+O to expand)               "
+  style 0-28 dim
+15| "1 test skipped                              "
+  style 0-13 dim
+16| "coverage complete                           "
+  style 0-16 dim
+17| "[exit 0]                                    "
+  style 0-7 dim
+18| "Model wait 0.0s                             "
+  style 0-14 dim
+19| <blank>
+20| "… earlier context was compacted …           "
+  style 0-32 dim
+21| <blank>
+22| "╭ Message ─────────────────────────────────╮"
+  style 0-43 dim
+23| "│ dsh > Describe a task, @ a file, or / for│"
+  style 0-0 dim
+  style 2-4 fg=bright-magenta bold
+  style 6-43 dim
+24| "╰ Enter send · Shift+Enter newline · / comm╯"
+  style 0-42 dim
+25| "idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% c"
+  style 0-3 dim
+  style 6-30 dim
+  style 33-37 dim
+  style 40-43 dim

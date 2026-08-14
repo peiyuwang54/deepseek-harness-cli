@@ -1,0 +1,57 @@
+terminal 92x32 buffer=normal length=32 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=12 viewportRow=13 bufferRow=13
+buffer
+0| " DEEPSEEK HARNESS"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+1| " Snapshot agent ready."
+  style 1-21 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
+  style 0-91 dim
+5| "│ dsh > Describe a task, @ a file, or / for commands                                       │"
+  style 0-0 dim
+  style 2-4 fg=bright-magenta bold
+  style 6-51 dim
+  style 91-91 dim
+6| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+  style 0-91 dim
+7| "/workspace/project (tui-staging)          idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-magenta bold
+  style 18-31 dim
+  style 42-45 dim
+  style 48-72 dim
+  style 75-79 dim
+  style 82-91 dim
+8-11| <blank>
+12| "        ╭ Select model ────────────────────────────────────────────────────────────╮        "
+  style 8-83 fg=bright-magenta
+13| "        │ >                                                                        │        "
+  style 8-8 fg=bright-magenta
+  style 12-12 inverse
+  style 83-83 fg=bright-magenta
+14| "        │                                                                          │        "
+  style 8-8 fg=bright-magenta
+  style 83-83 fg=bright-magenta
+15| "        │ → deepseek-official/deepseek-v4-  DeepSeek V4 Flash — current            │        "
+  style 8-8 fg=bright-magenta
+  style 10-41 fg=bright-magenta inverse
+  style 83-83 fg=bright-magenta
+16| "        │   deepseek-official/deepseek-v4-  DeepSeek V4 Pro                        │        "
+  style 8-8 fg=bright-magenta
+  style 42-58 dim
+  style 83-83 fg=bright-magenta
+17| "        │                                                                          │        "
+  style 8-8 fg=bright-magenta
+  style 83-83 fg=bright-magenta
+18| "        │ type to filter • ↑/↓ move • Shift+Tab reasoning • Enter select • Esc     │        "
+  style 8-8 fg=bright-magenta
+  style 10-77 dim
+  style 83-83 fg=bright-magenta
+19| "        ╰──────────────────────────────────────────────────────────────────────────╯        "
+  style 8-83 fg=bright-magenta
+20-31| <blank>

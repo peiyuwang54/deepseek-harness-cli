@@ -1,0 +1,52 @@
+terminal 100x40 buffer=normal length=40 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=8 viewportRow=20 bufferRow=20
+buffer
+0| " DEEPSEEK HARNESS"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+1| " Snapshot agent ready."
+  style 1-21 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "You                                                                                                 "
+  style 0-2 fg=bright-magenta bold underline
+5| "Refactor the renderer.                                                                              "
+6| <blank>
+7| "Assistant                                                                                           "
+  style 0-8 fg=bright-magenta bold underline
+8| "Inspecting the renderer first.                                                                      "
+9| "Model wait 0.0s                                                                                     "
+  style 0-14 dim
+10| "Model wait 0.0s · Completed 2026-07-29 22:30:00                                                     "
+  style 0-46 dim
+11| <blank>
+12| "The renderer is sound; no refactor needed.                                                          "
+13| "Model wait 0.0s · Completed 2026-07-29 22:30:00                                                     "
+  style 0-46 dim
+14| <blank>
+15| "Tool and context cards expanded.                                                                    "
+  style 0-31 dim
+16| <blank>
+17| "Tool cards hidden.                                                                                  "
+  style 0-17 dim
+18| <blank>
+19| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────────╮"
+  style 0-99 dim
+20| "│ dsh > Describe a task, @ a file, or / for commands                                               │"
+  style 0-0 dim
+  style 2-4 fg=bright-magenta bold
+  style 6-51 dim
+  style 99-99 dim
+21| "╰─────────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+  style 0-99 dim
+22| "/workspace/project (tui-staging)                  idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-magenta bold
+  style 18-31 dim
+  style 50-53 dim
+  style 56-80 dim
+  style 83-87 dim
+  style 90-99 dim
+23-39| <blank>

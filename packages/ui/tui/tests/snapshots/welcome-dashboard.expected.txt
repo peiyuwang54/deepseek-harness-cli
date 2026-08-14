@@ -1,0 +1,87 @@
+terminal 104x38 buffer=normal length=38 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=8 viewportRow=28 bufferRow=28
+viewport
+0| "                                                 ⣀⣀⣀⣀⣤⡄  ⢠⡄"
+  style 44-58 fg=blue
+1| "                                           ⢀⣴⣾⣿⣿⣿⣿⣿⣿⣤⡀ ⢻⣿⣶⣠⣤⣶⡟"
+  style 42-61 fg=blue
+2| "                                          ⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡈⠻⣿⣿⡿⠟⠁"
+  style 42-61 fg=blue
+3| "                                           ⢸⣯  ⠉⠙⠻⣿⣿⣿⣯⡙⢿⣿⣾⣿⡇"
+  style 43-59 fg=blue
+4| "                                           ⢸⣿⡄    ⠈⠻⣿⣿⣧⣤⣿⣿⣿⠁"
+  style 43-59 fg=blue
+5| "                                             ⢻⣿⣄  ⢀⣀ ⠙⣿⣿⣿⣿⡿⠃"
+  style 44-59 fg=blue
+6| "                                              ⠙⢿⣷⣤⣤⣿⣷⣦⣈⣻⣿⣿⣦⡄"
+  style 44-59 fg=blue
+7| "                                                  ⠉⠛⠻⠿⠿⠟⠛⠉"
+  style 46-57 fg=blue
+8| "                                            DEEPSEEK HARNESS"
+  style 44-51 fg=bright-magenta bold
+  style 53-59 bold
+9| "                                         Snapshot agent ready."
+  style 41-61 dim
+10| "        "
+11| "        ╭ PRESET ──────────────────╮  ╭ MODEL ───────────────────╮  ╭ PERMISSIONS ─────────────╮"
+  style 8-35 dim
+  style 38-65 dim
+  style 68-95 dim
+12| "        │ not composed             │  │ deepseek-v4-flash        │  │ approval ask             │"
+  style 8-8 dim
+  style 35-35 dim
+  style 38-38 dim
+  style 65-65 dim
+  style 68-68 dim
+  style 95-95 dim
+13| "        ╰──────────────────────────╯  ╰──────────────────────────╯  ╰──────────────────────────╯"
+  style 8-35 dim
+  style 38-65 dim
+  style 68-95 dim
+14| "        "
+15| "        Recent sessions"
+  style 8-22 bold
+16| "          • Refactor terminal welcome screen                     2026-08-13 · /workspace/project"
+  style 10-10 fg=bright-magenta
+  style 65-95 dim
+17| "          • Stabilize CLI release tests                            2026-08-12 · /workspace/other"
+  style 10-10 fg=bright-magenta
+  style 67-95 dim
+18| "          /resume opens searchable session history"
+  style 8-49 dim
+19| "        "
+20| "        Quick actions"
+  style 8-20 bold
+21| "          /model switch model    /workspace change workspace    /settings preferences"
+  style 10-15 fg=bright-magenta
+  style 33-42 fg=bright-magenta
+  style 64-72 fg=bright-magenta
+22| "          /resume recent sessions  /help commands and shortcuts  @ attach a file"
+  style 10-16 fg=bright-magenta
+  style 35-39 fg=bright-magenta
+  style 65-65 fg=bright-magenta
+23| "        "
+24| "                  Ready · Enter sends · Shift+Enter adds a line · Alt+M switches model"
+  style 18-85 dim
+25| "                                              main-session"
+  style 46-57 dim
+26| <blank>
+27| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────────────╮"
+  style 0-103 dim
+28| "│ dsh > Describe a task, @ a file, or / for commands                                                   │"
+  style 0-0 dim
+  style 2-4 fg=bright-magenta bold
+  style 6-51 dim
+  style 103-103 dim
+29| "╰─────────────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+  style 0-103 dim
+30| "/workspace/project (tui-staging)                      idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-magenta bold
+  style 18-31 dim
+  style 54-57 dim
+  style 60-84 dim
+  style 87-91 dim
+  style 94-103 dim
+31-37| <blank>

@@ -1,0 +1,346 @@
+diff --git a/dist/components/editor.d.ts b/dist/components/editor.d.ts
+index a6fedc9e3b36d066e34860d040db6df47d88c432..f0b20eb87686215d1d1a54274a7b1ebdf4030ef1 100644
+--- a/dist/components/editor.d.ts
++++ b/dist/components/editor.d.ts
+@@ -21,7 +21,7 @@ export interface TextChunk {
+  *                       When omitted the default Intl.Segmenter is used.
+  * @returns Array of chunks with text and position information
+  */
+-export declare function wordWrapLine(line: string, maxWidth: number, preSegmented?: Intl.SegmentData[]): TextChunk[];
++export declare function wordWrapLine(line: string, maxWidth: number, preSegmented?: Intl.SegmentData[], continuationWidth?: number): TextChunk[];
+ export interface EditorTheme {
+     borderColor: (str: string) => string;
+     selectList: SelectListTheme;
+@@ -29,6 +29,13 @@ export interface EditorTheme {
+ export interface EditorOptions {
+     paddingX?: number;
+     autocompleteMaxVisible?: number;
++    /** Omit the editor's horizontal frame. */
++    frame?: "horizontal" | "none";
++    /** Fixed-width prefixes for the first input row and explicit newlines. Wrapped rows start at the editor edge. */
++    prompt?: {
++        first: string;
++        continuation: string;
++    };
+ }
+ export declare class Editor implements Component, Focusable {
+     private state;
+@@ -79,6 +86,11 @@ export declare class Editor implements Component, Focusable {
+     getAutocompleteMaxVisible(): number;
+     setAutocompleteMaxVisible(maxVisible: number): void;
+     setAutocompleteProvider(provider: AutocompleteProvider): void;
++    /** Replace fixed-width first and continuation input prefixes. */
++    setPrompt(prompt: {
++        first: string;
++        continuation: string;
++    }): void;
+     /**
+      * Add a prompt to history for up/down arrow navigation.
+      * Called after successful submission.
+diff --git a/dist/components/editor.js b/dist/components/editor.js
+index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b75a29174 100644
+--- a/dist/components/editor.js
++++ b/dist/components/editor.js
+@@ -79,7 +79,7 @@ function segmentWithMarkers(text, baseSegmenter, validIds) {
+  *                       When omitted the default Intl.Segmenter is used.
+  * @returns Array of chunks with text and position information
+  */
+-export function wordWrapLine(line, maxWidth, preSegmented) {
++export function wordWrapLine(line, maxWidth, preSegmented, continuationWidth = maxWidth) {
+     if (!line || maxWidth <= 0) {
+         return [{ text: "", startIndex: 0, endIndex: 0 }];
+     }
+@@ -90,6 +90,7 @@ export function wordWrapLine(line, maxWidth, preSegmented) {
+     const chunks = [];
+     const segments = preSegmented ?? [...graphemeSegmenter.segment(line)];
+     let currentWidth = 0;
++    let currentMaxWidth = maxWidth;
+     let chunkStart = 0;
+     // Wrap opportunity: the position after the last whitespace before a non-whitespace
+     // grapheme, i.e. where a line break is allowed.
+@@ -102,11 +103,12 @@ export function wordWrapLine(line, maxWidth, preSegmented) {
+         const charIndex = seg.index;
+         const isWs = !isPasteMarker(grapheme) && isWhitespaceChar(grapheme);
+         // Overflow check before advancing.
+-        if (currentWidth + gWidth > maxWidth) {
+-            if (wrapOppIndex >= 0 && currentWidth - wrapOppWidth + gWidth <= maxWidth) {
++        if (currentWidth + gWidth > currentMaxWidth) {
++            if (wrapOppIndex >= 0 && currentWidth - wrapOppWidth + gWidth <= continuationWidth) {
+                 // Backtrack to last wrap opportunity (the remaining content
+                 // plus the current grapheme still fits within maxWidth).
+                 chunks.push({ text: line.slice(chunkStart, wrapOppIndex), startIndex: chunkStart, endIndex: wrapOppIndex });
++                currentMaxWidth = continuationWidth;
+                 chunkStart = wrapOppIndex;
+                 currentWidth -= wrapOppWidth;
+             }
+@@ -117,22 +119,29 @@ export function wordWrapLine(line, maxWidth, preSegmented) {
+                 // the current grapheme (e.g. a wide character) still exceeds
+                 // maxWidth.
+                 chunks.push({ text: line.slice(chunkStart, charIndex), startIndex: chunkStart, endIndex: charIndex });
++                currentMaxWidth = continuationWidth;
+                 chunkStart = charIndex;
+                 currentWidth = 0;
+             }
+             wrapOppIndex = -1;
+         }
+-        if (gWidth > maxWidth) {
+-            // Single atomic segment wider than maxWidth (e.g. paste marker
++        if (gWidth > currentMaxWidth) {
++            if (segments.length === 1) {
++                chunks.push({ text: grapheme, startIndex: charIndex, endIndex: charIndex + grapheme.length });
++                return chunks;
++            }
++            // Single atomic segment wider than the current line width (e.g. paste marker
+             // in a narrow terminal). Re-wrap it at grapheme granularity.
+             // The segment remains logically atomic for cursor
+             // movement / editing — the split is purely visual for word-wrap layout.
+-            const subChunks = wordWrapLine(grapheme, maxWidth);
++            const subChunks = wordWrapLine(grapheme, currentMaxWidth, undefined, continuationWidth);
+             for (let j = 0; j < subChunks.length - 1; j++) {
+                 const sc = subChunks[j];
+                 chunks.push({ text: sc.text, startIndex: charIndex + sc.startIndex, endIndex: charIndex + sc.endIndex });
+             }
+             const last = subChunks[subChunks.length - 1];
++            if (subChunks.length > 1)
++                currentMaxWidth = continuationWidth;
+             chunkStart = charIndex + last.startIndex;
+             currentWidth = visibleWidth(last.text);
+             wrapOppIndex = -1;
+@@ -189,8 +198,12 @@ export class Editor {
+     tui;
+     theme;
+     paddingX = 0;
++    frame = "horizontal";
++    prompt;
++    promptWidth = 0;
+     // Store last render width for cursor navigation
+     lastWidth = 80;
++    lastContinuationWidth = 80;
+     // Vertical scrolling support
+     scrollOffset = 0;
+     // Border color (can be changed dynamically)
+@@ -243,9 +256,29 @@ export class Editor {
+         this.borderColor = theme.borderColor;
+         const paddingX = options.paddingX ?? 0;
+         this.paddingX = Number.isFinite(paddingX) ? Math.max(0, Math.floor(paddingX)) : 0;
++        this.frame = options.frame ?? "horizontal";
++        this.prompt = options.prompt;
++        if (this.prompt) {
++            const firstWidth = visibleWidth(this.prompt.first);
++            const continuationWidth = visibleWidth(this.prompt.continuation);
++            if (firstWidth !== continuationWidth) {
++                throw new Error("Editor prompt prefixes must have equal visible widths");
++            }
++            this.promptWidth = firstWidth;
++        }
+         const maxVisible = options.autocompleteMaxVisible ?? 5;
+         this.autocompleteMaxVisible = Number.isFinite(maxVisible) ? Math.max(3, Math.min(20, Math.floor(maxVisible))) : 5;
+     }
++    setPrompt(prompt) {
++        const firstWidth = visibleWidth(prompt.first);
++        const continuationWidth = visibleWidth(prompt.continuation);
++        if (firstWidth !== continuationWidth) {
++            throw new Error("Editor prompt prefixes must have equal visible widths");
++        }
++        this.prompt = prompt;
++        this.promptWidth = firstWidth;
++        this.invalidate();
++    }
+     /** Set of currently valid paste IDs, for marker-aware segmentation. */
+     validPasteIds() {
+         return new Set(this.pastes.keys());
+@@ -364,14 +397,17 @@ export class Editor {
+         const maxPadding = Math.max(0, Math.floor((width - 1) / 2));
+         const paddingX = Math.min(this.paddingX, maxPadding);
+         const contentWidth = Math.max(1, width - paddingX * 2);
++        const inputWidth = Math.max(1, contentWidth - this.promptWidth);
+         // Layout width: with padding the cursor can overflow into it,
+         // without padding we reserve 1 column for the cursor.
+-        const layoutWidth = Math.max(1, contentWidth - (paddingX ? 0 : 1));
+-        // Store for cursor navigation (must match wrapping width)
++        const layoutWidth = Math.max(1, inputWidth - (paddingX ? 0 : 1));
++        const continuationLayoutWidth = Math.max(1, contentWidth - (paddingX ? 0 : 1));
++        // Store for cursor navigation (must match wrapping widths)
+         this.lastWidth = layoutWidth;
++        this.lastContinuationWidth = continuationLayoutWidth;
+         const horizontal = this.borderColor("─");
+         // Layout the text
+-        const layoutLines = this.layoutText(layoutWidth);
++        const layoutLines = this.layoutText(layoutWidth, continuationLayoutWidth);
+         // Calculate max visible lines: 30% of terminal height, minimum 5 lines
+         const terminalRows = this.tui.terminal.rows;
+         const maxVisibleLines = Math.max(5, Math.floor(terminalRows * 0.3));
+@@ -396,16 +432,22 @@ export class Editor {
+         const rightPadding = leftPadding;
+         // Render top border (with scroll indicator if scrolled down)
+         if (this.scrollOffset > 0) {
+-            const indicator = `─── ↑ ${this.scrollOffset} more `;
+-            const remaining = width - visibleWidth(indicator);
+-            if (remaining >= 0) {
+-                result.push(this.borderColor(indicator + "─".repeat(remaining)));
++            if (this.frame === "none") {
++                const indicator = `${" ".repeat(this.promptWidth)}↑ ${this.scrollOffset} more`;
++                result.push(`${leftPadding}${this.borderColor(indicator)}${" ".repeat(Math.max(0, contentWidth - visibleWidth(indicator)))}${rightPadding}`);
+             }
+             else {
+-                result.push(this.borderColor(truncateToWidth(indicator, width)));
++                const indicator = `─── ↑ ${this.scrollOffset} more `;
++                const remaining = width - visibleWidth(indicator);
++                if (remaining >= 0) {
++                    result.push(this.borderColor(indicator + "─".repeat(remaining)));
++                }
++                else {
++                    result.push(this.borderColor(truncateToWidth(indicator, width)));
++                }
+             }
+         }
+-        else {
++        else if (this.frame === "horizontal") {
+             result.push(horizontal.repeat(width));
+         }
+         // Render each visible layout line
+@@ -413,7 +455,19 @@ export class Editor {
+         // hardware cursor for IME candidate-window placement even while
+         // autocomplete (e.g. slash-command menu) is visible.
+         const emitCursorMarker = this.focused;
+-        for (const layoutLine of visibleLines) {
++        for (let visibleIndex = 0; visibleIndex < visibleLines.length; visibleIndex++) {
++            const layoutLine = visibleLines[visibleIndex];
++            if (!layoutLine)
++                continue;
++            const absoluteIndex = this.scrollOffset + visibleIndex;
++            const prefix = this.prompt
++                ? (absoluteIndex === 0
++                    ? this.prompt.first
++                    : layoutLine.isContinuation
++                        ? ""
++                        : this.prompt.continuation)
++                : "";
++            const lineContentWidth = inputWidth + (layoutLine.isContinuation ? this.promptWidth : 0);
+             let displayText = layoutLine.text;
+             let lineVisibleWidth = visibleWidth(layoutLine.text);
+             let cursorInPadding = false;
+@@ -439,34 +493,41 @@ export class Editor {
+                     displayText = before + marker + cursor;
+                     lineVisibleWidth = lineVisibleWidth + 1;
+                     // If cursor overflows content width into the padding, flag it
+-                    if (lineVisibleWidth > contentWidth && paddingX > 0) {
++                    if (lineVisibleWidth > lineContentWidth && paddingX > 0) {
+                         cursorInPadding = true;
+                     }
+                 }
+             }
+             // Calculate padding based on actual visible width
+-            const padding = " ".repeat(Math.max(0, contentWidth - lineVisibleWidth));
++            const padding = " ".repeat(Math.max(0, lineContentWidth - lineVisibleWidth));
+             const lineRightPadding = cursorInPadding ? rightPadding.slice(1) : rightPadding;
+             // Render the line (no side borders, just horizontal lines above and below)
+-            result.push(`${leftPadding}${displayText}${padding}${lineRightPadding}`);
++            result.push(`${leftPadding}${prefix}${displayText}${padding}${lineRightPadding}`);
+         }
+         // Render bottom border (with scroll indicator if more content below)
+         const linesBelow = layoutLines.length - (this.scrollOffset + visibleLines.length);
+         if (linesBelow > 0) {
+-            const indicator = `─── ↓ ${linesBelow} more `;
+-            const remaining = width - visibleWidth(indicator);
+-            result.push(this.borderColor(indicator + "─".repeat(Math.max(0, remaining))));
++            if (this.frame === "none") {
++                const indicator = `${" ".repeat(this.promptWidth)}↓ ${linesBelow} more`;
++                result.push(`${leftPadding}${this.borderColor(indicator)}${" ".repeat(Math.max(0, contentWidth - visibleWidth(indicator)))}${rightPadding}`);
++            }
++            else {
++                const indicator = `─── ↓ ${linesBelow} more `;
++                const remaining = width - visibleWidth(indicator);
++                result.push(this.borderColor(indicator + "─".repeat(Math.max(0, remaining))));
++            }
+         }
+-        else {
++        else if (this.frame === "horizontal") {
+             result.push(horizontal.repeat(width));
+         }
+         // Add autocomplete list if active
+         if (this.autocompleteState && this.autocompleteList) {
+-            const autocompleteResult = this.autocompleteList.render(contentWidth);
++            const autocompleteResult = this.autocompleteList.render(inputWidth);
++            const autocompletePrefix = " ".repeat(this.promptWidth);
+             for (const line of autocompleteResult) {
+                 const lineWidth = visibleWidth(line);
+-                const linePadding = " ".repeat(Math.max(0, contentWidth - lineWidth));
+-                result.push(`${leftPadding}${line}${linePadding}${rightPadding}`);
++                const linePadding = " ".repeat(Math.max(0, inputWidth - lineWidth));
++                result.push(`${leftPadding}${autocompletePrefix}${line}${linePadding}${rightPadding}`);
+             }
+         }
+         return result;
+@@ -726,7 +787,7 @@ export class Editor {
+             this.insertCharacter(data);
+         }
+     }
+-    layoutText(contentWidth) {
++    layoutText(contentWidth, continuationWidth) {
+         const layoutLines = [];
+         if (this.state.lines.length === 0 || (this.state.lines.length === 1 && this.state.lines[0] === "")) {
+             // Empty editor
+@@ -734,6 +795,7 @@ export class Editor {
+                 text: "",
+                 hasCursor: true,
+                 cursorPos: 0,
++                isContinuation: false,
+             });
+             return layoutLines;
+         }
+@@ -749,18 +811,20 @@ export class Editor {
+                         text: line,
+                         hasCursor: true,
+                         cursorPos: this.state.cursorCol,
++                        isContinuation: false,
+                     });
+                 }
+                 else {
+                     layoutLines.push({
+                         text: line,
+                         hasCursor: false,
++                        isContinuation: false,
+                     });
+                 }
+             }
+             else {
+                 // Line needs wrapping - use word-aware wrapping
+-                const chunks = wordWrapLine(line, contentWidth, [...this.segment(line, "grapheme")]);
++                const chunks = wordWrapLine(line, contentWidth, [...this.segment(line, "grapheme")], continuationWidth);
+                 for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+                     const chunk = chunks[chunkIndex];
+                     if (!chunk)
+@@ -796,12 +860,14 @@ export class Editor {
+                             text: chunk.text,
+                             hasCursor: true,
+                             cursorPos: adjustedCursorPos,
++                            isContinuation: chunkIndex > 0,
+                         });
+                     }
+                     else {
+                         layoutLines.push({
+                             text: chunk.text,
+                             hasCursor: false,
++                            isContinuation: chunkIndex > 0,
+                         });
+                     }
+                 }
+@@ -1439,7 +1505,7 @@ export class Editor {
+      * - startCol: starting column in the logical line
+      * - length: length of this visual line segment
+      */
+-    buildVisualLineMap(width) {
++    buildVisualLineMap(width, continuationWidth = this.lastContinuationWidth) {
+         const visualLines = [];
+         for (let i = 0; i < this.state.lines.length; i++) {
+             const line = this.state.lines[i] || "";
+@@ -1453,7 +1519,7 @@ export class Editor {
+             }
+             else {
+                 // Line needs wrapping - use word-aware wrapping
+-                const chunks = wordWrapLine(line, width, [...this.segment(line, "grapheme")]);
++                const chunks = wordWrapLine(line, width, [...this.segment(line, "grapheme")], continuationWidth);
+                 for (const chunk of chunks) {
+                     visualLines.push({
+                         logicalLine: i,

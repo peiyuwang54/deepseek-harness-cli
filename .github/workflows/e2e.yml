@@ -1,0 +1,95 @@
+name: E2E (real DeepSeek API)
+
+# Real-API end-to-end suite (`pnpm run test:e2e`). Unlike ci.yml this job
+# consumes the DEEPSEEK_API_KEY_EXTERNAL secret (mapped to the env var
+# DEEPSEEK_API_KEY the tests read) and hits https://api.deepseek.com. This
+# private fork runs the suite only by explicit manual dispatch so ordinary
+# pushes, pull requests, and elapsed time cannot spend API quota or fail because
+# the repository has no configured key.
+#
+# The secret and preflight design is recorded in
+# .agents/notes/implemented/testing/2026-06-19-real-api-e2e-ci.md. The private
+# fork's manual-only trigger policy is recorded in
+# .agents/notes/implemented/testing/2026-08-14-private-fork-manual-real-api-e2e.md.
+on:
+  workflow_dispatch:
+
+# Avoid paying for two manually dispatched runs of the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: this job only reads the repo to run tests.
+permissions:
+  contents: read
+
+env:
+  # CI runs must never report to the production telemetry endpoint baked
+  # into apps/cli/cordis.yml (AppCLIEntry disables the row when set).
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    name: e2e
+    # Bounded file parallelism (DSH_E2E_MAX_WORKERS), 120s/test, retry 2. 45m
+    # still bounds retry storms against a slow API while the happy path fans out.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+
+      # The with-key escalation e2e self-skips without a usable runner. Install
+      # bwrap so trusted CI exercises it; the userns knob is best-effort and the
+      # test's functional probe decides.
+      - name: Install bubblewrap (unrestrict userns)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 \
+            || echo "apparmor userns knob absent — the functional probe decides"
+
+      # Guard against a false green: the e2e suites self-skip when the key is
+      # absent, so a missing or misconfigured secret would otherwise pass as
+      # "all skipped". A manual run explicitly requests real-API coverage, so
+      # it fails loudly when the required key is unavailable.
+      - name: Preflight (require DEEPSEEK_API_KEY)
+        env:
+          # Repo secret DEEPSEEK_API_KEY_EXTERNAL holds the external-API key;
+          # the tests read process.env.DEEPSEEK_API_KEY, so map it across here.
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY_EXTERNAL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DEEPSEEK_API_KEY:-}" ]; then
+            echo "::error::DEEPSEEK_API_KEY is empty. The e2e suite would self-skip and"
+            echo "::error::report a false green. Configure the repo secret DEEPSEEK_API_KEY_EXTERNAL."
+            exit 1
+          fi
+          echo "DEEPSEEK_API_KEY present."
+
+      # The e2e suites boot the example bins in `lib` mode (DSH_EXAMPLE_MODE=lib):
+      # the built artifact under plain Node, resolving plugins through real package
+      # exports — the shape a real consumer runs. That requires a prior build.
+      - name: Build (lib for the e2e example bins)
+        run: pnpm run build
+
+      # Real-API end-to-end tests only. Keyless gates and compatibility checks
+      # remain in ci.yml.
+      # DEEPSEEK_BASE_URL is pinned to the external API; the secret is scoped to
+      # this step (and preflight) only — never exposed to checkout/setup/install.
+      - name: E2E tests (real DeepSeek API)
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY_EXTERNAL }}
+          DEEPSEEK_BASE_URL: https://api.deepseek.com
+          DSH_E2E_MAX_WORKERS: 14
+          DSH_EXAMPLE_MODE: lib
+        run: pnpm run test:e2e

@@ -4872,7 +4872,13 @@ describe('skill slash command', () => {
 
   it('labels slash completions by scope and applies user invocation policy', async () => {
     const result = await setup({ configureContext: withSkills })
-    result.terminal.send('/skill')
+    result.terminal.send('/')
+    await tick()
+    expect(result.terminal.output).toContain('approve')
+    expect(result.terminal.output).not.toContain('skill:demo-skill')
+    result.terminal.send('\x03')
+    result.terminal.output = ''
+    result.terminal.send('/skill:')
     await tick()
     expect(result.terminal.output).toContain('demo-skill')
     expect(result.terminal.output).toContain('(user)')

@@ -56,6 +56,7 @@ const CHECKPOINTS = [
   'welcome-dashboard',
   'banner-gradient',
   'file-autocomplete',
+  'slash-autocomplete',
   'skill-autocomplete',
   'session-title-autocomplete',
   'code-mode-pending',
@@ -1239,7 +1240,13 @@ describe('TUI terminal-state snapshots', () => {
       configureContext: configureSnapshotSkills,
       agentOptions: { provider: 'deepseek-official', model: 'deepseek-v4-pro' },
     }, { columns: 96, rows: 36 })
-    await renderAfter(harness, () => { harness.terminal.send('/skill') })
+    await renderAfter(harness, () => { harness.terminal.send('/') })
+    const slashSnapshot = await harness.terminal.snapshot()
+    expect(slashSnapshot).toContain('approve')
+    expect(slashSnapshot).not.toContain('skill:browser-workflow')
+    await checkpoint('slash-autocomplete', harness.terminal)
+    await renderAfter(harness, () => { harness.terminal.send('\x03') })
+    await renderAfter(harness, () => { harness.terminal.send('/skill:') })
     await vi.waitFor(async () => {
       expect(await harness.terminal.snapshot()).toContain('skill:browser-workflow')
     })

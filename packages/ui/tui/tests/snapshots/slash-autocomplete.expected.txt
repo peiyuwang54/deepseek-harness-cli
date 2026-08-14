@@ -1,7 +1,7 @@
 terminal 96x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=15 viewportRow=6 bufferRow=6
+cursor visible column=9 viewportRow=6 bufferRow=6
 viewport
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -14,23 +14,31 @@ viewport
 3-4| <blank>
 5| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
   style 0-95 dim
-6| "│ dsh > /skill:                                                                                │"
+6| "│ dsh > /                                                                                      │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
   style 6-7 dim
-  style 15-15 inverse
+  style 9-9 inverse
   style 95-95 dim
 7| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-95 dim
-8| "→ skill:browser-workflow  (user) — Inspect a browser-driven workflow"
-  style 0-67 fg=bright-magenta
-9| "  skill:document-review   (user) — Review and edit a document artifact"
-  style 23-69 dim
-10| "/workspace/project (tui-staging)              ▸ idle  deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
+8| "→ approve       Allow an active request or one retry of the latest rejected request"
+  style 0-82 fg=bright-magenta
+9| "  clear         Clear the transcript view (session history is unchanged)"
+  style 7-71 dim
+10| "  details       [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility"
+  style 9-93 dim
+11| "  exit          Exit after the active turn reaches idle"
+  style 6-54 dim
+12| "  experimental  [fast|vim|reload|reasoning] — Open the terminal experimental-feature launcher"
+  style 14-92 dim
+13| "  (1/20)"
+  style 0-7 dim
+14| "/workspace/project (tui-staging)              ▸ idle  deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 46-51 dim
   style 54-76 dim
   style 79-83 dim
   style 86-95 dim
-11-35| <blank>
+15-35| <blank>

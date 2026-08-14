@@ -60,6 +60,8 @@ The renderer is covered by pure utility tests, Agent/session integration tests, 
 
 **Make TTY detection silently fall back to headless.** Rejected because redirecting an interactive command would change its protocol and approval semantics. The explicit profile is the boundary: `tui` requires a terminal, `headless` is for automation.
 
+The root slash catalog filters nested `skill:` rows until the explicit `/skill:` namespace is entered, leaving `/skills` as the command-sized discovery entry.
+
 ## Consequences
 
 DeepSeek Harness once again has a supported interactive terminal product, invoked with `dsh tui`, while `dsh web`, `--profile headless`, ACP, and other front doors remain independent. The product adds a renderer package, a shipped bundle, a pi-tui patch, terminal snapshots, and platform lifecycle obligations. A new Cordis service/catalog and package-publication surface must therefore remain generated and tested. The TUI is intentionally text-terminal only and has no cross-process session lock. The shipped CLI owns process replacement for `/resume` and `/workspace`; a custom renderer embedding that omits those callbacks degrades to warnings without changing the current session.

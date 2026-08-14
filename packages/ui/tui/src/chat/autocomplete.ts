@@ -18,6 +18,16 @@ import {
 import { displayInlineText } from '../components/text.ts'
 import { activeAtToken, formatFileMention, WorkspaceFileSearch } from './file-autocomplete.ts'
 
+/** Keep the root slash catalog command-sized until manual skill invocation is explicit. */
+function filterNestedSkillSuggestions(
+  suggestions: AutocompleteSuggestions | null,
+): AutocompleteSuggestions | null {
+  if (suggestions === null || suggestions.prefix.startsWith('/skill:')) return suggestions
+  const items = suggestions.items.filter(item => !item.value.startsWith('skill:'))
+  if (items.length === suggestions.items.length) return suggestions
+  return items.length === 0 ? null : { ...suggestions, items }
+}
+
 /** Merge path-only file candidates and optional session snapshots with commands. */
 export class ReferenceAutocompleteProvider implements AutocompleteProvider {
   constructor(
@@ -34,6 +44,7 @@ export class ReferenceAutocompleteProvider implements AutocompleteProvider {
     options: { signal: AbortSignal; force?: boolean },
   ): Promise<AutocompleteSuggestions | null> {
     const basePromise = this.base.getSuggestions(lines, cursorLine, cursorCol, options)
+      .then(filterNestedSkillSuggestions)
     const currentLine = lines[cursorLine]
     /* v8 ignore next -- Editor always supplies its current state line. */
     if (currentLine === undefined) return basePromise

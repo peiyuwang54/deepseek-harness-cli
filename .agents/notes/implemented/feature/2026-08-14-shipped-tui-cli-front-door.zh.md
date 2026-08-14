@@ -60,6 +60,8 @@ Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服
 
 **让 TTY 检测静默回退到 headless。** 不采用：重定向交互式命令会改变其协议与审批语义。显式 profile 就是边界：`tui` 要求终端，`headless` 面向自动化。
 
+根 Slash catalog 会过滤嵌套的 `skill:` 行，直到用户明确进入 `/skill:` namespace，并把 `/skills` 保留为普通命令大小的发现入口。
+
 ## 后果
 
 DeepSeek Harness 再次拥有受支持的交互式终端产品，可通过 `dsh tui` 调用；`dsh web`、`--profile headless`、ACP 与其他入口仍彼此独立。产品新增 renderer 包、随发行版 bundle、pi-tui patch、终端快照和平台生命周期义务，因此新的 Cordis service／catalog 与软件包发布面必须持续生成并测试。TUI 有意只支持文本终端，且没有跨进程会话锁。随附 CLI 持有 `/resume` 与 `/workspace` 的进程替换；省略这些 callback 的自定义 renderer embedding 会退化为警告，而不会改变当前会话。

@@ -15,7 +15,8 @@
   ],
   "ignoreWorkspaces": [
     "vendor/*",
-    "python/sdk-runtime"
+    "python/sdk-runtime",
+    "apps/cli/exe"
   ],
   "ignoreDependencies": [
     "@yarnpkg/cli-dist",

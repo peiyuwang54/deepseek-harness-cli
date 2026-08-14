@@ -1,0 +1,351 @@
+# Build and distribute the dsh CLI single-file executable across three
+# channels: GitHub Releases (curl|sh), npm (@peiyuwang54/dsh-cli), and a
+# Homebrew cask pushed to peiyuwang54/homebrew-dsh. Runs on every dsh-cli-v*
+# tag push or from a manual dispatch; a manual dispatch is also the only way to
+# release without pushing a tag first. The build/package/release jobs are
+# keyless; npm-publish requires the npm-publish environment and brew-tap the
+# HOMEBREW_TAP_TOKEN secret.
+name: Release dsh CLI
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, e.g. 0.1.0-rc.5 (default: apps/cli/package.json)'
+        required: false
+        type: string
+  push:
+    tags:
+      - 'dsh-cli-v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  # A release must not cancel its own rerun on the same ref.
+  group: dsh-cli-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # CI runs must never report to the production telemetry endpoint.
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  plan:
+    name: plan release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Resolve release version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            version="${{ github.event.inputs.version }}"
+          elif [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            version="${GITHUB_REF_NAME#dsh-cli-v}"
+          else
+            version="$(node -p "require('./apps/cli/package.json').version")"
+          fi
+          version="${version#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Compute the four-target matrix
+        id: matrix
+        run: |
+          set -euo pipefail
+          matrix='[]'
+          while IFS= read -r entry; do
+            t="${entry%% *}"
+            runner="${entry#* }"
+            matrix="$(jq -c --arg target "$t" --arg runner "$runner" '. + [{target: $target, runner: $runner}]' <<< "$matrix")"
+          done <<'EOF'
+          node24-linux-x64 ubuntu-latest
+          node24-linux-arm64 ubuntu-24.04-arm
+          node24-macos-arm64 macos-15
+          node24-macos-x64 macos-15-intel
+          EOF
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # Cache pkg's target Node binary; lockfile changes roll the exact key.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.pkg-cache
+          key: pkg-fetch-dsh-cli-${{ matrix.target }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pkg-fetch-dsh-cli-${{ matrix.target }}-
+
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+
+      - name: Rebuild Linux node-pty against manylinux 2.28
+        if: runner.os == 'Linux'
+        env:
+          RUNNER_ARCH: ${{ runner.arch }}
+        run: |
+          set -euo pipefail
+          case "$RUNNER_ARCH" in
+            X64) image=quay.io/pypa/manylinux_2_28_x86_64 ;;
+            ARM64) image=quay.io/pypa/manylinux_2_28_aarch64 ;;
+            *) echo "::error::Unsupported Linux runner architecture $RUNNER_ARCH"; exit 1 ;;
+          esac
+          addon_dir="$(realpath packages/subprocess/subprocess-local/node_modules/node-pty)"
+          addon="$addon_dir/build/Release/pty.node"
+          [ -f "$addon_dir/build/Makefile" ] || {
+            echo "::error::node-pty install did not generate $addon_dir/build/Makefile"
+            exit 1
+          }
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -v "$PWD:$PWD" \
+            -v "$HOME/.cache/node-gyp:$HOME/.cache/node-gyp:ro" \
+            -v "$HOME/setup-pnpm:$HOME/setup-pnpm:ro" \
+            -w "$addon_dir" \
+            "$image" \
+            bash -euxo pipefail -c \
+              'rm -rf build/Release && make -C build -j2 BUILDTYPE=Release'
+          [ -f "$addon" ] || { echo "::error::$addon missing after manylinux rebuild"; exit 1; }
+
+      - name: Build single-exe
+        run: pnpm exec tsx scripts/build-dsh-cli-exe.ts --targets=${{ matrix.target }}
+
+      - name: Resolve product paths
+        id: product
+        run: |
+          set -euo pipefail
+          platform="${TARGET#node24-}"
+          echo "platform=$platform" >> "$GITHUB_OUTPUT"
+        env:
+          TARGET: ${{ matrix.target }}
+
+      - name: Smoke test --version
+        run: |
+          set -euo pipefail
+          exe="$PWD/dist-exe/dsh-${{ steps.product.outputs.platform }}"
+          [ -x "$exe" ] || { echo "::error::$exe missing or not executable"; exit 1; }
+          actual="$(DSH_TELEMETRY_DISABLED=1 "$exe" --version)"
+          [ "$actual" = "$VERSION" ] || {
+            echo "::error::$exe reports '$actual' but the release version is '$VERSION'"
+            exit 1
+          }
+
+      - name: Check Linux GLIBC requirements
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          exe="$PWD/dist-exe/dsh-${{ steps.product.outputs.platform }}"
+          readelf --version-info "$exe" | tee glibc-versions.txt
+          maximum="$(sed -n 's/.*Name: GLIBC_\([0-9.]*\).*/\1/p' glibc-versions.txt | sort -V | tail -1)"
+          [ -n "$maximum" ] || { echo "::error::No GLIBC requirements found"; exit 1; }
+          dpkg --compare-versions "$maximum" le 2.28 || {
+            echo "::error::Executable requires GLIBC_$maximum but the release claims manylinux 2.28"
+            exit 1
+          }
+
+      - name: Check macOS deployment target
+        if: runner.os == 'macOS'
+        env:
+          EXE: ${{ github.workspace }}/dist-exe/dsh-${{ steps.product.outputs.platform }}
+        run: python3 scripts/check-macos-deployment-target.py "$EXE" "$EXE-spawn-helper"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-exe-${{ steps.product.outputs.platform }}
+          path: |
+            dist-exe/dsh-${{ steps.product.outputs.platform }}
+            dist-exe/dsh-${{ steps.product.outputs.platform }}-spawn-helper
+          if-no-files-found: error
+          retention-days: 7
+
+  package:
+    needs: [plan, build]
+    name: package release assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install (immutable, no package scripts)
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Download all target executables
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-exe
+          merge-multiple: true
+
+      - name: Build release tarballs and sha256 sidecars
+        run: |
+          set -euo pipefail
+          mkdir -p dist-release
+          for target in macos-arm64 macos-x64 linux-arm64 linux-x64; do
+            arch="${target%-*}"; os="${target#*-}"
+            stage="$RUNNER_TEMP/stage-$target"
+            mkdir -p "$stage/bin"
+            cp "dist-exe/dsh-$target" "$stage/bin/dsh"
+            chmod +x "$stage/bin/dsh"
+            if [ "$os" = macos ]; then
+              cp "dist-exe/dsh-$target-spawn-helper" "$stage/bin/dsh-spawn-helper"
+              chmod +x "$stage/bin/dsh-spawn-helper"
+            fi
+            (cd "$stage" && tar -czf "$GITHUB_WORKSPACE/dist-release/dsh-${arch}-${os}.tar.gz" bin)
+            (cd dist-release && sha256sum "dsh-${arch}-${os}.tar.gz" > "dsh-${arch}-${os}.sha256")
+          done
+
+      - name: Lay out npm packages
+        run: pnpm exec tsx scripts/package-dsh-cli-npm.ts --version "$VERSION" --dir dist-exe --out dist-npm
+
+      - name: Generate Homebrew cask
+        run: pnpm exec tsx scripts/gen-dsh-cask.ts --version "$VERSION" --dir dist-exe --out dsh.rb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-release-assets
+          path: dist-release/*
+          if-no-files-found: error
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-npm-packages
+          path: dist-npm/*
+          if-no-files-found: error
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-cask
+          path: dsh.rb
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs: [plan, package]
+    name: create GitHub release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dsh-release-assets
+          path: dist-release
+
+      - name: Create or refresh the release with assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="dsh-cli-v$VERSION"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist-release/*.tar.gz dist-release/*.sha256 --clobber
+          else
+            gh release create "$tag" dist-release/*.tar.gz dist-release/*.sha256 --title "$tag" --generate-notes
+          fi
+
+  npm-publish:
+    needs: [plan, package]
+    name: publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Required reviewers and the allowed tags live on this environment; it is
+    # the only job that can write to the registry.
+    environment: npm-publish
+    # Shared with release.yml's npm-publish job: stable/prerelease dist-tags
+    # are shared registry state, so the two publishers serialize rather than
+    # race. cancel-in-progress: false queues, never cancels.
+    concurrency:
+      group: Release-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dsh-npm-packages
+          path: dist-npm
+
+      - name: Publish the main shim and per-platform packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ "$VERSION" == *-* ]]; then main_tag=next; else main_tag=latest; fi
+          npm publish "dist-npm/main" --tag "$main_tag"
+          for target in macos-arm64 macos-x64 linux-arm64 linux-x64; do
+            npm publish "dist-npm/platform/${VERSION}-${target}" --tag "$target"
+          done
+
+  brew-tap:
+    needs: [plan, release]
+    name: push cask to homebrew-dsh
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dsh-cask
+          path: cask-artifact
+
+      - name: Push the cask to peiyuwang54/homebrew-dsh
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/peiyuwang54/homebrew-dsh.git" tap
+          mkdir -p tap/Casks/d
+          cp cask-artifact/dsh.rb tap/Casks/d/dsh.rb
+          git -C tap config user.name "dsh-cli-release[bot]"
+          git -C tap config user.email "noreply@github.com"
+          git -C tap add Casks/d/dsh.rb
+          if git -C tap diff --cached --quiet; then
+            echo "Casks/d/dsh.rb is unchanged; nothing to push."
+          else
+            git -C tap -c commit.gpgsign=false commit -m "dsh v${VERSION}"
+            git -C tap push
+          fi

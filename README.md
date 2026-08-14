@@ -12,7 +12,7 @@ This community-maintained fork adds a first-class interactive terminal UI (TUI) 
 
 > [!IMPORTANT]
 >
-> This is an unofficial community fork. It is not maintained, sponsored, or endorsed by DeepSeek AI. DeepSeek Harness and the `@deepseek-ai` npm packages originate from DeepSeek AI. The terminal changes in this repository are distributed from source and, on Windows, from a directory package built from that source; the public `@deepseek-ai/dsh` npm package is an independent upstream release and must not be assumed to contain this fork's TUI.
+> This is an unofficial community fork. It is not maintained, sponsored, or endorsed by DeepSeek AI. DeepSeek Harness and the `@deepseek-ai` npm packages originate from DeepSeek AI. This fork's terminal changes are distributed as `@peiyuwang54/dsh-cli` (see the Install section); the public `@deepseek-ai/dsh` npm package is an independent upstream release and must not be assumed to contain this fork's TUI.
 
 ## Status
 
@@ -23,35 +23,29 @@ This project is a developer preview. Configuration, package APIs, session format
 - Node.js `^22.19.0` or `>=24.0.0`; Node.js 24 is the recommended development runtime.
 - pnpm `11.7.0`, matching the repository's `packageManager` field.
 - A real stdin and stdout TTY for `tui`; use `headless` for redirection and automation.
-- A provider credential before the first model request. The shipped default adapter reads `DEEPSEEK_API_KEY`. Enabling the `openrouter` route in `$DSH_HOME/settings.yaml` uses `OPENROUTER_API_KEY` instead.
+- A provider credential before the first model request. The shipped default adapter reads `DEEPSEEK_API_KEY`.
 
 The terminal implementation targets macOS, Linux, and Windows. The keyless built-binary PTY acceptance test described below runs on POSIX; Windows terminal behavior uses the pi-tui VT-input and ConPTY paths and has separate platform-oriented tests.
 
-<a id="install-windows"></a>
+## Install
 
-## Install on Windows
+The `dsh` binary ships as a single-file executable for macOS (`arm64`, `x64`) and Linux (`arm64`, `x64`). Choose one channel:
 
-This repository has no public installer URL. Clone the checkout, then run the installer from that tree:
-
-```powershell
-git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
-cd deepseek-harness-cli
-powershell -ExecutionPolicy Bypass -File .\scripts\install\install.ps1
+```sh
+curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-web-to-cli/master/apps/cli/install/install.sh | sh
+npm install -g @peiyuwang54/dsh-cli
+brew install peiyuwang54/dsh/dsh
 ```
 
-The script installs workspace dependencies when `node_modules` is missing, builds the host and client libraries, packs a portable folder (the host `node.exe` plus the `@deepseek-ai/dsh` production closure), copies it to `%LOCALAPPDATA%\Programs\dsh`, and adds that folder to the user PATH. Open a new terminal and run `dsh`. A command with no arguments opens the terminal UI.
-
-The installed command does not point at the clone. Updating or deleting the checkout leaves the installed copy unchanged until you run the installer again. The same packer writes `dist-windows/dsh-win32-<arch>.zip` beside the folder.
-
-The machine that builds the package needs Node.js `^22.19.0` or `>=24.0.0` and pnpm `11.7.0` (Corepack). `dsh web` is not part of this package: the packer does not build the Web frontend. `pnpm run pack:windows-cli` writes the folder and zip without installing.
+The first line is the curl|sh installer: it fetches the newest `dsh-cli-v*` release, verifies the tarball against the release's sha256 sidecar, and installs to `$HOME/.dsh/bin`, adding that directory to your shell `PATH` (restart the shell or run the `export` line it prints). The npm line installs the `@peiyuwang54/dsh-cli` shim over the per-platform executable; the brew line installs the cask from the `peiyuwang54/homebrew-dsh` tap. Once on `PATH`, `dsh` takes the same commands as the source instructions below — `dsh tui`, `dsh --profile headless "task"`, `dsh web` — and still needs a provider credential before the first model request (`DEEPSEEK_API_KEY` by default). Windows is not a distribution target; use the source checkout there.
 
 <a id="run-from-source"></a>
 
 ## Quick start from source
 
 ```sh
-git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
-cd deepseek-harness-cli
+git clone https://github.com/peiyuwang54/deepseek-harness-web-to-cli.git
+cd deepseek-harness-web-to-cli
 pnpm install --frozen-lockfile
 pnpm run build
 export DEEPSEEK_API_KEY="your-key"
@@ -66,22 +60,6 @@ pnpm dsh tui
 ```
 
 Do not commit provider keys. Besides the inherited environment, the launcher can resolve credentials from `$DSH_HOME/.credentials.yaml`, the invocation directory's `.env`, and `$DSH_HOME/.env`. `$DSH_HOME` defaults to `~/.dsh`; it also contains profiles and persisted sessions.
-
-To call [OpenRouter](https://openrouter.ai/docs/quickstart) models, store `OPENROUTER_API_KEY` in that credentials document and enable the existing `openrouter` catalog route:
-
-```yaml
-llm-pi-ai:
-  providers:
-    openrouter:
-      apiKeyEnv: OPENROUTER_API_KEY
-      displayName: OpenRouter
-
-agent-default-model:
-  provider: openrouter
-  model: deepseek/deepseek-v4-flash
-```
-
-`/model` then lists the OpenRouter catalog. The example default is a DeepSeek slug on that route. The composition default stays `deepseek-official` until this settings section changes it.
 
 The directory in which you run `pnpm dsh ...` is the default workspace. The `web`, `tui`, and `headless` profiles initialize themselves on first use.
 
@@ -308,7 +286,7 @@ Gemini CLI and OpenAI Codex were studied for high-level process, rendering, appr
 
 ## Development and support
 
-- Report fork-specific bugs through this repository's [Issues](https://github.com/peiyuwang54/deepseek-harness-cli/issues), not the upstream issue tracker.
+- Report fork-specific bugs through this repository's [Issues](https://github.com/peiyuwang54/deepseek-harness-web-to-cli/issues), not the upstream issue tracker.
 - Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
 - See [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change.
 - Agents working in the repository must follow [AGENTS.md](AGENTS.md).

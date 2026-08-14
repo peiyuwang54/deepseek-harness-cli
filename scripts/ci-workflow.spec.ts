@@ -267,13 +267,13 @@ describe('Real-API e2e workflow', () => {
 })
 
 describe('Python release workflows', () => {
-  it('allows unused product-only patches only in the pruned SDK deploy', () => {
-    const builder = readFileSync(resolve(root, 'scripts/build-exe-for-python-sdk.ts'), 'utf8')
-    const deployStart = builder.indexOf('async deployStaging(): Promise<void>')
-    const deployEnd = builder.indexOf('await this.restoreLegacyHoists()', deployStart)
+  it('keeps the unused-patches permission as an executable deploy flag, not a workspace setting', () => {
+    const pipeline = readFileSync(resolve(root, 'scripts/exe-build/pipeline.ts'), 'utf8')
+    const deployStart = pipeline.indexOf('async deployStaging(): Promise<void>')
+    const deployEnd = pipeline.indexOf('await this.restoreLegacyHoists()', deployStart)
     expect(deployStart).toBeGreaterThanOrEqual(0)
     expect(deployEnd).toBeGreaterThan(deployStart)
-    expect(builder.slice(deployStart, deployEnd)).toContain("'--config.allow-unused-patches=true'")
+    expect(pipeline.slice(deployStart, deployEnd)).toContain("'--config.allow-unused-patches=true'")
     expect(readFileSync(resolve(root, 'pnpm-workspace.yaml'), 'utf8')).not.toContain('allowUnusedPatches')
   })
 

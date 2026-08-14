@@ -43,6 +43,20 @@ Use `--dump-default-config` and `--dump-config` to inspect the composed tree wit
 
 The [CLI behavior reference](reference/README.md) owns exact layer precedence, flags, shutdown behavior, deployment defaults, and source execution.
 
+## Install
+
+`dsh` ships as a single-file executable for macOS (`arm64`, `x64`) and Linux (`arm64`, `x64`). Install it with any one of these:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-web-to-cli/master/apps/cli/install/install.sh | sh
+npm install -g @peiyuwang54/dsh-cli
+brew install peiyuwang54/dsh/dsh
+```
+
+The first command runs the curl installer, which downloads the newest `dsh-cli-v*` release, verifies the tarball against the release's sha256 sidecar, and installs to `$HOME/.dsh/bin` (`sh -s -- --to <dir>` overrides the directory, `--version <ver>` pins a version). The npm package is a shim over the per-platform executable; the Homebrew cask is served from the `peiyuwang54/homebrew-dsh` tap. See [the installer README](install/README.md) for the full contract and the planned minisign signature upgrade.
+
+Upgrading re-runs the same command — the curl installer replaces the binaries in place, `npm update -g @peiyuwang54/dsh-cli` pulls the newest version, and `brew upgrade dsh` refreshes the cask.
+
 ## Development
 
 Production runs require built package and frontend artifacts. From the repository root, run `pnpm run build` separately, then use `pnpm dsh <args...>` to run the TypeScript entry and forward every argument; the [source-execution reference](reference/README.md#source-execution) owns the module-resolution contract.

@@ -1,0 +1,337 @@
+/**
+ * Shared single-file executable build pipeline. A product (ExeProduct) supplies
+ * its deploy root, entry, and staging layout; ExeBuild then verifies the closure,
+ * deploys it, injects pkg assets, and packs each requested target. The staged
+ * closure is symlink-free, and whole-tree assets cover Cordis's runtime imports
+ * that pkg cannot discover statically.
+ */
+
+import { spawn } from 'node:child_process'
+import { existsSync, statSync } from 'node:fs'
+import { chmod, copyFile, cp, lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
+import { dirname, join, resolve, sep } from 'node:path'
+
+import { OUT_DIR, PKG_SPEC, Target, type BuildCli, type ExeProduct } from './config.ts'
+
+const root = resolve(import.meta.dirname, '..', '..')
+
+/**
+ * Whole-tree assets cover Cordis's runtime bare-package imports, which pkg's
+ * static analysis cannot see. Package manifests are explicit because bare-name
+ * resolution depends on them.
+ */
+const ASSET_GLOBS = [
+  'package.json',
+  'node_modules/**/*.js',
+  'node_modules/**/*.cjs',
+  'node_modules/**/*.mjs',
+  'node_modules/**/package.json',
+  'node_modules/**/*.json',
+  'node_modules/**/*.node',
+  'node_modules/**/*.wasm',
+]
+
+function pnpmBin(): string {
+  return process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+}
+
+/**
+ * Render a command for logs and errors, quoting arguments with spaces.
+ * @param command - the executable.
+ * @param args - its arguments.
+ * @returns the printable command line.
+ */
+function formatCommand(command: string, args: string[]): string {
+  return [command, ...args].map(part => (part.includes(' ') ? JSON.stringify(part) : part)).join(' ')
+}
+
+/**
+ * Sequential build pipeline for one product. Subprocesses inherit stdio and
+ * errors include the command; dry runs print commands and filesystem changes.
+ */
+export class ExeBuild {
+  /** The cleared deploy target and pkg input. */
+  readonly staging: string
+  private readonly outDir = resolve(root, OUT_DIR)
+
+  constructor(
+    private readonly product: ExeProduct,
+    private readonly cli: BuildCli,
+  ) {
+    this.staging = resolve(root, product.stagingDir)
+  }
+
+  /** Verify the product's closure before compiling or packaging. */
+  async verifyClosure(): Promise<void> {
+    // Call tsx directly: `pnpm run` inserts a `--` separator, which Node's
+    // parseArgs treats as end-of-options and turns the flag into a positional.
+    await this.run('runtime dependency closure', pnpmBin(), [
+      'exec',
+      'tsx',
+      'scripts/verify-runtime-closure.ts',
+      `--manifest=${this.product.closureManifest}`,
+    ])
+  }
+
+  /** Build all package artifacts unless `--skip-build` was passed. */
+  async build(): Promise<void> {
+    if (this.cli.skipBuild) {
+      console.log(`${this.product.label}: skipping pnpm run build (--skip-build)`)
+      return
+    }
+    await this.run('build', pnpmBin(), ['run', 'build'])
+  }
+
+  /** Clear and deploy the runtime closure into the staging directory. */
+  async deployStaging(): Promise<void> {
+    if (this.staging === root || root.startsWith(this.staging + sep)) {
+      throw new Error(`${this.product.label}: refusing to clear staging dir ${this.staging}: it contains the repo root.`)
+    }
+    if (this.cli.dryRun) console.log(`${this.product.label}: [dry-run] rm -rf ${this.staging}`)
+    else await rm(this.staging, { recursive: true, force: true })
+    await this.run('deploy', pnpmBin(), [
+      '--filter',
+      this.product.deployFilter,
+      'deploy',
+      '--legacy',
+      '--prod',
+      '--config.node-linker=hoisted',
+      '--config.auto-install-peers=false',
+      '--config.link-workspace-packages=true',
+      // Product closures intentionally exclude product-only packages and patches.
+      '--config.allow-unused-patches=true',
+      this.staging,
+    ])
+    await this.restoreLegacyHoists()
+    await this.materializeStagedLinks()
+    if (this.cli.dryRun) {
+      for (const name of this.product.deployOnlyDocs) {
+        console.log(`${this.product.label}: [dry-run] rm -f ${join(this.staging, name)}`)
+      }
+    } else {
+      await Promise.all(this.product.deployOnlyDocs.map(name => rm(join(this.staging, name), { force: true })))
+    }
+  }
+
+  /**
+   * Restore direct packages that pnpm's legacy hoister places beside the deploy
+   * source instead of in the target. The runtime manifest supplies every peer,
+   * so package-local node_modules trees are omitted to preserve one flat Cordis
+   * instance and a symlink-free packaged payload.
+   */
+  private async restoreLegacyHoists(): Promise<void> {
+    if (this.cli.dryRun) {
+      console.log(`${this.product.label}: [dry-run] restore direct dependencies omitted by legacy deploy`)
+      return
+    }
+    const manifestPath = join(this.staging, 'package.json')
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+      dependencies?: Record<string, string>
+    }
+    const sourceNodeModules = resolve(root, this.product.deploySourceNodeModules)
+    const restored: string[] = []
+    for (const dependency of Object.keys(manifest.dependencies ?? {}).sort()) {
+      const destination = join(this.staging, 'node_modules', dependency)
+      if (existsSync(destination)) continue
+      const source = join(sourceNodeModules, dependency)
+      if (!existsSync(source)) {
+        throw new Error(
+          `${this.product.label}: deployed dependency ${dependency} is absent from both ${destination} and ${source}.`,
+        )
+      }
+      await mkdir(dirname(destination), { recursive: true })
+      const nestedNodeModules = join(source, 'node_modules')
+      await cp(source, destination, {
+        recursive: true,
+        dereference: true,
+        filter: path => path !== nestedNodeModules && !path.startsWith(nestedNodeModules + sep),
+      })
+      restored.push(dependency)
+    }
+    const stillMissing = Object.keys(manifest.dependencies ?? {})
+      .filter(dependency => !existsSync(join(this.staging, 'node_modules', dependency)))
+    if (stillMissing.length > 0) {
+      throw new Error(`${this.product.label}: staged dependencies remain missing: ${stillMissing.join(', ')}.`)
+    }
+    if (restored.length > 0) {
+      console.log(`${this.product.label}: restored legacy deploy hoists: ${restored.join(', ')}`)
+    }
+  }
+
+  /** Replace deploy-time package links with files and reject any remaining link. */
+  private async materializeStagedLinks(): Promise<void> {
+    if (this.cli.dryRun) {
+      console.log(`${this.product.label}: [dry-run] materialize staged package links`)
+      return
+    }
+    const nodeModules = join(this.staging, 'node_modules')
+    let remaining = await this.findSymlink(nodeModules)
+    while (remaining !== undefined) {
+      const segments = remaining.slice(nodeModules.length + 1).split(sep)
+      const binIndex = segments.lastIndexOf('.bin')
+      if (binIndex >= 0) {
+        await rm(join(nodeModules, ...segments.slice(0, binIndex + 1)), { recursive: true, force: true })
+        remaining = await this.findSymlink(nodeModules)
+        continue
+      }
+      const destination = remaining
+      const source = await realpath(destination)
+      const nestedNodeModules = join(source, 'node_modules')
+      await rm(destination, { recursive: true, force: true })
+      await cp(source, destination, {
+        recursive: true,
+        dereference: true,
+        filter: path => path !== nestedNodeModules && !path.startsWith(nestedNodeModules + sep),
+      })
+      remaining = await this.findSymlink(nodeModules)
+    }
+  }
+
+  /** Return the first symbolic link below a directory, if one exists. */
+  private async findSymlink(directory: string): Promise<string | undefined> {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name)
+      const metadata = await lstat(path)
+      if (metadata.isSymbolicLink()) return path
+      if (metadata.isDirectory()) {
+        const nested = await this.findSymlink(path)
+        if (nested !== undefined) return nested
+      }
+    }
+    return undefined
+  }
+
+  /** Add the executable entry and pkg assets to the staged manifest. */
+  async injectPkgConfig(): Promise<void> {
+    const patch = { bin: this.product.entryBin, pkg: { assets: ASSET_GLOBS } }
+    const manifestPath = join(this.staging, 'package.json')
+    if (this.cli.dryRun) {
+      console.log(`${this.product.label}: [dry-run] patch ${manifestPath} with ${JSON.stringify(patch)}`)
+      return
+    }
+    if (!existsSync(manifestPath)) {
+      throw new Error(`${this.product.label}: ${manifestPath} missing — pnpm deploy did not produce a staged package.`)
+    }
+    if (!existsSync(join(this.staging, this.product.entryBin))) {
+      throw new Error(`${this.product.label}: ${join(this.staging, this.product.entryBin)} missing — run without --skip-build so lib/ artifacts exist.`)
+    }
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as Record<string, unknown>
+    await writeFile(manifestPath, `${JSON.stringify({ ...manifest, ...patch }, null, 2)}\n`)
+    console.log(`${this.product.label}: injected pkg config into ${manifestPath}`)
+  }
+
+  /**
+   * Package one target; SEA mode accepts one target per invocation.
+   * @param target - the pkg target triple to build.
+   * @returns the executable path and, on macOS, its helper path.
+   */
+  async pack(target: Target): Promise<string[]> {
+    const product = join(this.outDir, `${this.product.outputBasename}-${target.platform}-${target.arch}`)
+    await this.prepareNativePty(target)
+    if (!this.cli.dryRun) await mkdir(this.outDir, { recursive: true })
+    await this.run(`pkg ${target.spec}`, pnpmBin(), [
+      'dlx',
+      PKG_SPEC,
+      this.staging,
+      '--sea',
+      '--targets',
+      target.spec,
+      '--output',
+      product,
+    ])
+    if (!this.cli.dryRun && !existsSync(product)) {
+      throw new Error(`${this.product.label}: product ${product} is missing after the pkg run; inspect ${this.outDir}.`)
+    }
+    if (target.platform !== 'macos') return [product]
+    const spawnHelper = `${product}-spawn-helper`
+    const source = join(this.staging, 'node_modules', 'node-pty', 'prebuilds', `darwin-${target.arch}`, 'spawn-helper')
+    if (this.cli.dryRun) {
+      console.log(`${this.product.label}: [dry-run] cp ${source} ${spawnHelper}`)
+    } else {
+      await copyFile(source, spawnHelper)
+      await chmod(spawnHelper, 0o755)
+    }
+    return [product, spawnHelper]
+  }
+
+  /**
+   * Put the target node-pty addon in the staged closure. Linux npm installs
+   * build it from source, but legacy deploy omits that side-effect directory.
+   * @param target - the pkg target whose native addon is being staged.
+   */
+  private async prepareNativePty(target: Target): Promise<void> {
+    const stagedBuild = join(this.staging, 'node_modules', 'node-pty', 'build')
+    if (this.cli.dryRun) console.log(`${this.product.label}: [dry-run] rm -rf ${stagedBuild}`)
+    else await rm(stagedBuild, { recursive: true, force: true })
+    if (target.platform !== 'linux') return
+    const source = join(root, this.product.linuxPtySource)
+    const destination = join(stagedBuild, 'Release', 'pty.node')
+    if (this.cli.dryRun) {
+      console.log(`${this.product.label}: [dry-run] cp ${source} ${destination}`)
+      return
+    }
+    const host = Target.host(this.product.label)
+    if (target.platform !== host.platform || target.arch !== host.arch) {
+      throw new Error(
+        `${this.product.label}: build the Linux runtime on its target architecture; `
+        + `target ${target.platform}-${target.arch} does not match host ${host.platform}-${host.arch}.`,
+      )
+    }
+    await mkdir(dirname(destination), { recursive: true })
+    await copyFile(source, destination)
+  }
+
+  /**
+   * Print each product path and, outside dry-run mode, its size.
+   * @param products - the product paths returned by {@link pack}.
+   */
+  printProducts(products: string[]): void {
+    console.log(this.cli.dryRun ? `${this.product.label}: [dry-run] would produce:` : `${this.product.label}: products:`)
+    for (const path of products) {
+      if (this.cli.dryRun) {
+        console.log(`  ${path}`)
+        continue
+      }
+      const megabytes = statSync(path).size / (1024 * 1024)
+      console.log(`  ${path}  (${megabytes.toFixed(1)} MB)`)
+    }
+  }
+
+  /**
+   * Run one subprocess with inherited stdio. Spawn and non-zero-exit errors
+   * include the command; dry runs only print it.
+   * @param label - the step name used in logs and error messages.
+   * @param command - the executable.
+   * @param args - its arguments.
+   */
+  private async run(label: string, command: string, args: string[]): Promise<void> {
+    const printable = formatCommand(command, args)
+    if (this.cli.dryRun) {
+      console.log(`${this.product.label}: [dry-run] ${printable}`)
+      return
+    }
+    console.log(`${this.product.label}: ${label}: ${printable}`)
+    await new Promise<void>((resolvePromise, reject) => {
+      const child = spawn(command, args, {
+        cwd: root,
+        stdio: 'inherit',
+        // Artifact builds must not mutate or validate a developer's Git hooks.
+        env: { ...process.env, CI: 'true' },
+      })
+      child.once('error', (error) => {
+        reject(new Error(`${this.product.label}: ${label} failed to spawn: ${error.message} (${printable})`))
+      })
+      child.once('exit', (code, signal) => {
+        if (code === 0) {
+          resolvePromise()
+          return
+        }
+        const cause = code === null ? `signal ${signal ?? 'unknown'}` : `exit code ${code}`
+        reject(new Error(`${this.product.label}: ${label} failed (${cause}): ${printable}`))
+      })
+    })
+  }
+}
+
+export { OUT_DIR, PKG_SPEC, Target } from './config.ts'
+export type { Arch, BuildCli, ExeProduct, Platform } from './config.ts'

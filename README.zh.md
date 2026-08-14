@@ -12,7 +12,7 @@
 
 > [!IMPORTANT]
 >
-> 这是一个非官方的社区 fork，不由 DeepSeek AI 维护，也未获得 DeepSeek AI 的赞助或背书。DeepSeek Harness 和 `@deepseek-ai` npm 包来自 DeepSeek AI。本仓库的终端改动通过源码分发，在 Windows 上还可通过由该源码打出的目录包分发；公开的 `@deepseek-ai/dsh` npm 包是上游独立发布的产物，不应默认它已包含本 fork 的 TUI。
+> 这是一个非官方的社区 fork，不由 DeepSeek AI 维护，也未获得 DeepSeek AI 的赞助或背书。DeepSeek Harness 和 `@deepseek-ai` npm 包来自 DeepSeek AI。本仓库的终端改动以 `@peiyuwang54/dsh-cli` 分发（见下方“安装”一节）；公开的 `@deepseek-ai/dsh` npm 包是上游独立发布的产物，不应默认它已包含本 fork 的 TUI。
 
 ## 状态
 
@@ -23,35 +23,29 @@
 - Node.js `^22.19.0` 或 `>=24.0.0`；建议开发时使用 Node.js 24。
 - pnpm `11.7.0`，与仓库 `packageManager` 字段一致。
 - `tui` 要求 stdin 和 stdout 都是真实 TTY；重定向和自动化请使用 `headless`。
-- 第一次请求模型前需要提供方凭据。随附的默认适配器读取 `DEEPSEEK_API_KEY`。在 `$DSH_HOME/settings.yaml` 启用 `openrouter` 路由后，改为读取 `OPENROUTER_API_KEY`。
+- 第一次请求模型前需要提供方凭据。随附的默认适配器读取 `DEEPSEEK_API_KEY`。
 
 终端实现面向 macOS、Linux 和 Windows。下文介绍的无密钥 built-binary PTY 验收测试在 POSIX 上运行；Windows 终端行为使用 pi-tui 的 VT 输入和 ConPTY 路径，并配有独立的平台导向测试。
 
-<a id="install-windows"></a>
+## 安装
 
-## 在 Windows 上安装
+`dsh` 以单文件可执行程序的形式，为 macOS（`arm64`、`x64`）与 Linux（`arm64`、`x64`）发布。任选一个通道：
 
-本仓库没有公开的安装器 URL。请先 clone 这份检出，再从该目录运行安装器：
-
-```powershell
-git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
-cd deepseek-harness-cli
-powershell -ExecutionPolicy Bypass -File .\scripts\install\install.ps1
+```sh
+curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-web-to-cli/master/apps/cli/install/install.sh | sh
+npm install -g @peiyuwang54/dsh-cli
+brew install peiyuwang54/dsh/dsh
 ```
 
-当缺少 `node_modules` 时，脚本会安装 workspace 依赖，构建 Host 与 Client 库，打出一份便携目录（宿主 `node.exe` 加上 `@deepseek-ai/dsh` 的生产闭包），复制到 `%LOCALAPPDATA%\Programs\dsh`，并把该目录写入用户 PATH。打开新的终端后运行 `dsh`。不带参数的命令会打开终端 UI。
-
-已安装的命令不指向这份 clone。更新或删除检出不会改变已安装副本，除非再次运行安装器。同一打包器还会在该目录旁写出 `dist-windows/dsh-win32-<arch>.zip`。
-
-打包装包的机器需要 Node.js `^22.19.0` 或 `>=24.0.0`，以及 pnpm `11.7.0`（Corepack）。`dsh web` 不属于此包：打包器不构建 Web 前端。`pnpm run pack:windows-cli` 只写出目录和 zip，不执行安装。
+第一行是 curl|sh 安装器：它拉取最新的 `dsh-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，安装到 `$HOME/.dsh/bin`，并把该目录追加进你的 shell `PATH`（重启 shell，或运行它打印的 `export` 一行）。npm 行安装 `@peiyuwang54/dsh-cli` 覆盖各平台可执行程序的 shim；brew 行从 `peiyuwang54/homebrew-dsh` tap 安装 cask。进入 `PATH` 后，`dsh` 的命令与下方源码说明完全一致——`dsh tui`、`dsh --profile headless "task"`、`dsh web`——首次请求模型前仍需要提供方凭据（默认 `DEEPSEEK_API_KEY`）。Windows 不是分发目标，请使用源码 checkout。
 
 <a id="run-from-source"></a>
 
 ## 从源码快速开始
 
 ```sh
-git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
-cd deepseek-harness-cli
+git clone https://github.com/peiyuwang54/deepseek-harness-web-to-cli.git
+cd deepseek-harness-web-to-cli
 pnpm install --frozen-lockfile
 pnpm run build
 export DEEPSEEK_API_KEY="your-key"
@@ -66,22 +60,6 @@ pnpm dsh tui
 ```
 
 不要提交提供方密钥。除了继承的环境外，启动器还可以从 `$DSH_HOME/.credentials.yaml`、调用目录下的 `.env` 以及 `$DSH_HOME/.env` 解析凭据。`$DSH_HOME` 默认为 `~/.dsh`，其中还保存 profile 和持久化 Session。
-
-要调用 [OpenRouter](https://openrouter.ai/docs/quickstart) 上的模型，把 `OPENROUTER_API_KEY` 写入该凭据文档，并启用已有的 `openrouter` catalog 路由：
-
-```yaml
-llm-pi-ai:
-  providers:
-    openrouter:
-      apiKeyEnv: OPENROUTER_API_KEY
-      displayName: OpenRouter
-
-agent-default-model:
-  provider: openrouter
-  model: deepseek/deepseek-v4-flash
-```
-
-之后 `/model` 会列出 OpenRouter catalog。示例默认是该路由上的 DeepSeek slug。在这份 settings 分节改写之前，组合默认值仍是 `deepseek-official`。
 
 运行 `pnpm dsh ...` 时所在的目录是默认 workspace。`web`、`tui` 和 `headless` profile 都会在首次使用时自动初始化。
 
@@ -308,7 +286,7 @@ TUI renderer 从上游 DeepSeek Harness 删除它之前的 tree 恢复，并迁�
 
 ## 开发与支持
 
-- Fork 专用 bug 请提交到本仓库的 [Issues](https://github.com/peiyuwang54/deepseek-harness-cli/issues)，不要提交到上游 issue tracker。
+- Fork 专用 bug 请提交到本仓库的 [Issues](https://github.com/peiyuwang54/deepseek-harness-web-to-cli/issues)，不要提交到上游 issue tracker。
 - 请从[开发指南](docs/development.md)和[架构文档](docs/architecture.md)开始。
 - 提交改动前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
 - 在仓库中工作的 agent 必须遵循 [AGENTS.md](AGENTS.md)。

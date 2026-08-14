@@ -28,7 +28,7 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 
 随附展示默认使用 alternate screen，并把 transcript 位置作为显式 view state：有界 viewport 会跟随新输出，直到 Page Up／Page Down 或鼠标滚轮移开；用户通过 Ctrl+End 或回到最新页时，它会恢复跟随尾部。Alternate-screen 和 SGR mouse mode 在 pi-tui 启动前进入，仅在它停止后退出；启动失败、常规 dispose 与进程 handoff 都使用同一恢复边界。现有多行 editor、bracketed paste 与感知 cursor 的 `@` 补全仍是输入权威。`/model`、Alt+M 与 footer 的鼠标目标都进入同一 model controller，因此快捷键和可见操作点不会与命令行为分叉。
 
-真正处于零状态的会话会使用自适应面板，而不是让紧凑 transcript header 横跨空白 viewport。它在中央显示终端原生 DeepSeek 标志，从各自持有服务投影已组合 agent preset、所选模型和权限状态，并汇总可查询的最新会话与命令持有的快捷操作。第一个持久 turn 会将它收缩为普通 header，因此不会让重复欢迎状态进入对话。多行 editor 持有一圈完整边框，其底框承载随状态变化的发送／steer 提示；独立底部状态栏则把工作区和用量与 agent 状态、模型、上下文压力及排队工作对齐。
+真正处于零状态的会话会使用自适应面板，而不是让紧凑 transcript header 横跨空白 viewport。它渲染由第一方官方 SVG 标志派生的 Braille 字符栅格，从各自持有服务投影已组合 agent preset、所选模型和权限状态，并汇总可查询的最新会话与命令持有的快捷操作。栅格提供完整、缩小和仅字标三档高度，不依赖 Kitty／iTerm 图像协议。第一个持久 turn 会将它收缩为普通 header，因此不会让重复欢迎状态进入对话。多行 editor 持有一圈完整边框，其底框承载随状态变化的发送／steer 提示；独立底部状态栏则把工作区和用量与 agent 状态、模型、上下文压力及排队工作对齐。
 
 富文本输出保持终端原生，而不是导入 Web React tree。pi-tui 的 GFM renderer 持有标题、强调、链接、嵌套／任务列表、引用、表格与代码围栏；一个窄范围 highlighter 把 `diff`/`patch` 元数据、hunk、删除和新增映射到工具 diff 卡片共用的语义 palette。同一路径的相邻 hunk 形成一个可见分组。KaTeX 排版、获取 Markdown 图像、Shiki token 着色、复制控件与水平滚动器仍是明确的浏览器差异，而不是终端包中的隐藏依赖。
 

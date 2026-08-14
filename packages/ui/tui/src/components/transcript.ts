@@ -178,6 +178,30 @@ function displayInline(value: string): string {
 }
 
 /**
+ * Braille-cell raster of the first-party DeepSeek mark in
+ * `website/public/favicon.svg`. Braille's 2x4 dot grid preserves the official
+ * silhouette without depending on terminal-specific image protocols.
+ */
+const DEEPSEEK_MARK = [
+  '     ⣀⣀⣀⣀⣤⡄  ⢠⡄',
+  ' ⢀⣴⣾⣿⣿⣿⣿⣿⣿⣤⡀ ⢻⣿⣶⣠⣤⣶⡟',
+  '⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡈⠻⣿⣿⡿⠟⠁',
+  '⢸⣯  ⠉⠙⠻⣿⣿⣿⣯⡙⢿⣿⣾⣿⡇',
+  '⢸⣿⡄    ⠈⠻⣿⣿⣧⣤⣿⣿⣿⠁',
+  ' ⢻⣿⣄  ⢀⣀ ⠙⣿⣿⣿⣿⡿⠃',
+  '  ⠙⢿⣷⣤⣤⣿⣷⣦⣈⣻⣿⣿⣦⡄',
+  '    ⠉⠛⠻⠿⠿⠟⠛⠉',
+] as const
+
+/** Reduced official-mark raster for a terminal that cannot fit the full dashboard. */
+const DEEPSEEK_MARK_COMPACT = [
+  ' ⣀⣀⣠ ⣀ ⢀',
+  '⣼⠿⢿⣿⡷⣼⡿⠋',
+  '⠻⣄⢀⡙⢷⣿⠃',
+  ' ⠈⠛⠛⠋⠉',
+] as const
+
+/**
  * Startup header. A fresh session gets a centered DeepSeek dashboard; after
  * its first turn starts, the same component contracts to the transcript title.
  */
@@ -233,22 +257,14 @@ export class HeaderComponent implements Component {
   private renderDashboard(width: number, state: WelcomeDashboardState): string[] {
     const contentWidth = Math.max(1, Math.min(88, width - 2))
     const rows = this.terminalRows?.() ?? 36
-    const spacious = contentWidth >= 72 && rows >= 28
+    const spacious = contentWidth >= 72 && rows >= 32
     const brand = (value: string): string => this.gradient ? brandText(value) : this.palette.brand(value)
     const product = this.gradient
       ? this.palette.bold(gradientText('DEEPSEEK'))
       : this.palette.bold(this.palette.accent('DEEPSEEK'))
     const lines: string[] = []
-    if (spacious) {
-      for (const line of [
-        '              ╭╮',
-        '         ╭────╯╰─╮',
-        '    ╭────╯  ●    ╰────╮',
-        '    ╰─────────────────╯',
-      ]) lines.push(centered(brand(line), contentWidth))
-    } else {
-      lines.push(centered(brand('◖◉━━━━━━━━━━━━◗'), contentWidth))
-    }
+    const mark = spacious ? DEEPSEEK_MARK : rows >= 20 ? DEEPSEEK_MARK_COMPACT : []
+    for (const line of mark) lines.push(centered(brand(line), contentWidth))
     lines.push(centered(`${product} ${this.palette.bold('HARNESS')}`, contentWidth))
     const subtitle = this.subtitle()
     if (subtitle !== undefined) lines.push(centered(this.palette.dim(displayInline(subtitle)), contentWidth))

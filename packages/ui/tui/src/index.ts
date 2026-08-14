@@ -141,6 +141,7 @@ import {
   BANNER_REVEAL_INTERVAL_MS,
   BANNER_REVEAL_STEPS,
   CURSOR_BLINK_INTERVAL_MS,
+  EditorAutocompletePanel,
   formatCwd,
   gitBranch,
   HintEditor,
@@ -391,6 +392,7 @@ export function createTuiChat(
     selectList: selectTheme(palette),
   } satisfies EditorTheme, {
     paddingX: 1,
+    autocompletePlacement: 'external',
     frame: 'none',
     prompt: {
       first: initialInputPrompt,
@@ -401,6 +403,7 @@ export function createTuiChat(
   editor.cursorVisible = resolved.showHardwareCursor
   editor.hintPrefix = initialInputPrompt
   editor.hint = palette.dim(displayInlineText(resolved.theme.inputPlaceholder))
+  const editorAutocomplete = new EditorAutocompletePanel(editor)
   type TuiKeymap = 'default' | 'vim'
   type VimState = 'insert' | 'normal'
   let keymap: TuiKeymap = 'default'
@@ -654,6 +657,7 @@ export function createTuiChat(
       + sessionStatsLine.render(width).length
       + questionContainer.render(width).length
       + composerOverlayContainer.render(width).length
+      + editorAutocomplete.render(width).length
       + editor.render(width).length
     const available = Math.max(0, runtime.terminal.rows - reservedRows)
     // A pristine welcome dashboard is already the complete zero-state body.
@@ -670,6 +674,7 @@ export function createTuiChat(
   ui.addChild(compactionStatusLine)
   ui.addChild(questionContainer)
   ui.addChild(editor)
+  ui.addChild(editorAutocomplete)
   ui.addChild(composerOverlayContainer)
   ui.addChild(promptContext)
   ui.addChild(sessionStatsLine)
@@ -2390,6 +2395,9 @@ export function createTuiChat(
     const mouseEvent = parseTuiMouseEvent(data)
     if (mouseEvent !== undefined && resolved.fullscreen && resolved.mouse) {
       if (overlayManager.hasActiveOverlay() && mouseEvent.action === 'wheel') {
+        return { data: mouseEvent.button === 'wheel-up' ? '\x1b[A' : '\x1b[B' }
+      }
+      if (!overlayManager.hasActiveOverlay() && editor.isShowingAutocomplete() && mouseEvent.action === 'wheel') {
         return { data: mouseEvent.button === 'wheel-up' ? '\x1b[A' : '\x1b[B' }
       }
       if (!overlayManager.hasActiveOverlay() && mouseEvent.action === 'wheel') {

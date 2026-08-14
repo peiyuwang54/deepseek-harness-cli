@@ -1,5 +1,5 @@
 diff --git a/dist/components/editor.d.ts b/dist/components/editor.d.ts
-index a6fedc9e3b36d066e34860d040db6df47d88c432..f0b20eb87686215d1d1a54274a7b1ebdf4030ef1 100644
+index a6fedc9e3b36d066e34860d040db6df47d88c432..966fbe9a3722faa4bff6ed95b5cf4efa75d09efd 100644
 --- a/dist/components/editor.d.ts
 +++ b/dist/components/editor.d.ts
 @@ -21,7 +21,7 @@ export interface TextChunk {
@@ -11,10 +11,12 @@ index a6fedc9e3b36d066e34860d040db6df47d88c432..f0b20eb87686215d1d1a54274a7b1ebd
  export interface EditorTheme {
      borderColor: (str: string) => string;
      selectList: SelectListTheme;
-@@ -29,6 +29,13 @@ export interface EditorTheme {
+@@ -29,6 +29,15 @@ export interface EditorTheme {
  export interface EditorOptions {
      paddingX?: number;
      autocompleteMaxVisible?: number;
++    /** Render suggestions within the editor or through `renderAutocomplete()`. */
++    autocompletePlacement?: "inline" | "external";
 +    /** Omit the editor's horizontal frame. */
 +    frame?: "horizontal" | "none";
 +    /** Fixed-width prefixes for the first input row and explicit newlines. Wrapped rows start at the editor edge. */
@@ -25,7 +27,15 @@ index a6fedc9e3b36d066e34860d040db6df47d88c432..f0b20eb87686215d1d1a54274a7b1ebd
  }
  export declare class Editor implements Component, Focusable {
      private state;
-@@ -79,6 +86,11 @@ export declare class Editor implements Component, Focusable {
+@@ -48,6 +57,7 @@ export declare class Editor implements Component, Focusable {
+     private autocompleteState;
+     private autocompletePrefix;
+     private autocompleteMaxVisible;
++    private autocompletePlacement;
+     private autocompleteAbort?;
+     private autocompleteDebounceTimer?;
+     private autocompleteRequestTask;
+@@ -79,6 +89,11 @@ export declare class Editor implements Component, Focusable {
      getAutocompleteMaxVisible(): number;
      setAutocompleteMaxVisible(maxVisible: number): void;
      setAutocompleteProvider(provider: AutocompleteProvider): void;
@@ -37,8 +47,17 @@ index a6fedc9e3b36d066e34860d040db6df47d88c432..f0b20eb87686215d1d1a54274a7b1ebd
      /**
       * Add a prompt to history for up/down arrow navigation.
       * Called after successful submission.
+@@ -93,6 +108,8 @@ export declare class Editor implements Component, Focusable {
+     private setTextInternal;
+     invalidate(): void;
+     render(width: number): string[];
++    /** Render the active autocomplete list for an external layout container. */
++    renderAutocomplete(width: number): string[];
+     handleInput(data: string): void;
+     private layoutText;
+     getText(): string;
 diff --git a/dist/components/editor.js b/dist/components/editor.js
-index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b75a29174 100644
+index 6c03aeec4148571558713e885ac7f7df18a511bc..4bb3bbbcb70f0c6a86c2c796ae322d51bc4c26b1 100644
 --- a/dist/components/editor.js
 +++ b/dist/components/editor.js
 @@ -79,7 +79,7 @@ function segmentWithMarkers(text, baseSegmenter, validIds) {
@@ -119,7 +138,15 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
      // Vertical scrolling support
      scrollOffset = 0;
      // Border color (can be changed dynamically)
-@@ -243,9 +256,29 @@ export class Editor {
+@@ -204,6 +217,7 @@ export class Editor {
+     autocompleteState = null;
+     autocompletePrefix = "";
+     autocompleteMaxVisible = 5;
++    autocompletePlacement = "inline";
+     autocompleteAbort;
+     autocompleteDebounceTimer;
+     autocompleteRequestTask = Promise.resolve();
+@@ -243,8 +257,29 @@ export class Editor {
          this.borderColor = theme.borderColor;
          const paddingX = options.paddingX ?? 0;
          this.paddingX = Number.isFinite(paddingX) ? Math.max(0, Math.floor(paddingX)) : 0;
@@ -135,7 +162,8 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
 +        }
          const maxVisible = options.autocompleteMaxVisible ?? 5;
          this.autocompleteMaxVisible = Number.isFinite(maxVisible) ? Math.max(3, Math.min(20, Math.floor(maxVisible))) : 5;
-     }
++        this.autocompletePlacement = options.autocompletePlacement ?? "inline";
++    }
 +    setPrompt(prompt) {
 +        const firstWidth = visibleWidth(prompt.first);
 +        const continuationWidth = visibleWidth(prompt.continuation);
@@ -145,11 +173,10 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
 +        this.prompt = prompt;
 +        this.promptWidth = firstWidth;
 +        this.invalidate();
-+    }
+     }
      /** Set of currently valid paste IDs, for marker-aware segmentation. */
      validPasteIds() {
-         return new Set(this.pastes.keys());
-@@ -364,14 +397,17 @@ export class Editor {
+@@ -364,14 +399,17 @@ export class Editor {
          const maxPadding = Math.max(0, Math.floor((width - 1) / 2));
          const paddingX = Math.min(this.paddingX, maxPadding);
          const contentWidth = Math.max(1, width - paddingX * 2);
@@ -170,7 +197,7 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
          // Calculate max visible lines: 30% of terminal height, minimum 5 lines
          const terminalRows = this.tui.terminal.rows;
          const maxVisibleLines = Math.max(5, Math.floor(terminalRows * 0.3));
-@@ -396,16 +432,22 @@ export class Editor {
+@@ -396,16 +434,22 @@ export class Editor {
          const rightPadding = leftPadding;
          // Render top border (with scroll indicator if scrolled down)
          if (this.scrollOffset > 0) {
@@ -199,7 +226,7 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
              result.push(horizontal.repeat(width));
          }
          // Render each visible layout line
-@@ -413,7 +455,19 @@ export class Editor {
+@@ -413,7 +457,19 @@ export class Editor {
          // hardware cursor for IME candidate-window placement even while
          // autocomplete (e.g. slash-command menu) is visible.
          const emitCursorMarker = this.focused;
@@ -220,7 +247,7 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
              let displayText = layoutLine.text;
              let lineVisibleWidth = visibleWidth(layoutLine.text);
              let cursorInPadding = false;
-@@ -439,34 +493,41 @@ export class Editor {
+@@ -439,38 +495,50 @@ export class Editor {
                      displayText = before + marker + cursor;
                      lineVisibleWidth = lineVisibleWidth + 1;
                      // If cursor overflows content width into the padding, flag it
@@ -259,9 +286,10 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
              result.push(horizontal.repeat(width));
          }
          // Add autocomplete list if active
-         if (this.autocompleteState && this.autocompleteList) {
+-        if (this.autocompleteState && this.autocompleteList) {
 -            const autocompleteResult = this.autocompleteList.render(contentWidth);
-+            const autocompleteResult = this.autocompleteList.render(inputWidth);
++        if (this.autocompletePlacement === "inline") {
++            const autocompleteResult = this.renderAutocomplete(inputWidth);
 +            const autocompletePrefix = " ".repeat(this.promptWidth);
              for (const line of autocompleteResult) {
                  const lineWidth = visibleWidth(line);
@@ -272,7 +300,16 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
              }
          }
          return result;
-@@ -726,7 +787,7 @@ export class Editor {
+     }
++    renderAutocomplete(width) {
++        if (!this.autocompleteState || !this.autocompleteList)
++            return [];
++        return this.autocompleteList.render(Math.max(1, width));
++    }
+     handleInput(data) {
+         const kb = getKeybindings();
+         // Handle character jump mode (awaiting next character to jump to)
+@@ -726,7 +794,7 @@ export class Editor {
              this.insertCharacter(data);
          }
      }
@@ -281,7 +318,7 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
          const layoutLines = [];
          if (this.state.lines.length === 0 || (this.state.lines.length === 1 && this.state.lines[0] === "")) {
              // Empty editor
-@@ -734,6 +795,7 @@ export class Editor {
+@@ -734,6 +802,7 @@ export class Editor {
                  text: "",
                  hasCursor: true,
                  cursorPos: 0,
@@ -289,7 +326,7 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
              });
              return layoutLines;
          }
-@@ -749,18 +811,20 @@ export class Editor {
+@@ -749,18 +818,20 @@ export class Editor {
                          text: line,
                          hasCursor: true,
                          cursorPos: this.state.cursorCol,
@@ -311,7 +348,7 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
                  for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
                      const chunk = chunks[chunkIndex];
                      if (!chunk)
-@@ -796,12 +860,14 @@ export class Editor {
+@@ -796,12 +867,14 @@ export class Editor {
                              text: chunk.text,
                              hasCursor: true,
                              cursorPos: adjustedCursorPos,
@@ -326,7 +363,7 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
                          });
                      }
                  }
-@@ -1439,7 +1505,7 @@ export class Editor {
+@@ -1439,7 +1512,7 @@ export class Editor {
       * - startCol: starting column in the logical line
       * - length: length of this visual line segment
       */
@@ -335,7 +372,7 @@ index 6c03aeec4148571558713e885ac7f7df18a511bc..0111317ccab31a1e973b92272d8a668b
          const visualLines = [];
          for (let i = 0; i < this.state.lines.length; i++) {
              const line = this.state.lines[i] || "";
-@@ -1453,7 +1519,7 @@ export class Editor {
+@@ -1453,7 +1526,7 @@ export class Editor {
              }
              else {
                  // Line needs wrapping - use word-aware wrapping

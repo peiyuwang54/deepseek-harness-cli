@@ -20,12 +20,10 @@ viewport
   style 6-7 dim
   style 15-15 inverse
   style 95-95 dim
-7| "│       → Session · Searchable design re  opaque-source-id · /workspace/project · 1970-01-01   │"
-  style 0-0 dim
-  style 8-39 fg=bright-magenta
-  style 95-95 dim
-8| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+7| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-95 dim
+8| "→ Session · Searchable design re  opaque-source-id · /workspace/project · 1970-01-01T00:00:00."
+  style 0-31 fg=bright-magenta
 9| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim

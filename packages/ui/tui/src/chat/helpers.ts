@@ -14,6 +14,7 @@ import {
   Editor,
   truncateToWidth,
   visibleWidth,
+  type Component,
 } from '@earendil-works/pi-tui'
 import { isCompactCheckpointSource } from '@deepseek-ai/dsh-compaction'
 import { isAppendSurfaceEvent, isReplacementSurfaceEvent } from '@deepseek-ai/dsh-session'
@@ -92,6 +93,19 @@ export class HintEditor extends Editor {
       return `${this.borderColor('│')}${clipped}${' '.repeat(Math.max(0, contentWidth - visibleWidth(clipped)))}${this.borderColor('│')}`
     })
     return [top, ...body, bottom]
+  }
+}
+
+/** Editor-owned autocomplete projection mounted directly below the input frame. */
+export class EditorAutocompletePanel implements Component {
+  constructor(private readonly editor: HintEditor) {}
+
+  render(width: number): string[] {
+    return this.editor.renderAutocomplete(width)
+  }
+
+  invalidate(): void {
+    this.editor.invalidate()
   }
 }
 

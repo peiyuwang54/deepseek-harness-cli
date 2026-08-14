@@ -1,7 +1,12 @@
 /** Agent ownership and renderer-before-publication ordering for the TUI app bundle. */
 
 import { Context } from '@deepseek-ai/cordis'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import {
+  SESSION_FORMAT_VERSION,
+  Session,
+  SessionId,
+  type SessionEvent,
+} from '@deepseek-ai/dsh-session'
 import { apply as mountProcessTui, TuiConfigSchema } from '@deepseek-ai/dsh-tui'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -25,19 +30,37 @@ async function tick(): Promise<void> {
 }
 
 /** Minimal manually provided host plane for focused runner ownership tests. */
-function bench(identity: TuiStartupValues['identity']) {
+function bench(
+  identity: TuiStartupValues['identity'],
+  resumed: { agentPreset?: string; events?: readonly SessionEvent[] } = {},
+) {
   const ctx = new Context()
   contexts.push(ctx)
   const order: string[] = []
   const exits: number[] = []
+  const mounted: Array<string | undefined> = []
+  const resolved: Array<string | undefined> = []
   const create = vi.fn(async (options: { setup?(ctx: Context): unknown }) => {
     order.push('create')
-    await options.setup?.(new Context())
+    const agentCtx = new Context()
+    await options.setup?.(agentCtx)
     return { agent: {}, dispose: async () => {} }
   })
   const resume = vi.fn(async (options: { setup?(ctx: Context): unknown }) => {
     order.push('resume')
-    await options.setup?.(new Context())
+    const session = Session.create(
+      SessionId(String(identity.id)),
+      resumed.events,
+      {
+        version: SESSION_FORMAT_VERSION,
+        id: SessionId(String(identity.id)),
+        createdAt: 1,
+        ...resumed.agentPreset === undefined ? {} : { agentPreset: resumed.agentPreset },
+      },
+    )
+    const agentCtx = new Context()
+    agentCtx.provide('agent', { session })
+    await options.setup?.(agentCtx)
     return { agent: {}, dispose: async () => {} }
   })
   ctx.provide('appExit', code => void exits.push(code))
@@ -45,9 +68,16 @@ function bench(identity: TuiStartupValues['identity']) {
   ctx.provide('agentDefaultModel', {
     currentSelection: () => ({ provider: 'provider-a', model: 'model-a' }),
   } as never)
+  ctx.provide('agentPresets', {
+    resolve: vi.fn(async (id?: string) => {
+      resolved.push(id)
+      return { id: id ?? 'standard' }
+    }),
+    mount: vi.fn(async (_agentCtx: Context, id?: string) => { mounted.push(id) }),
+  } as never)
   ctx.provide('agents', { create, resume } as never)
   internals.mount = (_ctx, config) => { order.push(`mount:${config.sessionId}`) }
-  return { ctx, order, exits, create, resume }
+  return { ctx, order, exits, create, resume, mounted, resolved }
 }
 
 describe('tui runner', () => {
@@ -59,15 +89,28 @@ describe('tui runner', () => {
     expect(test.resume).not.toHaveBeenCalled()
     expect(test.create).toHaveBeenCalledWith(expect.objectContaining({
       sessionId: 'fresh-main',
-      meta: { cwd: process.cwd() },
+      meta: { cwd: process.cwd(), agentPreset: 'standard' },
       agentOptions: { provider: 'provider-a', model: 'model-a' },
     }))
+    expect(test.resolved).toEqual([undefined])
+    expect(test.mounted).toEqual(['standard'])
     expect(typeof test.create.mock.calls[0]?.[0].setup).toBe('function')
     expect(test.exits).toEqual([])
   })
 
   it('resumes the exact persisted root through AgentRegistry, then mounts it', async () => {
-    const test = bench({ id: SessionId('persisted-main'), resume: true })
+    const test = bench(
+      { id: SessionId('persisted-main'), resume: true },
+      {
+        agentPreset: 'standard',
+        events: [{
+          type: 'agent-preset/selected',
+          seq: 0,
+          time: 1,
+          data: { agentPreset: 'minimal' },
+        }],
+      },
+    )
     apply(test.ctx, {})
     await tick()
     expect(test.order).toEqual(['resume', 'mount:persisted-main'])
@@ -77,6 +120,8 @@ describe('tui runner', () => {
       agentOptions: { provider: 'provider-a', model: 'model-a' },
     }))
     expect(typeof test.resume.mock.calls[0]?.[0].setup).toBe('function')
+    expect(test.resolved).toEqual([])
+    expect(test.mounted).toEqual(['minimal'])
     expect(test.exits).toEqual([])
   })
 

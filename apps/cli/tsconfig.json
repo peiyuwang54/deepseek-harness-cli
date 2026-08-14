@@ -33,6 +33,9 @@
       "path": "../../packages/bundle/tui"
     },
     {
+      "path": "../../packages/ui/tui"
+    },
+    {
       "path": "../../packages/bundle/web-app"
     },
     {

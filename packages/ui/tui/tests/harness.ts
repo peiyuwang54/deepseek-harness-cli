@@ -72,6 +72,7 @@ export interface TuiHarnessOptions {
     locate?(meta: SessionHeader): { kind: string; path: string } | undefined
   }
   handoffResume?: TuiRuntime['handoffResume']
+  handoffWorkspace?: TuiRuntime['handoffWorkspace']
   /** Host-supplied exit line; absent exercises the no-message path. */
   goodbyeMessage?: TuiRuntime['goodbyeMessage']
   /** Set false to exercise the optional session-query degradation path. */
@@ -245,6 +246,10 @@ export async function createTuiTestHarness<TerminalType extends Terminal, Exit e
   const controller = createTuiChat(ctx, Object.assign({
     ...options.omitWelcome === true ? {} : { welcome: 'Coding agent ready.' },
     sessionId,
+    // Most behavior tests assert the renderer independently of terminal-mode
+    // ownership; dedicated suites cover the production full-screen defaults.
+    fullscreen: false,
+    mouse: false,
     theme: { color: false },
   }, options.config), {
     terminal,
@@ -255,6 +260,7 @@ export async function createTuiTestHarness<TerminalType extends Terminal, Exit e
     ...(options.now === undefined ? {} : { now: options.now }),
     ...(options.formatCwd === undefined ? {} : { formatCwd: options.formatCwd }),
     ...(options.handoffResume === undefined ? {} : { handoffResume: options.handoffResume }),
+    ...(options.handoffWorkspace === undefined ? {} : { handoffWorkspace: options.handoffWorkspace }),
     ...(options.goodbyeMessage === undefined ? {} : { goodbyeMessage: options.goodbyeMessage }),
     gitBranch: options.gitBranch ?? (() => 'tui-staging'),
   })

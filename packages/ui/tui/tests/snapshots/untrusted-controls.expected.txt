@@ -53,12 +53,12 @@ buffer
   style 0-3 fg=bright-magenta bold
 29| "  ● Unsafe todo \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m"
   style 2-2 fg=yellow
-30| "/workspace/project (tui-staging)  deepseek-v4-flash  ↑0 ↓0  0% context"
+30| "/workspace/project (tui-staging)  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
-  style 34-50 dim
-  style 53-57 dim
-  style 60-69 dim
+  style 34-58 dim
+  style 61-65 dim
+  style 68-77 dim
 31| "                                                                                                    "
 32| "  Question 1/1 (1 unanswered) · Unsafe header \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m         "
   style 2-90 dim

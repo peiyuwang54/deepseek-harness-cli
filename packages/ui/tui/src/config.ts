@@ -30,6 +30,10 @@ export interface TuiThemeConfig {
 
 /** Interaction and presentation settings for the pi-tui terminal mode. */
 export interface TuiConfig {
+  /** Render in the terminal's alternate screen and restore the prior screen on exit. */
+  fullscreen?: boolean
+  /** Enable wheel and click input while full-screen mode is active. */
+  mouse?: boolean
   /** Render model reasoning blocks. */
   showReasoning?: boolean
   /** Maximum tool-card body lines retained in its collapsed head/tail preview. */
@@ -69,6 +73,8 @@ export interface TuiConfig {
 }
 
 const showReasoningSchema = z.boolean().default(true)
+const fullscreenSchema = z.boolean().default(true)
+const mouseSchema = z.boolean().default(true)
 const maxToolOutputLinesSchema = z.number().step(1).min(1).default(6)
 const maxDiffEditLengthSchema = z.number().step(1).min(1).default(1000)
 const maxQuestionOptionsSchema = z.number().step(1).min(1).default(8)
@@ -102,6 +108,8 @@ const TuiThemeConfigSchema: z<TuiThemeConfig> = z.object({
 const titleSchema = z.string().default('DeepSeek Harness')
 
 const tuiConfigSchemaFields = {
+  fullscreen: fullscreenSchema,
+  mouse: mouseSchema,
   showReasoning: showReasoningSchema,
   maxToolOutputLines: maxToolOutputLinesSchema,
   maxDiffEditLength: maxDiffEditLengthSchema,
@@ -144,6 +152,8 @@ export const Config: z<Config> = z.object({
   welcome: z.string(),
   sessionId: z.string().default('main'),
   initialSkill: z.string(),
+  fullscreen: tuiConfigSchemaFields.fullscreen,
+  mouse: tuiConfigSchemaFields.mouse,
   showReasoning: tuiConfigSchemaFields.showReasoning,
   maxToolOutputLines: tuiConfigSchemaFields.maxToolOutputLines,
   maxDiffEditLength: tuiConfigSchemaFields.maxDiffEditLength,
@@ -176,6 +186,8 @@ export interface ResolvedTuiThemeConfig {
 
 /** Fully defaulted TUI presentation settings. */
 export interface ResolvedTuiConfig {
+  fullscreen: boolean
+  mouse: boolean
   showReasoning: boolean
   maxToolOutputLines: number
   maxDiffEditLength: number
@@ -204,6 +216,8 @@ export interface ResolvedTuiConfig {
  */
 export function resolveTuiConfig(config: TuiConfig | undefined): ResolvedTuiConfig {
   return {
+    fullscreen: config?.fullscreen ?? true,
+    mouse: config?.mouse ?? true,
     showReasoning: config?.showReasoning ?? true,
     maxToolOutputLines: config?.maxToolOutputLines ?? 6,
     maxDiffEditLength: config?.maxDiffEditLength ?? 1000,

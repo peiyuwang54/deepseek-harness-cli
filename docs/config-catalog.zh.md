@@ -2821,6 +2821,10 @@ export interface Config extends TuiConfig {
 
 /** Interaction and presentation settings for the pi-tui terminal mode. */
 export interface TuiConfig {
+  /** Render in the terminal's alternate screen and restore the prior screen on exit. */
+  fullscreen?: boolean
+  /** Enable wheel and click input while full-screen mode is active. */
+  mouse?: boolean
   /** Render model reasoning blocks. */
   showReasoning?: boolean
   /** Maximum tool-card body lines retained in its collapsed head/tail preview. */
@@ -2876,13 +2880,13 @@ export interface TuiThemeConfig {
 }
 ```
 
-来源：[`packages/ui/tui/src/config.ts:129`](../packages/ui/tui/src/config.ts)
+来源：[`packages/ui/tui/src/config.ts:137`](../packages/ui/tui/src/config.ts)
 
 <a id="deepseek-aidsh-tui-app"></a>
 
 ## `@deepseek-ai/dsh-tui-app`
 
-需要：`tuiStartup` · `agentDefaultModel` · `agents` · `sessions` · `approval` · `commands` · `userQuestions` · `tools` · `llm` · `systemPrompt` · `tokenMeter` · `tuiPrompt`
+需要：`tuiStartup` · `agentDefaultModel` · `agentPresets` · `agents` · `sessions` · `approval` · `commands` · `userQuestions` · `tools` · `llm` · `systemPrompt` · `tokenMeter` · `tuiPrompt`
 
 ```ts config-catalog
 /** Renderer presentation settings; session identity belongs to `tuiStartup`. */
@@ -2891,7 +2895,7 @@ export type Config = TuiConfig
 
 依赖：[`TuiConfig`](../packages/ui/tui/src/index.ts)
 
-来源：[`packages/bundle/tui/src/index.ts:45`](../packages/bundle/tui/src/index.ts)
+来源：[`packages/bundle/tui/src/index.ts:47`](../packages/bundle/tui/src/index.ts)
 
 <a id="deepseek-aidsh-typert-loader"></a>
 

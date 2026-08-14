@@ -11,8 +11,10 @@ import { createUserMessage, CallId, type ContentBlock , createMessage, createToo
 import { RetryId } from '@deepseek-ai/dsh-llm-retry'
 import { SessionId, type JsonValue, type Session, type SessionEvent } from '@deepseek-ai/dsh-session'
 import SessionReferenceResolver from '@deepseek-ai/dsh-session-reference'
+import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRegistry, { type ToolDefinition, type ToolResultView } from '@deepseek-ai/dsh-tools'
+import { WorkspaceId, type Workspace } from '@deepseek-ai/dsh-workspace'
 import * as ToolCordis from '@deepseek-ai/dsh-tool-cordis'
 import * as ToolWorkflow from '@deepseek-ai/dsh-tool-workflow'
 import {
@@ -32,6 +34,7 @@ const REFRESHING = process.env.DSH_SNAPSHOT === 'refresh'
 
 const CHECKPOINTS = [
   'conversation-streaming',
+  'rich-markdown',
   'shell-prompt-multiline',
   'step-timing-completed',
   'retry-scheduled',
@@ -62,6 +65,10 @@ const CHECKPOINTS = [
   'model-selector',
   'model-selector-filtered',
   'model-switching',
+  'settings-hub',
+  'theme-selector',
+  'workspace-selector',
+  'workspace-handoff-recovered',
   'errors-and-help',
   'disposed-terminal',
   'resume-sessions-loading',
@@ -139,6 +146,23 @@ async function renderAfter(harness: SnapshotHarness, action: () => void): Promis
 async function disposeSnapshot(harness: SnapshotHarness): Promise<void> {
   await disposeTuiTestHarness(harness)
   await harness.terminal.dispose()
+}
+
+/** Complete inert workspace entity for terminal-state fixtures. */
+function snapshotWorkspace(id: string, path: string, title: string): Workspace {
+  return {
+    id: WorkspaceId(id),
+    path,
+    title,
+    createdAt: '2026-08-14T00:00:00.000Z',
+    updatedAt: '2026-08-14T00:00:00.000Z',
+    sessionIds: [],
+    setTitle: () => Promise.resolve(),
+    attachSession: () => Promise.resolve(),
+    insertSessionBefore: () => Promise.resolve(),
+    detachSession: () => Promise.resolve(),
+    status: () => Promise.resolve('ok'),
+  }
 }
 
 async function configureAdvancedTools(ctx: Context): Promise<void> {
@@ -368,6 +392,42 @@ describe('TUI terminal-state snapshots', () => {
     await checkpoint('conversation-streaming', harness.terminal)
     await disposeSnapshot(harness)
     nowSpy.mockRestore()
+  })
+
+  it('pins rich GFM blocks and semantic diff-fence highlighting', async () => {
+    const harness = await setupSnapshot({}, { columns: 96, rows: 40 })
+    await renderAfter(harness, () => {
+      appendUser(harness.session, 'Summarize the renderer changes.')
+      appendAssistant(harness.session, [{
+        type: 'text',
+        text: [
+          '# Renderer update',
+          '',
+          'The **terminal view** keeps `inline code` and ~~obsolete text~~ distinct.',
+          '',
+          '- [x] Render task lists',
+          '- [ ] Verify the narrow layout',
+          '',
+          '> Diff rows use semantic terminal colors.',
+          '',
+          '| Surface | State |',
+          '| --- | --- |',
+          '| Markdown | ready |',
+          '| Diff | ready |',
+          '',
+          '```diff',
+          'diff --git a/view.ts b/view.ts',
+          '--- a/view.ts',
+          '+++ b/view.ts',
+          '@@ -1 +1 @@',
+          '-const state = "old"',
+          '+const state = "ready"',
+          '```',
+        ].join('\n'),
+      }])
+    })
+    await checkpoint('rich-markdown', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
   })
 
   it('pins a completed step timing summary', async () => {
@@ -974,6 +1034,82 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('model-switching', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins shared Settings, Appearance, workspace selection, and handoff recovery', async () => {
+    const uiTheme = settingsNamespace('ui-theme')
+    const workspace = snapshotWorkspace(
+      'snapshot-secondary-workspace',
+      '/workspace/secondary',
+      'Secondary project',
+    )
+    const handoff = vi.fn(() => Promise.reject(new Error('snapshot host retained process')))
+    const harness = await setupSnapshot({
+      config: { fullscreen: true, mouse: true },
+      handoffWorkspace: handoff,
+      configureContext: async (ctx) => {
+        await ctx.plugin(SystemPrompt)
+        await ctx.plugin(ToolRegistry)
+        ctx.provide('settings', {
+          get: (namespace: string) => namespace === uiTheme ? { preference: 'dark' } : undefined,
+          mutate: () => Promise.resolve(),
+          describe: () => [{
+            ns: uiTheme,
+            schema: { type: 'object' },
+            value: { preference: 'dark' },
+            user: { preference: 'dark' },
+            revision: 1,
+            applies: 'live',
+          }, {
+            ns: settingsNamespace('llm-deepseek'),
+            schema: { type: 'object' },
+            value: {},
+            revision: 0,
+            applies: 'restart',
+            secrets: [['apiKey']],
+          }],
+          writable: true,
+          documentPath: '/home/snapshot/.dsh/settings.yml',
+          prepareDocument: () => Promise.resolve('/home/snapshot/.dsh/settings.yml'),
+        } as never)
+        ctx.provide('workspaceRegistry', {
+          list: () => [workspace],
+          create: () => Promise.resolve(workspace),
+        } as never)
+      },
+    }, { columns: 92, rows: 32 })
+
+    await renderAfter(harness, () => {
+      harness.terminal.send('/settings')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('settings-hub', harness.terminal, { includeScrollback: true })
+
+    await renderAfter(harness, () => { harness.terminal.send('\x1b') })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/theme')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('theme-selector', harness.terminal, { includeScrollback: true })
+
+    await renderAfter(harness, () => { harness.terminal.send('\x1b') })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/workspace')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('workspace-selector', harness.terminal, { includeScrollback: true })
+
+    const beforeHandoff = harness.terminal.frames
+    harness.terminal.send('\r')
+    await vi.waitFor(() => { expect(handoff).toHaveBeenCalledWith('/workspace/secondary') })
+    await harness.terminal.waitForFrame(beforeHandoff)
+    await new Promise(resolve => setTimeout(resolve, 25))
+    const restored = await harness.terminal.snapshot({ includeScrollback: true })
+    expect(restored).toContain('Workspace switch failed: snapshot host retained process')
+    expect(restored).toContain('Snapshot agent ready.')
+    expect(harness.session.header.cwd).toBe('/workspace/project')
+    await checkpoint('workspace-handoff-recovered', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

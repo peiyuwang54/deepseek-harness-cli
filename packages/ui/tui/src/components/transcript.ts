@@ -76,10 +76,15 @@ function diffContentLines(text: string): string[] {
  * change totals. Comparisons beyond the edit-distance budget fall back to
  * whole-side rendering so a model-authored pending edit cannot stall the TUI.
  */
-function renderDiff(diff: FileDiff, maxDiffEditLength: number, palette: Palette): RenderedDiff {
-  // The card header is a fixed `Tool / <name>` frame that never names a file, so
-  // each hunk always carries its own path header (no redundancy to suppress).
-  const lines = [palette.bold(displayText(diff.path))]
+function renderDiff(
+  diff: FileDiff,
+  maxDiffEditLength: number,
+  palette: Palette,
+  repeatedPath: boolean,
+): RenderedDiff {
+  // The card header never names a file, so a file's first hunk carries its path.
+  // Later adjacent hunks use Web DiffBlock's gap marker instead of repeating it.
+  const lines = [repeatedPath ? palette.dim('⋯') : palette.bold(displayText(diff.path))]
   let added = 0
   let removed = 0
   if (diff.oldText === null) {
@@ -639,12 +644,15 @@ export class ToolCardComponent extends CachedCardComponent {
     }
     if (view.card === 'diff') {
       if (this.diffBodyCache?.view === view) return this.diffBodyCache.body
-      // The header no longer names the file, so each diff keeps its own path
-      // header. A trailing footer summarizes the exact changed rows when the
-      // bounded comparison succeeds (`+A -R · N file(s)`).
-      const renderedDiffs = view.diffs.map(diff =>
-        renderDiff(diff, this.maxDiffEditLength, this.palette),
-      )
+      // The header never names a file, so each file's first hunk carries its path
+      // and adjacent hunks use a gap marker. A trailing footer summarizes the
+      // exact changed rows when the bounded comparison succeeds.
+      const renderedDiffs = view.diffs.map((diff, index) => renderDiff(
+        diff,
+        this.maxDiffEditLength,
+        this.palette,
+        index > 0 && view.diffs[index - 1]?.path === diff.path,
+      ))
       const added = renderedDiffs.reduce((total, rendered) => total + rendered.added, 0)
       const removed = renderedDiffs.reduce((total, rendered) => total + rendered.removed, 0)
       const approximate = renderedDiffs.some(rendered => rendered.approximate)

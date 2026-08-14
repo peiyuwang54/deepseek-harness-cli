@@ -32,12 +32,12 @@ viewport
 15| "Model wait 1.0s · Thinking 2.0s                                                                 "
   style 0-30 dim
 16| <blank>
-17| "/workspace/project (tui-staging)  deepseek-v4-flash  ↑0 ↓0  0% context"
+17| "/workspace/project (tui-staging)  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
-  style 34-50 dim
-  style 53-57 dim
-  style 60-69 dim
+  style 34-58 dim
+  style 61-65 dim
+  style 68-77 dim
 18| " dsh ● press enter to steer and esc to cancel                                                   "
   style 1-3 fg=bright-magenta bold
   style 5-44 dim

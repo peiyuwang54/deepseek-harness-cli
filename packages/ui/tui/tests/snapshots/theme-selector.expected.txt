@@ -1,0 +1,42 @@
+terminal 92x32 buffer=alternate length=32 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=92 viewportRow=18 bufferRow=18
+buffer
+0| " DEEPSEEK HARNESS"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+1| " Snapshot agent ready."
+  style 1-21 dim
+2| " main-session"
+  style 1-12 dim
+3-12| <blank>
+13| "        ╭ Appearance ──────────────────────────────────────────────────────────────╮        "
+  style 8-83 fg=bright-magenta
+14| "        │   Light                                                                  │        "
+  style 8-8 fg=bright-magenta
+  style 83-83 fg=bright-magenta
+15| "        │ → Dark                            current                                │        "
+  style 8-8 fg=bright-magenta
+  style 10-50 fg=bright-magenta inverse
+  style 83-83 fg=bright-magenta
+16| "        │   System                                                                 │        "
+  style 8-8 fg=bright-magenta
+  style 83-83 fg=bright-magenta
+17| "        │ ↑/↓ move • Enter select • Esc close                                      │        "
+  style 8-8 fg=bright-magenta
+  style 10-44 dim
+  style 83-83 fg=bright-magenta
+18| "        ╰──────────────────────────────────────────────────────────────────────────╯        "
+  style 8-83 fg=bright-magenta
+19-29| <blank>
+30| "/workspace/project (tui-staging)  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-magenta bold
+  style 18-31 dim
+  style 34-58 dim
+  style 61-65 dim
+  style 68-77 dim
+31| " dsh >                                                                                      "
+  style 1-3 fg=bright-magenta bold
+  style 5-6 dim
+  style 7-7 inverse

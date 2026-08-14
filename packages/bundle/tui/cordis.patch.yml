@@ -18,22 +18,126 @@
     # Keep the same temporary process-wide Code Mode opt-in as other surfaces.
     mode: !!js process.env.DSH_TOOLS_MODE
 
+# The runner now mounts the same per-session presets as Web, so the base
+# bundle's legacy process-wide agent contributions must not leak into a
+# minimal or custom preset. Registries and other Host-plane services stay up;
+# only rows that contribute one agent's tools/prompt/policies move behind the
+# preset roster.
+- id: tool-bash
+  disabled: true
+
+- id: tool-pwsh
+  disabled: true
+
+- id: tool-jobs
+  disabled: true
+
+- id: tool-fs
+  disabled: true
+
+- id: tool-fs-search
+  disabled: true
+
+- id: tool-str-replace-editor
+  disabled: true
+
+- id: skill-filesystem
+  disabled: true
+
+- id: tool-skill
+  disabled: true
+
+- id: tool-goal
+  disabled: true
+
+- id: plan-mode
+  disabled: true
+
+- id: compaction-basic
+  disabled: true
+
+- id: command-compact
+  disabled: true
+
+- id: tool-result-pruner
+  disabled: true
+
+- id: tool-subagent-control
+  disabled: true
+
+- id: tool-subagent-list-agents
+  disabled: true
+
+- id: tool-subagent
+  disabled: true
+
+- id: tool-subagent-fork
+  disabled: true
+
+- id: workflow-worker-thread
+  disabled: true
+
+- id: tool-workflow
+  disabled: true
+
+- id: tool-ralph
+  disabled: true
+
+- id: agent-instructions
+  disabled: true
+
+- id: tool-todo
+  disabled: true
+
+- id: tool-web
+  disabled: true
+
 - insert:
     - id: code-runtime
       name: '@deepseek-ai/dsh-code-runtime-worker-thread'
+
+    # The terminal uses the same per-session composition ledger as Web. Fresh
+    # sessions mount the configured default; resume resolves the preset from
+    # the stored header plus any later agent-preset/selected event.
+    - id: agent-presets
+      name: '@deepseek-ai/dsh-agent-presets'
+      config:
+        default: standard
+
+    # Register the same ui-theme settings namespace the browser uses. Its Web
+    # bootstrap half stays dormant because this profile mounts no webServer.
+    - id: ui-theme
+      name: '@deepseek-ai/dsh-client-ui-theme'
+
+    # Reuse the durable Web workspace ledger. The terminal picker starts a
+    # fresh process in the selected directory; it never rewrites a live
+    # session's immutable cwd.
+    - id: storage
+      name: '@deepseek-ai/dsh-storage'
+
+    - id: storage-json
+      name: '@deepseek-ai/dsh-storage-json'
+      config:
+        root: !!js dshHomePath('storages')
+
+    - id: storage-domain
+      name: '@deepseek-ai/dsh-storage-domain'
+      config:
+        backend: json
+
+    - id: workspace
+      name: '@deepseek-ai/dsh-workspace'
 
     # Exact cross-session reads behind terminal @session references.
     - id: session-reference
       name: '@deepseek-ai/dsh-session-reference'
 
-    # Terminal-only workspace context and the model-facing interactive question tool.
+    # Terminal-only workspace context. Model-facing question tools belong to
+    # the selected preset (minimal intentionally does not expose one).
     - id: tmux-context
       name: '@deepseek-ai/dsh-tmux-context'
       config:
         refreshIntervalMs: 900000
-
-    - id: tool-ask-user
-      name: '@deepseek-ai/dsh-tool-ask-user'
 
     # Prompt fragments must exist before the renderer mounts.
     - id: tui-prompt

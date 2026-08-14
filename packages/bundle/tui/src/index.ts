@@ -12,6 +12,7 @@ import {
   type ModelSelectionRef,
 } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
+import { resolveSessionPreset } from '@deepseek-ai/dsh-agent-presets'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import {
   apply as mountProcessTui,
@@ -29,6 +30,7 @@ export const name = 'tui-runner'
 export const inject = [
   'tuiStartup',
   'agentDefaultModel',
+  'agentPresets',
   'agents',
   'sessions',
   'approval',
@@ -46,6 +48,8 @@ export type Config = TuiConfig
 
 /** The renderer's presentation schema, without its independently owned identity fields. */
 export const Config: z<Config> = z.object({
+  fullscreen: z.boolean().default(true),
+  mouse: z.boolean().default(true),
   showReasoning: z.boolean().default(true),
   maxToolOutputLines: z.number().step(1).min(1).default(6),
   maxDiffEditLength: z.number().step(1).min(1).default(1000),
@@ -99,12 +103,13 @@ async function startAgent(ctx: Context, identity: MainSessionIdentity, config: C
   await ctx.get('loader')?.await()
   const agents = ctx.get('agents')
   const defaultModel = ctx.get('agentDefaultModel')
+  const presets = ctx.get('agentPresets')
   // A requested shutdown can dispose providers while Loader settlement is in flight.
-  if (agents === undefined || defaultModel === undefined) return
+  if (agents === undefined || defaultModel === undefined || presets === undefined) return
 
   const selection = defaultModel.currentSelection()
   let disposeBootstrapSelection: (() => void) | undefined
-  const setup = (agentCtx: Context): void => {
+  const installSelection = (agentCtx: Context): void => {
     const selected: ModelSelectionRef = { current: selection, assembled: undefined }
     disposeBootstrapSelection = installModelSelection(agentCtx, selected)
   }
@@ -113,14 +118,23 @@ async function startAgent(ctx: Context, identity: MainSessionIdentity, config: C
       await agents.resume({
         resumeSessionId: SessionId(identity.id),
         agentOptions: { provider: selection.provider, model: selection.model },
-        setup,
+        setup: async (agentCtx) => {
+          const agent = agentCtx.agent
+          if (agent === undefined) throw new Error('tui-runner: resumed Agent setup has no scoped agent')
+          installSelection(agentCtx)
+          await presets.mount(agentCtx, resolveSessionPreset(agent.session))
+        },
       })
     } else {
+      const preset = await presets.resolve()
       await agents.create({
         sessionId: SessionId(identity.id),
-        meta: { cwd: process.cwd() },
+        meta: { cwd: process.cwd(), agentPreset: preset.id },
         agentOptions: { provider: selection.provider, model: selection.model },
-        setup,
+        setup: async (agentCtx) => {
+          installSelection(agentCtx)
+          await presets.mount(agentCtx, preset.id)
+        },
       })
     }
     // mountTui synchronously checks existing roots after installing its event

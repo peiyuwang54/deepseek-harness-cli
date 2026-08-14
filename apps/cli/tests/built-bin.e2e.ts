@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -22,11 +22,12 @@ const invalidProvider = fileURLToPath(new URL('./fixtures/invalid-provider.cordi
  * `tuiPrompt` probe and a complete synchronized UI frame before sending Ctrl-D.
  */
 const POSIX_BUILT_TUI_PTY_DRIVER = String.raw`
-import base64, errno, fcntl, json, os, pty, select, signal, struct, subprocess, sys, termios, time
+import base64, errno, fcntl, json, os, pty, re, select, signal, struct, subprocess, sys, termios, time
 
-node, dsh_bin, overlay, launch_env_json, cwd, timeout_seconds = sys.argv[1:]
+node, dsh_bin, overlay, launch_env_json, cwd, workspace_target, timeout_seconds = sys.argv[1:]
 env = os.environ.copy()
 env.update(json.loads(launch_env_json))
+env.pop("TUI_PTY_WORKSPACE_SENTINEL", None)
 frame_start = b"\x1b[?2026h"
 frame_end = b"\x1b[?2026l"
 probe_marker = b"dsh-test: tuiPrompt active"
@@ -73,6 +74,7 @@ if pid == 0:
 fcntl.ioctl(fd, termios.TIOCSWINSZ, viewport)
 output = bytearray()
 sent_ctrl_d = False
+sent_workspace = False
 raw_mode_observed = False
 status = None
 deadline = time.monotonic() + float(timeout_seconds)
@@ -87,11 +89,21 @@ while time.monotonic() < deadline:
             chunk = b""
         if chunk:
             output.extend(chunk)
-    if not sent_ctrl_d and probe_marker in output and rendered_tui(output):
+    if not sent_workspace and not sent_ctrl_d and probe_marker in output and rendered_tui(output):
         active = termios.tcgetattr(fd)
         raw_mode_observed = not bool(active[3] & termios.ICANON) and not bool(active[3] & termios.ECHO)
-        os.write(fd, b"\x04")
-        sent_ctrl_d = True
+        if workspace_target:
+            os.write(fd, b"/workspace " + workspace_target.encode() + b"\r")
+            sent_workspace = True
+        else:
+            os.write(fd, b"\x04")
+            sent_ctrl_d = True
+    if sent_workspace and not sent_ctrl_d:
+        marker = b"dsh-test: tuiPrompt active cwd=" + workspace_target.encode() + b" "
+        marker_at = output.rfind(marker)
+        if marker_at >= 0 and output.find(frame_end, marker_at) >= 0:
+            os.write(fd, b"\x04")
+            sent_ctrl_d = True
     waited, candidate = os.waitpid(pid, os.WNOHANG)
     if waited == pid:
         status = candidate
@@ -128,12 +140,25 @@ if marker_at >= 0:
     if report_end >= 0:
         wrapper = json.loads(bytes(output[report_start:report_end]).decode())
 
+probe_pattern = re.compile(br"dsh-test: tuiPrompt active cwd=(.*?) session=(main-session-[^ ]+) env=([^\r\n]*)")
+probes = probe_pattern.findall(bytes(output))
+workspace_replaced = bool(workspace_target) and len(probes) >= 2 and probes[-1][0].decode() == workspace_target
+workspace_environment_rebased = (
+    workspace_replaced
+    and probes[0][2] == b"workspace-a"
+    and probes[-1][2] == b"workspace-b"
+)
+
 summary = {
     "outputBase64": base64.b64encode(output).decode(),
     "probeActivated": probe_marker in output,
     "frameRendered": rendered_tui(output),
     "sentCtrlD": sent_ctrl_d,
+    "sentWorkspace": sent_workspace,
     "rawModeObserved": raw_mode_observed,
+    "workspaceReplaced": workspace_replaced,
+    "workspaceEnvironmentRebased": workspace_environment_rebased,
+    "distinctSessionIds": len(set(probe[1] for probe in probes)),
     "timedOut": timed_out,
     "wrapperExitCode": os.waitstatus_to_exitcode(status),
     "wrapper": wrapper,
@@ -146,7 +171,11 @@ interface BuiltTuiPtySummary {
   probeActivated: boolean
   frameRendered: boolean
   sentCtrlD: boolean
+  sentWorkspace: boolean
   rawModeObserved: boolean
+  workspaceReplaced: boolean
+  workspaceEnvironmentRebased: boolean
+  distinctSessionIds: number
   timedOut: boolean
   wrapperExitCode: number
   wrapper: {
@@ -162,19 +191,28 @@ interface BuiltTuiPtyResult extends Omit<BuiltTuiPtySummary, 'outputBase64'> {
 }
 
 /** Boot the published terminal profile through a real PTY and a Loader probe. */
-async function runBuiltTuiPty(): Promise<BuiltTuiPtyResult> {
+async function runBuiltTuiPty(options: { workspaceHandoff?: boolean } = {}): Promise<BuiltTuiPtyResult> {
   const root = mkdtempSync(join(tmpdir(), 'dsh-built-tui-'))
   try {
+    let workspaceTarget = options.workspaceHandoff === true ? join(root, 'workspace-b') : ''
+    if (workspaceTarget !== '') {
+      mkdirSync(workspaceTarget)
+      // macOS PTYs report /private/var/... even when tmpdir() returned
+      // /var/.... Match the canonical cwd emitted by the replacement process.
+      workspaceTarget = realpathSync(workspaceTarget)
+      writeFileSync(join(root, '.env'), 'TUI_PTY_WORKSPACE_SENTINEL=workspace-a\n')
+      writeFileSync(join(workspaceTarget, '.env'), 'TUI_PTY_WORKSPACE_SENTINEL=workspace-b\n')
+    }
     const probe = join(root, 'tui-prompt-probe.mjs')
     writeFileSync(probe, [
       "export const name = 'tui-prompt-probe'",
-      "export const inject = ['tuiPrompt']",
+      "export const inject = ['tuiPrompt', 'tuiStartup']",
       'export function apply(ctx) {',
       "  const value = ctx.tuiPrompt.register('test/probe', 'active')",
       "  if (ctx.tuiPrompt.get('test/probe') !== 'active') throw new Error('tuiPrompt probe could not read its registration')",
       '  const unsubscribe = ctx.tuiPrompt.subscribe(() => {})',
       '  unsubscribe()',
-      "  process.stdout.write('dsh-test: tuiPrompt active\\n')",
+      "  process.stdout.write(`dsh-test: tuiPrompt active cwd=${process.cwd()} session=${ctx.tuiStartup.identity.id} env=${process.env.TUI_PTY_WORKSPACE_SENTINEL ?? ''}\\n`)",
       '  ctx.effect(() => () => { value.dispose() })',
       '}',
       '',
@@ -184,7 +222,7 @@ async function runBuiltTuiPty(): Promise<BuiltTuiPtyResult> {
       '- insert:',
       '    - id: tui-prompt-probe',
       `      name: ${JSON.stringify(pathToFileURL(probe).href)}`,
-      '      inject: [tuiPrompt]',
+      '      inject: [tuiPrompt, tuiStartup]',
       '',
     ].join('\n'))
 
@@ -204,6 +242,7 @@ async function runBuiltTuiPty(): Promise<BuiltTuiPtyResult> {
         COLORTERM: '',
       }),
       root,
+      workspaceTarget,
       String(timeoutMs / 1_000),
     ], {
       stdin: 'ignore',
@@ -614,6 +653,48 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
     expect(result.rawModeObserved, result.output).toBe(true)
     expect(result.output).toContain('dsh-test: tuiPrompt active')
     expect(result.output).toContain('To resume this session: dsh tui --resume=main-session-')
+    const alternateScreenEntered = result.output.indexOf('\x1b[?1049h')
+    const mouseEnabled = result.output.indexOf('\x1b[?1000h')
+    const firstSynchronizedFrame = result.output.indexOf('\x1b[?2026h')
+    const mouseDisabled = result.output.lastIndexOf('\x1b[?1000l')
+    const alternateScreenLeft = result.output.lastIndexOf('\x1b[?1049l')
+    const wrapperReport = result.output.lastIndexOf('dsh-test: tui wrapper ')
+    expect(alternateScreenEntered, result.output).toBeGreaterThanOrEqual(0)
+    expect(mouseEnabled, result.output).toBeGreaterThan(alternateScreenEntered)
+    expect(firstSynchronizedFrame, result.output).toBeGreaterThan(mouseEnabled)
+    expect(mouseDisabled, result.output).toBeGreaterThan(firstSynchronizedFrame)
+    expect(alternateScreenLeft, result.output).toBeGreaterThan(mouseDisabled)
+    expect(wrapperReport, result.output).toBeGreaterThan(alternateScreenLeft)
+    expect(result.output).not.toMatch(/ERR_MODULE_NOT_FOUND|failed to import|failed to start/ui)
+  }, 60_000)
+
+  it.skipIf(process.platform === 'win32')('hands a workspace selection to a fresh TUI process without leaking terminal or project environment state', async () => {
+    const result = await runBuiltTuiPty({ workspaceHandoff: true })
+    const lifecycleFacts = JSON.stringify({
+      timedOut: result.timedOut,
+      sentWorkspace: result.sentWorkspace,
+      workspaceReplaced: result.workspaceReplaced,
+      workspaceEnvironmentRebased: result.workspaceEnvironmentRebased,
+      distinctSessionIds: result.distinctSessionIds,
+      sentCtrlD: result.sentCtrlD,
+      wrapperExitCode: result.wrapperExitCode,
+      wrapper: result.wrapper,
+    })
+    expect(result.timedOut, `${lifecycleFacts}\n${result.output}`).toBe(false)
+    expect(result.wrapperExitCode, result.output).toBe(0)
+    expect(result.wrapper, result.output).toMatchObject({
+      nodeExitCode: 0,
+      restored: true,
+      afterCanonical: true,
+      afterEcho: true,
+    })
+    expect(result.sentWorkspace, result.output).toBe(true)
+    expect(result.workspaceReplaced, result.output).toBe(true)
+    expect(result.workspaceEnvironmentRebased, result.output).toBe(true)
+    expect(result.distinctSessionIds, result.output).toBe(2)
+    expect(result.sentCtrlD, result.output).toBe(true)
+    expect(result.output.match(/\x1b\[\?1049h/gu)?.length, result.output).toBeGreaterThanOrEqual(2)
+    expect(result.output.match(/\x1b\[\?1049l/gu)?.length, result.output).toBeGreaterThanOrEqual(2)
     expect(result.output).not.toMatch(/ERR_MODULE_NOT_FOUND|failed to import|failed to start/ui)
   }, 60_000)
 
@@ -983,9 +1064,10 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       expect(stdout).toContain("name: '@deepseek-ai/dsh-tui-app/startup'")
       expect(stdout).toContain("name: '@deepseek-ai/dsh-tui-app'")
       expect(stdout).toContain("name: '@deepseek-ai/dsh-tui/prompt'")
+      expect(stdout).toContain("name: '@deepseek-ai/dsh-client-ui-theme'")
       expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-host-/)
       expect(stdout).not.toContain("name: '@deepseek-ai/dsh-web-app'")
-      expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-client-/)
+      expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-client-(?!ui-theme')/)
     }, 30_000)
 
     it('composes the profile user layer and a --patch overlay in order', async () => {

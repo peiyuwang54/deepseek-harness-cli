@@ -95,16 +95,17 @@ The terminal is an independent presentation layer over the same Agent, Session, 
 
 | Area | Implemented behavior |
 |---|---|
-| Conversation | Streaming Markdown, reasoning blocks, retry state, phase and step timing, and replay of persisted history |
+| Conversation | Streaming GFM Markdown, semantic `diff`/`patch` fences, reasoning blocks, retry state, timing, and persisted-history replay |
 | Tools | Terminal, diff, and generic cards; pending/success/error state; collapsed, expanded, and hidden views |
 | Human in the loop | Exact-Agent FIFO approval prompts plus structured single-select, multi-select, and custom questions |
-| Models | `/model` catalog and filter, exact provider/model selection, and adapter-advertised reasoning effort |
-| Sessions | Persistent identities, direct `--resume`, searchable resume candidates, titles, compaction markers, and session references |
-| Workspace | `@` completion for files and directories, quoted paths with spaces, and bounded workspace indexing |
+| Models | `/model`, Alt+M, and a clickable model badge; catalog filtering, exact provider/model selection, and reasoning effort |
+| Sessions | Direct and in-channel resume, Web-preset-safe composition restore, titles, compaction markers, and session references |
+| Workspace | Searchable durable workspace selector, fresh-process handoff, and bounded `@` file/directory completion |
+| Settings | Redacted settings hub/document discovery plus persistent shared light, dark, and system theme selection |
 | Skills and commands | Dynamic slash-command completion and `/skill:<name> [instructions]` for user-invocable skills |
 | Diagnostics | Token and KV-cache accounting, context pressure, current model, `/status`, and terminal-safe error reporting |
 | Extensibility | Agent-scoped commands, tool-owned presentation intents, and a lifecycle-bound `ctx.tui` overlay service |
-| Terminal lifecycle | ANSI control-character escaping, synchronized rendering, raw-mode ownership, and terminal restoration on disposal |
+| Terminal lifecycle | Full-screen alternate buffer, multiline editor, mouse input, scrollable transcript, raw mode, and complete restoration |
 
 `@path` completion inserts a path into the user message; it does not secretly read or attach that file. When a `read` tool is available, the model receives a stable instruction to read an explicitly referenced path when its contents are needed.
 
@@ -115,6 +116,10 @@ The terminal is an independent presentation layer over the same Agent, Session, 
 | `Enter` | Send a follow-up while idle or steering input while the Agent is running |
 | `Shift+Enter` / `Alt+Enter` | Insert a newline |
 | `Up` / `Down` | Navigate prompt history when the editor owns those keys |
+| `Alt+M` | Open the model selector |
+| `Page Up` / `Page Down` | Scroll the full-screen transcript by one page |
+| `Ctrl+End` | Return to the live transcript tail |
+| Mouse wheel / model click | Scroll transcript or selectors; open the model selector from its badge |
 | `Esc` | Cancel the active turn |
 | `Ctrl+C` | Cancel while running; while idle, clear non-empty input, then exit when pressed on an empty editor |
 | `Ctrl+D` | Exit while idle |
@@ -132,7 +137,10 @@ The terminal is an independent presentation layer over the same Agent, Session, 
 | `/details` | Change tool-card visibility and reasoning display |
 | `/palette` | Inspect the semantic ANSI palette |
 | `/status` | Add session, model, usage, system-prompt, and tool diagnostics to the terminal transcript |
-| `/resume` | Search resumable sessions; see the handoff limitation below |
+| `/resume` | Search persisted sessions and replace the process in the session's recorded workspace |
+| `/workspace [directory]` | Search or register workspaces and start a fresh session in the selected directory |
+| `/settings [list\|document]` | Inspect redacted settings metadata or locate the shared editable settings document |
+| `/theme [light\|dark\|system]` | Select and persist the shared appearance preference |
 | `/reload` | Experimental development-only reload of file-backed Loader configuration while idle |
 | `/exit` / `/quit` | Exit after the active turn reaches idle |
 | `/skill:<name> [instructions]` | Load a user-invocable skill as a user turn |
@@ -150,14 +158,21 @@ flowchart TD
   Composer --> WebProfile["web = base + web-app"]
   Composer --> HeadlessProfile["headless = base + headless"]
   TUIProfile --> Startup["TUI startup: args + exact Session identity"]
-  Startup --> Registry["Agent registry: create or resume"]
+  TUIProfile --> HostServices["settings + workspace registry + preset roster"]
+  Startup --> Preset["resolve fresh or recorded Agent preset"]
+  Preset --> Registry["Agent registry: create or resume"]
   Registry --> Session["canonical persisted Session events"]
   Registry --> Renderer["dsh-tui renderer + input"]
+  HostServices --> Renderer
   Session --> Renderer
   Renderer --> Terminal["interactive terminal"]
+  Renderer --> Handoff["resume/workspace handoff"]
+  Handoff --> CLI
 ```
 
-`@deepseek-ai/dsh-tui-app` owns `--resume`, TTY admission, the exact root Agent identity, and Agent create/resume. It waits for the Loader tree, installs the initial model route while the Agent is unpublished, and then mounts `@deepseek-ai/dsh-tui` onto that Agent. The renderer owns presentation and input only.
+`@deepseek-ai/dsh-tui-app` owns `--resume`, TTY admission, the exact root Agent identity, and Agent create/resume. It waits for the Loader tree, resolves and mounts the fresh or historically recorded Agent preset while the Agent is unpublished, installs the initial model route, and then mounts `@deepseek-ai/dsh-tui`. This makes a Web-created `minimal`, `standard`, `code`, or other preset session resume with the same tool and prompt composition instead of today's default. The renderer owns presentation and input only.
+
+The launcher supplies the process handoff used by `/resume` and `/workspace`. After the renderer validates idle state, flushes the current session, drains input, and releases raw/mouse/alternate-screen modes, the launcher replaces the process in the target directory on POSIX or supervises one foreground replacement child on platforms without `execve`. Profile patches and the original inherited environment are preserved without leaking the old workspace's `.env` values into the new one.
 
 Canonical Session events are the sole durable conversation source. Streaming chunks, tool progress, questions, approvals, and overlays are live projections rather than a second chat log. Approval policy and durable audit events remain owned by `ctx.approval`; the TUI is only the exact-Agent answerer. Structured questions remain a separate `ctx.userQuestions` service.
 
@@ -203,10 +218,10 @@ See the [CLI behavior reference](apps/cli/reference/README.md), the [TUI rendere
 The CLI/TUI baseline was locally validated before publication with the following results:
 
 - Full workspace build completed.
-- TUI unit and Agent/Session integration suites: 243 tests passed.
-- Keyless terminal-state snapshots: 26 snapshots passed.
-- TUI bundle and CLI argument suites: 19 tests passed across 5 files.
-- Built CLI E2E suite: 20 tests passed, including a real POSIX PTY launch of `apps/cli/lib/bin.js` that proves Loader activation, a synchronized first frame, active raw mode, `Ctrl+D` exit, and complete termios restoration.
+- TUI unit and Agent/Session integration suites: 259 tests passed.
+- Keyless terminal-state snapshots: 28 snapshots passed.
+- TUI bundle and CLI argument suites: 26 tests passed across 5 files.
+- Built CLI E2E suite: 21 tests passed, including real POSIX PTY launches of `apps/cli/lib/bin.js` that prove Loader activation, synchronized frames, active raw mode, `Ctrl+D` exit, workspace process handoff with environment rebasing, and complete termios restoration.
 - Type, package, Loader/config, generated-catalog, documentation-link, translation-pairing, license, and third-party-notice gates completed for the baseline.
 
 These are dated local baseline results, not a GitHub Actions badge or a promise that every later commit is green. The PTY path is keyless and makes no model request; it does not replace a real-provider E2E run.
@@ -228,9 +243,9 @@ Real DeepSeek API E2E requires a separately configured credential and can spend 
 
 - **Source distribution for this fork:** no npm package under the `@deepseek-ai` scope is published or controlled by this repository.
 - **TTY only:** ordinary `tui` startup requires interactive stdin and stdout. It intentionally does not fall back to headless mode when piped.
-- **In-channel resume needs a host callback:** the shipped profile's `/resume` selector can inspect candidates, but it cannot replace the current process in place without a host-provided `ctx.tuiResumeHost`. Direct `pnpm dsh tui --resume <session-id>` works without that callback.
 - **No cross-process session lock:** another process can attempt to resume the same persisted identity.
-- **Text-terminal presentation:** tool cards do not render inline image blocks.
+- **Terminal-native Settings:** `/settings` exposes redacted namespace metadata and the editable document, while `/theme` has a dedicated control. It does not reproduce every Web plugin's specialized React settings card.
+- **Text-terminal presentation:** Markdown images remain text, TeX is not typeset with KaTeX, ordinary code fences use one semantic code color rather than Shiki token highlighting, and there are no Web copy buttons or horizontal scrollers.
 - **One rendered Agent:** the configured Session owns the transcript and editor, even though shared overlays may answer requests from other Agents.
 - **Host workspace discovery:** `@` file completion indexes the host session directory, excludes configured directory basenames rather than interpreting `.gitignore`, and does not traverse directory symlinks.
 - **No renderer module HMR:** the shipped TUI bundle disables module hot reload while raw terminal state is live; `/reload` is limited to Loader configuration and development use.

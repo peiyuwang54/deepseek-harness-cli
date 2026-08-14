@@ -21,6 +21,7 @@
     { "path": "../../session/session-projection" },
     { "path": "../../session/session-projection-cache" },
     { "path": "../../session/session-title" },
+    { "path": "../../settings/settings" },
     { "path": "../../session-query/session-query" },
     { "path": "../../llm/llm" },
     { "path": "../../llm/token-meter" },
@@ -31,6 +32,7 @@
     { "path": "../../compaction/compaction" },
     { "path": "../../skill/skill" },
     { "path": "../../subprocess/subprocess" },
+    { "path": "../../workspace/workspace" },
     { "path": "../../runtime-diagnostics/invariants" }
   ]
 }

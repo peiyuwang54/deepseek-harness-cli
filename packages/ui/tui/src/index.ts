@@ -14,6 +14,7 @@ import {
   TUI,
   ProcessTerminal,
   matchesKey,
+  truncateToWidth,
   visibleWidth,
   type Component,
   type EditorTheme,
@@ -141,8 +142,20 @@ import {
 import { createQuestionQueue } from './chat/questions.ts'
 import { createApprovalQueue } from './chat/approvals.ts'
 import { createResumeController } from './chat/resume.ts'
+import {
+  createSettingsController,
+  readTuiThemePreference,
+  type SettingsController,
+  type TuiThemePreference,
+} from './chat/settings.ts'
+import {
+  createWorkspaceController,
+  type WorkspaceController,
+} from './chat/workspace.ts'
 import type { TuiResumeHost, TuiRuntime } from './runtime.ts'
 import { WorkspaceFileSearch } from './chat/file-autocomplete.ts'
+import { createTuiTerminalMode, parseTuiMouseEvent } from './chat/terminal-mode.ts'
+import { TranscriptViewport } from './components/transcript-viewport.ts'
 
 export { TuiPromptService } from './prompt.ts'
 export { renderSkillInvocation } from './chat/skill-invocation.ts'
@@ -330,9 +343,14 @@ export function createTuiChat(
   const agent = ctx.agents.get(sessionId)
   if (agent === undefined) throw new Error(`ui-tui: session "${sessionId}" is not running`)
   const resolved = resolveTuiConfig(config)
-  const palette = createPalette(resolved.theme.color)
+  let themePreference = readTuiThemePreference(ctx.get('settings'))
+  let terminalScheme: TerminalColorScheme = 'dark'
+  const initialScheme: TerminalColorScheme = themePreference === 'light' ? 'light' : 'dark'
+  const palette = createPalette(resolved.theme.color, initialScheme)
   const mdTheme = markdownTheme(palette)
   const ui = new TUI(runtime.terminal, resolved.showHardwareCursor)
+  const terminalMode = createTuiTerminalMode(runtime.terminal, resolved)
+  let terminalOwned = false
   const chat = new Container()
   const todoContainer = new Container()
   const questionContainer = new Container()
@@ -407,6 +425,10 @@ export function createTuiChat(
   // `updatePromptValues()` call until after the assignment so no read precedes it.
   // oxlint-disable-next-line prefer-const -- single assignment is a forward-reference, not a const.
   let modelController!: ModelController
+  // oxlint-disable-next-line prefer-const -- assigned after palette-dependent callbacks are declared.
+  let settingsController!: SettingsController
+  // oxlint-disable-next-line prefer-const -- assigned after shared terminal handoff callbacks are declared.
+  let workspaceController!: WorkspaceController
   const now = (): number => runtime.now?.() ?? Date.now()
   const agentStatus = (): AgentStatus => agent.status
   const isDisposed = (): boolean => disposed
@@ -444,7 +466,8 @@ export function createTuiChat(
     gitValue.set(branch === undefined ? undefined : palette.dim(` (${displayText(branch)})`))
     const rate = cacheHitRate(tokens)
     const usage = `↑${formatTokens(tokens.input)} ↓${formatTokens(tokens.output)}`
-    modelValue.set(`  ${palette.dim(displayText(target.current === undefined ? 'model unset' : compactTargetLabel(target.current)))}`)
+    const modelLabel = displayText(target.current === undefined ? 'model unset' : compactTargetLabel(target.current))
+    modelValue.set(`  ${palette.dim(`${modelLabel} [alt+m]`)}`)
     tokenValue.set(`  ${palette.dim(rate === undefined ? usage : `${usage}  cache ${rate}%`)}`)
     const contextWindow = modelController.contextWindow()
     contextValue.set(contextWindow === undefined ? undefined : `  ${palette.dim(
@@ -496,8 +519,19 @@ export function createTuiChat(
     parseTuiPromptTemplate(displayInlineText(resolved.theme.rightPrompt)),
     valueName => ctx.tuiPrompt.get(valueName),
   )
+  const transcriptViewport = new TranscriptViewport(chat, (width) => {
+    if (!resolved.fullscreen) return undefined
+    const reservedRows = header.render(width).length
+      + 1
+      + todoContainer.render(width).length
+      + compactionStatusLine.render(width).length
+      + promptContext.render(width).length
+      + questionContainer.render(width).length
+      + editor.render(width).length
+    return Math.max(0, runtime.terminal.rows - reservedRows)
+  })
   ui.addChild(header)
-  ui.addChild(chat)
+  ui.addChild(transcriptViewport)
   ui.addChild(new Spacer(1))
   todoContainer.addChild(todo)
   ui.addChild(todoContainer)
@@ -1107,6 +1141,49 @@ export function createTuiChat(
     },
   })
 
+  /** Acquire every process-owned terminal mode exactly once. */
+  const acquireTerminal = (): void => {
+    if (terminalOwned) return
+    try {
+      terminalMode.enter()
+      try {
+        ui.start()
+      } catch (error: unknown) {
+        // TUI.start() may have already entered raw mode before rendering
+        // throws, so one balancing stop remains required on this path.
+        ui.stop()
+        throw error
+      }
+      terminalOwned = true
+    } catch (error: unknown) {
+      terminalMode.leave()
+      throw error
+    }
+  }
+
+  /** Release every process-owned terminal mode exactly once. */
+  const releaseTerminal = (): void => {
+    if (!terminalOwned) return
+    // Clear ownership before invoking external terminal code so a disposal
+    // re-entering this boundary cannot write a second stop into the primary
+    // screen after the alternate buffer has already been left.
+    terminalOwned = false
+    try {
+      ui.stop()
+    } finally {
+      terminalMode.leave()
+    }
+  }
+  const restoreTerminal = (): void => {
+    acquireTerminal()
+    ui.setFocus(editor)
+    // The replacement alternate-screen buffer starts blank while pi-tui still
+    // remembers the previous buffer's rows. Force a complete first frame so a
+    // rejected/returning handoff cannot strand the user on an empty screen.
+    ui.invalidate()
+    ui.requestRender(true)
+  }
+
   const resume = createResumeController({
     ctx,
     agent,
@@ -1122,12 +1199,12 @@ export function createTuiChat(
       if (implementation === undefined || implementation.fiber.state >= FIBER_FAILED) return undefined
       return ctx.get('sessionQuery', false)
     },
-    ui,
-    editor,
     appendNotice,
     requestRender,
     isDisposed,
     agentStatus,
+    releaseTerminal,
+    restoreTerminal,
   })
 
   const shutdown = (exitProcess: boolean): Promise<void> => {
@@ -1135,6 +1212,8 @@ export function createTuiChat(
       disposed = true
       overlayManager.beginShutdown()
       modelController.resetContextResolution()
+      settingsController.clearOverlays()
+      workspaceController.clearOverlay()
       clearStatus()
       for (const controller of commandControllers) controller.abort(new Error('TUI disposed'))
       commandControllers.clear()
@@ -1149,7 +1228,7 @@ export function createTuiChat(
       questions.unregister()
       approvals.unregister()
       await runtime.terminal.drainInput(100, 20)
-      ui.stop()
+      releaseTerminal()
       if (exitProcess) {
         if (runtime.goodbyeMessage !== undefined) {
           runtime.terminal.write(`${palette.dim(displayText(runtime.goodbyeMessage))}\n`)
@@ -1170,7 +1249,7 @@ export function createTuiChat(
     void shutdown(true)
   }
 
-  /** Swap the palette and all derived themes for the given terminal color scheme. */
+  /** Swap the palette and all derived themes for the resolved terminal color scheme. */
   const applyColorScheme = (scheme: TerminalColorScheme): void => {
     if (scheme === currentScheme) return
     currentScheme = scheme
@@ -1181,13 +1260,47 @@ export function createTuiChat(
     setStatus(agent.status)
     requestRender()
   }
-  let currentScheme: TerminalColorScheme = 'dark'
+  let currentScheme: TerminalColorScheme = initialScheme
+
+  /** Apply a persistent preference, resolving `system` through the latest terminal report. */
+  const applyThemePreference = (preference: TuiThemePreference): void => {
+    themePreference = preference
+    applyColorScheme(preference === 'system' ? terminalScheme : preference)
+  }
+
+  settingsController = createSettingsController({
+    ctx,
+    resolved,
+    palette,
+    overlayManager,
+    appendNotice,
+    requestRender,
+    isDisposed,
+    applyTheme: applyThemePreference,
+  })
+  workspaceController = createWorkspaceController({
+    ctx,
+    agent,
+    runtime,
+    resolved,
+    palette,
+    overlayManager,
+    appendNotice,
+    requestRender,
+    isDisposed,
+    agentStatus,
+    releaseTerminal,
+    restoreTerminal,
+  })
 
   // Apply any color scheme the terminal reports. Registering before the query
   // below means even a synchronous reply reaches `applyColorScheme`; in practice
   // the startup query's reply is the only report, since dsh-tui leaves
   // unsolicited color-scheme notifications disabled.
-  const disposeSchemeListener = ui.onTerminalColorSchemeChange(applyColorScheme)
+  const disposeSchemeListener = ui.onTerminalColorSchemeChange((scheme) => {
+    terminalScheme = scheme
+    if (themePreference === 'system') applyColorScheme(scheme)
+  })
 
   // Ask the terminal for its color scheme via device-status report; the reply,
   // if any, arrives through the listener above. Most terminals do not respond,
@@ -1287,7 +1400,8 @@ export function createTuiChat(
     chat.addChild(new Spacer(1))
     chat.addChild(new Text(palette.bold(palette.accent('Keyboard shortcuts')), 0, 0))
     chat.addChild(new Text([
-      'Enter send • Shift/Alt+Enter newline • Up/Down prompt history',
+      'Enter send • Shift/Alt+Enter newline • Up/Down prompt history • Alt+M choose model',
+      'Page Up/Down scroll transcript • Ctrl+End follow latest • mouse wheel scrolls transcript or selectors',
       'Esc cancel turn • Ctrl+O cycle cards (collapse/expand/hide) • Ctrl+R toggle reasoning • Ctrl+L redraw',
       'Ctrl+C cancel while running; clear input or exit while idle • Ctrl+D exit',
       '',
@@ -1466,7 +1580,7 @@ export function createTuiChat(
     commandCtx.commands.register({
       name: 'clear',
       description: 'Clear the transcript view (session history is unchanged)',
-      handler: () => { chat.clear(); requestRender(); return { kind: 'success' } },
+      handler: () => { chat.clear(); transcriptViewport.followTail(); requestRender(); return { kind: 'success' } },
     })
     commandCtx.commands.register({
       name: 'details',
@@ -1488,6 +1602,33 @@ export function createTuiChat(
       name: 'resume',
       description: 'List this workspace\'s resumable sessions',
       handler: () => { resume.showResume(); return { kind: 'success' } },
+    })
+    commandCtx.commands.register({
+      name: 'settings',
+      description: 'Show shared settings namespaces and the settings document',
+      input: { hint: '[list|document]' },
+      handler: ({ rawInput }) => {
+        settingsController.queueSettingsCommand(rawInput)
+        return { kind: 'success' }
+      },
+    })
+    commandCtx.commands.register({
+      name: 'theme',
+      description: 'Choose and persist the light, dark, or system appearance',
+      input: { hint: '[light|dark|system]' },
+      handler: ({ rawInput }) => {
+        settingsController.queueThemeCommand(rawInput)
+        return { kind: 'success' }
+      },
+    })
+    commandCtx.commands.register({
+      name: 'workspace',
+      description: 'Choose or add a workspace and start a fresh session there',
+      input: { hint: '[directory]' },
+      handler: ({ rawInput }) => {
+        workspaceController.queueWorkspaceCommand(rawInput)
+        return { kind: 'success' }
+      },
     })
     commandCtx.commands.register({
       name: 'status',
@@ -1668,6 +1809,7 @@ export function createTuiChat(
   editor.onSubmit = (value: string) => {
     const text = value.trim()
     if (text === '') return
+    transcriptViewport.followTail()
     const restoreSubmittedInput = (): void => {
       if (editor.getText() === '') editor.setText(value)
     }
@@ -1734,8 +1876,77 @@ export function createTuiChat(
     })
   }
 
+  const modelMouseTarget = (): { row: number; firstColumn: number; lastColumn: number } | undefined => {
+    if (!resolved.fullscreen || !resolved.mouse) return undefined
+    const width = runtime.terminal.columns
+    const model = ctx.tuiPrompt.get('model')
+    if (model === undefined) return undefined
+    const marker = '\ue000'.repeat(Math.max(1, visibleWidth(model)))
+    const right = truncateToWidth(
+      renderTuiPromptTemplate(
+        parseTuiPromptTemplate(displayInlineText(resolved.theme.rightPrompt)),
+        valueName => ctx.tuiPrompt.get(valueName),
+      ),
+      width,
+      '',
+    )
+    const rightWidth = visibleWidth(right)
+    const leftCapacity = Math.max(0, width - rightWidth - (rightWidth === 0 ? 0 : 2))
+    const targetLine = truncateToWidth(renderTuiPromptTemplate(
+      parseTuiPromptTemplate(displayInlineText(resolved.theme.leftPrompt)),
+      valueName => valueName === 'model' ? marker : ctx.tuiPrompt.get(valueName),
+    ), leftCapacity, '')
+    const markerIndex = targetLine.indexOf(marker)
+    if (markerIndex < 0) return undefined
+    const firstColumn = visibleWidth(targetLine.slice(0, markerIndex)) + 1
+    const allRows = ui.render(width)
+    const trailingRows = questionContainer.render(width).length + editor.render(width).length
+    const absoluteRow = allRows.length - trailingRows - 1
+    const viewportTop = Math.max(0, allRows.length - runtime.terminal.rows)
+    const row = absoluteRow - viewportTop + 1
+    if (row < 1 || row > runtime.terminal.rows) return undefined
+    return { row, firstColumn, lastColumn: firstColumn + visibleWidth(model) - 1 }
+  }
+
   const removeInputListener = ui.addInputListener((data) => {
+    const mouseEvent = parseTuiMouseEvent(data)
+    if (mouseEvent !== undefined && resolved.fullscreen && resolved.mouse) {
+      if (overlayManager.hasActiveOverlay() && mouseEvent.action === 'wheel') {
+        return { data: mouseEvent.button === 'wheel-up' ? '\x1b[A' : '\x1b[B' }
+      }
+      if (!overlayManager.hasActiveOverlay() && mouseEvent.action === 'wheel') {
+        transcriptViewport.scrollRows(mouseEvent.button === 'wheel-up' ? -3 : 3)
+        requestRender()
+        return { consume: true }
+      }
+      const target = modelMouseTarget()
+      if (!overlayManager.hasActiveOverlay() && mouseEvent.action === 'press' && mouseEvent.button === 'left'
+        && target !== undefined && mouseEvent.row === target.row
+        && mouseEvent.column >= target.firstColumn && mouseEvent.column <= target.lastColumn) {
+        modelController.queueModelCommand('')
+      }
+      return { consume: true }
+    }
     if (overlayManager.hasActiveOverlay()) return undefined
+    if (resolved.fullscreen && matchesKey(data, Key.pageUp)) {
+      transcriptViewport.page(-1)
+      requestRender()
+      return { consume: true }
+    }
+    if (resolved.fullscreen && matchesKey(data, Key.pageDown)) {
+      transcriptViewport.page(1)
+      requestRender()
+      return { consume: true }
+    }
+    if (resolved.fullscreen && matchesKey(data, Key.ctrl(Key.end))) {
+      transcriptViewport.followTail()
+      requestRender()
+      return { consume: true }
+    }
+    if (matchesKey(data, Key.alt('m'))) {
+      modelController.queueModelCommand('')
+      return { consume: true }
+    }
     if (matchesKey(data, Key.ctrl('o'))) {
       toggleTools()
       return { consume: true }
@@ -1867,6 +2078,7 @@ export function createTuiChat(
     disposeError()
     disposeAgent()
     disposeSchemeListener()
+    settingsController.detach()
     disposeTargetListeners()
     modelController.detach()
   }
@@ -1911,7 +2123,7 @@ export function createTuiChat(
   }
   setStatus(agent.status)
   try {
-    ui.start()
+    acquireTerminal()
   } catch (error: unknown) {
     disposed = true
     detachListeners()
@@ -1928,7 +2140,7 @@ export function createTuiChat(
     questions.unregister()
     approvals.cancelAll()
     approvals.unregister()
-    ui.stop()
+    releaseTerminal()
     throw error
   }
   tuiServiceFiber = ctx.inject([], (serviceCtx) => {
@@ -2032,6 +2244,7 @@ export function apply(ctx: Context, config: Config): void {
   // boundary from COLORTERM; an explicit theme value still wins.
   const truecolor = config.theme?.truecolor ?? ['truecolor', '24bit'].includes(process.env.COLORTERM ?? '')
   const resumeHost = ctx.get('tuiResumeHost')
+  const startWorkspace = resumeHost?.start?.bind(resumeHost)
   const goodbyeMessage = ctx.get('tuiGoodbyeMessage')
   // The launcher seeds a guided fresh session's first turn through this key; a
   // config value still wins. Consumed in createTuiChat via config.initialSkill.
@@ -2045,6 +2258,7 @@ export function apply(ctx: Context, config: Config): void {
     terminal: new ProcessTerminal(),
     exit: (code) => { disposeRootAndExit(ctx, code) },
     ...resumeHost === undefined ? {} : { handoffResume: (sessionId, cwd) => resumeHost.handoff(sessionId, cwd) },
+    ...startWorkspace === undefined ? {} : { handoffWorkspace: cwd => startWorkspace(cwd) },
     ...goodbyeMessage === undefined ? {} : { goodbyeMessage },
   })
 }

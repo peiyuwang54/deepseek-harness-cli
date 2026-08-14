@@ -1,0 +1,75 @@
+terminal 96x40 buffer=normal length=40 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=7 viewportRow=36 bufferRow=36
+buffer
+0| " DEEPSEEK HARNESS"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+1| " Snapshot agent ready."
+  style 1-21 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "You                                                                                             "
+  style 0-2 fg=bright-magenta bold underline
+5| "Summarize the renderer changes.                                                                 "
+6| <blank>
+7| "Assistant                                                                                       "
+  style 0-8 fg=bright-magenta bold underline
+8| "Renderer update                                                                                 "
+  style 0-14 fg=bright-magenta bold underline
+9| "                                                                                                "
+10| "The terminal view keeps inline code and obsolete text distinct.                                 "
+  style 4-16 bold
+  style 24-34 fg=cyan
+  style 40-52 strike
+11| "                                                                                                "
+12| "- [x] Render task lists                                                                         "
+  style 0-5 fg=bright-magenta
+13| "- [ ] Verify the narrow layout                                                                  "
+  style 0-5 fg=bright-magenta
+14| "                                                                                                "
+15| "│ Diff rows use semantic terminal colors.                                                       "
+  style 0-1 fg=bright-magenta
+  style 2-40 dim italic
+16| "                                                                                                "
+17| "┌──────────┬───────┐                                                                            "
+18| "│ Surface  │ State │                                                                            "
+  style 2-9 bold
+  style 13-17 bold
+19| "├──────────┼───────┤                                                                            "
+20| "│ Markdown │ ready │                                                                            "
+21| "├──────────┼───────┤                                                                            "
+22| "│ Diff     │ ready │                                                                            "
+23| "└──────────┴───────┘                                                                            "
+24| "                                                                                                "
+25| "diff                                                                                            "
+  style 0-3 dim
+26| "  diff --git a/view.ts b/view.ts                                                                "
+  style 2-31 dim
+27| "  --- a/view.ts                                                                                 "
+  style 2-14 dim
+28| "  +++ b/view.ts                                                                                 "
+  style 2-14 dim
+29| "  @@ -1 +1 @@                                                                                   "
+  style 2-12 fg=bright-magenta
+30| "  -const state = \"old\"                                                                          "
+  style 2-21 fg=red
+31| "  +const state = \"ready\"                                                                        "
+  style 2-23 fg=green
+32| "                                                                                                "
+33| "Model wait 0.0s                                                                                 "
+  style 0-14 dim
+34| <blank>
+35| "/workspace/project (tui-staging)  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-magenta bold
+  style 18-31 dim
+  style 34-58 dim
+  style 61-65 dim
+  style 68-77 dim
+36| " dsh >                                                                                          "
+  style 1-3 fg=bright-magenta bold
+  style 5-6 dim
+  style 7-7 inverse
+37-39| <blank>

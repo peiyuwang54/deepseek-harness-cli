@@ -251,7 +251,40 @@ export function markdownTheme(palette: Palette): MarkdownTheme {
     italic: text => palette.italic(text),
     strikethrough: text => palette.strike(text),
     underline: text => palette.underline(text),
+    highlightCode: (code, lang) => highlightMarkdownCode(code, lang, palette),
   }
+}
+
+/**
+ * Highlight fenced Markdown code. Diff fences carry their line semantics in
+ * their prefixes, so they use the same success/error/accent roles as tool diff
+ * cards; every other language keeps the terminal's theme-adaptive code tone.
+ * @param code - Fenced code body after Markdown parsing.
+ * @param lang - Fence info string, when present.
+ * @param palette - Active role palette.
+ * @returns One styled terminal row per source row.
+ */
+export function highlightMarkdownCode(
+  code: string,
+  lang: string | undefined,
+  palette: Palette,
+): string[] {
+  const language = lang?.trim().split(/\s+/u, 1)[0]?.toLowerCase()
+  const isDiff = language === 'diff' || language === 'patch'
+  return code.split('\n').map((line) => {
+    if (line === '') return ''
+    if (!isDiff) return palette.code(line)
+    if (line.startsWith('@@')) return palette.accent(line)
+    if (line.startsWith('+') && !line.startsWith('+++')) return palette.success(line)
+    if (line.startsWith('-') && !line.startsWith('---')) return palette.error(line)
+    if (
+      line.startsWith('diff ')
+      || line.startsWith('index ')
+      || line.startsWith('---')
+      || line.startsWith('+++')
+    ) return palette.dim(line)
+    return palette.code(line)
+  })
 }
 
 /**

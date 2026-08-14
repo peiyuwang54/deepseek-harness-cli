@@ -39,7 +39,9 @@ const SHIPPED_PRESET_ROOT = fileURLToPath(new URL('../config/agent-presets/', im
 
 import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
+import type {} from '@deepseek-ai/dsh-tui'
 import { createProcessShutdown, type ProcessShutdown } from './process-shutdown.ts'
+import { createTuiProcessHandoff } from './tui-handoff.ts'
 
 const NAME = 'dsh'
 
@@ -198,6 +200,8 @@ function composeProfile(
 export interface RunProfileOptions {
   /** This run's frozen environment snapshot, provided before any entry mounts. */
   environment: LaunchEnvironmentSnapshot
+  /** Environment inherited before this invocation materialized project/user `.env` layers. */
+  inheritedEnvironment: NodeJS.ProcessEnv
   /** The profile name to boot. */
   profile: string
   /** `--patch` overlay paths, in argv order. */
@@ -233,7 +237,12 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
   const app: { current?: Context } = {}
   const shutdown = createProcessShutdown(async () => { await app.current?.fiber.dispose() })
   const signalShutdown = new AbortController()
+  let replacingProcess = false
   const interrupt = (code: number): void => {
+    // Once a handoff commits, the replacement owns subsequent console signals.
+    // Escalating the old tree's pending shutdown could exit before it restores
+    // raw, mouse, and alternate-screen state or race the fallback child.
+    if (replacingProcess) return
     signalShutdown.abort()
     shutdown.interrupt(code)
   }
@@ -242,10 +251,23 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
   // SIGTERM is a supervisor's ordinary stop request and exits 0 on every
   // surface — the launcher does not know whether the app considered its work
   // complete; SIGINT is a user interrupt and reports 130.
-  process.on('SIGTERM', () => { interrupt(0) })
-  process.on('SIGINT', () => { interrupt(130) })
-  installFailLoud(NAME, process, async () => {
+  const onSigterm = (): void => { interrupt(0) }
+  const onSigint = (): void => { interrupt(130) }
+  process.on('SIGTERM', onSigterm)
+  process.on('SIGINT', onSigint)
+  const uninstallFailLoud = installFailLoud(NAME, process, async () => {
     await app.current?.fiber.dispose()
+  })
+  const tuiHandoff = createTuiProcessHandoff({
+    profile: options.profile,
+    patchFiles: options.patchFiles,
+    args: options.args,
+    environment: options.inheritedEnvironment,
+    shutdown,
+    beginReplacement: () => { replacingProcess = true },
+    prepareSupervisor: () => {
+      uninstallFailLoud()
+    },
   })
 
   const rootConfig = join(composed.profile.dir, PROFILE_ROOT_FILENAME)
@@ -280,6 +302,10 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
       args: options.args,
       exit: code => void shutdown.shutdown(code),
     })
+    // A TUI may be supplied by the shipped profile or by a custom composition.
+    // The launcher is the only layer that can reconstruct the exact profile,
+    // overlays, pristine launch environment, and foreground-process lifetime.
+    hostCtx.provide('tuiResumeHost', tuiHandoff)
   })
   app.current = ctx
   // A surface can dispose the whole tree while boot or this post-boot watcher

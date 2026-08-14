@@ -24,6 +24,15 @@ export interface TuiResumeHost {
    * @returns A promise that never resolves after a successful process handoff.
    */
   handoff(sessionId: SessionId, cwd: string): Promise<never>
+
+  /**
+   * Dispose the current app and start a fresh session in `cwd`. Optional so a
+   * resume-only embedding keeps working; workspace selection reports the
+   * missing capability without changing the current session.
+   * @param cwd - selected workspace for the replacement process.
+   * @returns A promise that never resolves after a successful process handoff.
+   */
+  start?(cwd: string): Promise<never>
 }
 
 /** Runtime boundary used by the interactive TUI. */
@@ -48,6 +57,8 @@ export interface TuiRuntime {
   now?(): number
   /** Host-owned process handoff; absent leaves the session selectable but not resumable in place. */
   handoffResume?: TuiResumeHost['handoff']
+  /** Host-owned fresh-session handoff used by the workspace selector. */
+  handoffWorkspace?: NonNullable<TuiResumeHost['start']>
   /**
    * Line the host wants printed once the terminal is released on exit, such as
    * the command that resumes this session. Absent prints nothing. The host owns

@@ -95,16 +95,17 @@ Web 界面仍然是独立的 `base + web-app` profile。增加 TUI 不会让 Web
 
 | 领域 | 已实现行为 |
 |---|---|
-| 对话 | 流式 Markdown、reasoning 块、重试状态、阶段与 step 计时，以及持久历史回放 |
+| 对话 | 流式 GFM Markdown、语义化 `diff`/`patch` 围栏、reasoning 块、重试状态、计时和持久历史回放 |
 | 工具 | 终端、diff 和通用卡片；进行中／成功／错误状态；折叠、展开和隐藏视图 |
 | 人机协同 | 严格限定 Agent 的 FIFO 审批提示，以及结构化单选、多选和自定义问题 |
-| 模型 | `/model` catalog 与过滤、精确 provider/model 选择、适配器公布的 reasoning effort |
-| Session | 持久化身份、直接 `--resume`、可搜索恢复候选、标题、压缩标记和 Session 引用 |
-| Workspace | 文件与目录的 `@` 补全、含空格路径的引号处理、有界 workspace 索引 |
+| 模型 | `/model`、Alt+M 与可点击模型栏；catalog 过滤、精确 provider/model 选择和 reasoning effort |
+| Session | 直接与会话内恢复、安全恢复 Web preset 组成、标题、压缩标记和 Session 引用 |
+| Workspace | 可搜索的持久 workspace 选择器、新进程 handoff，以及有界文件／目录 `@` 补全 |
+| Settings | 脱敏的 settings hub／文档定位，以及持久化的共享亮色、暗色与 system 主题选择 |
 | Skill 与命令 | 动态斜杠命令补全，以及面向用户可调用 skill 的 `/skill:<name> [instructions]` |
 | 诊断 | Token 与 KV-cache 计量、context 压力、当前模型、`/status` 和终端安全的错误报告 |
 | 扩展性 | Agent 作用域命令、由工具持有的展示意图、受生命周期约束的 `ctx.tui` overlay 服务 |
-| 终端生命周期 | ANSI 控制字符转义、同步渲染、raw mode 所有权、dispose 时恢复终端 |
+| 终端生命周期 | 全屏 alternate buffer、多行 editor、鼠标输入、可滚动 transcript、raw mode 和完整恢复 |
 
 `@path` 补全只会把路径插入 user message；它不会在背景中偷偷读取或附加该文件。存在 `read` 工具时，模型会收到一条稳定指令：需要内容时应读取用户明确引用的路径。
 
@@ -115,6 +116,10 @@ Web 界面仍然是独立的 `base + web-app` profile。增加 TUI 不会让 Web
 | `Enter` | Agent 空闲时发送 follow-up；Agent 运行时发送 steering 输入 |
 | `Shift+Enter` / `Alt+Enter` | 插入换行 |
 | `Up` / `Down` | editor 持有这些按键时遍历 prompt 历史 |
+| `Alt+M` | 打开模型选择器 |
+| `Page Up` / `Page Down` | 按页滚动全屏 transcript |
+| `Ctrl+End` | 回到 transcript 的实时尾部 |
+| 鼠标滚轮／点击模型栏 | 滚动 transcript 或选择器；从模型栏打开模型选择器 |
 | `Esc` | 取消活动 turn |
 | `Ctrl+C` | 运行时取消；空闲时先清除非空输入，再在空 editor 上按下时退出 |
 | `Ctrl+D` | 空闲时退出 |
@@ -132,7 +137,10 @@ Web 界面仍然是独立的 `base + web-app` profile。增加 TUI 不会让 Web
 | `/details` | 修改工具卡片可见性和 reasoning 展示 |
 | `/palette` | 查看语义化 ANSI palette |
 | `/status` | 把 Session、模型、用量、system prompt 和工具诊断添加到终端 transcript |
-| `/resume` | 搜索可恢复 Session；参见下文的 handoff 限制 |
+| `/resume` | 搜索持久化 Session，并在其记录的 workspace 中替换进程 |
+| `/workspace [directory]` | 搜索或注册 workspace，并在选中目录中启动新 Session |
+| `/settings [list\|document]` | 查看脱敏 settings 元数据，或定位共享的可编辑 settings 文档 |
+| `/theme [light\|dark\|system]` | 选择并持久化共享外观偏好 |
 | `/reload` | 实验性开发命令；Agent 空闲时重载文件型 Loader 配置 |
 | `/exit` / `/quit` | 等待活动 turn 进入空闲后退出 |
 | `/skill:<name> [instructions]` | 把用户可调用 skill 作为 user turn 加载 |
@@ -150,14 +158,21 @@ flowchart TD
   Composer --> WebProfile["web = base + web-app"]
   Composer --> HeadlessProfile["headless = base + headless"]
   TUIProfile --> Startup["TUI startup: args + exact Session identity"]
-  Startup --> Registry["Agent registry: create or resume"]
+  TUIProfile --> HostServices["settings + workspace registry + preset roster"]
+  Startup --> Preset["resolve fresh or recorded Agent preset"]
+  Preset --> Registry["Agent registry: create or resume"]
   Registry --> Session["canonical persisted Session events"]
   Registry --> Renderer["dsh-tui renderer + input"]
+  HostServices --> Renderer
   Session --> Renderer
   Renderer --> Terminal["interactive terminal"]
+  Renderer --> Handoff["resume/workspace handoff"]
+  Handoff --> CLI
 ```
 
-`@deepseek-ai/dsh-tui-app` 持有 `--resume`、TTY 准入、精确 root Agent 身份和 Agent create/resume。它会等待 Loader tree，在 Agent 尚未发布时安装初始模型路由，随后把 `@deepseek-ai/dsh-tui` 挂载到该 Agent。Renderer 只持有展示与输入。
+`@deepseek-ai/dsh-tui-app` 持有 `--resume`、TTY 准入、精确 root Agent 身份和 Agent create/resume。它会等待 Loader tree，在 Agent 尚未发布时解析并挂载新建或历史记录的 Agent preset，安装初始模型路由，随后挂载 `@deepseek-ai/dsh-tui`。因此，Web 创建的 `minimal`、`standard`、`code` 或其他 preset Session 会按原有工具和 prompt 组成恢复，而不是改用今天的默认值。Renderer 只持有展示与输入。
+
+Launcher 提供 `/resume` 和 `/workspace` 共用的进程 handoff。Renderer 先校验空闲状态、flush 当前 Session、排空输入，并释放 raw／mouse／alternate-screen mode；随后 launcher 在 POSIX 上于目标目录替换进程，在不支持 `execve` 的平台上监督一个前台 replacement child。Profile patch 与原始继承环境会被保留，但旧 workspace 的 `.env` 值不会泄漏到新 workspace。
 
 权威 Session 事件是唯一的持久对话来源。流式 chunk、工具进度、问题、审批和 overlay 都是实时 projection，而不是第二份聊天日志。审批策略与持久审计事件仍由 `ctx.approval` 持有；TUI 只是精确 Agent 的回答者。结构化问题仍是独立的 `ctx.userQuestions` 服务。
 
@@ -203,10 +218,10 @@ pnpm dsh tui --patch ./extra.cordis.yml --resume <session-id>
 CLI/TUI baseline 在发布前已完成本地验证，结果如下：
 
 - 完整 workspace build 完成。
-- TUI 单元与 Agent/Session 集成套件：243 项测试通过。
-- 无密钥终端状态快照：26 项快照通过。
-- TUI bundle 与 CLI 参数套件：5 个文件内的 19 项测试通过。
-- Built CLI E2E 套件：20 项测试通过；其中包含真实 POSIX PTY 启动 `apps/cli/lib/bin.js`，证明 Loader 激活、同步首帧、运行中 raw mode、`Ctrl+D` 退出以及完整 termios 恢复。
+- TUI 单元与 Agent/Session 集成套件：259 项测试通过。
+- 无密钥终端状态快照：28 项快照通过。
+- TUI bundle 与 CLI 参数套件：5 个文件内的 26 项测试通过。
+- Built CLI E2E 套件：21 项测试通过；其中包含真实 POSIX PTY 启动 `apps/cli/lib/bin.js`，证明 Loader 激活、同步帧、运行中 raw mode、`Ctrl+D` 退出、工作区进程交接与环境重建，以及完整 termios 恢复。
 - Baseline 的类型、包、Loader/配置、生成 catalog、文档链接、中英文配对、许可证和第三方声明门禁已完成。
 
 这些是有日期的本地 baseline 结果，不是 GitHub Actions 徽章，也不保证之后每个 commit 都是绿色。PTY 路径不需要密钥，也不会发起模型请求；它不能替代真实提供方 E2E。
@@ -228,9 +243,9 @@ pnpm run check:ci
 
 - **本 fork 通过源码分发：** 本仓库没有发布或控制任何 `@deepseek-ai` scope 下的 npm 包。
 - **仅支持 TTY：** `tui` 的常规启动要求交互式 stdin 和 stdout；在 pipe 中它不会自动回退到 headless。
-- **会话内恢复需要宿主 callback：** 随附 profile 的 `/resume` 选择器可以查看候选项，但没有宿主提供的 `ctx.tuiResumeHost` 时，它无法原地替换当前进程。直接 `pnpm dsh tui --resume <session-id>` 不需要该 callback。
 - **没有跨进程 Session lock：** 另一个进程可以尝试恢复同一持久化身份。
-- **文本终端展示：** 工具卡片不会渲染内联图像块。
+- **终端原生 Settings：** `/settings` 提供脱敏 namespace 元数据和可编辑文档，`/theme` 提供专用控件；它不会复制每个 Web 插件特化的 React settings 卡片。
+- **文本终端展示：** Markdown 图像保留为文本，TeX 不使用 KaTeX 排版，普通代码围栏使用单一语义代码色而不是 Shiki token 高亮，也没有 Web 的复制按钮或水平滚动器。
 - **只渲染一个 Agent：** 已配置 Session 持有 transcript 与 editor，即使共享 overlay 可以回答其他 Agent 的请求。
 - **宿主 workspace 发现：** `@` 文件补全索引宿主 Session 目录，按已配置目录 basename 排除，而不解析 `.gitignore`，也不遍历目录 symlink。
 - **没有 renderer 模块 HMR：** 随附 TUI bundle 在 raw 终端状态存活时禁用模块热更新；`/reload` 只面向 Loader 配置和开发环境。

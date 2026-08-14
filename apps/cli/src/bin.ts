@@ -28,9 +28,17 @@ const invocation = parseDshArgs(process.argv.slice(2), readVersion())
 
 switch (invocation.mode) {
   case 'profile': {
+    // `loadLayeredEnv` materializes accepted project/user values into
+    // process.env. Preserve the original launching environment so a TUI
+    // workspace handoff can load the replacement workspace's own `.env`
+    // instead of inheriting the previous project's values as process-owned.
+    // Capture before the dependency-heavy profile module is evaluated: module
+    // initialization is not part of the environment the CLI inherited.
+    const inheritedEnvironment = { ...process.env }
     const { runProfile } = await import('./profile-boot.ts')
     await runProfile({
       environment: loadLayeredEnv('dsh'),
+      inheritedEnvironment,
       profile: invocation.profile,
       patchFiles: invocation.patches,
       args: invocation.args,

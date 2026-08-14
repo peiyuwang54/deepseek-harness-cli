@@ -24,10 +24,13 @@ import SessionStore, { SessionId, type JsonValue, type SessionEvent, type Sessio
 import type { SessionRecord } from '@deepseek-ai/dsh-session-query'
 import SkillRegistry, { type SkillCatalogSnapshot, type SkillDefinition, type SkillProvider, type SkillSummary } from '@deepseek-ai/dsh-skill'
 import type {} from '@deepseek-ai/dsh-session-title'
-import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
+import ToolRegistry, { type ToolDefinition } from '@deepseek-ai/dsh-tools'
 import UserInteractionService from '@deepseek-ai/dsh-user-questions'
 import SessionReferenceResolver, { formatSessionReferenceMention } from '@deepseek-ai/dsh-session-reference'
 import { RetryId } from '@deepseek-ai/dsh-llm-retry'
+import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import { settingsNamespace } from '@deepseek-ai/dsh-settings'
+import { WorkspaceId, type Workspace } from '@deepseek-ai/dsh-workspace'
 import {
   createTuiChat,
   disposeRootAndExit,
@@ -42,7 +45,14 @@ import {
 } from '../src/index.ts'
 import { WorkspaceFileSearch } from '../src/chat/file-autocomplete.ts'
 import { ResumePicker } from '../src/components/dialogs.ts'
-import { ATTRIBUTE_ROLES, brandText, COLOR_ROLES, createPalette, paletteSpec } from '../src/components/theme.ts'
+import {
+  ATTRIBUTE_ROLES,
+  brandText,
+  COLOR_ROLES,
+  createPalette,
+  highlightMarkdownCode,
+  paletteSpec,
+} from '../src/components/theme.ts'
 import {
   appendAssistant,
   appendUser,
@@ -156,6 +166,28 @@ async function dispose(setupResult: Awaited<ReturnType<typeof setup>>): Promise<
   await disposeTuiTestHarness(setupResult)
 }
 
+/** Complete inert workspace entity for front-door interaction tests. */
+function workspaceFixture(
+  id: string,
+  path: string,
+  title: string,
+  status: () => Promise<'ok' | 'missing-dir'> = () => Promise.resolve('ok'),
+): Workspace {
+  return {
+    id: WorkspaceId(id),
+    path,
+    title,
+    createdAt: '2026-08-14T00:00:00.000Z',
+    updatedAt: '2026-08-14T00:00:00.000Z',
+    sessionIds: [],
+    setTitle: () => Promise.resolve(),
+    attachSession: () => Promise.resolve(),
+    insertSessionBefore: () => Promise.resolve(),
+    detachSession: () => Promise.resolve(),
+    status,
+  }
+}
+
 function provideTokenMeter(ctx: Context): void {
   ctx.provide('tokenMeter', {
     measure() {
@@ -201,6 +233,8 @@ function registerMountAgent(ctx: Context, session: ReturnType<Context['sessions'
 describe('TUI config', () => {
   it('defaults every direct-call TUI option', () => {
     expect(resolveTuiConfig(undefined)).toEqual({
+      fullscreen: true,
+      mouse: true,
       showReasoning: true,
       maxToolOutputLines: 6,
       maxDiffEditLength: 1000,
@@ -228,6 +262,8 @@ describe('TUI config', () => {
       title: 'DeepSeek Harness',
     })
     expect(resolveTuiConfig({
+      fullscreen: false,
+      mouse: false,
       showReasoning: false,
       maxToolOutputLines: 2,
       maxDiffEditLength: 12,
@@ -247,6 +283,8 @@ describe('TUI config', () => {
       theme: { color: false, truecolor: true },
       title: 'DSH',
     })).toEqual({
+      fullscreen: false,
+      mouse: false,
       showReasoning: false,
       maxToolOutputLines: 2,
       maxDiffEditLength: 12,
@@ -273,6 +311,180 @@ describe('TUI config', () => {
       },
       title: 'DSH',
     })
+  })
+})
+
+describe('shared settings, appearance, and workspaces', () => {
+  const composeFrontDoorServices = (
+    install: (ctx: Context) => void,
+  ) => async (ctx: Context): Promise<void> => {
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRegistry)
+    install(ctx)
+  }
+
+  it('persists /theme through the shared ui-theme field and exposes the settings document', async () => {
+    const uiTheme = settingsNamespace('ui-theme')
+    let preference = 'system'
+    const mutate = vi.fn(async (
+      namespace: string,
+      ops: ReadonlyArray<{ op: string; path: readonly string[]; value?: unknown }>,
+    ) => {
+      const previous = { preference }
+      const operation = ops[0]
+      if (namespace === uiTheme && operation?.op === 'set' && operation.path.join('.') === 'preference') {
+        preference = String(operation.value)
+        const next = { preference }
+        resultContext?.emit('settings/updated', uiTheme, next, previous, 'update')
+      }
+    })
+    let resultContext: Context | undefined
+    const result = await setup({
+      configureContext: composeFrontDoorServices((ctx) => {
+        resultContext = ctx
+        ctx.provide('settings', {
+          get: (namespace: string) => namespace === uiTheme ? { preference } : undefined,
+          mutate,
+          describe: () => [{
+            ns: uiTheme,
+            schema: { type: 'object' },
+            value: { preference },
+            revision: 0,
+            applies: 'live',
+          }],
+          writable: true,
+          documentPath: '/home/test/.dsh/settings.yml',
+          prepareDocument: () => Promise.resolve('/home/test/.dsh/settings.yml'),
+        } as never)
+      }),
+    })
+
+    result.terminal.send('/theme dark')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(mutate).toHaveBeenCalledWith(uiTheme, [{ op: 'set', path: ['preference'], value: 'dark' }])
+    expect(result.terminal.output).toContain('Theme preference: dark')
+
+    result.terminal.send('/settings document')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(result.terminal.output).toContain('/home/test/.dsh/settings.yml')
+    await dispose(result)
+  })
+
+  it('lists durable workspaces without rewriting the current session cwd', async () => {
+    const workspace = workspaceFixture('secondary-workspace', '/secondary', 'Secondary project')
+    const result = await setup({
+      cwd: '/workspace',
+      configureContext: composeFrontDoorServices((ctx) => {
+        ctx.provide('workspaceRegistry', {
+          list: () => [workspace],
+          create: () => Promise.resolve(workspace),
+        } as never)
+      }),
+    })
+
+    result.terminal.send('/workspace')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(result.terminal.output).toContain('Select workspace')
+    expect(result.terminal.output).toContain('Secondary project')
+    expect(result.terminal.output).toContain('/secondary')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(result.terminal.output).toContain('this host cannot start it in place')
+    expect(result.session.header.cwd).toBe('/workspace')
+    await dispose(result)
+  })
+
+  it('latches a workspace selection before asynchronous preflight', async () => {
+    const pendingStatus = Promise.withResolvers<'ok'>()
+    const status = vi.fn(() => pendingStatus.promise)
+    const workspace = workspaceFixture('latched-workspace', '/latched', 'Latched project', status)
+    const handoff = vi.fn<NonNullable<TuiRuntime['handoffWorkspace']>>(
+      () => Promise.reject(new Error('test host retained process')),
+    )
+    const result = await setup({
+      handoffWorkspace: handoff,
+      configureContext: composeFrontDoorServices((ctx) => {
+        ctx.provide('workspaceRegistry', {
+          list: () => [workspace],
+          create: () => Promise.resolve(workspace),
+        } as never)
+      }),
+    })
+
+    result.terminal.send('/workspace')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    result.terminal.send('\r')
+    result.terminal.send('\r')
+    await tick()
+    expect(status).toHaveBeenCalledTimes(1)
+    pendingStatus.resolve('ok')
+    await tick(); await tick()
+    expect(handoff).toHaveBeenCalledTimes(1)
+    await dispose(result)
+  })
+
+  it('creates a path entry and hands off a fresh session while preserving the old header', async () => {
+    const status = vi.fn(() => Promise.resolve('ok' as const))
+    const target = workspaceFixture('created-workspace', '/fresh-project', 'fresh-project', status)
+    const create = vi.fn(() => Promise.resolve(target))
+    // oxlint-disable-next-line prefer-const -- handoff runs later but closes over the post-setup harness.
+    let mounted: Awaited<ReturnType<typeof setup>> | undefined
+    let outputAtHandoff = 0
+    const handoff = vi.fn<NonNullable<TuiRuntime['handoffWorkspace']>>(
+      () => {
+        if (mounted === undefined) throw new Error('test handoff ran before mount completed')
+        outputAtHandoff = mounted.terminal.output.length
+        return Promise.reject(new Error('test host retained process'))
+      },
+    )
+    const result = await setup({
+      cwd: '/workspace',
+      handoffWorkspace: handoff,
+      configureContext: composeFrontDoorServices((ctx) => {
+        ctx.provide('workspaceRegistry', { list: () => [], create } as never)
+      }),
+    })
+    mounted = result
+
+    result.terminal.send('/workspace /fresh-project')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(create).toHaveBeenCalledWith('/fresh-project')
+    expect(status).toHaveBeenCalledTimes(1)
+    expect(handoff).toHaveBeenCalledWith('/fresh-project')
+    expect(result.session.header.cwd).toBe('/workspace')
+    expect(result.terminal.stopped).toBeGreaterThan(0)
+    expect(result.terminal.output).toContain('Workspace switch failed: test host retained process')
+    expect(result.terminal.output.slice(outputAtHandoff)).toContain('Coding agent ready.')
+    await dispose(result)
+  })
+
+  it('does not stop pi-tui twice when root disposal follows a committed workspace handoff', async () => {
+    const target = workspaceFixture('committed-workspace', '/committed', 'Committed project')
+    const handoff = vi.fn<NonNullable<TuiRuntime['handoffWorkspace']>>(
+      () => new Promise<never>(() => {}),
+    )
+    const result = await setup({
+      handoffWorkspace: handoff,
+      configureContext: composeFrontDoorServices((ctx) => {
+        ctx.provide('workspaceRegistry', {
+          list: () => [],
+          create: () => Promise.resolve(target),
+        } as never)
+      }),
+    })
+
+    result.terminal.send('/workspace /committed')
+    result.terminal.send('\r')
+    await vi.waitFor(() => { expect(handoff).toHaveBeenCalledOnce() })
+    expect(result.terminal.stopped).toBe(1)
+    await result.controller.dispose()
+    expect(result.terminal.stopped).toBe(1)
+    await result.ctx.fiber.dispose()
   })
 })
 
@@ -1650,7 +1862,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('restored thought')
     expect(result.terminal.output).toContain('restored answer')
     expect(result.terminal.output).toContain('write tests')
-    expect(result.terminal.output).toContain('/opt (tui-staging)  deepseek-v4-flash  ↑1.3k ↓42')
+    expect(result.terminal.output).toContain('/opt (tui-staging)  deepseek-v4-flash [alt+m]  ↑1.3k ↓42')
     expect(result.terminal.output).toContain('dsh > ')
     expect(result.terminal.output).not.toContain('main-session  deepseek-v4-flash')
     // Context resolution is async (resolveModelContext); settle before reading.
@@ -2807,7 +3019,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
       },
     })
     await vi.waitFor(() => {
-      expect(homeResult.terminal.output).toContain('~ (tui-staging)  deepseek-v4-flash  ↑25k ↓10k')
+      expect(homeResult.terminal.output).toContain('~ (tui-staging)  deepseek-v4-flash [alt+m]  ↑25k ↓10k')
     })
     await dispose(homeResult)
 
@@ -3696,6 +3908,78 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await lateSuccess.ctx.fiber.dispose()
   })
 
+  it('opens the model selector from the prompt shortcut and its full-screen mouse target', async () => {
+    const keyboard = await setup({
+      agentOptions: { provider: 'alpha', model: 'a1' },
+      catalog: {
+        providers: [{ id: 'alpha', name: 'Alpha' }],
+        models: [{ provider: 'alpha', id: 'a1', name: 'Alpha One' }],
+      },
+    })
+    expect(keyboard.terminal.output).toContain('a1 [alt+m]')
+    keyboard.terminal.send('\x1bm')
+    await vi.waitFor(() => { expect(keyboard.terminal.output).toContain('Select model') })
+    keyboard.terminal.send('\x1b')
+    await dispose(keyboard)
+
+    const terminal = new HeadlessTerminal(52, 24)
+    const mouse = await createTuiTestHarness(terminal, vi.fn(), {
+      config: { fullscreen: true, mouse: true },
+      agentOptions: { provider: 'alpha', model: '模型一' },
+      catalog: {
+        providers: [{ id: 'alpha', name: 'Alpha' }],
+        models: [{ provider: 'alpha', id: '模型一', name: '模型一' }],
+      },
+    })
+    await terminal.waitForFrame()
+    const before = await terminal.snapshot()
+    const rowLine = before.split('\n').find(line => line.includes('模型一 [alt+m]'))
+    expect(rowLine).toBeDefined()
+    const separator = rowLine?.indexOf('| ') ?? -1
+    const row = Number(rowLine?.slice(0, separator).replace('~', '')) + 1
+    const text = JSON.parse(rowLine?.slice(separator + 2) ?? '""') as string
+    const modelOffset = text.indexOf('模型一 [alt+m]')
+    const column = visibleWidth(text.slice(0, modelOffset)) + 1
+    terminal.send(`\x1b[<0;${column};${row}M`)
+    await vi.waitFor(async () => {
+      expect(await terminal.snapshot()).toContain('Select model')
+    })
+    await disposeTuiTestHarness(mouse)
+    await terminal.dispose()
+  })
+
+  it('keeps a long full-screen transcript scrollable and resumes following at the tail', async () => {
+    const terminal = new HeadlessTerminal(72, 24)
+    const result = await createTuiTestHarness(terminal, vi.fn(), {
+      config: { fullscreen: true, mouse: true },
+      beforeMount(session) {
+        for (let index = 0; index < 18; index++) appendUser(session, `transcript row ${String(index)}`)
+      },
+    })
+    await terminal.waitForFrame()
+    const tail = await terminal.snapshot()
+    expect(tail).toContain('transcript row 17')
+    expect(tail).not.toContain('transcript row 0')
+
+    const beforeOlder = terminal.frames
+    for (let index = 0; index < 24; index++) terminal.send('\x1b[<64;1;1M')
+    await terminal.waitForFrame(beforeOlder)
+    const older = await terminal.snapshot()
+    expect(older).toContain('transcript row 0')
+    expect(older).not.toContain('transcript row 17')
+
+    const beforeTail = terminal.frames
+    for (let index = 0; index < 24; index++) terminal.send('\x1b[<65;1;1M')
+    await terminal.waitForFrame(beforeTail)
+    expect(await terminal.snapshot()).toContain('transcript row 17')
+
+    appendUser(result.session, 'transcript row 18')
+    await terminal.waitForFrame()
+    expect(await terminal.snapshot()).toContain('transcript row 18')
+    await disposeTuiTestHarness(result)
+    await terminal.dispose()
+  })
+
   it('opens a keyboard selector and switches the session model without sending slash text to the agent', async () => {
     const initialContext = Promise.withResolvers<{ contextWindow: number }>()
     let deferInitialContext = true
@@ -3899,7 +4183,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.agent.status = 'idle'
     agentEvents(result.ctx, result.agent).emit('agent/status', { status: 'idle' })
     await tick()
-    expect(result.terminal.output).toContain('b1 max  ')
+    expect(result.terminal.output).toContain('b1 max [alt+m]  ')
     expect(result.terminal.output).toContain('25% context')
     expect(result.terminal.output).not.toContain('tools:collapsed')
     result.terminal.send('/status')
@@ -3966,7 +4250,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
         })
       },
     })
-    expect(resumedDefault.terminal.output).toContain('default  ↑0 ↓0')
+    expect(resumedDefault.terminal.output).toContain('default [alt+m]  ↑0 ↓0')
     await dispose(resumedDefault)
 
     const unset = await setup({
@@ -5335,6 +5619,10 @@ describe('tool cards and surface replay', () => {
     // contributes no `+ ` row (diffContentLines('') is zero lines).
     expect(output).toContain('- gone')
     expect(output).toContain('+2 -1')
+    // Only the first hunk names the file; adjacent hunks use Web DiffBlock's
+    // gap marker so scattered edits remain one visual file group.
+    expect(output.match(/src\/scatter\.ts/gu)).toHaveLength(1)
+    expect(output.match(/⋯/gu)).toHaveLength(2)
     await dispose(result)
   })
 
@@ -6529,6 +6817,27 @@ describe('application exit', () => {
 })
 
 describe('terminal mounting', () => {
+  it('enters the alternate screen before terminal start and restores it after pi-tui stops', async () => {
+    const result = await setup({ config: { fullscreen: true, mouse: true } })
+    await tick()
+    const enter = result.terminal.output.indexOf('\x1b[?1049h')
+    const mouse = result.terminal.output.indexOf('\x1b[?1000h')
+    const rawStart = result.terminal.output.indexOf('[hide]')
+    const firstFrame = result.terminal.output.indexOf('\x1b[?2026h')
+    expect(enter).toBeGreaterThanOrEqual(0)
+    expect(mouse).toBeGreaterThan(enter)
+    expect(rawStart).toBeGreaterThan(mouse)
+    expect(firstFrame).toBeGreaterThan(rawStart)
+
+    await result.controller.dispose()
+    const piStopped = result.terminal.output.lastIndexOf('[show]')
+    const mouseRestored = result.terminal.output.lastIndexOf('\x1b[?1006l')
+    const screenRestored = result.terminal.output.lastIndexOf('\x1b[?1049l')
+    expect(mouseRestored).toBeGreaterThan(piStopped)
+    expect(screenRestored).toBeGreaterThan(mouseRestored)
+    await result.ctx.fiber.dispose()
+  })
+
   it('starts immediately when the configured agent already exists', async () => {
     const ctx = new Context()
     provideTokenMeter(ctx)
@@ -6679,6 +6988,10 @@ describe('terminal mounting', () => {
     await tick()
     expect(ctx.commands.list(ctx.agents.get(SessionId('failed-start-session'))!)).toEqual([])
     expect(terminal.stopped).toBe(1)
+    expect(terminal.output).toContain('\x1b[?1049h')
+    expect(terminal.output).toContain('\x1b[?1000h')
+    expect(terminal.output).toContain('\x1b[?1006l')
+    expect(terminal.output).toContain('\x1b[?1049l')
     expect(terminal.progress).toEqual([false, true, false])
     expect(ctx.get('tui')).toBeUndefined()
     await expect(ctx.userQuestions.ask({ questions: [{ id: 'late', question: 'Late?' }] }))
@@ -6739,6 +7052,39 @@ describe('terminal mounting', () => {
 
   it('uses the official DeepSeek SVG ink for truecolor brand art', () => {
     expect(brandText('mark')).toBe('\x1b[38;2;77;107;254mmark\x1b[39m')
+  })
+
+  it('uses semantic palette roles for diff and patch fences', () => {
+    const palette = createPalette(true)
+    const source = [
+      'diff --git a/a.ts b/a.ts',
+      'index 111..222 100644',
+      '--- a/a.ts',
+      '+++ b/a.ts',
+      '@@ -1 +1 @@',
+      '-const oldValue = true',
+      '+const ready = true',
+      ' const kept = true',
+      '',
+    ].join('\n')
+    const rendered = highlightMarkdownCode(source, 'diff', palette)
+    expect(rendered).toEqual([
+      palette.dim('diff --git a/a.ts b/a.ts'),
+      palette.dim('index 111..222 100644'),
+      palette.dim('--- a/a.ts'),
+      palette.dim('+++ b/a.ts'),
+      palette.accent('@@ -1 +1 @@'),
+      palette.error('-const oldValue = true'),
+      palette.success('+const ready = true'),
+      palette.code(' const kept = true'),
+      '',
+    ])
+    expect(highlightMarkdownCode('+ready', 'PATCH title=change', palette))
+      .toEqual([palette.success('+ready')])
+    expect(highlightMarkdownCode('const ready = true', 'ts', palette))
+      .toEqual([palette.code('const ready = true')])
+    expect(highlightMarkdownCode('plain', undefined, palette))
+      .toEqual([palette.code('plain')])
   })
 
   it('detects a light terminal color scheme and switches the scheme-dependent code role', async () => {

@@ -6,11 +6,10 @@ viewport
 2| " main-session"
   style 1-12 dim
 3| <blank>
-4| "/workspace/project (tui-staging)  deepseek-v4-flash  ↑0 "
+4| "/workspace/project (tui-staging)  deepseek-v4-flash [alt"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
-  style 34-50 dim
-  style 53-55 dim
+  style 34-55 dim
 5| "  Review the complete plan including every required     "
 6| "  checkpoint including every required checkpoint        "
 7| "  including every required checkpoint including every   "

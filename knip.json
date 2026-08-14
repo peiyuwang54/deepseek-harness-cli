@@ -780,9 +780,10 @@
     },
     "packages/bundle/tui": {
       "ignoreDependencies": [
+        "@deepseek-ai/dsh-client-ui-theme",
         "@deepseek-ai/dsh-code-runtime-worker-thread",
-        "@deepseek-ai/dsh-tmux-context",
-        "@deepseek-ai/dsh-tool-ask-user"
+        "@deepseek-ai/dsh-storage-json",
+        "@deepseek-ai/dsh-tmux-context"
       ]
     },
     "packages/ui/tui": {

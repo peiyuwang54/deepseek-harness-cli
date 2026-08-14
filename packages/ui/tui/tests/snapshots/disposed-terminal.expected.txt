@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=39 base=7 viewport=7
+terminal 92x32 buffer=normal length=44 base=12 viewport=12
 lifecycle started=1 stopped=1 progress=inactive
 title "DSH snapshot"
-cursor visible column=0 viewportRow=31 bufferRow=38
+cursor visible column=0 viewportRow=31 bufferRow=43
 buffer
 0| " DEEPSEEK HARNESS"
   style 1-8 fg=bright-magenta bold
@@ -13,68 +13,78 @@ buffer
 3| <blank>
 4| "Keyboard shortcuts                                                                          "
   style 0-17 fg=bright-magenta bold
-5| "Enter send • Shift/Alt+Enter newline • Up/Down prompt history                               "
-  style 0-60 dim
-6| "Esc cancel turn • Ctrl+O cycle cards (collapse/expand/hide) • Ctrl+R toggle reasoning •     "
+5| "Enter send • Shift/Alt+Enter newline • Up/Down prompt history • Alt+M choose model          "
+  style 0-81 dim
+6| "Page Up/Down scroll transcript • Ctrl+End follow latest • mouse wheel scrolls transcript or "
   style 0-91 dim
-7| "Ctrl+L redraw                                                                               "
+7| "selectors                                                                                   "
+  style 0-8 dim
+8| "Esc cancel turn • Ctrl+O cycle cards (collapse/expand/hide) • Ctrl+R toggle reasoning •     "
+  style 0-91 dim
+9| "Ctrl+L redraw                                                                               "
   style 0-12 dim
-8| "Ctrl+C cancel while running; clear input or exit while idle • Ctrl+D exit                   "
+10| "Ctrl+C cancel while running; clear input or exit while idle • Ctrl+D exit                   "
   style 0-72 dim
-9| "                                                                                            "
-10| "/clear — Clear the transcript view (session history is unchanged)                           "
+11| "                                                                                            "
+12| "/clear — Clear the transcript view (session history is unchanged)                           "
   style 0-64 dim
-11| "/details [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility and "
+13| "/details [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility and "
   style 0-91 dim
-12| "reasoning display                                                                           "
+14| "reasoning display                                                                           "
   style 0-16 dim
-13| "/exit — Exit after the active turn reaches idle                                             "
+15| "/exit — Exit after the active turn reaches idle                                             "
   style 0-46 dim
-14| "/help — Show keyboard shortcuts and commands                                                "
+16| "/help — Show keyboard shortcuts and commands                                                "
   style 0-43 dim
-15| "/model [[provider/]model] — Show or switch this session's model                             "
+17| "/model [[provider/]model] — Show or switch this session's model                             "
   style 0-62 dim
-16| "/palette — Show every color and attribute role this terminal renders                        "
+18| "/palette — Show every color and attribute role this terminal renders                        "
   style 0-67 dim
-17| "/quit — Exit after the active turn reaches idle                                             "
+19| "/quit — Exit after the active turn reaches idle                                             "
   style 0-46 dim
-18| "/reload — EXPERIMENTAL (dev): re-read loader config files and apply the diff (idle only)    "
+20| "/reload — EXPERIMENTAL (dev): re-read loader config files and apply the diff (idle only)    "
   style 0-87 dim
-19| "/resume — List this workspace's resumable sessions                                          "
+21| "/resume — List this workspace's resumable sessions                                          "
   style 0-49 dim
-20| "/status — Show session diagnostics, system prompt, and registered tools                     "
+22| "/settings [list|document] — Show shared settings namespaces and the settings document       "
+  style 0-84 dim
+23| "/status — Show session diagnostics, system prompt, and registered tools                     "
   style 0-70 dim
-21| "/skill:<name> [instructions] — load a skill into the conversation                           "
+24| "/theme [light|dark|system] — Choose and persist the light, dark, or system appearance       "
+  style 0-84 dim
+25| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
+  style 0-81 dim
+26| "/skill:<name> [instructions] — load a skill into the conversation                           "
   style 0-64 dim
-22| <blank>
-23| "provider stream failed after partial output                                                 "
-  style 0-42 fg=red
-24| <blank>
-25| "Assistant                                                                                   "
-  style 0-8 fg=bright-magenta bold underline
-26| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
-  style 0-46 dim
 27| <blank>
-28| "The previous process ended during this turn.                                                "
-  style 0-43 fg=yellow
+28| "provider stream failed after partial output                                                 "
+  style 0-42 fg=red
 29| <blank>
-30| "Turn stopped: the agent was disposed.                                                       "
+30| "Assistant                                                                                   "
+  style 0-8 fg=bright-magenta bold underline
+31| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
+  style 0-46 dim
+32| <blank>
+33| "The previous process ended during this turn.                                                "
+  style 0-43 fg=yellow
+34| <blank>
+35| "Turn stopped: the agent was disposed.                                                       "
   style 0-36 fg=yellow
-31| <blank>
-32| "Turn ended: plugin-policy.                                                                  "
+36| <blank>
+37| "Turn ended: plugin-policy.                                                                  "
   style 0-25 fg=yellow
-33| <blank>
-34| "Unknown command: /unknown-advanced-command                                                  "
+38| <blank>
+39| "Unknown command: /unknown-advanced-command                                                  "
   style 0-41 fg=yellow
-35| <blank>
-36| "/workspace/project (tui-staging)  deepseek-v4-flash  ↑0 ↓0  0% context"
+40| <blank>
+41| "/workspace/project (tui-staging)  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
-  style 34-50 dim
-  style 53-57 dim
-  style 60-69 dim
-37| " dsh >                                                                                      "
+  style 34-58 dim
+  style 61-65 dim
+  style 68-77 dim
+42| " dsh >                                                                                      "
   style 1-3 fg=bright-magenta bold
   style 5-6 dim
   style 7-7 inverse
-38| <blank>
+43| <blank>

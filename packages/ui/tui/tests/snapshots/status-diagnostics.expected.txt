@@ -95,12 +95,12 @@ buffer
   style 0-15 fg=bright-magenta bold
 34| "read, write                                                                                 "
 35| <blank>
-36| "/workspace/project (tui-staging)  deepseek-v4-pro  ↑1.3k ↓340  cache 67%  33% context"
+36| "/workspace/project (tui-staging)  deepseek-v4-pro [alt+m]  ↑1.3k ↓340  cache 67%  33% contex"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
-  style 34-48 dim
-  style 51-71 dim
-  style 74-84 dim
+  style 34-56 dim
+  style 59-79 dim
+  style 82-91 dim
 37| " dsh >                                                                                      "
   style 1-3 fg=bright-magenta bold
   style 5-6 dim

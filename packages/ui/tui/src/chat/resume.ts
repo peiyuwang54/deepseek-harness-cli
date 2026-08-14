@@ -6,7 +6,6 @@
  */
 
 import { stat } from 'node:fs/promises'
-import type { TUI } from '@earendil-works/pi-tui'
 import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
 import { errorChain } from '@deepseek-ai/dsh-llm'
 import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
@@ -18,7 +17,6 @@ import type {
   SessionQueryEngine,
   SessionRecord,
 } from '@deepseek-ai/dsh-session-query'
-import type { HintEditor } from './helpers.ts'
 import { formatCwd } from './helpers.ts'
 import type { TuiOverlaySession } from '../extension/types.ts'
 import type { TuiRuntime } from '../runtime.ts'
@@ -40,10 +38,12 @@ export interface ResumeControllerDeps extends ChatChannelDeps, ChannelNotice {
    * construction can be `undefined` even though the service arrives moments later.
    */
   readonly sessionQuery: (this: void) => SessionQueryEngine | undefined
-  readonly ui: TUI
-  readonly editor: HintEditor
   /** Current agent status, re-read at each resume precondition point. */
   agentStatus(): AgentStatus
+  /** Release pi-tui plus terminal modes immediately before process handoff. */
+  releaseTerminal(): void
+  /** Restore terminal modes and editor focus after a pre-commit host failure. */
+  restoreTerminal(): void
 }
 
 /** Session-resume controller for one chat channel. */
@@ -60,7 +60,7 @@ export interface ResumeController {
 export function createResumeController(deps: ResumeControllerDeps): ResumeController {
   const {
     ctx, agent, runtime, resolved, palette, overlayManager,
-    sessionQuery, ui, editor,
+    sessionQuery,
   } = deps
   let resumeOverlay: TuiOverlaySession | undefined
   let resumeInFlight = false
@@ -255,7 +255,7 @@ export function createResumeController(deps: ResumeControllerDeps): ResumeContro
       await runtime.terminal.drainInput(100, 20)
       // Disposal can run while terminal draining is pending.
       if (deps.isDisposed()) return
-      ui.stop()
+      deps.releaseTerminal()
       terminalReleased = true
       // The host re-execs into the session's own workspace: process cwd, not the
       // restored session header, is what the filesystem and shell tools resolve
@@ -265,8 +265,7 @@ export function createResumeController(deps: ResumeControllerDeps): ResumeContro
     } catch (error: unknown) {
       if (!deps.isDisposed()) {
         if (terminalReleased) {
-          ui.start()
-          ui.setFocus(editor)
+          deps.restoreTerminal()
           deps.appendNotice(`Resume handoff failed: ${errorChain(error)}`, 'error')
         } else {
           await overlay.close()

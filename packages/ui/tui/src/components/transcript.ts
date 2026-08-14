@@ -38,6 +38,7 @@ import {
   type StepPosition,
   type StepTimingTracker,
 } from '../chat/timing.ts'
+import { tuiCopy, type TuiLocale } from '../chat/language.ts'
 
 const packageMetadata = createRequire(import.meta.url)('@deepseek-ai/dsh-tui/package.json') as { version: string }
 const packageVersion = packageMetadata.version
@@ -215,6 +216,7 @@ export class HeaderComponent implements Component {
     private readonly gradient: boolean,
     private readonly dashboard?: () => WelcomeDashboardState,
     private readonly terminalRows?: () => number,
+    private readonly locale: () => TuiLocale = () => 'en',
   ) {}
 
   /**
@@ -254,6 +256,7 @@ export class HeaderComponent implements Component {
   }
 
   private renderDashboard(width: number, state: WelcomeDashboardState): string[] {
+    const copy = tuiCopy(this.locale())
     const contentWidth = Math.max(1, Math.min(100, width - 4))
     const rows = this.terminalRows?.() ?? 36
     const spacious = contentWidth >= 80 && rows >= 28
@@ -266,33 +269,33 @@ export class HeaderComponent implements Component {
       const rightWidth = contentWidth - leftWidth - 7
       const subtitle = this.subtitle()
       const left: string[] = [
-        centered(this.palette.bold('Welcome back!'), leftWidth),
+        centered(this.palette.bold(copy.welcomeBack), leftWidth),
         centered(subtitle === undefined ? '' : this.palette.dim(displayInline(subtitle)), leftWidth),
         ...DEEPSEEK_MARK.map(line => centered(this.palette.bold(this.palette.text(line)), leftWidth)),
         '',
-        centered(`${this.palette.dim('preset:')} ${displayInline(state.preset)}`, leftWidth),
-        centered(`${this.palette.dim('model:')} ${displayInline(state.model)}`, leftWidth),
-        centered(`${this.palette.dim('permissions:')} ${displayInline(state.permission)}`, leftWidth),
-        centered(this.palette.dim(displayInline(this.agent.session.header.cwd ?? 'workspace unset')), leftWidth),
+        centered(`${this.palette.dim(copy.preset)} ${displayInline(state.preset)}`, leftWidth),
+        centered(`${this.palette.dim(copy.model)} ${displayInline(state.model)}`, leftWidth),
+        centered(`${this.palette.dim(copy.permissions)} ${displayInline(state.permission)}`, leftWidth),
+        centered(this.palette.dim(displayInline(this.agent.session.header.cwd ?? copy.workspaceUnset)), leftWidth),
       ]
 
       const right: string[] = [
-        this.palette.bold(this.palette.accent("What's new")),
-        `${this.palette.accent('/skills')} browse and run agent skills`,
-        `${this.palette.accent('/permissions')} choose approval and sandbox mode`,
-        `${this.palette.accent('/model')} switch model and reasoning effort`,
-        `${this.palette.accent('/workspace')} start in another workspace`,
-        `${this.palette.accent('/resume')} search previous sessions`,
+        this.palette.bold(this.palette.accent(copy.whatsNew)),
+        `${this.palette.accent('/skills')} ${copy.skillsAction}`,
+        `${this.palette.accent('/permissions')} ${copy.permissionsAction}`,
+        `${this.palette.accent('/model')} ${copy.modelAction}`,
+        `${this.palette.accent('/workspace')} ${copy.workspaceAction}`,
+        `${this.palette.accent('/resume')} ${copy.resumeAction}`,
         '',
-        this.palette.bold('Recent sessions'),
+        this.palette.bold(copy.recentSessions),
       ]
       const recents = state.recentSessions
       if (recents === undefined) {
-        right.push(this.palette.dim('Loading session history…'))
+        right.push(this.palette.dim(copy.loadingSessions))
       } else if (recents === null) {
-        right.push(this.palette.dim('Session history unavailable in this profile.'))
+        right.push(this.palette.dim(copy.sessionsUnavailable))
       } else if (recents.length === 0) {
-        right.push(this.palette.dim('No previous sessions in this profile.'))
+        right.push(this.palette.dim(copy.noPreviousSessions))
       } else {
         for (const recent of recents.slice(0, 2)) {
           const date = displayInline(recent.date)
@@ -304,7 +307,7 @@ export class HeaderComponent implements Component {
           right.push(`${this.palette.accent('•')} ${title}${gap}${suffix}`)
         }
       }
-      right.push('', this.palette.italic(this.palette.dim('/help for commands · @ to attach a file')))
+      right.push('', this.palette.italic(this.palette.dim(copy.helpHint)))
 
       const bodyRows = Math.max(left.length, right.length)
       const topLabel = ` ${product} ${this.palette.bold('Harness CLI')} ${this.palette.dim(`v${displayVersion}`)} `
@@ -323,10 +326,14 @@ export class HeaderComponent implements Component {
       if (subtitle !== undefined) lines.push(centered(this.palette.dim(displayInline(subtitle)), contentWidth))
       lines.push(centered(`${displayInline(state.preset)} · ${displayInline(state.model)} · ${displayInline(state.permission)}`, contentWidth))
       lines.push('')
-      lines.push(centered(`${this.palette.accent('/model')} model  ${this.palette.accent('/resume')} sessions  ${this.palette.accent('/workspace')} workspace  ${this.palette.accent('/help')} help`, contentWidth))
+      const actions = copy.compactActions.replaceAll(
+        /\/(model|resume|workspace|help)/gu,
+        match => this.palette.accent(match),
+      )
+      lines.push(centered(actions, contentWidth))
     }
     lines.push('')
-    lines.push(centered(this.palette.dim('Enter sends · Shift+Enter newline · Alt+M model · ? shortcuts'), contentWidth))
+    lines.push(centered(this.palette.dim(copy.shortcutHint), contentWidth))
 
     const margin = ' '.repeat(Math.max(0, Math.floor((width - contentWidth) / 2)))
     const rendered = lines.map(line => `${margin}${truncateToWidth(line, contentWidth, '')}`)

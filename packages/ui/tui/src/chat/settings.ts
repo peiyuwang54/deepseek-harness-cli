@@ -22,6 +22,13 @@ import { dialogSelectTheme } from '../components/theme.ts'
 import { displayText } from '../components/text.ts'
 import type { TuiOverlaySession } from '../extension/types.ts'
 import type { ChannelNotice, ChatChannelDeps } from './channel.ts'
+import {
+  TUI_LOCALE_SETTINGS_NAMESPACE,
+  isTuiLocale,
+  readTuiLocale,
+  tuiCopy,
+  type TuiLocale,
+} from './language.ts'
 
 /** Appearance preferences shared with the Web `ui-theme` settings section. */
 const TUI_THEME_PREFERENCES = ['light', 'dark', 'system'] as const
@@ -67,6 +74,7 @@ class SettingsSelectDialog implements Component {
     done: (value: string) => void,
     private readonly cancel: () => void,
     initialValue?: string,
+    private readonly instructions = '↑/↓ move • Enter select • Esc close',
   ) {
     this.list = new SelectList([...items], maxVisible, dialogSelectTheme(palette))
     const selected = initialValue === undefined ? -1 : items.findIndex(item => item.value === initialValue)
@@ -91,7 +99,7 @@ class SettingsSelectDialog implements Component {
     const label = ` ${displayText(this.title)} `
     const body = [
       ...this.list.render(innerWidth),
-      this.palette.dim('↑/↓ move • Enter select • Esc close'),
+      this.palette.dim(this.instructions),
     ]
     const lines = [
       this.palette.accent(`╭${label}${'─'.repeat(Math.max(0, cardWidth - visibleWidth(label) - 2))}╮`),
@@ -109,14 +117,20 @@ class SettingsSelectDialog implements Component {
 export interface SettingsControllerDeps extends ChatChannelDeps, ChannelNotice {
   /** Apply a committed preference to the terminal palette. */
   applyTheme(preference: TuiThemePreference): void
+  /** Refresh terminal chrome after the shared locale changes. */
+  applyLocale(locale: TuiLocale): void
 }
 
 /** Terminal Settings and appearance controller. */
 export interface SettingsController {
   /** Current persistent appearance preference. */
   themePreference(): TuiThemePreference
+  /** Current locale shared with the browser front door. */
+  locale(): TuiLocale
   /** Queue `/theme`; empty input opens the selector. */
   queueThemeCommand(raw: string): void
+  /** Queue `/language`; empty input opens the selector. */
+  queueLanguageCommand(raw: string): void
   /** Queue `/settings`; empty input opens the metadata hub. */
   queueSettingsCommand(raw: string): void
   /** Close settings-owned overlays during shutdown. */
@@ -140,8 +154,10 @@ function descriptorDescription(descriptor: SettingsDescriptor): string {
 export function createSettingsController(deps: SettingsControllerDeps): SettingsController {
   const { ctx, resolved, palette, overlayManager } = deps
   let themePreference = readTuiThemePreference(ctx.get('settings'))
+  let locale = readTuiLocale(ctx.get('settings'))
   let settingsOverlay: TuiOverlaySession | undefined
   let themeOverlay: TuiOverlaySession | undefined
+  let languageOverlay: TuiOverlaySession | undefined
   let operations = Promise.resolve()
 
   const settings = (): SettingsProvider | undefined => ctx.get('settings')
@@ -173,7 +189,26 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     if (!deps.isDisposed()) deps.appendNotice(`Theme preference: ${preference}.`)
   }
 
+  const commitLocale = async (nextLocale: TuiLocale): Promise<void> => {
+    const provider = settings()
+    if (provider?.get(TUI_LOCALE_SETTINGS_NAMESPACE) === undefined) {
+      deps.appendNotice('Language settings are unavailable: the locale namespace is not registered.', 'warning')
+      return
+    }
+    await provider.mutate(TUI_LOCALE_SETTINGS_NAMESPACE, [{
+      op: 'set',
+      path: ['preference'],
+      value: nextLocale,
+    }])
+    if (locale !== nextLocale) {
+      locale = nextLocale
+      deps.applyLocale(nextLocale)
+    }
+    if (!deps.isDisposed()) deps.appendNotice(nextLocale === 'zh' ? '界面语言已切换为中文。' : 'Interface language changed to English.')
+  }
+
   const showTheme = (): void => {
+    const copy = tuiCopy(locale)
     void themeOverlay?.close()
     const items: SettingsHubItem[] = TUI_THEME_PREFERENCES.map(preference => ({
       value: preference,
@@ -182,7 +217,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     }))
     const session = overlayManager.open({
       create: () => new SettingsSelectDialog(
-        'Appearance',
+        copy.appearance,
         items,
         items.length,
         palette,
@@ -196,6 +231,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
         },
         () => { void session.close() },
         themePreference,
+        copy.moveSelectClose,
       ),
       options: {
         width: resolved.modelDialogWidth,
@@ -211,7 +247,47 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     deps.requestRender()
   }
 
+  const showLanguage = (): void => {
+    const copy = tuiCopy(locale)
+    void languageOverlay?.close()
+    const items: SettingsHubItem[] = [
+      { value: 'zh', label: '中文', ...locale === 'zh' ? { description: copy.current } : {} },
+      { value: 'en', label: 'English', ...locale === 'en' ? { description: copy.current } : {} },
+    ]
+    const session = overlayManager.open({
+      create: () => new SettingsSelectDialog(
+        copy.language,
+        items,
+        items.length,
+        palette,
+        (value) => {
+          void session.close()
+          if (isTuiLocale(value)) {
+            operations = operations.then(() => commitLocale(value)).catch((error: unknown) => {
+              if (!deps.isDisposed()) deps.appendNotice(`Language update failed: ${String(error)}`, 'error')
+            })
+          }
+        },
+        () => { void session.close() },
+        locale,
+        copy.moveSelectClose,
+      ),
+      options: {
+        width: resolved.modelDialogWidth,
+        maxHeight: resolved.modelDialogMaxHeight,
+        anchor: 'center',
+        margin: 1,
+      },
+    }, 'composer')
+    languageOverlay = session
+    void session.closed.then(() => {
+      if (languageOverlay === session) languageOverlay = undefined
+    })
+    deps.requestRender()
+  }
+
   const showSettings = (): void => {
+    const copy = tuiCopy(locale)
     const provider = settings()
     if (provider === undefined) {
       deps.appendNotice('Settings are not available in this composition.', 'warning')
@@ -219,10 +295,11 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     }
     const descriptors = provider.describe({ redactSecrets: true })
     const items: SettingsHubItem[] = [
-      { value: '@appearance', label: 'Appearance', description: themePreference },
+      { value: '@appearance', label: copy.appearance, description: themePreference },
+      { value: '@language', label: copy.language, description: locale === 'zh' ? '中文' : 'English' },
       {
         value: '@document',
-        label: 'Settings document',
+        label: copy.settingsDocument,
         description: provider.documentPath === undefined
           ? 'not file-backed'
           : provider.writable ? displayText(provider.documentPath) : 'read-only',
@@ -236,13 +313,14 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     void settingsOverlay?.close()
     const session = overlayManager.open({
       create: () => new SettingsSelectDialog(
-        'Settings',
+        copy.settings,
         items,
         resolved.maxModelOptions,
         palette,
         (value) => {
           void session.close()
           if (value === '@appearance') showTheme()
+          else if (value === '@language') showLanguage()
           else if (value === '@document') {
             operations = operations.then(showDocument).catch((error: unknown) => {
               if (!deps.isDisposed()) deps.appendNotice(`Settings document failed: ${String(error)}`, 'error')
@@ -255,6 +333,8 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
           }
         },
         () => { void session.close() },
+        undefined,
+        copy.moveSelectClose,
       ),
       options: {
         width: resolved.modelDialogWidth,
@@ -283,6 +363,20 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     await commitTheme(argument)
   }
 
+  const languageCommand = async (raw: string): Promise<void> => {
+    const argument = raw.trim().toLowerCase()
+    if (argument === '') {
+      showLanguage()
+      return
+    }
+    const nextLocale = argument === '中文' ? 'zh' : argument === 'english' ? 'en' : argument
+    if (!isTuiLocale(nextLocale)) {
+      deps.appendNotice('Usage: /language [zh|en]', 'warning')
+      return
+    }
+    await commitLocale(nextLocale)
+  }
+
   const settingsCommand = async (raw: string): Promise<void> => {
     const argument = raw.trim()
     if (argument === '') {
@@ -304,7 +398,15 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
   }
 
   const disposeSettingsUpdates = ctx.on('settings/updated', (namespace, next) => {
-    if (namespace !== TUI_THEME_SETTINGS_NAMESPACE || typeof next !== 'object' || next === null) return
+    if (typeof next !== 'object' || next === null) return
+    if (namespace === TUI_LOCALE_SETTINGS_NAMESPACE) {
+      const preference = (next as { preference?: unknown }).preference
+      if (!isTuiLocale(preference) || preference === locale) return
+      locale = preference
+      deps.applyLocale(preference)
+      return
+    }
+    if (namespace !== TUI_THEME_SETTINGS_NAMESPACE) return
     const preference = (next as { preference?: unknown }).preference
     if (!isTuiThemePreference(preference) || preference === themePreference) return
     themePreference = preference
@@ -313,9 +415,15 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
 
   return {
     themePreference: () => themePreference,
+    locale: () => locale,
     queueThemeCommand(raw): void {
       operations = operations.then(() => themeCommand(raw)).catch((error: unknown) => {
         if (!deps.isDisposed()) deps.appendNotice(`Theme command failed: ${String(error)}`, 'error')
+      })
+    },
+    queueLanguageCommand(raw): void {
+      operations = operations.then(() => languageCommand(raw)).catch((error: unknown) => {
+        if (!deps.isDisposed()) deps.appendNotice(`Language command failed: ${String(error)}`, 'error')
       })
     },
     queueSettingsCommand(raw): void {
@@ -326,6 +434,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     clearOverlays(): void {
       settingsOverlay = undefined
       themeOverlay = undefined
+      languageOverlay = undefined
     },
     detach(): void {
       disposeSettingsUpdates()

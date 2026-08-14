@@ -17,13 +17,13 @@ buffer
 5-27| <blank>
 28| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
   style 0-91 dim
-29| "│ dsh > │Describe a task, @ a file, or / for commands                                      │"
+29| "│ dsh > │描述任务，@ 添加文件，或输入 / 查看命令                                           │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
   style 6-7 dim
-  style 9-52 dim
+  style 9-47 dim
   style 91-91 dim
-30| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+30| "╰────────────────────────────────────────────────── Enter 发送 · Shift+Enter 换行 · / 命令 ╯"
   style 0-91 dim
 31| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold

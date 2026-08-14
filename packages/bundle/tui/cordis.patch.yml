@@ -109,6 +109,11 @@
     - id: ui-theme
       name: '@deepseek-ai/dsh-client-ui-theme'
 
+    # Register the browser's durable locale namespace too. The TUI presents a
+    # terminal-native selector while both front doors share locale.preference.
+    - id: locale
+      name: '@deepseek-ai/dsh-client-locale'
+
     # Reuse the durable Web workspace ledger. The terminal picker starts a
     # fresh process in the selected directory; it never rewrites a live
     # session's immutable cwd.

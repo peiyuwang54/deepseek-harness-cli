@@ -91,6 +91,7 @@ const CHECKPOINTS = [
   'approve-empty',
   'settings-hub',
   'theme-selector',
+  'language-selector',
   'workspace-selector',
   'workspace-handoff-recovered',
   'errors-and-help',
@@ -1283,6 +1284,7 @@ describe('TUI terminal-state snapshots', () => {
 
   it('pins shared Settings, Appearance, workspace selection, and handoff recovery', async () => {
     const uiTheme = settingsNamespace('ui-theme')
+    const locale = settingsNamespace('locale')
     const workspace = snapshotWorkspace(
       'snapshot-secondary-workspace',
       '/workspace/secondary',
@@ -1296,13 +1298,22 @@ describe('TUI terminal-state snapshots', () => {
         await ctx.plugin(SystemPrompt)
         await ctx.plugin(ToolRegistry)
         ctx.provide('settings', {
-          get: (namespace: string) => namespace === uiTheme ? { preference: 'dark' } : undefined,
+          get: (namespace: string) => namespace === uiTheme
+            ? { preference: 'dark' }
+            : namespace === locale ? { preference: 'zh' } : undefined,
           mutate: () => Promise.resolve(),
           describe: () => [{
             ns: uiTheme,
             schema: { type: 'object' },
             value: { preference: 'dark' },
             user: { preference: 'dark' },
+            revision: 1,
+            applies: 'live',
+          }, {
+            ns: locale,
+            schema: { type: 'object' },
+            value: { preference: 'zh' },
+            user: { preference: 'zh' },
             revision: 1,
             applies: 'live',
           }, {
@@ -1336,6 +1347,13 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('theme-selector', harness.terminal, { includeScrollback: true })
+
+    await renderAfter(harness, () => { harness.terminal.send('\x1b') })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/language')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('language-selector', harness.terminal, { includeScrollback: true })
 
     await renderAfter(harness, () => { harness.terminal.send('\x1b') })
     await renderAfter(harness, () => {

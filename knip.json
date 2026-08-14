@@ -781,6 +781,7 @@
     },
     "packages/bundle/tui": {
       "ignoreDependencies": [
+        "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-theme",
         "@deepseek-ai/dsh-code-runtime-worker-thread",
         "@deepseek-ai/dsh-storage-json",

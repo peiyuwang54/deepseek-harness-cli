@@ -11,26 +11,23 @@ buffer
   style 1-21 dim
 2| " main-session"
   style 1-12 dim
-3-21| <blank>
-22| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
+3-22| <blank>
+23| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
   style 0-91 dim
-23| "│ dsh > 描述任务，@ 添加文件，或输入 / 查看命令                                            │"
+24| "│ dsh > 描述任务，@ 添加文件，或输入 / 查看命令                                            │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
   style 6-46 dim
   style 91-91 dim
-24| "╰────────────────────────────────────────────────── Enter 发送 · Shift+Enter 换行 · / 命令 ╯"
+25| "╰────────────────────────────────────────────────── Enter 发送 · Shift+Enter 换行 · / 命令 ╯"
   style 0-91 dim
-25| "╭ 外观 ────────────────────────────────────────────────────────────────────╮"
+26| "╭ 语言 ────────────────────────────────────────────────────────────────────╮"
   style 0-75 fg=bright-magenta
-26| "│   Light                                                                  │"
+27| "│ → 中文                            当前                                   │"
   style 0-0 fg=bright-magenta
+  style 2-39 fg=bright-magenta inverse
   style 75-75 fg=bright-magenta
-27| "│ → Dark                            current                                │"
-  style 0-0 fg=bright-magenta
-  style 2-42 fg=bright-magenta inverse
-  style 75-75 fg=bright-magenta
-28| "│   System                                                                 │"
+28| "│   English                                                                │"
   style 0-0 fg=bright-magenta
   style 75-75 fg=bright-magenta
 29| "│ ↑/↓ 移动 • Enter 选择 • Esc 关闭                                         │"

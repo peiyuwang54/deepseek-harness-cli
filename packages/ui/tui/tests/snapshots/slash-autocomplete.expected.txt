@@ -32,7 +32,7 @@ viewport
   style 6-54 dim
 12| "  experimental  [fast|vim|reload|reasoning] — Open the terminal experimental-feature launcher"
   style 14-92 dim
-13| "  (1/20)"
+13| "  (1/21)"
   style 0-7 dim
 14| "/workspace/project (tui-staging)              ▸ idle  deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold

@@ -415,6 +415,54 @@ describe('shared settings, appearance, and workspaces', () => {
     await dispose(result)
   })
 
+  it('shares /language with the Web locale preference and refreshes terminal chrome', async () => {
+    const localeNamespace = settingsNamespace('locale')
+    let preference = 'en'
+    let resultContext: Context | undefined
+    const mutate = vi.fn(async (
+      namespace: string,
+      ops: ReadonlyArray<{ op: string; path: readonly string[]; value?: unknown }>,
+    ) => {
+      const operation = ops[0]
+      if (namespace !== localeNamespace || operation?.op !== 'set') return
+      const previous = { preference }
+      preference = String(operation.value)
+      resultContext?.emit('settings/updated', localeNamespace, { preference }, previous, 'update')
+    })
+    const result = await setup({
+      configureContext: composeFrontDoorServices((ctx) => {
+        resultContext = ctx
+        ctx.provide('settings', {
+          get: (namespace: string) => namespace === localeNamespace ? { preference } : undefined,
+          mutate,
+          describe: () => [{
+            ns: localeNamespace,
+            schema: { type: 'object' },
+            value: { preference },
+            revision: 0,
+            applies: 'live',
+          }],
+          writable: true,
+          documentPath: '/home/test/.dsh/settings.yml',
+          prepareDocument: () => Promise.resolve('/home/test/.dsh/settings.yml'),
+        } as never)
+      }),
+    })
+
+    result.terminal.send('/language zh')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(mutate).toHaveBeenCalledWith(localeNamespace, [{ op: 'set', path: ['preference'], value: 'zh' }])
+    expect(result.terminal.output).toContain('界面语言已切换为中文。')
+    expect(result.terminal.output).toContain('描述任务，@ 添加文件，或输入 / 查看命令')
+
+    expect(resultContext).toBeDefined()
+    resultContext?.emit('settings/updated', localeNamespace, { preference: 'en' }, { preference: 'zh' }, 'update')
+    await tick()
+    expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
+    await dispose(result)
+  })
+
   it('lists durable workspaces without rewriting the current session cwd', async () => {
     const workspace = workspaceFixture('secondary-workspace', '/secondary', 'Secondary project')
     const result = await setup({

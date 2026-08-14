@@ -44,6 +44,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/settings` 是基于共享可选 `ctx.settings` provider 的终端 hub。不带参数时，它显示基于文件的设置文档与所有已注册 namespace 的脱敏元数据（实时／重启作用域、继承值／用户覆盖，以及已隐藏 secret 的数量）；`/settings list` 打印同样的 namespace 摘要，`/settings document` 则准备并报告可编辑文档路径。它刻意不复制 Web React 表单，也不会把一个完整的脱敏 section 写回，因为这类替换可能擦除已存的 secret。`/theme [light|dark|system]` 是终端安全的实时 action：它以字段级 mutate 更改与 Web client 共用的 `ui-theme.preference` namespace，跟随外部设置更新，并通过终端颜色方案报告解析 `system`。
 
+`/language [zh|en]` 会写入浏览器共用的 `locale.preference` 设置。不带参数的 `/language` 会打开附着 composer 的中英文选择器；无论在 Web 还是 TUI 中修改，欢迎面板、默认输入 placeholder、编辑器 footer 与设置界面都会立即刷新。模型回复、工具载荷、自定义 placeholder 和第三方命令文案保留来源语言，不做机器翻译。
+
 `/workspace` 会在共享持久 `ctx.workspaceRegistry` 上打开可搜索 selector；`/workspace <directory>` 会先对该目录做 canonicalize 并注册。选择一行后，通过可选宿主 `TuiRuntime.handoffWorkspace` 在该工作区开启一个**全新**会话。Controller 要求 agent 空闲，检查目录，flush 当前会话，drain 输入，并在 handoff 前释放 UI 及全屏／鼠标终端 mode。缺少宿主时，当前 TUI 保持运行并显示警告；宿主拒绝时，会恢复终端并强制渲染完整首帧。该路径绝不改写当前会话不可变的 `SessionHeader.cwd`——更改工作区是一次进程／会话 handoff，而非原地元数据变更。
 
 `/resume` 会打开全 viewport 键盘选择器，而非居中对话框。选择器在命令执行时立即打开并接管输入焦点，会话扫描仍在进行时显示加载占位符，直到行数据就绪；Escape 取消进行中的扫描，方式与取消已加载列表相同。两个作用域覆盖同一候选项集合：打开时所处的当前工作区，以及按 Tab 切换到的所有工作区。搜索字段下方的作用域行会给出当前作用域的名称以及另一个作用域包含的数量，且在所有工作区作用域中每行还会报告自身所属的工作区。切换会清除搜索与选择，使高亮行始终属于可见列表。

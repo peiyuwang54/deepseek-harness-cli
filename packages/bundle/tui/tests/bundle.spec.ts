@@ -29,6 +29,7 @@ describe('dsh-tui-app bundle', () => {
       expect.objectContaining({ id: 'tui-runner', name: '@deepseek-ai/dsh-tui-app' }),
       expect.objectContaining({ id: 'agent-presets', name: '@deepseek-ai/dsh-agent-presets' }),
       expect.objectContaining({ id: 'ui-theme', name: '@deepseek-ai/dsh-client-ui-theme' }),
+      expect.objectContaining({ id: 'locale', name: '@deepseek-ai/dsh-client-locale' }),
       expect.objectContaining({ id: 'storage', name: '@deepseek-ai/dsh-storage' }),
       expect.objectContaining({ id: 'storage-json', name: '@deepseek-ai/dsh-storage-json' }),
       expect.objectContaining({ id: 'storage-domain', name: '@deepseek-ai/dsh-storage-domain' }),

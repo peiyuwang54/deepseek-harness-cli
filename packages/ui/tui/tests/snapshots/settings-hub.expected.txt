@@ -11,37 +11,45 @@ buffer
   style 1-21 dim
 2| " main-session"
   style 1-12 dim
-3-20| <blank>
-21| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
+3-18| <blank>
+19| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
   style 0-91 dim
-22| "│ dsh > Describe a task, @ a file, or / for commands                                       │"
+20| "│ dsh > 描述任务，@ 添加文件，或输入 / 查看命令                                            │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
-  style 6-51 dim
+  style 6-46 dim
   style 91-91 dim
-23| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+21| "╰────────────────────────────────────────────────── Enter 发送 · Shift+Enter 换行 · / 命令 ╯"
   style 0-91 dim
-24| "╭ Settings ────────────────────────────────────────────────────────────────╮"
+22| "╭ 设置 ────────────────────────────────────────────────────────────────────╮"
   style 0-75 fg=bright-magenta
-25| "│ → Appearance                      dark                                   │"
+23| "│ → 外观                            dark                                   │"
   style 0-0 fg=bright-magenta
   style 2-39 fg=bright-magenta inverse
   style 75-75 fg=bright-magenta
-26| "│   Settings document               /home/snapshot/.dsh/settings.yml       │"
+24| "│   语言                            中文                                   │"
   style 0-0 fg=bright-magenta
-  style 21-67 dim
+  style 8-39 dim
   style 75-75 fg=bright-magenta
-27| "│   ui-theme                        live · user override                   │"
+25| "│   设置文件                        /home/snapshot/.dsh/settings.yml       │"
+  style 0-0 fg=bright-magenta
+  style 12-67 dim
+  style 75-75 fg=bright-magenta
+26| "│   ui-theme                        live · user override                   │"
   style 0-0 fg=bright-magenta
   style 12-55 dim
+  style 75-75 fg=bright-magenta
+27| "│   locale                          live · user override                   │"
+  style 0-0 fg=bright-magenta
+  style 10-55 dim
   style 75-75 fg=bright-magenta
 28| "│   llm-deepseek                    restart · inherited · 1 secret field   │"
   style 0-0 fg=bright-magenta
   style 16-71 dim
   style 75-75 fg=bright-magenta
-29| "│ ↑/↓ move • Enter select • Esc close                                      │"
+29| "│ ↑/↓ 移动 • Enter 选择 • Esc 关闭                                         │"
   style 0-0 fg=bright-magenta
-  style 2-36 dim
+  style 2-33 dim
   style 75-75 fg=bright-magenta
 30| "╰──────────────────────────────────────────────────────────────────────────╯"
   style 0-75 fg=bright-magenta

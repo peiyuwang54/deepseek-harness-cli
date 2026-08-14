@@ -166,6 +166,7 @@ import {
   createWorkspaceController,
   type WorkspaceController,
 } from './chat/workspace.ts'
+import { readTuiLocale, tuiCopy, type TuiLocale } from './chat/language.ts'
 import type { TuiResumeHost, TuiRuntime } from './runtime.ts'
 import { WorkspaceFileSearch } from './chat/file-autocomplete.ts'
 import { createTuiTerminalMode, parseTuiMouseEvent } from './chat/terminal-mode.ts'
@@ -370,6 +371,7 @@ export function createTuiChat(
   if (agent === undefined) throw new Error(`ui-tui: session "${sessionId}" is not running`)
   const resolved = resolveTuiConfig(config)
   let themePreference = readTuiThemePreference(ctx.get('settings'))
+  let locale = readTuiLocale(ctx.get('settings'))
   let terminalScheme: TerminalColorScheme = 'dark'
   const initialScheme: TerminalColorScheme = themePreference === 'light' ? 'light' : 'dark'
   const palette = createPalette(resolved.theme.color, initialScheme)
@@ -402,7 +404,10 @@ export function createTuiChat(
   editor.cursorEnabled = resolved.showHardwareCursor
   editor.cursorVisible = resolved.showHardwareCursor
   editor.hintPrefix = initialInputPrompt
-  editor.hint = palette.dim(displayInlineText(resolved.theme.inputPlaceholder))
+  const inputPlaceholder = (): string => resolved.theme.inputPlaceholder === 'Describe a task, @ a file, or / for commands'
+    ? tuiCopy(locale).inputPlaceholder
+    : resolved.theme.inputPlaceholder
+  editor.hint = palette.dim(displayInlineText(inputPlaceholder()))
   const editorAutocomplete = new EditorAutocompletePanel(editor)
   type TuiKeymap = 'default' | 'vim'
   type VimState = 'insert' | 'normal'
@@ -418,8 +423,8 @@ export function createTuiChat(
     }
     const mode = keymap === 'vim' ? 'VIM INSERT · ' : ''
     editor.frameFooter = agent.status === 'running'
-      ? `${mode}Enter steer · Esc cancel · Shift+Enter newline`
-      : `${mode}Enter send · Shift+Enter newline · / commands`
+      ? `${mode}${tuiCopy(locale).editorRunningFooter}`
+      : `${mode}${tuiCopy(locale).editorIdleFooter}`
   }
   refreshEditorFooter()
   const todo = new TodoComponent(palette)
@@ -556,6 +561,7 @@ export function createTuiChat(
       recentSessions,
     }),
     () => runtime.terminal.rows,
+    () => locale,
   )
   const formattedCwd = displayText(runtime.formatCwd?.(agent.session.header.cwd) ?? formatCwd(agent.session.header.cwd))
   const branch = runtime.gitBranch?.(cwd) ?? gitBranch(cwd)
@@ -896,7 +902,7 @@ export function createTuiChat(
     else if (fadeOutGlyph !== undefined) beginFadeOut(fadeOutGlyph)
     else clearTurnStatus()
     editor.borderColor = status === 'running' ? text => palette.accent(text) : text => palette.dim(text)
-    editor.hint = palette.dim(displayInlineText(resolved.theme.inputPlaceholder))
+    editor.hint = palette.dim(displayInlineText(inputPlaceholder()))
     refreshEditorFooter()
     if (status === 'running') {
       const turn = priorTurn ?? openTurn(agent.session.events)
@@ -1474,6 +1480,15 @@ export function createTuiChat(
     applyColorScheme(preference === 'system' ? terminalScheme : preference)
   }
 
+  /** Refresh copy-only terminal chrome without rewriting transcript content. */
+  const applyLocale = (nextLocale: TuiLocale): void => {
+    locale = nextLocale
+    editor.hint = palette.dim(displayInlineText(inputPlaceholder()))
+    refreshEditorFooter()
+    header.invalidate()
+    requestRender()
+  }
+
   settingsController = createSettingsController({
     ctx,
     resolved,
@@ -1483,6 +1498,7 @@ export function createTuiChat(
     requestRender,
     isDisposed,
     applyTheme: applyThemePreference,
+    applyLocale,
   })
   workspaceController = createWorkspaceController({
     ctx,
@@ -2072,6 +2088,15 @@ export function createTuiChat(
       name: 'resume',
       description: 'List this workspace\'s resumable sessions',
       handler: () => { resume.showResume(); return { kind: 'success' } },
+    })
+    commandCtx.commands.register({
+      name: 'language',
+      description: 'Choose and persist the CLI/Web interface language',
+      input: { hint: '[zh|en]' },
+      handler: ({ rawInput }) => {
+        settingsController.queueLanguageCommand(rawInput)
+        return { kind: 'success' }
+      },
     })
     commandCtx.commands.register({
       name: 'settings',

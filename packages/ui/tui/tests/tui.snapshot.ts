@@ -67,6 +67,8 @@ const CHECKPOINTS = [
   'model-selector',
   'model-selector-filtered',
   'model-switching',
+  'permissions-selector',
+  'permissions-switching',
   'yolo-permission',
   'settings-hub',
   'theme-selector',
@@ -186,7 +188,29 @@ async function configurePermissionPresets(ctx: Context): Promise<void> {
     run() { throw new Error('permission snapshot does not execute shell commands') },
     start() { throw new Error('permission snapshot does not execute shell commands') },
   })
-  await ctx.plugin(PermissionPresetService, {})
+  await ctx.plugin(PermissionPresetService, {
+    presets: {
+      'read-only': {
+        sandbox: 'read-only',
+        approval: 'ask',
+        name: 'Ask for approval',
+        description: 'Read files by default; changes and wider actions require approval.',
+      },
+      'workspace-write': {
+        sandbox: 'workspace-write',
+        approval: 'ask',
+        name: 'Approve for me',
+        description: 'Read and edit in the workspace; only wider actions require approval.',
+      },
+      'danger-full-access': {
+        sandbox: 'danger-full-access',
+        approval: 'never',
+        name: 'Full access',
+        description: 'Edit outside the workspace and access the network without approval prompts.',
+      },
+    },
+    defaultPreset: 'workspace-write',
+  })
 }
 
 interface ToolCallFixture {
@@ -1092,6 +1116,25 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('yolo-permission', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins the interactive permission selector and a committed switch', async () => {
+    const harness = await setupSnapshot({
+      omitInitialLifecycle: true,
+      configureContext: configurePermissionPresets,
+    }, { columns: 96, rows: 36 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/permissions')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('permissions-selector', harness.terminal, { includeScrollback: true })
+    await renderAfter(harness, () => {
+      harness.terminal.send('\x1b[B')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('permissions-switching', harness.terminal, { includeScrollback: true })
+    expect(harness.ctx.permissionPresets.current(harness.session.events)).toBe('danger-full-access')
     await disposeSnapshot(harness)
   })
 

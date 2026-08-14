@@ -1,9 +1,9 @@
 /**
  * ui-permission browser half on a real cordis Context with fake command/
- * sessions faces: the plugin hangs the /permission popup decoration on the
+ * sessions faces: the plugin hangs the /permissions popup decoration on the
  * host command; options flatten the session's permissions projection with
  * the current value active and `custom` excluded; availability follows the
- * projection key's presence; a pick submits the /permission line through
+ * projection key's presence; a pick submits the /permissions line through
  * Session.command and surfaces rejection/unmatched as thrown errors; fiber
  * disposal removes the contribution (HMR safety). The same plugin registers
  * its Settings row and invalidates that row on host settings changes.
@@ -97,10 +97,10 @@ async function bench() {
 }
 
 describe('ui-permission browser plugin', () => {
-  it('hangs the /permission popup decoration on the host command', async () => {
+  it('hangs the /permissions popup decoration on the host command', async () => {
     const b = await bench()
     const c = b.decoration()!
-    expect(c.name).toBe('permission')
+    expect(c.name).toBe('permissions')
     expect(c.ui.kind).toBe('popupSelect')
     const row = b.permissionRow()!
     expect(row.options).toEqual({ id: 'permission', order: -20 })
@@ -143,17 +143,17 @@ describe('ui-permission browser plugin', () => {
       .toThrow(/not available on this host/)
   })
 
-  it('a pick submits the /permission line; rejection and unmatched throw', async () => {
+  it('a pick submits the /permissions line; rejection and unmatched throw', async () => {
     const b = await bench()
     const c = b.decoration()!
     const proj = { sessionId: sid('s1') }
     b.values.set(sid('s1'), SELECT)
     await c.ui.onSelect({ id: 'danger-full-access', label: 'danger-full-access' }, proj)
-    expect(b.commands).toEqual(['/permission danger-full-access'])
+    expect(b.commands).toEqual(['/permissions danger-full-access'])
     b.setResult({ ok: false })
     await expect(c.ui.onSelect({ id: 'read-only', label: 'read-only' }, proj)).rejects.toThrow(/permission switch failed/)
     b.setResult({ ok: true, matched: false })
-    await expect(c.ui.onSelect({ id: 'read-only', label: 'read-only' }, proj)).rejects.toThrow(/no \/permission command/)
+    await expect(c.ui.onSelect({ id: 'read-only', label: 'read-only' }, proj)).rejects.toThrow(/no \/permissions command/)
     // An unmaterialized session throws before any submit.
     await expect(c.ui.onSelect({ id: 'read-only', label: 'read-only' }, { sessionId: sid('ghost') }))
       .rejects.toThrow(/not materialized/)

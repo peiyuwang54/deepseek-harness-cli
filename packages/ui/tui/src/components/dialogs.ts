@@ -500,6 +500,62 @@ export class DetailsDialog implements Component {
   }
 }
 
+/** One permission preset rendered by {@link PermissionDialog}. */
+export interface PermissionDialogChoice {
+  /** Stable preset key submitted to the command service. */
+  readonly value: string
+  /** User-facing preset name. */
+  readonly label: string
+  /** Concise capability summary. */
+  readonly description?: string
+}
+
+/** Keyboard permission-preset selector rendered as a bordered overlay. */
+export class PermissionDialog implements Component {
+  private readonly list: SelectList
+
+  constructor(
+    choices: readonly PermissionDialogChoice[],
+    currentValue: string,
+    private readonly palette: Palette,
+    done: (value: string) => void,
+    private readonly cancel: () => void,
+  ) {
+    const items: SelectItem[] = choices.map(choice => ({
+      value: choice.value,
+      label: choice.label,
+      description: [
+        ...choice.value === currentValue ? ['current'] : [],
+        ...choice.description === undefined ? [] : [choice.description],
+      ].join(' · '),
+    }))
+    this.list = new SelectList(items, items.length, dialogSelectTheme(palette))
+    const selected = items.findIndex(item => item.value === currentValue)
+    if (selected >= 0) this.list.setSelectedIndex(selected)
+    this.list.onSelect = (item) => { done(item.value) }
+    this.list.onCancel = cancel
+  }
+
+  invalidate(): void {
+    this.list.invalidate()
+  }
+
+  handleInput(data: string): void {
+    if (matchesKey(data, Key.escape) || matchesKey(data, Key.ctrl('c'))) this.cancel()
+    else this.list.handleInput(data)
+    this.invalidate()
+  }
+
+  render(width: number): string[] {
+    const innerWidth = Math.max(1, width - 4)
+    return renderDialog('Update Permissions', [
+      ...this.list.render(innerWidth),
+      '',
+      this.palette.dim('↑/↓ move • Enter confirm • Esc close'),
+    ], width, this.palette)
+  }
+}
+
 /** A resume selector row summarizing one session from metadata and its folded title. */
 export interface ResumeCandidate {
   record: SessionRecord

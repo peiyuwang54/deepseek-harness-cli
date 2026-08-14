@@ -1,5 +1,5 @@
 // Web acceptance for current sandbox-policy context. A real Chromium drives
-// the shipped /permission command through all three presets; record mode uses
+// the shipped /permissions command through all three presets; record mode uses
 // the real provider, while replay keeps the same provider-authored behavior
 // keyless. Assertions read the exact durable header, runtime-context messages,
 // and tool calls, so assistant prose alone cannot satisfy the scenario.
@@ -97,7 +97,7 @@ describe('web e2e: current sandbox policy reaches the model before tools', () =>
     const input = page.locator('textarea').first()
     let sessionId: Awaited<ReturnType<WebScaffold['whenTurnSettled']>> | undefined
     for (const [index, preset] of ['read-only', 'danger-full-access', 'workspace-write'].entries()) {
-      await input.fill(`/permission ${preset}`)
+      await input.fill(`/permissions ${preset}`)
       await input.press('Enter')
       await page.getByRole('button', { name: `Access mode, current: ${PRESET_LABELS[index]}` })
         .waitFor({ timeout: 10_000 })
@@ -109,7 +109,7 @@ describe('web e2e: current sandbox policy reaches the model before tools', () =>
       await expect.poll(() => input.isEnabled(), { timeout: 10_000 }).toBe(true)
     }
 
-    await input.fill('/permission read-only')
+    await input.fill('/permissions read-only')
     await input.press('Enter')
     await page.getByRole('button', { name: 'Access mode, current: Read Only' }).waitFor({ timeout: 10_000 })
     const settled = scaffold.whenTurnSettled()

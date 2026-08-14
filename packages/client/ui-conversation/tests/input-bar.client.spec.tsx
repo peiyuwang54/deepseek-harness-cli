@@ -1203,7 +1203,7 @@ describe('command launcher chrome and control seats', () => {
     const busy = view.getByLabelText(/^访问模式/) as HTMLButtonElement
     expect(busy.textContent).toBe('Workspace Write')
     expect(busy.disabled).toBe(true)
-    expect(command).toHaveBeenCalledWith('/permission workspace-write')
+    expect(command).toHaveBeenCalledWith('/permissions workspace-write')
     await act(async () => {})
     expect((view.getByLabelText(/^访问模式/) as HTMLButtonElement).disabled).toBe(false)
   })
@@ -1231,7 +1231,7 @@ describe('command launcher chrome and control seats', () => {
     fireEvent.click(enable)
 
     expect(command).toHaveBeenCalledOnce()
-    expect(command).toHaveBeenCalledWith('/permission danger-full-access')
+    expect(command).toHaveBeenCalledWith('/permissions danger-full-access')
     expect(view.queryByRole('dialog')).toBeNull()
     expect((view.getByLabelText(/^访问模式/) as HTMLButtonElement).textContent).toBe('Full access')
     await act(async () => {})

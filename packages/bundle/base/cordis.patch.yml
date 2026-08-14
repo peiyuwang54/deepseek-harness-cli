@@ -197,12 +197,18 @@
           read-only:
             sandbox: read-only
             approval: ask
+            name: Ask for approval
+            description: Read files by default; changes and wider actions require approval.
           workspace-write:
             sandbox: workspace-write
             approval: ask
+            name: Approve for me
+            description: Read and edit in the workspace; only wider actions require approval.
           danger-full-access:
             sandbox: danger-full-access
             approval: never
+            name: Full access
+            description: Edit outside the workspace and access the network without approval prompts.
 
     - id: shell-env
       name: '@deepseek-ai/dsh-shell-env'

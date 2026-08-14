@@ -52,7 +52,7 @@ function appendStandalone(session: Session): void {
   session.append('session/title', {
     title: 'standalone title', messageSeqs: [], source: { kind: 'fallback' },
   })
-  // The three permission knob events (a /permission switch on a fresh session).
+  // The three permission knob events (a /permissions switch on a fresh session).
   session.append('permission/preset', { preset: 'danger-full-access' })
   session.append('sandbox/mode', { mode: 'danger-full-access' })
   session.append('approval/policy', { policy: 'never' })

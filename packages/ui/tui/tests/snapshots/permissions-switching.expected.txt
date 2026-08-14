@@ -1,7 +1,7 @@
 terminal 96x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor hidden column=8 viewportRow=30 bufferRow=30
+cursor hidden column=8 viewportRow=29 bufferRow=29
 buffer
 0| "                                             ⣀⣀⣀⣀⣤⡄  ⢠⡄"
   style 40-54 fg=blue
@@ -64,25 +64,23 @@ buffer
 24| "                                          main-session"
   style 42-53 dim
 25| <blank>
-26| "DANGER: full access enabled — sandbox and approval prompts are disabled; restore with           "
+26| "preset danger-full-access                                                                       "
+  style 0-24 dim
+27| <blank>
+28| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
   style 0-95 dim
-27| "/permissions workspace-write                                                                    "
-  style 0-27 dim
-28| <blank>
-29| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-95 dim
-30| "│ dsh > Describe a task, @ a file, or / for commands                                           │"
+29| "│ dsh > Describe a task, @ a file, or / for commands                                           │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
   style 6-51 dim
   style 95-95 dim
-31| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+30| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-95 dim
-32| "/workspace/project (tui-staging)              idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+31| "/workspace/project (tui-staging)              idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 46-49 dim
   style 52-76 dim
   style 79-83 dim
   style 86-95 dim
-33-35| <blank>
+32-35| <blank>

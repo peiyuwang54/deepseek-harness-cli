@@ -511,7 +511,7 @@ export interface ComposerBarInjected {
   stop: (() => void) | undefined
   /**
    * Submit one slash-command line against this session's agent (the chrome
-   * controls' write path — the permission chip submits `/permission <preset>`);
+   * controls' write path — the permission chip submits `/permissions <preset>`);
    * absent with the session.
    * Resolves admission: false = rejected/unmatched/transport failure.
    */

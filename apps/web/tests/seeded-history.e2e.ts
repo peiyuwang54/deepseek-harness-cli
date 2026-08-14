@@ -5,7 +5,7 @@
 // events — with ZERO model calls in replay (no replay fixture; a stray stream
 // fails loud on the open llm seam). The cold session also carries keyless
 // command-row surfaces: the seeded manual `/compact` lifecycle folds into its
-// checkpoint, an Access-chip pick later runs `/permission` on the host, and
+// checkpoint, an Access-chip pick later runs `/permissions` on the host, and
 // `/feedback` pins its expandable correlation ids. The seed is a recorded
 // fixture under the same record discipline as every other: DSH_SNAPSHOT=record drives the turn
 // live through the composer (real read tool against seeded workspace files)
@@ -420,7 +420,7 @@ describe('web e2e: seeded history renders through cold resume', () => {
 
   it.skipIf(MODE === 'record')('an Access-chip switch lands one command row: bare name, non-repeating settlement text', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-seeded-command-row'))
-    // The Access chip submits `/permission <preset>` — a host command with no
+    // The Access chip submits `/permissions <preset>` — a host command with no
     // model call, so the settled row renders keylessly over this cold history.
     // The row copy is the assertion: `permission · preset read-only`,
     // where neither half repeats the other (the dispatched `/` and its
@@ -433,8 +433,8 @@ describe('web e2e: seeded history renders through cold resume', () => {
     // `permission` (a future resident slash menu) cannot satisfy or break it.
     const row = page.locator('[data-variant="others"]').filter({ hasText: 'preset read-only' })
     await expect.poll(() => row.count(), { timeout: 10_000 }).toBe(1)
-    expect(await row.getByText('permission', { exact: true }).count()).toBe(1)
-    expect(await row.getByText('/permission read-only', { exact: true }).count()).toBe(0)
+    expect(await row.getByText('permissions', { exact: true }).count()).toBe(1)
+    expect(await row.getByText('/permissions read-only', { exact: true }).count()).toBe(0)
     const snapshot = (await captureStableAria(page, '[class*="centerCol"]', scaffold.workspaceCwd))
       .split(SEED_ID).join('{{seededId}}')
     await compareOrRefreshGolden(COMMAND_ROW_EXPECTED, snapshot, MODE)

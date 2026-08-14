@@ -168,7 +168,7 @@ export interface RestrictingSidSet {
  * DLL init dies with 0xC0000142 and CNG (`\Device\CNG` write trustee —
  * pwsh crashes 0xE0434352) fails without them. The write SIDs join ONLY
  * workspace-write — read-only carries no write SID, so a standing grant ACE
- * from an earlier workspace-write period (a `/permission` mode downgrade, or
+ * from an earlier workspace-write period (a `/permissions` mode downgrade, or
  * a crash-resumed session) stays INERT under read-only: the WRITE_RESTRICTED
  * pass-2 check grants only what the restricting list carries, keeping that
  * workspace grant inert under read-only while the unrevoked ACE keeps the

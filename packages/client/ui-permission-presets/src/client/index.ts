@@ -1,12 +1,12 @@
 /**
  * Permission preset plugin, browser half — a popupSelect DECORATION hung on
- * the host `/permission` command: one flat list of presets, current value
+ * the host `/permissions` command: one flat list of presets, current value
  * marked active, a pick executes the switch. The decoration owns only the
  * bare invocation; the host command keeps its catalog row, the argued path
- * (`/permission <preset>` still switches directly), and the lifecycle
+ * (`/permissions <preset>` still switches directly), and the lifecycle
  * logging. Options and the active mark read the session's `permissions`
  * projection (the same host-computed select the composer chip renders); a
- * pick submits the `/permission <preset>` command line, so both surfaces
+ * pick submits the `/permissions <preset>` command line, so both surfaces
  * write through one path and the pushed projection frame is the one
  * confirmation. The Full access row carries the same explicit risk gate as
  * the composer chip; the shared popup shell owns the modal mechanics.
@@ -76,7 +76,7 @@ function optionsOf(value: PermissionSelect, t: (key: string) => string): SelectO
 }
 
 /**
- * Client plugin body: register the /permission popup picker over the
+ * Client plugin body: register the /permissions popup picker over the
  * permissions projection.
  * @param ctx - client root context.
  */
@@ -146,7 +146,7 @@ export function apply(ctx: ClientContext): void {
   }, PermissionRow))
 
   ctx.effect(() => command.decorate({
-    name: 'permission',
+    name: 'permissions',
     // The picker exists exactly while the projection does: a permission-less
     // host serves no key and the bare invocation falls through to the host
     // command (which is absent too — the line simply misses).
@@ -161,10 +161,10 @@ export function apply(ctx: ClientContext): void {
       onSelect: async (option, session) => {
         const live = sessionFor(session)
         if (live === undefined) throw new Error('this session is not materialized yet')
-        const result = await live.command(`/permission ${option.id}`)
+        const result = await live.command(`/permissions ${option.id}`)
         if (!result.ok) throw new Error(`permission switch failed: ${result.error.code}: ${result.error.message}`)
-        if (!result.value.matched) throw new Error('the host offers no /permission command')
+        if (!result.value.matched) throw new Error('the host offers no /permissions command')
       },
     },
-  }), 'ui-permission: /permission decoration')
+  }), 'ui-permission: /permissions decoration')
 }

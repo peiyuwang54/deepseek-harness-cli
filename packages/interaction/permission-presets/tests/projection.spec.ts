@@ -1,9 +1,9 @@
 /**
- * The `permissions` projection unit and the `/permission` command: mounting
+ * The `permissions` projection unit and the `/permissions` command: mounting
  * the permission service beside the projection registry serves the whole
  * select (table options + effective current value, `custom` appended exactly
  * while derived) folded from the three knob events over the composition
- * defaults; the command child registers `/permission` whose handler switches
+ * defaults; the command child registers `/permissions` whose handler switches
  * through `permission.set` (bare invocation reports, unknown names error) and
  * `/yolo` as the explicit full-access/no-approval shortcut;
  * compositions without either registry are unaffected; unmounting the
@@ -87,11 +87,11 @@ describe('permissions projection unit', () => {
   })
 })
 
-describe('/permission command', () => {
+describe('/permissions command', () => {
   it('switches through permission.set and logs the lifecycle pair', async () => {
     const { ctx, session } = await harness()
     const { agent, inject } = await agentFor(ctx, session)
-    const execution = await ctx.commands.execute(agent, '/permission danger-full-access', new AbortController().signal)
+    const execution = await ctx.commands.execute(agent, '/permissions danger-full-access', new AbortController().signal)
     expect(execution?.result).toEqual({ kind: 'success', text: 'preset danger-full-access' })
     expect(ctx.permissionPresets.current(session.events)).toBe('danger-full-access')
     expect(inject.mock.calls[0]?.[0]).toMatchObject({
@@ -101,13 +101,13 @@ describe('/permission command', () => {
       }],
     })
     const run = session.events.find(event => event.type === 'command/run')
-    expect(run?.data).toMatchObject({ name: 'permission', args: ' danger-full-access' })
+    expect(run?.data).toMatchObject({ name: 'permissions', args: ' danger-full-access' })
   })
 
   it('reports the current preset and the table on bare invocation', async () => {
     const { ctx, session } = await harness()
     const { agent } = await agentFor(ctx, session)
-    const execution = await ctx.commands.execute(agent, '/permission', new AbortController().signal)
+    const execution = await ctx.commands.execute(agent, '/permissions', new AbortController().signal)
     expect(execution?.result).toEqual({
       kind: 'success',
       text: 'current preset workspace-write (available: workspace-write, danger-full-access)',
@@ -120,7 +120,7 @@ describe('/permission command', () => {
     const { agent } = await agentFor(ctx, session)
     const before = session.events.filter(event =>
       event.type !== 'command/run' && event.type !== 'command/done')
-    const execution = await ctx.commands.execute(agent, '/permission yolo', new AbortController().signal)
+    const execution = await ctx.commands.execute(agent, '/permissions yolo', new AbortController().signal)
     // The error text carries the same no-self-labelling rule as the success
     // texts: `permission · unknown preset "yolo" (…)`, not `unknown permission
     // preset`, which the row's own title already says.
@@ -145,7 +145,7 @@ describe('/yolo command', () => {
 
     expect(execution?.result).toEqual({
       kind: 'success',
-      text: 'DANGER: full access enabled — sandbox and approval prompts are disabled; restore with /permission workspace-write',
+      text: 'DANGER: full access enabled — sandbox and approval prompts are disabled; restore with /permissions workspace-write',
     })
     expect(ctx.permissionPresets.current(session.events)).toBe('danger-full-access')
     expect(inject.mock.calls[0]?.[0]).toMatchObject({

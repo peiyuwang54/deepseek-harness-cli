@@ -97,7 +97,7 @@ export function PermissionSelect({ value, locked, command, t }: PermissionSelect
 
   const submit = (id: string): void => {
     setPick(id)
-    void command(`/permission ${id}`)
+    void command(`/permissions ${id}`)
       .catch(() => false)
       .then(() => { setPick(null) })
   }

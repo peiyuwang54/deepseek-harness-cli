@@ -5,7 +5,7 @@
  * and replay keep reading their knob folds. The preset event preserves user
  * intent when two presets share a bundle. The read side ships as the
  * `permissions` session projection; the write side ships as the
- * `/permission` command — both optional children over the same service.
+ * `/permissions` command — both optional children over the same service.
  *
  * @module dsh-permission-presets
  */
@@ -252,11 +252,11 @@ export class PermissionPresetService extends Service {
     })
 
     // The command write paths activate only when a command registry is
-    // composed. Web's popup submits /permission; /yolo is the explicit,
+    // composed. Web's popup submits /permissions; /yolo is the explicit,
     // high-risk shortcut used by terminal surfaces.
     ctx.inject(['commands'], (commandCtx) => {
       commandCtx.commands.register({
-        name: 'permission',
+        name: 'permissions',
         description: 'Switch the permission preset (sandbox mode + approval policy)',
         input: { hint: '<preset>' },
         // No settlement text labels its value with this command's own name: a
@@ -293,7 +293,7 @@ export class PermissionPresetService extends Service {
           const restore = previous !== CUSTOM_PRESET && previous !== target
             ? previous
             : this.names.find(name => name !== target)
-          const restoreHint = restore === undefined ? '' : `; restore with /permission ${restore}`
+          const restoreHint = restore === undefined ? '' : `; restore with /permissions ${restore}`
           return {
             kind: 'success',
             text: `DANGER: full access enabled — sandbox and approval prompts are disabled${restoreHint}`,

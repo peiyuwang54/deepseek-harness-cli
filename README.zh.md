@@ -133,7 +133,7 @@ Web 界面仍然是独立的 `base + web-app` profile。增加 TUI 不会让 Web
 |---|---|
 | `/help` | 显示当前快捷键和有效命令注册表 |
 | `/model [[provider/]model]` | 打开选择器，或直接选择无歧义目标 |
-| `/permission [preset]` | 查看或切换当前 Session 的沙箱与审批 preset |
+| `/permissions [preset]` | 打开权限选择器，或直接切换到具名沙箱与审批 preset |
 | `/yolo` | **危险：**关闭沙箱和审批提示；执行结果会打印恢复命令 |
 | `/clear` | 只清空已渲染 transcript；持久化 Session 历史不变 |
 | `/details` | 修改工具卡片可见性和 reasoning 展示 |

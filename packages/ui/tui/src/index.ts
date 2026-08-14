@@ -118,6 +118,7 @@ import {
   formatDiagnosticNumber,
   formatDiagnosticTime,
   initialTarget,
+  PermissionDialog,
   StatusCardComponent,
   PromptContextComponent,
   targetLabel,
@@ -436,6 +437,8 @@ export function createTuiChat(
   let settingsController!: SettingsController
   // oxlint-disable-next-line prefer-const -- assigned after shared terminal handoff callbacks are declared.
   let workspaceController!: WorkspaceController
+  // oxlint-disable-next-line prefer-const -- selector callbacks run only after command dispatch is assigned.
+  let runCommand!: (text: string) => void
   const now = (): number => runtime.now?.() ?? Date.now()
   const agentStatus = (): AgentStatus => agent.status
   const isDisposed = (): boolean => disposed
@@ -456,8 +459,9 @@ export function createTuiChat(
     ?? 'not composed'
   const currentPermission = (): string => {
     const approval = ctx.get('approval')
-    const preset = ctx.get('permissionPresets')?.current(agent.session.events)
-    if (preset !== undefined) return preset
+    const permissionPresets = ctx.get('permissionPresets')
+    const preset = permissionPresets?.current(agent.session.events)
+    if (permissionPresets !== undefined && preset !== undefined) return permissionPresets.optionOf(preset).name
     const approvalPolicy = approval?.overrideOf(agent.session) ?? approval?.config.policy ?? 'ask'
     return `approval ${approvalPolicy}`
   }
@@ -1447,6 +1451,51 @@ export function createTuiChat(
     requestRender()
   }
 
+  let permissionsOverlay: TuiOverlaySession | undefined
+  const showPermissionsSelector = (): void => {
+    const permissionPresets = ctx.get('permissionPresets')
+    if (permissionPresets === undefined) {
+      appendNotice('Permission presets are not available in this composition.', 'warning')
+      return
+    }
+    const choices = permissionPresets.names.map((name) => {
+      const option = permissionPresets.optionOf(name)
+      return {
+        value: option.value,
+        label: option.name,
+        ...option.description === undefined ? {} : { description: option.description },
+      }
+    })
+    if (choices.length === 0) {
+      appendNotice('No permission presets are configured.', 'warning')
+      return
+    }
+    void permissionsOverlay?.close()
+    const session = overlayManager.open({
+      create: () => new PermissionDialog(
+        choices,
+        permissionPresets.current(agent.session.events),
+        palette,
+        (value) => {
+          void session.close()
+          runCommand(`/permissions ${value}`)
+        },
+        () => { void session.close() },
+      ),
+      options: {
+        width: resolved.modelDialogWidth,
+        maxHeight: resolved.modelDialogMaxHeight,
+        anchor: 'center',
+        margin: 1,
+      },
+    })
+    permissionsOverlay = session
+    void session.closed.then(() => {
+      if (permissionsOverlay === session) permissionsOverlay = undefined
+    })
+    requestRender()
+  }
+
   // `/details` names the same transcript-detail state the Ctrl+O cycle and
   // Ctrl+R toggle mutate, so a user can jump to a mode without cycling.
   const runDetails = (rawInput: string): CommandResult => {
@@ -1747,7 +1796,11 @@ export function createTuiChat(
     })
   })
 
-  const runCommand = (text: string): void => {
+  runCommand = (text: string): void => {
+    if (text.trim() === '/permissions' && ctx.get('permissionPresets') !== undefined) {
+      showPermissionsSelector()
+      return
+    }
     const controller = new AbortController()
     commandControllers.add(controller)
     void ctx.commands.execute(agent, text, controller.signal).then(

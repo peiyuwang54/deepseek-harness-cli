@@ -1734,7 +1734,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
           { name: 'compact', description: 'fixture：压缩当前会话上下文' },
           { name: 'echo', description: 'fixture：回显参数', input: { hint: 'text to echo' } },
           { name: 'goal', description: 'set or view the goal for a long-running task', input: { hint: '<objective>' } },
-          { name: 'permission', description: 'Switch the permission preset (sandbox mode + approval policy)', input: { hint: '<preset>' } },
+          { name: 'permissions', description: 'Switch the permission preset (sandbox mode + approval policy)', input: { hint: '<preset>' } },
           { name: 'plan', description: 'Enter or leave plan mode', input: { hint: '[off|message]' } },
         ],
       }
@@ -1747,7 +1747,7 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
       const match = /^\/(\S+)((?:\s.*)?)$/.exec(line.trim())
       const name = match?.[1]
       const args = match?.[2] ?? ''
-      if (name === 'permission') {
+      if (name === 'permissions') {
         const preset = args.trim()
         const commandId = `fx-cmd-${logOf(id).length}` as CommandId
         append(id, { type: 'command/run', data: { commandId, name, args, source: { kind: 'user' } } })

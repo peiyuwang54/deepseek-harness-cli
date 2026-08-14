@@ -133,7 +133,7 @@ The terminal is an independent presentation layer over the same Agent, Session, 
 |---|---|
 | `/help` | Show current shortcuts and the effective command registry |
 | `/model [[provider/]model]` | Open the selector or choose an unambiguous target directly |
-| `/permission [preset]` | Show or switch the session's sandbox-and-approval preset |
+| `/permissions [preset]` | Open the permission picker, or switch directly to a named sandbox-and-approval preset |
 | `/yolo` | **Dangerous:** disable the sandbox and approval prompts; the result prints the recovery command |
 | `/clear` | Clear only the rendered transcript; durable session history is unchanged |
 | `/details` | Change tool-card visibility and reasoning display |

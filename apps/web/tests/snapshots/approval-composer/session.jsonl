@@ -1,5 +1,5 @@
 {"type":"session","version":0,"id":"{{sessionId}}","createdAt":1785403668101,"cwd":"{{cwd}}/workspace"}
-{"type":"command/run","seq":0,"time":1785403668197,"data":{"commandId":"cmd-0ab130cc-1","name":"permission","args":" read-only","source":{"kind":"user"}}}
+{"type":"command/run","seq":0,"time":1785403668197,"data":{"commandId":"cmd-0ab130cc-1","name":"permissions","args":" read-only","source":{"kind":"user"}}}
 {"type":"permission/preset","seq":1,"time":1785403668197,"data":{"preset":"read-only"}}
 {"type":"sandbox/mode","seq":2,"time":1785403668197,"data":{"mode":"read-only"}}
 {"type":"approval/policy","seq":3,"time":1785403668198,"data":{"policy":"ask"}}

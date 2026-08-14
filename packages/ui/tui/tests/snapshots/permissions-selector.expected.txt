@@ -1,7 +1,7 @@
 terminal 96x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor hidden column=8 viewportRow=30 bufferRow=30
+cursor hidden column=0 viewportRow=35 bufferRow=35
 buffer
 0| "                                             ⣀⣀⣀⣀⣤⡄  ⢠⡄"
   style 40-54 fg=blue
@@ -29,7 +29,7 @@ buffer
   style 4-31 dim
   style 34-61 dim
   style 64-91 dim
-12| "    │ not composed             │  │ deepseek-v4-flash        │  │ Full access              │"
+12| "    │ not composed             │  │ deepseek-v4-flash        │  │ Approve for me           │"
   style 4-4 dim
   style 31-31 dim
   style 34-34 dim
@@ -40,20 +40,33 @@ buffer
   style 4-31 dim
   style 34-61 dim
   style 64-91 dim
-14| "    "
-15| "    Recent sessions"
-  style 4-18 bold
-16| "      No previous sessions in this profile."
-  style 4-42 dim
-17| "      /resume opens searchable session history"
-  style 4-45 dim
-18| "    "
-19| "    Quick actions"
-  style 4-16 bold
-20| "      /model switch model    /workspace change workspace    /settings preferences"
-  style 6-11 fg=bright-magenta
-  style 29-38 fg=bright-magenta
-  style 60-68 fg=bright-magenta
+14| "          ╭ Update Permissions ──────────────────────────────────────────────────────╮          "
+  style 10-85 fg=bright-magenta
+15| "    Recent│   Ask for approval                Read files by default; changes and w   │          "
+  style 4-9 bold
+  style 10-10 fg=bright-magenta
+  style 30-81 dim
+  style 85-85 fg=bright-magenta
+16| "      No p│ → Approve for me                  current · Read and edit in the works   │          "
+  style 4-9 dim
+  style 10-10 fg=bright-magenta
+  style 12-81 fg=bright-magenta inverse
+  style 85-85 fg=bright-magenta
+17| "      /res│   Full access                     Edit outside the workspace and acces   │          "
+  style 4-9 dim
+  style 10-10 fg=bright-magenta
+  style 25-81 dim
+  style 85-85 fg=bright-magenta
+18| "          │                                                                          │          "
+  style 10-10 fg=bright-magenta
+  style 85-85 fg=bright-magenta
+19| "    Quick │ ↑/↓ move • Enter confirm • Esc close                                     │          "
+  style 4-9 bold
+  style 10-10 fg=bright-magenta
+  style 12-47 dim
+  style 85-85 fg=bright-magenta
+20| "      /mod╰──────────────────────────────────────────────────────────────────────────╯          "
+  style 6-85 fg=bright-magenta
 21| "      /resume recent sessions  /help commands and shortcuts  @ attach a file"
   style 6-12 fg=bright-magenta
   style 31-35 fg=bright-magenta
@@ -64,25 +77,20 @@ buffer
 24| "                                          main-session"
   style 42-53 dim
 25| <blank>
-26| "DANGER: full access enabled — sandbox and approval prompts are disabled; restore with           "
+26| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
   style 0-95 dim
-27| "/permissions workspace-write                                                                    "
-  style 0-27 dim
-28| <blank>
-29| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-95 dim
-30| "│ dsh > Describe a task, @ a file, or / for commands                                           │"
+27| "│ dsh > Describe a task, @ a file, or / for commands                                           │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
   style 6-51 dim
   style 95-95 dim
-31| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+28| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-95 dim
-32| "/workspace/project (tui-staging)              idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+29| "/workspace/project (tui-staging)              idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 46-49 dim
   style 52-76 dim
   style 79-83 dim
   style 86-95 dim
-33-35| <blank>
+30-35| <blank>

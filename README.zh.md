@@ -133,6 +133,8 @@ Web 界面仍然是独立的 `base + web-app` profile。增加 TUI 不会让 Web
 |---|---|
 | `/help` | 显示当前快捷键和有效命令注册表 |
 | `/model [[provider/]model]` | 打开选择器，或直接选择无歧义目标 |
+| `/permission [preset]` | 查看或切换当前 Session 的沙箱与审批 preset |
+| `/yolo` | **危险：**关闭沙箱和审批提示；执行结果会打印恢复命令 |
 | `/clear` | 只清空已渲染 transcript；持久化 Session 历史不变 |
 | `/details` | 修改工具卡片可见性和 reasoning 展示 |
 | `/palette` | 查看语义化 ANSI palette |
@@ -207,6 +209,7 @@ pnpm dsh tui --patch ./extra.cordis.yml --resume <session-id>
 ## 安全与隐私边界
 
 - 新 Session 默认使用 `workspace-write` 并显示审批提示。受强制的文件修改被限制在 Session workspace 和平台临时根目录内，但读取、网络访问和进程可见性并不是完整的沙箱边界。
+- `/yolo` 会有意把当前 Session 切换到配置中的 `danger-full-access + never` preset。输入这个明确命令本身就是确认，因此不会再弹出第二次确认；只能在已有外部隔离的环境中使用，并通过结果中打印的命令恢复更安全的 preset。
 - `DSH_PERMISSION_MODE=danger-full-access` 会移除常规文件边界，并把随附审批策略改为 `never`。只应在已经隔离的环境中使用它。
 - 环境凭据对进程可见。`$DSH_HOME/.credentials.yaml` 是用于减少意外泄露的普通文件，不是操作系统 keychain；其他同用户进程可以读取它。
 - 外部插件和 MCP server 命令是在 Agent 工具沙箱之外加载的受信任可执行代码。向 profile 添加插件前，请审查它及其安装脚本。

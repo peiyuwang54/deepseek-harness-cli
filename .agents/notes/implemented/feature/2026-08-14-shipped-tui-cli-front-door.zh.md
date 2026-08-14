@@ -22,7 +22,7 @@ Settings 与 workspace 状态属于 Host 平面的产品服务，而非浏览器
 
 Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到当前 API。权威 `Session` 事件仍是唯一持久对话来源：replay 将这些事件折叠成已提交终端输出，实时 chunk、工具进度、问题与审批则是瞬时 projection。TUI 不会增加第二份聊天日志或工具 scheduler。它消费现有的作用域 command registry、Agent inbox 操作、session query/reference 服务、skill registry、工具 presenter、token meter 与模型选择 seam。
 
-审批策略与执行仍由 `ctx.approval` 持有。TUI 只为 `approval/request` 注册精确 Agent、FIFO 的回答器，返回 `allowed-once`、`rejected`、`cancelled` 或 `unavailable`；Approval 服务持有持久 `approval/asked` 与 `approval/decided` 审计事件对。`ctx.userQuestions` 仍是独立的结构化问题 provider。两者共享 renderer 的模态队列，但都不会让 TUI 成为生命周期或策略权威。
+审批策略与执行仍由 `ctx.approval` 持有。TUI 只为 `approval/request` 注册精确 Agent、FIFO 的回答器，返回 `allowed-once`、`rejected`、`cancelled` 或 `unavailable`；Approval 服务持有持久 `approval/asked` 与 `approval/decided` 审计事件对。共享 Permission 服务会贡献 `/permission` 与受 Codex 启发的 `/yolo` 快捷命令。后者解析部署中组合 `danger-full-access` 与 `never` 的 preset，并通过相同的沙箱 setter 与实时 Approval setter 写入；显式命令本身就是确认，其结算文本会给出恢复此前可选择 preset 的命令。`ctx.userQuestions` 仍是独立的结构化问题 provider。两个交互队列共享 renderer 的模态队列，但都不会让 TUI 成为生命周期或策略权威。
 
 终端渲染把稳定历史与实时 projection 分开，保留首 token 前与分阶段计时，把空的 Assistant 行重排到已认领的用户／上下文消息之后，渲染工具持有的展示意图，支持会话恢复与作用域 skill，并在 dispose 时恢复 raw mode。按宽度索引的卡片缓存避免每一帧都重新换行已结算输出，一个只向前推进的计时 cursor 则为所有 step footer 提供数据，无需反复扫描完整日志。颜色方案或 reasoning 重建会保留当前 streaming component 并使其计时缓存失效，因此轮次中的重绘不会丢失累计 response 时间。
 

@@ -251,9 +251,9 @@ export class PermissionPresetService extends Service {
       })
     })
 
-    // The /permission command: the one write path a web client uses (the
-    // popup contribution submits the picked preset as this line). The child
-    // activates only when a command registry is composed.
+    // The command write paths activate only when a command registry is
+    // composed. Web's popup submits /permission; /yolo is the explicit,
+    // high-risk shortcut used by terminal surfaces.
     ctx.inject(['commands'], (commandCtx) => {
       commandCtx.commands.register({
         name: 'permission',
@@ -272,6 +272,32 @@ export class PermissionPresetService extends Service {
           }
           this.apply(agent.session, name, (policy) =>{  this.ctx.approval.setPolicy(agent, policy) })
           return { kind: 'success', text: `preset ${name}` }
+        },
+      })
+      commandCtx.commands.register({
+        name: 'yolo',
+        description: 'DANGEROUS: disable the sandbox and all approval prompts',
+        handler: ({ agent, rawInput }) => {
+          if (rawInput.trim() !== '') {
+            return { kind: 'error', text: 'usage: /yolo' }
+          }
+          const target = this.names.find((name) => {
+            const preset = this.presets[name]
+            return preset?.sandbox === 'danger-full-access' && preset.approval === 'never'
+          })
+          if (target === undefined) {
+            return { kind: 'error', text: 'full access is unavailable in this permission configuration' }
+          }
+          const previous = this.current(agent.session.events)
+          this.apply(agent.session, target, (policy) => { this.ctx.approval.setPolicy(agent, policy) })
+          const restore = previous !== CUSTOM_PRESET && previous !== target
+            ? previous
+            : this.names.find(name => name !== target)
+          const restoreHint = restore === undefined ? '' : `; restore with /permission ${restore}`
+          return {
+            kind: 'success',
+            text: `DANGER: full access enabled — sandbox and approval prompts are disabled${restoreHint}`,
+          }
         },
       })
     })

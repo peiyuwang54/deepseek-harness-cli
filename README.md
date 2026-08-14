@@ -133,6 +133,8 @@ The terminal is an independent presentation layer over the same Agent, Session, 
 |---|---|
 | `/help` | Show current shortcuts and the effective command registry |
 | `/model [[provider/]model]` | Open the selector or choose an unambiguous target directly |
+| `/permission [preset]` | Show or switch the session's sandbox-and-approval preset |
+| `/yolo` | **Dangerous:** disable the sandbox and approval prompts; the result prints the recovery command |
 | `/clear` | Clear only the rendered transcript; durable session history is unchanged |
 | `/details` | Change tool-card visibility and reasoning display |
 | `/palette` | Inspect the semantic ANSI palette |
@@ -207,6 +209,7 @@ See the [CLI behavior reference](apps/cli/reference/README.md), the [TUI rendere
 ## Security and privacy boundaries
 
 - New sessions default to `workspace-write` with approval prompts. Enforced file mutations are confined to the session workspace and platform temporary roots, but reads, network access, and process visibility are not a complete sandbox boundary.
+- `/yolo` deliberately switches the current session to the configured `danger-full-access + never` preset. It executes without another confirmation because entering the explicit command is the confirmation; use only in an externally isolated environment, and restore the safer preset with the command printed in its result.
 - `DSH_PERMISSION_MODE=danger-full-access` removes the normal file boundary and changes the shipped approval policy to `never`. Use it only in an already isolated environment.
 - Environment credentials are process-visible. `$DSH_HOME/.credentials.yaml` is a plain file protected from accidental disclosure, not an OS keychain; another same-user process can read it.
 - External plugins and MCP server commands are trusted executable code loaded outside the Agent's tool sandbox. Review a plugin and its install scripts before adding it to a profile.

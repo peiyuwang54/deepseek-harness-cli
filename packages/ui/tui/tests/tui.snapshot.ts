@@ -9,6 +9,7 @@ import DynamicCordisRunner from '@deepseek-ai/dsh-cordis-host-runner'
 import { compactCheckpointSource, CompactionId } from '@deepseek-ai/dsh-compaction'
 import { createUserMessage, CallId, type ContentBlock , createMessage, createToolResultMessage } from '@deepseek-ai/dsh-llm'
 import { RetryId } from '@deepseek-ai/dsh-llm-retry'
+import PermissionPresetService from '@deepseek-ai/dsh-permission-presets'
 import { SessionId, type JsonValue, type Session, type SessionEvent } from '@deepseek-ai/dsh-session'
 import SessionReferenceResolver from '@deepseek-ai/dsh-session-reference'
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
@@ -66,6 +67,7 @@ const CHECKPOINTS = [
   'model-selector',
   'model-selector-filtered',
   'model-switching',
+  'yolo-permission',
   'settings-hub',
   'theme-selector',
   'workspace-selector',
@@ -173,6 +175,18 @@ async function configureAdvancedTools(ctx: Context): Promise<void> {
   await ctx.plugin(ToolWorkflow, { toolName: 'workflow', maxResultChars: 50_000 })
   await ctx.plugin(DynamicCordisRunner, { vmTimeoutMs: 5_000 })
   await ctx.plugin(ToolCordis)
+}
+
+async function configurePermissionPresets(ctx: Context): Promise<void> {
+  await ctx.plugin(SystemPrompt)
+  await ctx.plugin(ToolRegistry)
+  ctx.provide('shell', {
+    sandboxMode: 'workspace-write',
+    resolve() { throw new Error('permission snapshot does not execute shell commands') },
+    run() { throw new Error('permission snapshot does not execute shell commands') },
+    start() { throw new Error('permission snapshot does not execute shell commands') },
+  })
+  await ctx.plugin(PermissionPresetService, {})
 }
 
 interface ToolCallFixture {
@@ -1065,6 +1079,19 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('model-switching', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins the explicit full-access shortcut and recovery guidance', async () => {
+    const harness = await setupSnapshot({
+      omitInitialLifecycle: true,
+      configureContext: configurePermissionPresets,
+    }, { columns: 96, rows: 36 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/yolo')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('yolo-permission', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

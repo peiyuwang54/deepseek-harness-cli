@@ -4,7 +4,8 @@
  * select (table options + effective current value, `custom` appended exactly
  * while derived) folded from the three knob events over the composition
  * defaults; the command child registers `/permission` whose handler switches
- * through `permission.set` (bare invocation reports, unknown names error);
+ * through `permission.set` (bare invocation reports, unknown names error) and
+ * `/yolo` as the explicit full-access/no-approval shortcut;
  * compositions without either registry are unaffected; unmounting the
  * service removes the key (HMR safety).
  */
@@ -129,5 +130,62 @@ describe('/permission command', () => {
     })
     expect(session.events.filter(event =>
       event.type !== 'command/run' && event.type !== 'command/done')).toEqual(before)
+  })
+})
+
+describe('/yolo command', () => {
+  it('selects full access and reports the exact recovery command', async () => {
+    const { ctx, session } = await harness()
+    const { agent, inject } = await agentFor(ctx, session)
+    expect(ctx.commands.list(agent)).toContainEqual({
+      name: 'yolo',
+      description: 'DANGEROUS: disable the sandbox and all approval prompts',
+    })
+    const execution = await ctx.commands.execute(agent, '/yolo', new AbortController().signal)
+
+    expect(execution?.result).toEqual({
+      kind: 'success',
+      text: 'DANGER: full access enabled — sandbox and approval prompts are disabled; restore with /permission workspace-write',
+    })
+    expect(ctx.permissionPresets.current(session.events)).toBe('danger-full-access')
+    expect(inject.mock.calls[0]?.[0]).toMatchObject({
+      content: [{
+        type: 'text',
+        text: 'The approval policy changed from "ask" to "never" (changed by the user).',
+      }],
+    })
+    expect(session.events.find(event => event.type === 'command/run')?.data).toMatchObject({ name: 'yolo' })
+  })
+
+  it('rejects arguments and deployments without the unrestricted preset', async () => {
+    const first = await harness()
+    const { agent: firstAgent } = await agentFor(first.ctx, first.session)
+    const withArgument = await first.ctx.commands.execute(
+      firstAgent,
+      '/yolo off',
+      new AbortController().signal,
+    )
+    expect(withArgument?.result).toEqual({ kind: 'error', text: 'usage: /yolo' })
+    expect(first.ctx.permissionPresets.current(first.session.events)).toBe('workspace-write')
+
+    const second = await harness({
+      config: {
+        presets: {
+          safe: { sandbox: 'workspace-write', approval: 'ask' },
+        },
+        defaultPreset: 'safe',
+      },
+    })
+    const { agent: secondAgent } = await agentFor(second.ctx, second.session)
+    const unavailable = await second.ctx.commands.execute(
+      secondAgent,
+      '/yolo',
+      new AbortController().signal,
+    )
+    expect(unavailable?.result).toEqual({
+      kind: 'error',
+      text: 'full access is unavailable in this permission configuration',
+    })
+    expect(second.ctx.permissionPresets.current(second.session.events)).toBe('safe')
   })
 })

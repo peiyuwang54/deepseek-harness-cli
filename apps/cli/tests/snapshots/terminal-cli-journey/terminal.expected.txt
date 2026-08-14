@@ -1,0 +1,27 @@
+=== fresh ===
+DeepSeek Harness CLI
+session: {{sessionId}}
+cwd: {{cwd}}
+model: deepseek-official/deepseek-v4-flash
+permissions: workspace-write, approval ask
+Type /help for commands.
+
+› first prompt
+
+assistant> FIRST_REPLY
+› second prompt
+
+assistant> SECOND_REPLY
+› /exit
+=== resume ===
+DeepSeek Harness CLI
+session: {{sessionId}}
+cwd: {{cwd}}
+model: deepseek-official/deepseek-v4-flash
+permissions: workspace-write, approval ask
+Type /help for commands.
+
+› resume prompt
+
+assistant> RESUME_REPLY
+› /exit

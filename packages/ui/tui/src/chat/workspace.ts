@@ -246,7 +246,7 @@ export function createWorkspaceController(deps: WorkspaceControllerDeps): Worksp
         anchor: 'center',
         margin: 1,
       },
-    })
+    }, 'composer')
     workspaceOverlay = session
     void session.closed.then(() => {
       if (workspaceOverlay === session) workspaceOverlay = undefined

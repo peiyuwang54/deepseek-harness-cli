@@ -158,7 +158,7 @@ export function createModelController(deps: ModelControllerDeps): ModelControlle
         anchor: 'center',
         margin: 1,
       },
-    })
+    }, 'composer')
     modelOverlay = session
     void session.closed.then(() => {
       if (modelOverlay === session) modelOverlay = undefined

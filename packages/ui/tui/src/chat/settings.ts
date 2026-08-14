@@ -203,7 +203,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
         anchor: 'center',
         margin: 1,
       },
-    })
+    }, 'composer')
     themeOverlay = session
     void session.closed.then(() => {
       if (themeOverlay === session) themeOverlay = undefined
@@ -262,7 +262,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
         anchor: 'center',
         margin: 1,
       },
-    })
+    }, 'composer')
     settingsOverlay = session
     void session.closed.then(() => {
       if (settingsOverlay === session) settingsOverlay = undefined

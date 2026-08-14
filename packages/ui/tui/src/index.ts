@@ -334,6 +334,18 @@ class InlineModalComponent extends Container {
   }
 }
 
+/** Resolve a column/row count or percentage against the current terminal edge. */
+function resolveInlineModalSize(
+  value: number | `${number}%` | undefined,
+  total: number,
+  fallback: number,
+): number {
+  if (typeof value === 'number') return value
+  if (value === undefined) return fallback
+  const percentage = Number.parseFloat(value.slice(0, -1))
+  return Number.isFinite(percentage) ? Math.max(1, Math.floor(total * percentage / 100)) : fallback
+}
+
 /** Lifecycle handle for a mounted interactive terminal channel. */
 export interface TuiController {
   /** Stop rendering, restore the terminal, and reject pending questions. */
@@ -370,6 +382,7 @@ export function createTuiChat(
   const chat = new Container()
   const todoContainer = new Container()
   const questionContainer = new Container()
+  const composerOverlayContainer = new Container()
   const inputTemplate = parseTuiPromptTemplate(displayInlineText(resolved.theme.inputPrompt))
   const renderInputPrompt = (): string => renderTuiPromptTemplate(inputTemplate, valueName => ctx.tuiPrompt.get(valueName))
   const initialInputPrompt = renderInputPrompt()
@@ -640,6 +653,7 @@ export function createTuiChat(
       + promptContext.render(width).length
       + sessionStatsLine.render(width).length
       + questionContainer.render(width).length
+      + composerOverlayContainer.render(width).length
       + editor.render(width).length
     const available = Math.max(0, runtime.terminal.rows - reservedRows)
     // A pristine welcome dashboard is already the complete zero-state body.
@@ -656,6 +670,7 @@ export function createTuiChat(
   ui.addChild(compactionStatusLine)
   ui.addChild(questionContainer)
   ui.addChild(editor)
+  ui.addChild(composerOverlayContainer)
   ui.addChild(promptContext)
   ui.addChild(sessionStatsLine)
   ui.setFocus(editor)
@@ -776,19 +791,25 @@ export function createTuiChat(
               : {},
           })
       }
+      const isQuestion = placement === 'inline'
       const modal = new InlineModalComponent(
         component,
-        resolved.questionDialogWidth,
-        resolved.questionDialogMaxHeight,
+        isQuestion
+          ? resolved.questionDialogWidth
+          : resolveInlineModalSize(options?.width, runtime.terminal.columns, runtime.terminal.columns),
+        isQuestion
+          ? resolved.questionDialogMaxHeight
+          : resolveInlineModalSize(options?.maxHeight, runtime.terminal.rows, resolved.modelDialogMaxHeight),
       )
-      editor.frameVisible = false
-      questionContainer.clear()
-      questionContainer.addChild(modal)
+      const container = isQuestion ? questionContainer : composerOverlayContainer
+      if (isQuestion) editor.frameVisible = false
+      container.clear()
+      container.addChild(modal)
       ui.setFocus(component)
       return {
         hide(): void {
-          questionContainer.clear()
-          editor.frameVisible = true
+          container.clear()
+          if (isQuestion) editor.frameVisible = true
           ui.setFocus(editor)
         },
       }
@@ -1545,7 +1566,7 @@ export function createTuiChat(
         () => { void session.close() },
       ),
       options: { width: resolved.detailsDialogWidth, anchor: 'center', margin: 1 },
-    })
+    }, 'composer')
     detailsOverlay = session
     void session.closed.then(() => {
       if (detailsOverlay === session) detailsOverlay = undefined
@@ -1590,7 +1611,7 @@ export function createTuiChat(
         anchor: 'center',
         margin: 1,
       },
-    })
+    }, 'composer')
     permissionsOverlay = session
     void session.closed.then(() => {
       if (permissionsOverlay === session) permissionsOverlay = undefined
@@ -1676,7 +1697,7 @@ export function createTuiChat(
         anchor: 'center',
         margin: 1,
       },
-    })
+    }, 'composer')
     commandHubOverlay = session
     void session.closed.then(() => {
       if (commandHubOverlay === session) commandHubOverlay = undefined

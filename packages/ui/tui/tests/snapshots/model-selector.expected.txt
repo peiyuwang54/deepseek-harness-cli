@@ -1,7 +1,7 @@
 terminal 92x32 buffer=normal length=32 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=12 viewportRow=12 bufferRow=12
+cursor visible column=4 viewportRow=9 bufferRow=9
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -21,44 +21,43 @@ buffer
   style 91-91 dim
 7| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-91 dim
-8| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+8| "╭ Select model ────────────────────────────────────────────────────────────╮"
+  style 0-75 fg=bright-magenta
+9| "│ >                                                                        │"
+  style 0-0 fg=bright-magenta
+  style 4-4 inverse
+  style 75-75 fg=bright-magenta
+10| "│                                                                          │"
+  style 0-0 fg=bright-magenta
+  style 75-75 fg=bright-magenta
+11| "│ → deepseek-official/deepseek-v4-  DeepSeek V4 Flash — High — current     │"
+  style 0-0 fg=bright-magenta
+  style 2-33 fg=bright-magenta inverse
+  style 75-75 fg=bright-magenta
+12| "│   deepseek-official/deepseek-v4-  DeepSeek V4 Pro — High                 │"
+  style 0-0 fg=bright-magenta
+  style 34-57 dim
+  style 75-75 fg=bright-magenta
+13| "│                                                                          │"
+  style 0-0 fg=bright-magenta
+  style 75-75 fg=bright-magenta
+14| "│ Reasoning effort  Off  [High]  Max                                       │"
+  style 0-0 fg=bright-magenta
+  style 20-22 dim
+  style 25-30 fg=bright-magenta bold
+  style 33-35 dim
+  style 75-75 fg=bright-magenta
+15| "│ type to filter • ↑/↓ model • Tab/←/→ effort • Enter select • Esc         │"
+  style 0-0 fg=bright-magenta
+  style 2-65 dim
+  style 75-75 fg=bright-magenta
+16| "╰──────────────────────────────────────────────────────────────────────────╯"
+  style 0-75 fg=bright-magenta
+17| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 40-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-9-10| <blank>
-11| "        ╭ Select model ────────────────────────────────────────────────────────────╮        "
-  style 8-83 fg=bright-magenta
-12| "        │ >                                                                        │        "
-  style 8-8 fg=bright-magenta
-  style 12-12 inverse
-  style 83-83 fg=bright-magenta
-13| "        │                                                                          │        "
-  style 8-8 fg=bright-magenta
-  style 83-83 fg=bright-magenta
-14| "        │ → deepseek-official/deepseek-v4-  DeepSeek V4 Flash — High — current     │        "
-  style 8-8 fg=bright-magenta
-  style 10-41 fg=bright-magenta inverse
-  style 83-83 fg=bright-magenta
-15| "        │   deepseek-official/deepseek-v4-  DeepSeek V4 Pro — High                 │        "
-  style 8-8 fg=bright-magenta
-  style 42-65 dim
-  style 83-83 fg=bright-magenta
-16| "        │                                                                          │        "
-  style 8-8 fg=bright-magenta
-  style 83-83 fg=bright-magenta
-17| "        │ Reasoning effort  Off  [High]  Max                                       │        "
-  style 8-8 fg=bright-magenta
-  style 28-30 dim
-  style 33-38 fg=bright-magenta bold
-  style 41-43 dim
-  style 83-83 fg=bright-magenta
-18| "        │ type to filter • ↑/↓ model • Tab/←/→ effort • Enter select • Esc         │        "
-  style 8-8 fg=bright-magenta
-  style 10-73 dim
-  style 83-83 fg=bright-magenta
-19| "        ╰──────────────────────────────────────────────────────────────────────────╯        "
-  style 8-83 fg=bright-magenta
-20-31| <blank>
+18-31| <blank>

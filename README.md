@@ -28,21 +28,19 @@ macOS or Linux:
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
 ```
 
-Windows currently installs from a source checkout:
-
 <a id="install-windows"></a>
 
+Windows:
+
 ```powershell
-git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
-cd deepseek-harness-cli
-powershell -ExecutionPolicy Bypass -File .\scripts\install\install.ps1
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.ps1 | iex"
 ```
 
 Package managers are also supported:
 
 ```sh
 npm install -g @peiyu_wang/deepseek-harness-cli
-brew install peiyuwang54/dsh/deepseek-harness-cli
+brew install --cask peiyuwang54/dsh/deepseek-harness-cli
 ```
 
 Open a project directory and start the CLI with `deepseek` or its shorter `dsh` alias:

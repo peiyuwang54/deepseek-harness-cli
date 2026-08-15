@@ -572,7 +572,7 @@ jobs:
   # tool caches make them redundant (and saving here would poison the hosted
   # cache namespace with self-hosted paths).
   serial-linux-selfhosted:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.repository == 'deepseek-ai/deepseek-harness' && github.event_name == 'push' && github.ref == 'refs/heads/master'
     name: serial / linux (self-hosted standby)
     runs-on: [self-hosted, linux, x64, vm-backup]
     steps:
@@ -656,7 +656,7 @@ jobs:
   # and tool caches make them redundant (and saving here would poison the
   # hosted cache namespace with self-hosted paths).
   serial-windows:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.repository == 'deepseek-ai/deepseek-harness' && github.event_name == 'push' && github.ref == 'refs/heads/master'
     name: serial / windows (self-hosted standby)
     runs-on: [self-hosted, dsh-win-ci, windows]
     timeout-minutes: 60

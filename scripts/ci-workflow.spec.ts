@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const root = resolve(import.meta.dirname, '..')
 const runnerPrivatePnpmDestination = '${{ runner.temp }}/setup-pnpm'
+const canonicalMasterPush = "github.repository == 'deepseek-ai/deepseek-harness' && github.event_name == 'push' && github.ref == 'refs/heads/master'"
 
 describe('CI workflow', () => {
   it('isolates every pnpm action setup destination per runner', () => {
@@ -81,8 +82,8 @@ describe('CI workflow', () => {
     expect(wineAptCache.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/master'")
     expect(wineAptCache['runs-on']).toBe('ubuntu-latest')
 
-    // serial-windows: master-only standby, self-hosted, non-blocking.
-    expect(serialWindows.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/master'")
+    // serial-windows: canonical-repository standby, self-hosted, non-blocking.
+    expect(serialWindows.if).toBe(canonicalMasterPush)
     expect(serialWindows['runs-on']).toEqual(['self-hosted', 'dsh-win-ci', 'windows'])
     expect(serialWindows.name).toBe('serial / windows (self-hosted standby)')
 
@@ -105,7 +106,7 @@ describe('CI workflow', () => {
     expect(aggregate['runs-on']).toContain('vm-backup')
   })
 
-  it('exempts push from cancellation, so one master merge does not cancel the running drill', () => {
+  it('exempts push from cancellation without dispatching private standby runners in forks', () => {
     const workflow = loadWorkflow('.github/workflows/ci.yml')
     if (!isRecord(workflow.jobs) || !isRecord(workflow.concurrency)) {
       throw new TypeError('CI workflow must define jobs and a workflow-level concurrency block')
@@ -128,8 +129,8 @@ describe('CI workflow', () => {
       const job = workflow.jobs[name]
       if (!isRecord(job)) throw new TypeError(`${name} must be defined`)
       expect(job.concurrency).toBeUndefined()
-      // Both stay master-push-only; that is what makes the push carve-out safe.
-      expect(job.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/master'")
+      // The private runner labels exist only in the canonical repository.
+      expect(job.if).toBe(canonicalMasterPush)
     }
 
     // What bounds the cost of exempting push: a master push may only carry the
@@ -483,6 +484,37 @@ describe('Git hooks', () => {
   })
 })
 
+describe('Documentation Pages workflow', () => {
+  it('verifies documentation even when Pages is unavailable', () => {
+    const workflow = loadWorkflow('.github/workflows/docs-pages.yml')
+    const build = workflowJob(workflow, 'build')
+    const deploy = workflowJob(workflow, 'deploy')
+    if (!Array.isArray(build.steps) || !isRecord(build.outputs)) {
+      throw new TypeError('documentation build job must define steps and outputs')
+    }
+
+    const buildSteps: unknown[] = build.steps
+    const configure: unknown = buildSteps.find(step => isRecord(step) && step.name === 'Configure Pages')
+    const verify: unknown = buildSteps.find(step => isRecord(step) && step.name === 'Verify and build documentation')
+    const upload: unknown = buildSteps.find(step => isRecord(step) && step.name === 'Upload Pages artifact')
+
+    expect(build.if).toBeUndefined()
+    expect(build.outputs.pages_enabled).toBe("${{ steps.pages.outcome == 'success' }}")
+    expect(configure).toMatchObject({
+      if: '${{ !github.event.repository.private }}',
+      'continue-on-error': true,
+    })
+    expect(verify).toMatchObject({
+      run: 'pnpm run doc-sync',
+      env: {
+        DOCS_BASE: "${{ steps.pages.outcome == 'success' && format('{0}/', steps.pages.outputs.base_path) || '/' }}",
+      },
+    })
+    expect(upload).toMatchObject({ if: "${{ steps.pages.outcome == 'success' }}" })
+    expect(deploy.if).toBe("${{ needs.build.outputs.pages_enabled == 'true' }}")
+  })
+})
+
 describe('CLI release workflow', () => {
   it('builds win-x64 on windows-2025 beside the four Unix targets', () => {
     const workflow = loadWorkflow('.github/workflows/deepseek-harness-cli-release.yml')
@@ -499,6 +531,9 @@ describe('CLI release workflow', () => {
       throw new TypeError('CLI release jobs must define steps')
     }
     const buildSteps: unknown[] = build.steps
+    const packageSteps: unknown[] = packageJob.steps
+    const releaseSteps: unknown[] = release.steps
+    const npmPublishSteps: unknown[] = npmPublish.steps
     const matrixStep = plan.steps.find((step): step is Record<string, unknown> & { run: string } => (
       isRecord(step) && typeof step.run === 'string' && step.run.includes('node24-win-x64')
     ))
@@ -520,13 +555,13 @@ describe('CLI release workflow', () => {
       "shell: process.platform === 'win32' && command.toLowerCase().endsWith('.cmd')",
     )
 
-    const npmArtifact = packageJob.steps.find(step => (
+    const npmArtifact: unknown = packageSteps.find(step => (
       isRecord(step) && step.uses === 'actions/upload-artifact@v4'
       && isRecord(step.with) && step.with.name === 'deepseek-harness-cli-npm-packages'
     ))
-    const releaseStep = release.steps.find(step => isRecord(step) && step.name === 'Create or refresh the release with assets')
-    const npmIdentityStep = npmPublish.steps.find(step => isRecord(step) && step.name === 'Verify npm publisher identity')
-    const npmStep = npmPublish.steps.find(step => isRecord(step) && step.name === 'Publish the main shim and per-platform packages')
+    const releaseStep: unknown = releaseSteps.find(step => isRecord(step) && step.name === 'Create or refresh the release with assets')
+    const npmIdentityStep: unknown = npmPublishSteps.find(step => isRecord(step) && step.name === 'Verify npm publisher identity')
+    const npmStep: unknown = npmPublishSteps.find(step => isRecord(step) && step.name === 'Publish the main shim and per-platform packages')
     if (!isRecord(releaseStep) || typeof releaseStep.run !== 'string'
       || !isRecord(npmStep) || typeof npmStep.run !== 'string') {
       throw new TypeError('CLI release and npm publish command steps must define run scripts')

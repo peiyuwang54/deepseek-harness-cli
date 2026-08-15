@@ -4,6 +4,8 @@ Status: implemented
 
 English | [中文](2026-08-15-dsh-cli-exe-distribution.zh.md)
 
+This note owns the POSIX single-file pipeline and the shared release channels. [Windows release distribution](2026-08-15-windows-cli-release-distribution.md) extends the same release and npm surfaces with directory runtimes.
+
 ## Problem
 
 The `deepseek-harness-cli` product (`apps/cli`, `@deepseek-ai/dsh`) had no installable artifact: the only way to run it was a source checkout and `pnpm dsh …`. This fork wants the same one-line install experience as OpenAI Codex on macOS and Linux, over three channels — a curl|sh installer, an npm global install, and a Homebrew cask — so an end user never builds from source.
@@ -12,7 +14,7 @@ The Python SDK already shipped a single-file executable built by `@yao-pkg/pkg`'
 
 ## Decision
 
-The `deepseek-harness-cli` ships as a single-file executable per platform, built by the same `--sea` pipeline as the Python runtime, and distributed through three channels. A release workflow builds the four targets, assembles every channel's artifact from the same bytes, and publishes them together.
+On macOS and Linux, `deepseek-harness-cli` ships as a single-file executable built by the same `--sea` pipeline as the Python runtime and distributed through three channels. A release workflow builds the four POSIX targets and publishes them with the Windows directory runtimes owned by the follow-up note.
 
 ### The shared exe pipeline
 
@@ -37,7 +39,7 @@ The CLI deploy root is `apps/cli/exe` (`deepseek-harness-cli-exe-pkg`, a zero-co
 
 ### Channel 2: npm global install
 
-Codex's npm contract, under the fork's scope. The main package `@peiyuwang54/deepseek-harness-cli` (version `X.Y.Z`) is a thin ESM shim with `bin: { 'deepseek-harness-cli': 'bin/deepseek-harness-cli.js' }`; the four per-platform packages publish the same name at `X.Y.Z-<os>-<cpu>` with `os`/`cpu` fields and **no `bin` field** (a `bin` field would collide with the shim's `deepseek-harness-cli` in `node_modules/.bin`). The shim maps `process.platform`/`process.arch` through the pure `platformTarget()` function (`darwin`→`macos`, `linux`; `arm64`, `x64`; anything else errors listing the supported targets), resolves `@peiyuwang54/deepseek-harness-cli-<os>-<cpu>/bin/deepseek-harness-cli` via `createRequire`, spawns it with inherited stdio, forwards SIGINT/SIGTERM/SIGHUP, and exits with the child's code. The main manifest selects the platform packages through `optionalDependencies` aliases (`"@peiyuwang54/deepseek-harness-cli-macos-arm64": "npm:@peiyuwang54/deepseek-harness-cli@<ver>-macos-arm64"`, and the other three), which is the only way npm conditions a dependency on the host `os`/`cpu`. dist-tags: the main package publishes as `next` for a prerelease or `latest` for a stable version; each platform package publishes under its own `macos-arm64` / `macos-x64` / `linux-arm64` / `linux-x64` tag. [`scripts/package-dsh-cli-npm.ts`](../../../../scripts/package-dsh-cli-npm.ts) lays out both package shapes from the built exes; [`scripts/dsh-npm-shim.js`](../../../../scripts/dsh-npm-shim.js) is the shipped shim. The keyless spec packs the main and host-platform packages, extracts them into a fake global install, and asserts the shim reproduces the host exe's `--version` output.
+Codex's npm contract, under the fork's scope. The main package `@peiyuwang54/deepseek-harness-cli` (version `X.Y.Z`) is a thin ESM shim with `bin: { 'deepseek-harness-cli': 'bin/deepseek-harness-cli.js' }`; six per-platform packages publish the same name at `X.Y.Z-<os>-<cpu>` with npm-native `os`/`cpu` fields and **no `bin` field** (a `bin` field would collide with the shim's `deepseek-harness-cli` in `node_modules/.bin`). The main manifest selects those packages through `optionalDependencies` aliases, so npm installs only the matching macOS, Linux, or Windows runtime. POSIX packages carry the executable described here; the [Windows release distribution note](2026-08-15-windows-cli-release-distribution.md) owns the directory package and bundled-Node launch. dist-tags use `macos-arm64`, `macos-x64`, `linux-arm64`, `linux-x64`, `windows-arm64`, and `windows-x64`; the main package publishes as `next` for a prerelease or `latest` for a stable version. [`scripts/package-dsh-cli-npm.ts`](../../../../scripts/package-dsh-cli-npm.ts) lays out the packages; [`scripts/dsh-npm-shim.js`](../../../../scripts/dsh-npm-shim.js) is the shipped shim.
 
 ### Channel 3: Homebrew cask
 
@@ -45,11 +47,12 @@ Codex's npm contract, under the fork's scope. The main package `@peiyuwang54/dee
 
 ### The release workflow
 
-[`.github/workflows/deepseek-harness-cli-release.yml`](../../../../.github/workflows/deepseek-harness-cli-release.yml) builds and publishes all three channels in one run, triggered by a `deepseek-harness-cli-v*` tag push or a manual dispatch whose optional `version` input overrides the tag or `apps/cli/package.json`:
+[`.github/workflows/deepseek-harness-cli-release.yml`](../../../../.github/workflows/deepseek-harness-cli-release.yml) builds and publishes all three channels in one run, triggered by a `deepseek-harness-cli-v*` tag push or a manual dispatch. The tag and optional dispatch `version` must match `apps/cli/package.json`, which is the version embedded in every runtime:
 
-- **plan** resolves the version and computes the four-target matrix (`node24-linux-x64`→ubuntu-latest, `node24-linux-arm64`→ubuntu-24.04-arm, `node24-macos-arm64`→macos-15, `node24-macos-x64`→macos-15-intel).
+- **plan** validates the version and computes the four-target POSIX matrix (`node24-linux-x64`→ubuntu-latest, `node24-linux-arm64`→ubuntu-24.04-arm, `node24-macos-arm64`→macos-15, `node24-macos-x64`→macos-15-intel).
 - **build** runs per target: immutable install, the node-pty manylinux 2.28 rebuild on Linux, `scripts/build-dsh-cli-exe.ts --targets=<target>`, a GLIBC ≤ 2.28 check on Linux, the macOS deployment-target check, a `--version` smoke equal to the release version, and artifact upload.
-- **package** builds the four release tarballs plus `.sha256` sidecars, runs the npm layout, generates the cask, and uploads all three groups.
+- **build-windows** builds and verifies the x64 and ARM64 directory runtimes described by the Windows follow-up note.
+- **package** builds the four POSIX tarballs plus two Windows ZIPs and their `.sha256` sidecars, runs the npm layout, generates the cask, and uploads all three groups.
 - **release** creates or refreshes the GitHub release with `GITHUB_TOKEN` + `contents: write`.
 - **npm-publish** (`environment: npm-publish`, `NPM_TOKEN`) publishes the main and platform packages; its `Release-publish` concurrency group is shared with the npm release workflow because dist-tags are shared registry state.
 - **brew-tap** clones the tap with `HOMEBREW_TAP_TOKEN`, replaces `Casks/d/deepseek-harness-cli.rb`, and pushes only when the file changed.
@@ -58,11 +61,11 @@ Top-level concurrency keys on `github.ref` with `cancel-in-progress: false`, so 
 
 ### Integrity: sha256 now, minisign next
 
-Every release publishes a sha256 sidecar per tarball, and both the installer and the cask verify it. Signature verification via minisign is the documented upgrade path in [`apps/cli/install/README.md`](../../../../apps/cli/install/README.md); with no external consumers, sha256 over HTTPS is proportionate for the pre-release period.
+Every release publishes a sha256 sidecar per tarball or ZIP. The POSIX installer and cask verify tarballs, and the Windows installer verifies ZIPs. Signature verification via minisign is the documented upgrade path in [`apps/cli/install/README.md`](../../../../apps/cli/install/README.md); with no external consumers, sha256 over HTTPS is proportionate for the pre-release period.
 
 ## Alternatives considered
 
-**Install the exe as the main npm package's own bin.** Rejected because one npm package cannot cleanly carry four platform binaries, and a single package would install all four. The Codex split — a shim main package with `os`/`cpu`-gated `optionalDependencies` aliases — is the working contract, keeps the global install to the one matching binary, and avoids a `.bin/deepseek-harness-cli` collision.
+**Install every runtime as the main npm package's own bin.** Rejected because one npm package cannot cleanly carry six platform runtimes, and a single package would install all six. The Codex split — a shim main package with `os`/`cpu`-gated `optionalDependencies` aliases — keeps the global install to one matching runtime and avoids a `.bin/deepseek-harness-cli` collision.
 
 **Platform packages with a `bin` field.** Rejected because npm would link `deepseek-harness-cli` from every installed platform package into the shared `node_modules/.bin`, colliding with the shim's `deepseek-harness-cli`. The platform packages carry only `files: ['bin']`; the shim resolves the executable by package path.
 
@@ -72,10 +75,10 @@ Every release publishes a sha256 sidecar per tarball, and both the installer and
 
 **Ship minisign signatures from day one.** Rejected for the pre-release stance: no external consumers, sha256 + HTTPS is proportionate, and key management plus a signing pipeline is real work best introduced as the documented upgrade path.
 
-**Windows targets.** Rejected as a non-goal, matching the existing single-exe architecture stance; the installer, the npm shim, and the cask all fail loudly on unsupported platforms.
+**Reuse the SEA pipeline for Windows.** Rejected because the single-exe path does not yet provide the tested ConPTY and native-addon behavior. Windows uses the directory runtime described in the follow-up note.
 
 ## Consequences
 
-**Bought**: three one-line installs from one release; one shared executable pipeline serving the Python SDK and the CLI, so a single build path is maintained; a closed CLI closure whose plugin set is a dependency manifest; keyless local verification of every distribution artifact (installer, npm shim, cask) against the host build.
+**Bought**: three publication channels from one release; one shared POSIX executable pipeline serving the Python SDK and the CLI; a closed CLI closure whose plugin set is a dependency manifest; keyless local verification of every distribution artifact against the host build.
 
-**Paid**: each platform artifact is on the order of 200 MB (the embedded Node runtime and the source closure); every release runs a four-target build plus three publication surfaces and needs the `NPM_TOKEN`, `HOMEBREW_TAP_TOKEN`, and `npm-publish` environment configured on the fork; the branch-pinned installer URL means the installer on `master` is fetched before a release tag exists (harmless for a script that resolves the version at run time, but a new channel; `releases/latest/download/install.sh` cannot serve prereleases); integrity is sha256-only until minisign lands; the fork owns a new npm scope and a tap repository as external infrastructure.
+**Paid**: each platform artifact is on the order of 200 MB; every release runs four POSIX and two Windows native builds across three publication surfaces and needs the `NPM_TOKEN`, `HOMEBREW_TAP_TOKEN`, and `npm-publish` environment configured on the fork; branch-pinned installer URLs track `master` independently of release tags; integrity is sha256-only until minisign lands; the fork owns a new npm scope and a tap repository as external infrastructure.

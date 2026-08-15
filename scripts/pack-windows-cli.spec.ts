@@ -32,6 +32,7 @@ describe('pack-windows-cli', () => {
     expect(text).toContain('restore missing workspace and hoist dependencies')
     expect(text).toContain('@deepseek-ai/dsh')
     expect(text).toContain('dsh.cmd')
+    expect(text).toContain('deepseek-harness-cli.cmd')
     expect(text).toContain('tar -a -cf')
     expect(text).toContain('[dry-run] would produce')
   })

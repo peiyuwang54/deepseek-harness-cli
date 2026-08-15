@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-deepseek-harness-cli is a lightweight, plugin-based coding agent that lives in your terminal. One single-file binary packages the interactive terminal UI, one-shot headless automation, and the Web UI on top of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
+deepseek-harness-cli is a lightweight, plugin-based coding agent that lives in your terminal. macOS and Linux use one single-file binary for the terminal UI, headless automation, and Web UI; Windows uses a native directory runtime for the terminal UI and headless automation. Both build on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
 
 > This is an unofficial community fork. It is not maintained, sponsored, or endorsed by DeepSeek AI. The upstream project and the `@deepseek-ai` packages originate from DeepSeek AI; the distributed `deepseek-harness-cli` binary is this fork's build.
 
@@ -22,15 +22,26 @@ The directory you run the command from is the workspace. Profiles, credentials, 
 
 ## Install
 
-macOS (`arm64`, `x64`) and Linux (`arm64`, `x64`) — pick one channel:
+macOS (`arm64`, `x64`) and Linux (`arm64`, `x64`):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
-npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-The curl|sh line verifies the tarball against the release's sha256 sidecar and installs to `$HOME/.deepseek-harness-cli/bin`; the npm line is a shim over the per-platform executable; the brew line serves the cask from the `peiyuwang54/homebrew-dsh` tap. Windows is not a distribution target; build from source or use [`scripts/install/install.ps1`](scripts/install/install.ps1).
+Windows (`arm64`, `x64`):
+
+```powershell
+irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/scripts/install/install.ps1 | iex
+```
+
+Any supported platform with npm:
+
+```sh
+npm install -g @peiyuwang54/deepseek-harness-cli
+```
+
+Both download installers verify the release artifact against its sha256 sidecar. The POSIX installer writes to `$HOME/.deepseek-harness-cli/bin`; PowerShell writes to `%LOCALAPPDATA%\Programs\dsh`; npm selects one of six platform runtimes; Homebrew serves the cask from `peiyuwang54/homebrew-dsh`. The Windows package does not contain the built Web frontend, so use `tui` or a headless profile there. See [installer details](apps/cli/install/README.md).
 
 <a id="run-from-source"></a>
 

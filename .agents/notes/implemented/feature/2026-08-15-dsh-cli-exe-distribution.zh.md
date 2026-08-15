@@ -4,6 +4,8 @@ Status: implemented
 
 [English](2026-08-15-dsh-cli-exe-distribution.md) | 中文
 
+本说明负责 POSIX 单文件流水线与共享 release 通道。[Windows release 分发说明](2026-08-15-windows-cli-release-distribution.md)会用目录运行时扩展同一套 release 与 npm 界面。
+
 ## 问题
 
 `deepseek-harness-cli` 产品（`apps/cli`，`@deepseek-ai/dsh`）此前没有任何可安装产物：唯一运行方式是从源码检出后用 `pnpm dsh …`。本 fork 希望在 macOS 与 Linux 上提供与 OpenAI Codex 相同的一行安装体验，覆盖三个通道——curl|sh 安装器、npm 全局安装、Homebrew cask——让终端用户永远不需要从源码构建。
@@ -12,7 +14,7 @@ Python SDK 已经通过 `@yao-pkg/pkg` 的 `--sea` 模式发布单文件可执�
 
 ## 决策
 
-`deepseek-harness-cli` 按平台以单文件可执行程序分发，与 Python 运行时共用同一条 `--sea` 管线，并通过三个通道发布。一个发布 workflow 构建四个目标，从同一份字节组装各通道的产物，并一起发布。
+在 macOS 与 Linux 上，`deepseek-harness-cli` 作为单文件可执行程序分发，与 Python 运行时共用同一条 `--sea` 管线，并通过三个通道发布。一个 release workflow 构建 4 个 POSIX 目标，并与后续说明负责的 Windows 目录运行时一起发布。
 
 ### 共享 exe 管线
 
@@ -37,7 +39,7 @@ CLI 部署根是 `apps/cli/exe`（`deepseek-harness-cli-exe-pkg`，镜像 SDK �
 
 ### 通道 2：npm 全局安装
 
-沿用 Codex 的 npm 契约，落在本 fork 的作用域下。主包 `@peiyuwang54/deepseek-harness-cli`（版本 `X.Y.Z`）是一个薄 ESM shim，`bin: { 'deepseek-harness-cli': 'bin/deepseek-harness-cli.js' }`；四个平台包以 `X.Y.Z-<os>-<cpu>` 发布同名版本，带 `os`/`cpu` 字段且**没有 `bin` 字段**（`bin` 字段会与 shim 的 `deepseek-harness-cli` 在 `node_modules/.bin` 里冲突）。shim 通过纯函数 `platformTarget()` 映射 `process.platform`/`process.arch`（`darwin`→`macos`、`linux`；`arm64`、`x64`；其余报错并列出受支持目标），用 `createRequire` 解析 `@peiyuwang54/deepseek-harness-cli-<os>-<cpu>/bin/deepseek-harness-cli`，以继承 stdio 的方式 spawn，转发 SIGINT/SIGTERM/SIGHUP，并以子进程退出码退出。主 manifest 通过 `optionalDependencies` 别名选择平台包（`"@peiyuwang54/deepseek-harness-cli-macos-arm64": "npm:@peiyuwang54/deepseek-harness-cli@<ver>-macos-arm64"`，以及其余三个）——这是 npm 按宿主 `os`/`cpu` 条件化依赖的唯一方式。dist-tag：主包在预发布时以 `next`、稳定版以 `latest` 发布；每个平台包以其各自的 `macos-arm64` / `macos-x64` / `linux-arm64` / `linux-x64` tag 发布。[`scripts/package-dsh-cli-npm.ts`](../../../../scripts/package-dsh-cli-npm.ts) 从已构建的 exe 布局出两种包形态；[`scripts/dsh-npm-shim.js`](../../../../scripts/dsh-npm-shim.js) 是随包发布的 shim。无 key 的 spec 会 pack 主包与宿主平台包，解压进伪装的全局安装目录，并断言 shim 复现宿主 exe 的 `--version` 输出。
+沿用 Codex 的 npm 契约，落在本 fork 的作用域下。主包 `@peiyuwang54/deepseek-harness-cli`（版本 `X.Y.Z`）是一个薄 ESM shim，`bin: { 'deepseek-harness-cli': 'bin/deepseek-harness-cli.js' }`；6 个平台 package 以 `X.Y.Z-<os>-<cpu>` 发布同名版本，带 npm 原生的 `os`／`cpu` 字段且**没有 `bin` 字段**（`bin` 字段会与 shim 的 `deepseek-harness-cli` 在 `node_modules/.bin` 里冲突）。主 manifest 通过 `optionalDependencies` alias 选择这些 package，因此 npm 只安装匹配的 macOS、Linux 或 Windows 运行时。POSIX package 携带本说明描述的可执行程序；[Windows release 分发说明](2026-08-15-windows-cli-release-distribution.md)负责目录 package 与内置 Node 的启动方式。dist-tag 使用 `macos-arm64`、`macos-x64`、`linux-arm64`、`linux-x64`、`windows-arm64` 与 `windows-x64`；主 package 在预发布时以 `next`、稳定版以 `latest` 发布。[`scripts/package-dsh-cli-npm.ts`](../../../../scripts/package-dsh-cli-npm.ts) 布局这些 package；[`scripts/dsh-npm-shim.js`](../../../../scripts/dsh-npm-shim.js) 是随包发布的 shim。
 
 ### 通道 3：Homebrew cask
 
@@ -45,11 +47,12 @@ CLI 部署根是 `apps/cli/exe`（`deepseek-harness-cli-exe-pkg`，镜像 SDK �
 
 ### 发布 workflow
 
-[`.github/workflows/deepseek-harness-cli-release.yml`](../../../../.github/workflows/deepseek-harness-cli-release.yml) 在一次运行里构建并发布全部三个通道，由 `deepseek-harness-cli-v*` tag push 或手动 dispatch 触发；手动 dispatch 的可选 `version` 输入覆盖 tag 或 `apps/cli/package.json`：
+[`.github/workflows/deepseek-harness-cli-release.yml`](../../../../.github/workflows/deepseek-harness-cli-release.yml) 在一次运行里构建并发布全部 3 个通道，由 `deepseek-harness-cli-v*` tag push 或手动 dispatch 触发。tag 与可选的 dispatch `version` 必须匹配 `apps/cli/package.json`，后者是嵌入每个运行时的版本：
 
-- **plan** 解析版本并计算四目标矩阵（`node24-linux-x64`→ubuntu-latest、`node24-linux-arm64`→ubuntu-24.04-arm、`node24-macos-arm64`→macos-15、`node24-macos-x64`→macos-15-intel）。
+- **plan** 校验版本并计算 4 目标 POSIX 矩阵（`node24-linux-x64`→ubuntu-latest、`node24-linux-arm64`→ubuntu-24.04-arm、`node24-macos-arm64`→macos-15、`node24-macos-x64`→macos-15-intel）。
 - **build** 按目标运行：不可变安装、Linux 上 node-pty manylinux 2.28 重建、`scripts/build-dsh-cli-exe.ts --targets=<target>`、Linux 上 GLIBC ≤ 2.28 检查、macOS 部署目标检查、`--version` 冒烟（须等于发布版本）、上传产物。
-- **package** 构建四个发布 tarball 与 `.sha256` 伴随文件、运行 npm 布局、生成 cask，并把三组产物全部上传。
+- **build-windows** 构建并校验 Windows 后续说明描述的 x64 与 ARM64 目录运行时。
+- **package** 构建 4 个 POSIX tarball、2 个 Windows ZIP 及其 `.sha256` 伴随文件，运行 npm 布局、生成 cask，并把三组产物全部上传。
 - **release** 用 `GITHUB_TOKEN` + `contents: write` 创建或刷新 GitHub release。
 - **npm-publish**（`environment: npm-publish`、`NPM_TOKEN`）发布主包与平台包；其 `Release-publish` 并发组与 npm 发布 workflow 共用，因为 dist-tag 是共享的 registry 状态。
 - **brew-tap** 用 `HOMEBREW_TAP_TOKEN` clone tap，替换 `Casks/d/deepseek-harness-cli.rb`，仅当文件变化时才提交并 push。
@@ -58,11 +61,11 @@ CLI 部署根是 `apps/cli/exe`（`deepseek-harness-cli-exe-pkg`，镜像 SDK �
 
 ### 完整性：当前 sha256，下一步 minisign
 
-每次发布都为每个 tarball 提供 sha256 伴随文件，安装器与 cask 都会校验它。基于 minisign 的签名校验是 [`apps/cli/install/README.md`](../../../../apps/cli/install/README.md) 里写明的升级路径；在还没有外部消费者的情况下，预发布阶段使用 HTTPS + sha256 是相称的。
+每次发布都为每个 tarball 或 ZIP 提供 sha256 伴随文件。POSIX installer 与 cask 校验 tarball，Windows installer 校验 ZIP。基于 minisign 的签名校验是 [`apps/cli/install/README.md`](../../../../apps/cli/install/README.md) 里写明的升级路径；在还没有外部消费者的情况下，预发布阶段使用 HTTPS + sha256 是相称的。
 
 ## 曾考虑的替代方案
 
-**把 exe 直接作为主 npm 包的 bin。** 否决：单个 npm 包无法干净地携带四个平台二进制，单一包会把四个都装上。Codex 的拆分——带 `os`/`cpu` 条件化 `optionalDependencies` 别名的 shim 主包——才是可行的契约，它让全局安装只落一个匹配的二进制，也避免了 `.bin/deepseek-harness-cli` 冲突。
+**把所有运行时直接作为主 npm package 的 bin。**否决：单个 npm package 无法干净地携带 6 个平台运行时，单一 package 会把 6 个都装上。Codex 的拆分方式让 shim 主 package 通过带 `os`／`cpu` 条件的 `optionalDependencies` alias 只安装一个匹配运行时，也避免了 `.bin/deepseek-harness-cli` 冲突。
 
 **平台包带 `bin` 字段。** 否决：npm 会把每个已安装平台包的 `deepseek-harness-cli` 链接进共享的 `node_modules/.bin`，与 shim 的 `deepseek-harness-cli` 冲突。平台包只带 `files: ['bin']`；由 shim 按包路径解析可执行程序。
 
@@ -72,10 +75,10 @@ CLI 部署根是 `apps/cli/exe`（`deepseek-harness-cli-exe-pkg`，镜像 SDK �
 
 **从第一天就提供 minisign 签名。** 否决，基于预发布立场：没有外部消费者，HTTPS + sha256 已相称，而密钥管理与签名管线是实打实的工作，最适合作为写明的升级路径引入。
 
-**Windows 目标。** 否决为不目标，与既有单文件 exe 架构立场一致；安装器、npm shim 与 cask 都会在不支持的平台上明确报错。
+**让 Windows 复用 SEA 流水线。**否决，因为单文件路径尚未提供经过测试的 ConPTY 与原生 addon 行为。Windows 使用后续说明描述的目录运行时。
 
 ## 后果
 
-**买到**：一次发布三种一行安装；Python SDK 与 CLI 共用一条可执行管线，维护单一构建路径；CLI 闭包封闭、插件集合即依赖 manifest；所有分发产物（安装器、npm shim、cask）都能对宿主构建做无 key 的本地验证。
+**买到**：一次 release 提供 3 个发布通道；Python SDK 与 CLI 共用一条 POSIX 可执行程序流水线；CLI 闭包封闭、plugin 集合即依赖 manifest；每个分发产物都能对宿主构建做无 key 的本地验证。
 
-**付出**：每个平台产物约 200 MB（内嵌 Node 运行时与源码闭包）；每次发布都要跑四目标构建并面对三个发布面，fork 上还需配置 `NPM_TOKEN`、`HOMEBREW_TAP_TOKEN` 与 `npm-publish` environment；分支固定的安装器 URL 意味着 `master` 上的安装器在发布 tag 出现之前就能被拉取（对运行时解析版本的脚本无害，但这是一个新通道；`releases/latest/download/install.sh` 无法服务预发布）；在 minisign 落地之前完整性只有 sha256；fork 还新增了 npm 作用域与一个 tap 仓库作为外部基础设施。
+**付出**：每个平台产物约 200 MB；每次 release 都要运行 4 个 POSIX 与 2 个 Windows 原生构建，覆盖 3 个发布界面，fork 上还需配置 `NPM_TOKEN`、`HOMEBREW_TAP_TOKEN` 与 `npm-publish` environment；固定到分支的 installer URL 会独立于 release tag 跟随 `master`；在 minisign 落地之前完整性只有 sha256；fork 还新增了 npm scope 与一个 tap 仓库作为外部基础设施。

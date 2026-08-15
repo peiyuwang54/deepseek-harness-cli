@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-deepseek-harness-cli 是一个轻量、基于插件机制的终端编码代理。单个单文件二进制即在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 之上集成了交互式终端 UI、一次性 headless 自动化与 Web UI。
+deepseek-harness-cli 是一个轻量、基于 plugin 机制的终端编码代理。macOS 与 Linux 使用单文件二进制提供终端 UI、headless 自动化与 Web UI；Windows 使用原生目录运行时提供终端 UI 与 headless 自动化。两种形式都构建于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 之上。
 
 > 这是一个非官方的社区 fork，不由 DeepSeek AI 维护、赞助或背书。上游项目与 `@deepseek-ai` 系列包源自 DeepSeek AI；对外分发的 `deepseek-harness-cli` 二进制是本 fork 的构建产物。
 
@@ -22,15 +22,26 @@ deepseek-harness-cli web
 
 ## 安装
 
-macOS（`arm64`、`x64`）与 Linux（`arm64`、`x64`）——任选一种方式：
+macOS（`arm64`、`x64`）与 Linux（`arm64`、`x64`）：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
-npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-curl|sh 一行会用同一 release 的 sha256 sidecar 校验 tarball，并安装到 `$HOME/.deepseek-harness-cli/bin`；npm 一行是覆盖各平台可执行文件的 shim；brew 一行从 `peiyuwang54/homebrew-dsh` tap 提供 cask。Windows 不是分发目标；请从源码构建，或使用 [`scripts/install/install.ps1`](scripts/install/install.ps1)。
+Windows（`arm64`、`x64`）：
+
+```powershell
+irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/scripts/install/install.ps1 | iex
+```
+
+在任一支持平台上通过 npm 安装：
+
+```sh
+npm install -g @peiyuwang54/deepseek-harness-cli
+```
+
+两个下载 installer 都会用 release 的 sha256 伴随文件校验产物。POSIX installer 安装到 `$HOME/.deepseek-harness-cli/bin`；PowerShell 安装到 `%LOCALAPPDATA%\Programs\dsh`；npm 会选择 6 个平台运行时之一；Homebrew 从 `peiyuwang54/homebrew-dsh` 提供 cask。Windows package 不包含构建后的 Web frontend，因此请在该平台使用 `tui` 或 headless profile。详见[安装器说明](apps/cli/install/README.md)。
 
 <a id="run-from-source"></a>
 

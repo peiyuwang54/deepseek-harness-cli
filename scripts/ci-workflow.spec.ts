@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import * as yaml from 'js-yaml'
 import { describe, expect, it } from 'vitest'
@@ -447,6 +447,66 @@ describe('Git hooks', () => {
       )
 
       expect(pairing).toMatchObject({ exclude: ['.agents/notes/archived/**'] })
+    }
+  })
+})
+
+describe('deepseek-harness-cli release workflow', () => {
+  it('publishes verified Windows runtimes and references existing package scripts', () => {
+    const workflow = loadWorkflow('.github/workflows/deepseek-harness-cli-release.yml')
+    const pullRequest = workflowEvent(workflow, 'pull_request')
+    const build = workflowJob(workflow, 'build')
+    const windows = workflowJob(workflow, 'build-windows')
+    const plan = workflowJob(workflow, 'plan')
+    const packageJob = workflowJob(workflow, 'package')
+    const release = workflowJob(workflow, 'release')
+    const npmPublish = workflowJob(workflow, 'npm-publish')
+    if (!isRecord(windows.strategy)
+      || !isRecord(windows.strategy.matrix)
+      || !Array.isArray(windows.strategy.matrix.include)
+      || !Array.isArray(packageJob.needs)
+      || !Array.isArray(plan.steps)
+      || !Array.isArray(windows.steps)
+      || !Array.isArray(packageJob.steps)
+      || !Array.isArray(release.steps)
+      || !Array.isArray(npmPublish.steps)) {
+      throw new TypeError('CLI release workflow must define Windows matrix, dependencies, and steps')
+    }
+
+    expect(windows.strategy.matrix.include).toEqual([
+      { arch: 'x64', runner: 'windows-latest' },
+      { arch: 'arm64', runner: 'windows-11-arm' },
+    ])
+    expect(pullRequest.paths).toEqual(expect.arrayContaining([
+      '.github/workflows/deepseek-harness-cli-release.yml',
+      'scripts/install/install.ps1',
+      'scripts/pack-windows-cli*',
+      'scripts/package-dsh-cli-npm*',
+      'scripts/windows-cli-package*',
+    ]))
+    expect(windows.if).toBeUndefined()
+    for (const job of [build, packageJob, release, npmPublish, workflowJob(workflow, 'brew-tap')]) {
+      expect(job.if).toBe("github.event_name != 'pull_request'")
+    }
+    expect(packageJob.needs).toEqual(['plan', 'build', 'build-windows'])
+    const versionStep = plan.steps.filter(isRecord).find(step => step.name === 'Resolve release version')
+    expect(versionStep).toMatchObject({ env: { REQUESTED_VERSION: '${{ github.event.inputs.version }}' } })
+    expect(JSON.stringify(versionStep)).not.toContain('requested="${{ github.event.inputs.version }}"')
+    const windowsText = JSON.stringify(windows.steps)
+    expect(windowsText).toContain('pnpm run pack:windows-cli')
+    expect(windowsText).toContain('packs the shim + host platform package')
+    expect(windowsText).toContain('deepseek-harness-cli-$env:RELEASE_ARCH-windows.zip')
+    expect(windowsText).toContain('Get-FileHash')
+
+    const packageText = JSON.stringify(packageJob.steps)
+    expect(packageText).toContain('scripts/gen-dsh-cask.ts')
+    expect(packageText).not.toContain('scripts/gen-deepseek-harness-cli-cask.ts')
+    expect(packageText).toContain('deepseek-harness-cli-windows-$arch')
+    expect(JSON.stringify(release.steps)).toContain('dist-release/*')
+    expect(JSON.stringify(npmPublish.steps)).toContain('windows-arm64 windows-x64')
+
+    for (const match of packageText.matchAll(/scripts\/[A-Za-z0-9./_-]+\.(?:ts|js)/g)) {
+      expect(existsSync(resolve(root, match[0])), `${match[0]} must exist`).toBe(true)
     }
   })
 })

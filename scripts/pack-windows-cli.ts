@@ -22,6 +22,7 @@ import {
   WINDOWS_CLI_MANIFEST_NAME,
   WINDOWS_CLI_NODE_NAME,
   WINDOWS_CLI_PACKAGE_DIRNAME,
+  WINDOWS_CLI_PRODUCT_LAUNCHER_NAME,
   WINDOWS_CLI_REQUIRED_RELATIVE_PATHS,
   windowsCliInstallManifest,
   windowsCliLauncherScript,
@@ -276,11 +277,16 @@ export class WindowsCliPack {
   /** Copy the host Node binary, write `dsh.cmd`, and record the install manifest. */
   async writeRuntimeFiles(): Promise<void> {
     const nodeDestination = join(this.packageDir, WINDOWS_CLI_NODE_NAME)
-    const launcherDestination = join(this.packageDir, WINDOWS_CLI_LAUNCHER_NAME)
+    const launcherDestinations = [
+      join(this.packageDir, WINDOWS_CLI_LAUNCHER_NAME),
+      join(this.packageDir, WINDOWS_CLI_PRODUCT_LAUNCHER_NAME),
+    ]
     const manifestDestination = join(this.packageDir, WINDOWS_CLI_MANIFEST_NAME)
     if (this.cli.dryRun) {
       console.log(`pack-windows-cli: [dry-run] cp ${process.execPath} ${nodeDestination}`)
-      console.log(`pack-windows-cli: [dry-run] write ${launcherDestination}`)
+      for (const destination of launcherDestinations) {
+        console.log(`pack-windows-cli: [dry-run] write ${destination}`)
+      }
       console.log(`pack-windows-cli: [dry-run] write ${manifestDestination}`)
       return
     }
@@ -288,7 +294,7 @@ export class WindowsCliPack {
       throw new Error(`pack-windows-cli: ${join(this.packageDir, WINDOWS_CLI_ENTRY)} missing — run without --skip-build so lib/ artifacts exist.`)
     }
     await copyFile(process.execPath, nodeDestination)
-    await writeFile(launcherDestination, windowsCliLauncherScript())
+    await Promise.all(launcherDestinations.map(destination => writeFile(destination, windowsCliLauncherScript())))
     const version = await this.readCliVersion()
     const manifest = windowsCliInstallManifest({
       version,
@@ -331,7 +337,7 @@ export class WindowsCliPack {
     ])
   }
 
-  /** Zip the directory tree beside it as `dsh-win32-<arch>.zip`. */
+  /** Zip the directory tree beside it as a version-independent release asset. */
   async zipPackage(): Promise<void> {
     if (this.cli.skipZip) {
       console.log('pack-windows-cli: skipping zip (--skip-zip)')

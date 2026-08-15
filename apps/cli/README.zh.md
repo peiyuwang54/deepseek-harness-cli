@@ -45,20 +45,31 @@ profile 目录包含一个 `package.json`，其中记录树外插件依赖，以
 
 ## 安装
 
-`dsh` 以单文件可执行程序的形式，为 macOS（`arm64`、`x64`）与 Linux（`arm64`、`x64`）发布。任选其一即可安装：
+macOS（`arm64`、`x64`）与 Linux（`arm64`、`x64`）以单文件可执行程序形式发布：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
-npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-第一个命令运行 curl 安装器：它下载最新的 `deepseek-harness-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，并安装到 `$HOME/.deepseek-harness-cli/bin`（`sh -s -- --to <dir>` 可覆盖目录，`--version <ver>` 可固定版本）。npm 包是覆盖各平台可执行程序的 shim；Homebrew cask 由 `peiyuwang54/homebrew-dsh` tap 提供。完整契约与计划中的 minisign 签名升级见[安装器 README](install/README.md)。
+Windows（`arm64`、`x64`）以目录运行时形式发布：
 
-升级只需重新运行同一命令——curl 安装器原地替换二进制、`npm update -g @peiyuwang54/deepseek-harness-cli` 拉取最新版本、`brew upgrade deepseek-harness-cli` 刷新 cask。
+```powershell
+irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/scripts/install/install.ps1 | iex
+```
+
+npm 支持全部 6 个目标：
+
+```sh
+npm install -g @peiyuwang54/deepseek-harness-cli
+```
+
+下载 installer 会选择最新的 `deepseek-harness-cli-v*` release（包括预发布版本），根据匹配的 sha256 伴随文件校验 tarball 或 ZIP，并且无需源码 checkout 即可安装。npm shim 会选择匹配的运行时，Homebrew cask 则由 `peiyuwang54/homebrew-dsh` tap 提供。Windows package 包含 TUI／headless 库，但不包含构建后的 Web frontend。选项、本地 package 安装与计划中的 minisign 升级见[安装器 README](install/README.md)。
+
+升级时重新运行同一 installer 即可：POSIX 与 Windows installer 会原地替换运行时，`npm update -g @peiyuwang54/deepseek-harness-cli` 拉取最新版本，`brew upgrade deepseek-harness-cli` 刷新 cask。
 
 ## 开发
 
 生产运行需要已构建的包与前端产物。请在仓库根目录单独运行 `pnpm run build`，然后使用 `pnpm dsh <args...>` 运行 TypeScript 入口并转发所有参数；模块解析约定以[源码执行参考](reference/README.md#source-execution)为准。
 
-在 Windows 上，[`scripts/install/install.ps1`](../../scripts/install/install.ps1) 会把这份 CLI 的打包副本安装到 `%LOCALAPPDATA%\Programs\dsh`。用户不带参数时，该启动器会启动 `tui`；[`src/args.ts`](src/args.ts) 中的语法不变。
+在 Windows 上，`pnpm run pack:windows-cli` 会从 checkout 构建目录运行时；向 [`scripts/install/install.ps1`](../../scripts/install/install.ps1) 传入 `-PackageDir .\dist-windows\dsh` 即可安装该本地 package。用户不带参数时，两个 cmd launcher 都会启动 `tui`；[`src/args.ts`](src/args.ts) 中的语法不变。

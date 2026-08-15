@@ -18,6 +18,8 @@ export const WINDOWS_CLI_PACKAGE_DIRNAME = 'dsh'
 export const WINDOWS_CLI_MANIFEST_NAME = 'dsh-install.json'
 /** cmd.exe launcher that adds `tui` when the user passes no arguments. */
 export const WINDOWS_CLI_LAUNCHER_NAME = 'dsh.cmd'
+/** Product-name alias installed beside {@link WINDOWS_CLI_LAUNCHER_NAME}. */
+export const WINDOWS_CLI_PRODUCT_LAUNCHER_NAME = 'deepseek-harness-cli.cmd'
 /** Copied host Node binary. */
 export const WINDOWS_CLI_NODE_NAME = 'node.exe'
 /** Default profile the bare `dsh` command boots. */
@@ -31,6 +33,7 @@ export const WINDOWS_CLI_BUILD_SCRIPT = 'build:lib'
 export const WINDOWS_CLI_REQUIRED_RELATIVE_PATHS = [
   WINDOWS_CLI_NODE_NAME,
   WINDOWS_CLI_LAUNCHER_NAME,
+  WINDOWS_CLI_PRODUCT_LAUNCHER_NAME,
   WINDOWS_CLI_ENTRY,
   WINDOWS_CLI_MANIFEST_NAME,
   'package.json',
@@ -150,10 +153,10 @@ export function windowsCliInstallManifest(input: {
 
 /**
  * @param arch - `process.arch` of the pack host.
- * @returns the zip basename, e.g. `dsh-win32-x64.zip`.
+ * @returns the release-asset basename, e.g. `deepseek-harness-cli-x64-windows.zip`.
  */
 export function windowsCliZipName(arch: string): string {
-  return `dsh-win32-${arch}.zip`
+  return `deepseek-harness-cli-${arch}-windows.zip`
 }
 
 /**

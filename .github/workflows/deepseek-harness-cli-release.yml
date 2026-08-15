@@ -1,17 +1,32 @@
-# Build and distribute the deepseek-harness-cli single-file executable across three
-# channels: GitHub Releases (curl|sh), npm (@peiyuwang54/deepseek-harness-cli), and a
-# Homebrew cask pushed to peiyuwang54/homebrew-dsh. Runs on every deepseek-harness-cli-v*
-# tag push or from a manual dispatch; a manual dispatch is also the only way to
-# release without pushing a tag first. The build/package/release jobs are
-# keyless; npm-publish requires the npm-publish environment and brew-tap the
-# HOMEBREW_TAP_TOKEN secret.
+# Build and distribute deepseek-harness-cli across GitHub Releases, npm
+# (@peiyuwang54/deepseek-harness-cli), and a Homebrew cask pushed to
+# peiyuwang54/homebrew-dsh. POSIX targets are single-file executables; Windows
+# targets are directory runtimes zipped for release. Relevant pull requests run
+# only the native Windows build matrix. Tag pushes and manual dispatches run the
+# complete release; a manual dispatch is also the only way to release without
+# pushing a tag first. The build/package/release jobs are keyless; npm-publish
+# requires the npm-publish environment and brew-tap the HOMEBREW_TAP_TOKEN secret.
 name: Release deepseek-harness-cli
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/deepseek-harness-cli-release.yml'
+      - 'apps/cli/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'packages/**/package.json'
+      - 'scripts/build-dsh-cli-exe.ts'
+      - 'scripts/dsh-npm-shim.js'
+      - 'scripts/install/install.ps1'
+      - 'scripts/pack-windows-cli*'
+      - 'scripts/package-dsh-cli-npm*'
+      - 'scripts/windows-cli-package*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version, e.g. 0.1.0-rc.5 (default: apps/cli/package.json)'
+        description: 'Expected apps/cli/package.json version, e.g. 0.1.0-rc.5'
         required: false
         type: string
   push:
@@ -43,19 +58,29 @@ jobs:
 
       - name: Resolve release version
         id: version
+        env:
+          REQUESTED_VERSION: ${{ github.event.inputs.version }}
         run: |
           set -euo pipefail
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            version="${{ github.event.inputs.version }}"
-          elif [ "$GITHUB_REF_TYPE" = "tag" ]; then
-            version="${GITHUB_REF_NAME#deepseek-harness-cli-v}"
-          else
-            version="$(node -p "require('./apps/cli/package.json').version")"
+          version="$(node -p "require('./apps/cli/package.json').version")"
+          if [ -n "$REQUESTED_VERSION" ]; then
+            requested="$REQUESTED_VERSION"
+            requested="${requested#v}"
+            [ "$requested" = "$version" ] || {
+              echo "::error::dispatch version $requested does not match apps/cli/package.json $version"
+              exit 1
+            }
           fi
-          version="${version#v}"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            tagged="${GITHUB_REF_NAME#deepseek-harness-cli-v}"
+            [ "$tagged" = "$version" ] || {
+              echo "::error::tag version $tagged does not match apps/cli/package.json $version"
+              exit 1
+            }
+          fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Compute the four-target matrix
+      - name: Compute the four-target POSIX matrix
         id: matrix
         run: |
           set -euo pipefail
@@ -74,6 +99,7 @@ jobs:
 
   build:
     needs: plan
+    if: github.event_name != 'pull_request'
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
@@ -185,8 +211,85 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  build-windows:
+    needs: plan
+    name: windows-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-latest
+          - arch: arm64
+            runner: windows-11-arm
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+
+      - name: Test Windows distribution scripts
+        run: pnpm exec vitest run scripts/windows-cli-package.spec.ts scripts/pack-windows-cli.spec.ts scripts/package-dsh-cli-npm.spec.ts scripts/install/install.windows.spec.ts scripts/ci-workflow.spec.ts
+
+      - name: Build and pack the Windows runtime
+        run: pnpm run pack:windows-cli
+
+      - name: Smoke the npm shim against the packed Windows runtime
+        shell: pwsh
+        env:
+          RELEASE_ARCH: ${{ matrix.arch }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $target = Join-Path $PWD "dist-exe\deepseek-harness-cli-windows-$env:RELEASE_ARCH"
+          New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
+          Copy-Item -LiteralPath (Join-Path $PWD 'dist-windows\dsh') -Destination $target -Recurse
+          pnpm exec vitest run scripts/package-dsh-cli-npm.spec.ts -t "packs the shim + host platform package"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows npm shim smoke failed.'
+          }
+
+      - name: Verify version and write sha256 sidecar
+        shell: pwsh
+        env:
+          RELEASE_ARCH: ${{ matrix.arch }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $launcher = Join-Path $PWD 'dist-windows\dsh\deepseek-harness-cli.cmd'
+          $actual = (& $launcher --version | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $env:VERSION) {
+            throw "$launcher reports '$actual' but the release version is '$env:VERSION'"
+          }
+          $assetName = "deepseek-harness-cli-$env:RELEASE_ARCH-windows.zip"
+          $asset = Join-Path $PWD "dist-windows\$assetName"
+          if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) {
+            throw "$asset is missing"
+          }
+          $hash = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $assetName" | Set-Content -LiteralPath "$asset.sha256" -Encoding ascii
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deepseek-harness-cli-windows-${{ matrix.arch }}
+          path: dist-windows
+          if-no-files-found: error
+          retention-days: 7
+
   package:
-    needs: [plan, build]
+    needs: [plan, build, build-windows]
+    if: github.event_name != 'pull_request'
     name: package release assets
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -209,8 +312,21 @@ jobs:
       - name: Download all target executables
         uses: actions/download-artifact@v4
         with:
+          pattern: deepseek-harness-cli-exe-*
           path: dist-exe
           merge-multiple: true
+
+      - name: Download Windows x64 runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: deepseek-harness-cli-windows-x64
+          path: dist-windows/x64
+
+      - name: Download Windows arm64 runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: deepseek-harness-cli-windows-arm64
+          path: dist-windows/arm64
 
       - name: Build release tarballs and sha256 sidecars
         run: |
@@ -229,12 +345,17 @@ jobs:
             (cd "$stage" && tar -czf "$GITHUB_WORKSPACE/dist-release/deepseek-harness-cli-${arch}-${os}.tar.gz" bin)
             (cd dist-release && sha256sum "deepseek-harness-cli-${arch}-${os}.tar.gz" > "deepseek-harness-cli-${arch}-${os}.sha256")
           done
+          for arch in arm64 x64; do
+            cp "dist-windows/$arch/deepseek-harness-cli-$arch-windows.zip" dist-release/
+            cp "dist-windows/$arch/deepseek-harness-cli-$arch-windows.zip.sha256" dist-release/
+            cp -a "dist-windows/$arch/dsh" "dist-exe/deepseek-harness-cli-windows-$arch"
+          done
 
       - name: Lay out npm packages
         run: pnpm exec tsx scripts/package-dsh-cli-npm.ts --version "$VERSION" --dir dist-exe --out dist-npm
 
       - name: Generate Homebrew cask
-        run: pnpm exec tsx scripts/gen-deepseek-harness-cli-cask.ts --version "$VERSION" --dir dist-exe --out deepseek-harness-cli.rb
+        run: pnpm exec tsx scripts/gen-dsh-cask.ts --version "$VERSION" --dir dist-exe --out deepseek-harness-cli.rb
 
       - uses: actions/upload-artifact@v4
         with:
@@ -259,6 +380,7 @@ jobs:
 
   release:
     needs: [plan, package]
+    if: github.event_name != 'pull_request'
     name: create GitHub release
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -278,13 +400,14 @@ jobs:
           set -euo pipefail
           tag="deepseek-harness-cli-v$VERSION"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist-release/*.tar.gz dist-release/*.sha256 --clobber
+            gh release upload "$tag" dist-release/* --clobber
           else
-            gh release create "$tag" dist-release/*.tar.gz dist-release/*.sha256 --title "$tag" --generate-notes
+            gh release create "$tag" dist-release/* --title "$tag" --generate-notes
           fi
 
   npm-publish:
     needs: [plan, package]
+    if: github.event_name != 'pull_request'
     name: publish to npm
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -316,12 +439,13 @@ jobs:
           set -euo pipefail
           if [[ "$VERSION" == *-* ]]; then main_tag=next; else main_tag=latest; fi
           npm publish "dist-npm/main" --tag "$main_tag"
-          for target in macos-arm64 macos-x64 linux-arm64 linux-x64; do
+          for target in macos-arm64 macos-x64 linux-arm64 linux-x64 windows-arm64 windows-x64; do
             npm publish "dist-npm/platform/${VERSION}-${target}" --tag "$target"
           done
 
   brew-tap:
     needs: [plan, release]
+    if: github.event_name != 'pull_request'
     name: push cask to homebrew-dsh
     runs-on: ubuntu-latest
     timeout-minutes: 10

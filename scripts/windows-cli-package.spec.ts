@@ -5,6 +5,8 @@ import {
   packWindowsCliUsage,
   WINDOWS_CLI_DEFAULT_PROFILE,
   WINDOWS_CLI_ENTRY,
+  WINDOWS_CLI_PRODUCT_LAUNCHER_NAME,
+  WINDOWS_CLI_REQUIRED_RELATIVE_PATHS,
   windowsCliInstallManifest,
   windowsCliLauncherScript,
   windowsCliZipName,
@@ -35,6 +37,8 @@ describe('windows-cli-package', () => {
     expect(script).toContain('lib\\bin.js" %*')
     expect(script).toContain('NODE_USE_ENV_PROXY=1')
     expect(script.endsWith('\r\n')).toBe(true)
+    expect(WINDOWS_CLI_PRODUCT_LAUNCHER_NAME).toBe('deepseek-harness-cli.cmd')
+    expect(WINDOWS_CLI_REQUIRED_RELATIVE_PATHS).toContain(WINDOWS_CLI_PRODUCT_LAUNCHER_NAME)
   })
 
   it('records the install manifest the installer later checks', () => {
@@ -47,7 +51,7 @@ describe('windows-cli-package', () => {
       entry: WINDOWS_CLI_ENTRY,
       defaultProfile: WINDOWS_CLI_DEFAULT_PROFILE,
     })
-    expect(windowsCliZipName('x64')).toBe('dsh-win32-x64.zip')
-    expect(windowsCliZipName('arm64')).toBe('dsh-win32-arm64.zip')
+    expect(windowsCliZipName('x64')).toBe('deepseek-harness-cli-x64-windows.zip')
+    expect(windowsCliZipName('arm64')).toBe('deepseek-harness-cli-arm64-windows.zip')
   })
 })

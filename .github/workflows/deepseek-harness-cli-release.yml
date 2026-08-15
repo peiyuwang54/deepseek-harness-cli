@@ -168,6 +168,18 @@ jobs:
             exit 1
           }
 
+      - name: Smoke test profile composition
+        run: |
+          set -euo pipefail
+          exe="$PWD/dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}"
+          if [ ! -e "$exe" ] && [ -e "$exe.exe" ]; then exe="$exe.exe"; fi
+          # --version exits before any profile composes; the dumps read every
+          # bundle overlay the executable embeds, so a missing pkg asset fails
+          # here instead of on the user's first run.
+          for profile in tui web; do
+            DSH_TELEMETRY_DISABLED=1 "$exe" "$profile" --dump-default-config > /dev/null
+          done
+
       - name: Check Linux GLIBC requirements
         if: runner.os == 'Linux'
         run: |

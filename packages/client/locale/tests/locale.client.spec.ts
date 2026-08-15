@@ -173,6 +173,18 @@ describe('LocaleRuntime', () => {
     expect(events).toHaveLength(1)
   })
 
+  it('keeps the browser-derived locale when the shared preference is TUI-only', () => {
+    stubLanguages('en-US')
+    const host = stubSettingsScope<LocaleSettings>()
+    const { svc, events } = make(host)
+    host.publish({ status: 'ready', value: { preference: 'ar' }, revision: 1, writable: true })
+    expect(svc.getLocale().active).toBe('en')
+    expect(events).toHaveLength(0)
+    host.publish({ value: { preference: 'zh' }, revision: 2 })
+    expect(svc.getLocale().active).toBe('zh')
+    expect(events).toHaveLength(1)
+  })
+
   it('an absent Host preference returns to the browser-derived locale', () => {
     const host = stubSettingsScope<LocaleSettings>()
     const { svc } = make(host)

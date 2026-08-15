@@ -19,7 +19,7 @@ import type { ClientContext, SettingsScope } from '@deepseek-ai/dsh-client-runti
 // (client bundle purity gate).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import {
-  LOCALE_PREFERENCE_FIELD, LOCALE_SETTINGS_NAMESPACE, type LocaleId, type LocaleSettings,
+  LOCALE_IDS, LOCALE_PREFERENCE_FIELD, LOCALE_SETTINGS_NAMESPACE, type LocaleId, type LocaleSettings,
 } from '../locale-settings.ts'
 import { en, zh, type CommonKey } from '../locales/index.ts'
 import {
@@ -32,7 +32,7 @@ import { createLanguageRowStore } from './settings-store.ts'
 export type { LanguageRowComponentProps, LanguageRowInjected } from './LanguageRow.tsx'
 export type { LanguageOptionRow, LanguageRowState } from './settings-store.ts'
 export type { CommonKey } from '../locales/index.ts'
-export type { LocaleId, LocaleSettings } from '../locale-settings.ts'
+export type { LocaleId, LocalePreferenceId, LocaleSettings } from '../locale-settings.ts'
 
 // The translate currency lives in ui-slots (the render machinery synthesizes
 // the seat); re-exported here so dictionary owners import one package.
@@ -187,7 +187,9 @@ export class LocaleRuntime {
   private adopt(host: SettingsScope<LocaleSettings>): void {
     const section = host.getSnapshot().value
     if (section === undefined) return
-    const target = section.preference ?? this.provisional
+    const target = LOCALE_IDS.some(locale => locale === section.preference)
+      ? section.preference as LocaleId
+      : this.provisional
     if (this.snapshot.active === target) return
     this.publish(target, true)
   }

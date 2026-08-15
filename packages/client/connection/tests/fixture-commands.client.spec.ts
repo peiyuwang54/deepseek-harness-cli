@@ -30,7 +30,7 @@ describe('createFixtureApi commands/skills', () => {
     const { rpc } = createFixtureFaces()
     const commands = await callRemote<{ name: string; input?: { hint: string } }[]>(
       rpc, 'commands/list', { agentId: sid('fx-alpha') })
-    expect(commands.map(c => c.name)).toEqual(['compact', 'echo', 'goal', 'permission', 'plan'])
+    expect(commands.map(c => c.name)).toEqual(['compact', 'echo', 'goal', 'permissions', 'plan'])
     // input hint rides only the commands declaring it.
     const echo = commands.find(c => c.name === 'echo')
     expect(echo?.input?.hint).toBeTruthy()

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-15-tui-shared-locale.md
-2026-08-15-tui-shared-locale.md: a0c0e8f9f7d3d86ec06c117d45f52f15b1361a66
-2026-08-15-tui-shared-locale.zh.md: d519a6b827dc6e67609681f9582fe0d6b787c089
+2026-08-15-tui-shared-locale.md: 120c9d003ce374b60eb5114ff9e043eb7273b158
+2026-08-15-tui-shared-locale.zh.md: 998839b72953987d4c21cac371710898888f29e7

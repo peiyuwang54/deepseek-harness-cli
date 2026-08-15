@@ -26,10 +26,13 @@ import { displayText } from '../components/text.ts'
 import type { TuiOverlaySession } from '../extension/types.ts'
 import type { ChannelNotice, ChatChannelDeps } from './channel.ts'
 import {
+  TUI_LOCALE_OPTIONS,
   TUI_LOCALE_SETTINGS_NAMESPACE,
   isTuiLocale,
   readTuiLocale,
+  resolveTuiLocale,
   tuiCopy,
+  tuiLocaleLabel,
   type TuiLocale,
 } from './language.ts'
 
@@ -263,7 +266,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       locale = nextLocale
       deps.applyLocale(nextLocale)
     }
-    if (!deps.isDisposed()) deps.appendNotice(nextLocale === 'zh' ? '界面语言已切换为中文。' : 'Interface language changed to English.')
+    if (!deps.isDisposed()) deps.appendNotice(tuiCopy(nextLocale).languageChanged)
   }
 
   const showTheme = (): void => {
@@ -348,10 +351,11 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
   const showLanguage = (): void => {
     const copy = tuiCopy(locale)
     void languageOverlay?.close()
-    const items: SettingsHubItem[] = [
-      { value: 'zh', label: '中文', ...locale === 'zh' ? { description: copy.current } : {} },
-      { value: 'en', label: 'English', ...locale === 'en' ? { description: copy.current } : {} },
-    ]
+    const items: SettingsHubItem[] = TUI_LOCALE_OPTIONS.map(option => ({
+      value: option.id,
+      label: option.label,
+      ...locale === option.id ? { description: copy.current } : {},
+    }))
     const session = overlayManager.open({
       create: () => new SettingsSelectDialog(
         copy.language,
@@ -395,7 +399,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     const items: SettingsHubItem[] = [
       { value: '@appearance', label: copy.appearance, description: themePreference },
       { value: '@accent', label: 'Accent', description: accentHue(accent).label },
-      { value: '@language', label: copy.language, description: locale === 'zh' ? '中文' : 'English' },
+      { value: '@language', label: copy.language, description: tuiLocaleLabel(locale) },
       {
         value: '@document',
         label: copy.settingsDocument,
@@ -482,9 +486,9 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       showLanguage()
       return
     }
-    const nextLocale = argument === '中文' ? 'zh' : argument === 'english' ? 'en' : argument
-    if (!isTuiLocale(nextLocale)) {
-      deps.appendNotice('Usage: /language [zh|en]', 'warning')
+    const nextLocale = resolveTuiLocale(argument)
+    if (nextLocale === undefined) {
+      deps.appendNotice(`Usage: /language [${TUI_LOCALE_OPTIONS.map(option => option.id).join('|')}]`, 'warning')
       return
     }
     await commitLocale(nextLocale)

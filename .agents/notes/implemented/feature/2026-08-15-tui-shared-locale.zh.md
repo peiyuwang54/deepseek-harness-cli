@@ -10,9 +10,9 @@ Status: implemented
 
 ## 决策
 
-TUI bundle 挂载现有 `dsh-client-locale` 的 Host 部分，因此 Web 与 TUI 会在共享设置文档中注册并修改同一个 `locale.preference` 字段。Renderer 新增 `/language [zh|en]`；不带参数的命令会打开附着 composer 的选择器，字段级写入不会替换其他设置值。外部 `settings/updated` 事件会实时刷新 TUI。
+TUI bundle 挂载现有 `dsh-client-locale` 的 Host 部分，因此 Web 与 TUI 会在共享设置文档中注册并修改同一个 `locale.preference` 字段。该设置接受英文、中文、阿拉伯文、法文、俄文、西班牙文、日文和韩文。Renderer 提供 `/language [en|zh|ar|fr|ru|es|ja|ko]`；不带参数的命令会打开附着 composer 的选择器，字段级写入不会替换其他设置值。外部 `settings/updated` 事件会实时刷新 TUI。
 
-终端持有的文案集中在一个小型、有类型约束的双语字典中。欢迎面板、默认 composer placeholder、编辑器 footer、Settings hub，以及语言／外观选择器都会在渲染时读取当前 locale。模型回复、工具载荷、自定义 placeholder 与第三方命令文案保留来源语言。浏览器 React runtime 和浏览器字典仍由浏览器持有。
+终端持有的文案集中在一份有类型约束的八语言字典中。欢迎面板、默认 composer placeholder、编辑器 footer、运行状态行、Settings hub，以及语言／外观选择器都会在渲染时读取当前 locale。模型回复、工具载荷、自定义 placeholder 与第三方命令文案保留来源语言。浏览器 React runtime 和浏览器字典仍由浏览器持有：浏览器采用共用的中英文偏好，遇到仅受终端支持的持久化偏好时保留其自身检测到的语言。
 
 ## 考虑过的替代方案
 
@@ -20,8 +20,8 @@ TUI bundle 挂载现有 `dsh-client-locale` 的 Host 部分，因此 Web 与 TUI
 
 ## 验证
 
-聚焦测试证明了共享 namespace mutate 和从外部发起的 locale 更新。Headless-terminal 快照固定中文 Settings hub 与附着 composer 的语言选择器。Bundle 测试要求 locale Host row 及其运行时依赖存在；package TypeScript 与仓库 graph 门禁覆盖新的依赖边。
+聚焦测试证明全部八种终端 locale id、原文语言名称命令解析、共享 namespace mutate、浏览器对终端专用偏好的回落，以及从外部发起的 locale 更新。Headless-terminal 快照固定中文 Settings hub 与包含八种语言的 composer 选择器。Bundle 测试要求 locale Host row 及其运行时依赖存在；package TypeScript 与仓库 graph 检查覆盖该依赖边。
 
 ## 后果
 
-在 Web 或 TUI 中修改语言后，另一个界面会通过同一份设置文档继承该选择，无需第二套偏好存储。首版终端字典有意覆盖产品 chrome，而非任意模型或插件内容；后续 TUI 自有文案可以继续迁入同一个类型化 copy 表，无需修改持久化契约。
+Web 与 TUI 共用一套偏好存储，同时只解释各自随附字典支持的 locale。终端字典覆盖产品 chrome，而非任意模型或插件内容；后续 TUI 自有文案可以继续迁入同一份类型化 copy 表，无需修改持久化设置。

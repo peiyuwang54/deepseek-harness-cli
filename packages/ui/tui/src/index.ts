@@ -2332,8 +2332,8 @@ export function createTuiChat(
     })
     commandCtx.commands.register({
       name: 'language',
-      description: 'Choose and persist the CLI/Web interface language',
-      input: { hint: '[zh|en]' },
+      description: 'Choose and persist the terminal interface language',
+      input: { hint: '[en|zh|ar|fr|ru|es|ja|ko]' },
       handler: ({ rawInput }) => {
         settingsController.queueLanguageCommand(rawInput)
         return { kind: 'success' }

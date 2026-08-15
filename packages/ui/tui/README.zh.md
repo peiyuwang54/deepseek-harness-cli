@@ -62,7 +62,7 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/accent [deepseek|cosmic-orange|mist-blue|sage|lavender|deep-blue]` 会写入 TUI 自有的 `ui-accent.accent` 设置；不带参数时打开附着 composer 的内建色调选择器。强调色会重绘 prompt、边框、角色标题和选择状态；真彩色终端还会同步重绘启动 banner 渐变与品牌色，而 16 色终端继续使用适配主题的 ANSI 回退。默认值 `deepseek` 保持原有 DeepSeek 蓝色界面。
 
-`/language [zh|en]` 会写入浏览器共用的 `locale.preference` 设置。不带参数的 `/language` 会打开附着 composer 的中英文选择器；无论在 Web 还是 TUI 中修改，欢迎面板、默认输入 placeholder、编辑器 footer 与设置界面都会立即刷新。模型回复、工具载荷、自定义 placeholder 和第三方命令文案保留来源语言，不做机器翻译。
+`/language [en|zh|ar|fr|ru|es|ja|ko]` 会写入共用的 `locale.preference` 设置，并提供英文、中文、阿拉伯文、法文、俄文、西班牙文、日文和韩文终端文案。不带参数的 `/language` 会打开附着 composer 的选择器；TUI 中的修改会立即刷新欢迎面板、默认输入 placeholder、编辑器 footer、运行状态行与设置界面。浏览器会采用共用的英文或中文选择；若持久化设置仅受终端支持，则浏览器继续采用其自身检测到的语言。模型回复、工具载荷、自定义 placeholder 和第三方命令文案保留来源语言，不做机器翻译。
 
 `/workspace` 会在共享持久 `ctx.workspaceRegistry` 上打开可搜索 selector；`/workspace <directory>` 会先对该目录做 canonicalize 并注册。选择一行后，通过可选宿主 `TuiRuntime.handoffWorkspace` 在该工作区开启一个**全新**会话。Controller 要求 agent 空闲，检查目录，flush 当前会话，drain 输入，并在 handoff 前释放 UI 及全屏／鼠标终端 mode。缺少宿主时，当前 TUI 保持运行并显示警告；宿主拒绝时，会恢复终端并强制渲染完整首帧。该路径绝不改写当前会话不可变的 `SessionHeader.cwd`——更改工作区是一次进程／会话 handoff，而非原地元数据变更。
 

@@ -12,7 +12,7 @@ Web 的 Appearance、Language 和繁忙态 Enter 偏好原本存在浏览器 `lo
 
 ## 决策
 
-各领域所属的 Host half 注册三份 schema：可选的 `locale.preference`（`zh` 或 `en`，缺失时交由浏览器决定）、`ui-theme.preference`（`light`、`dark` 或 `system`，默认为 `system`），以及 `ui-conversation.busyEnter`（`queue` 或 `steer`，默认为 `queue`）。本地 settings 提供方将显式选择存入 `$DSH_HOME/settings.yaml`，在使用默认 home 时，该路径解析为 `~/.dsh/settings.yaml`。API 代理会显式暴露这三个 namespace，与其他 Web settings 并列；仅注册它们，绝不会跨越该配置边界。
+各领域所属的 Host half 注册三份 schema：可选的 `locale.preference`（`en`、`zh`、`ar`、`fr`、`ru`、`es`、`ja` 或 `ko`；浏览器采用其中的 `zh`／`en` 子集）、`ui-theme.preference`（`light`、`dark` 或 `system`，默认为 `system`），以及 `ui-conversation.busyEnter`（`queue` 或 `steer`，默认为 `queue`）。本地 settings 提供方将显式选择存入 `$DSH_HOME/settings.yaml`，在使用默认 home 时，该路径解析为 `~/.dsh/settings.yaml`。API 代理会显式暴露这三个 namespace，与其他 Web settings 并列；仅注册它们，绝不会跨越该配置边界。
 
 客户端运行时为每个 namespace 提供一份 `bindSettingsScope` 生命周期——即 Host 侧 settings owner seam 的浏览器镜像。它在开始后台初始读取之前安装 `settings/changed` 和 `connection/reset` 监听器，因此任何 settings 传输都不会阻塞插件激活，失效通知也不会掉入先读取、后订阅的空档；它还会发布一个供领域服务订阅的快照 store（状态、分节值、revision、可写性、host／内存模式）。默认解码器会对照该 namespace 自身的序列化 wire schema（经 dsh-client-schema-form 还原）校验每个传入分节，因此各领域无需携带手写的 wire 校验器。领域服务把 scope 当作普通的构造函数协作者接收，立即发布各自的暂定默认值：由浏览器派生的 locale、系统主题和 Queue；随后采纳已获接受的 Host 分节，但不将其写回；不带 scope 构造的服务——独立词典或政策 fixture（测试前置数据）——则仅停留在进程本地。
 

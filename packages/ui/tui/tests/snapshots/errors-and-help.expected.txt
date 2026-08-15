@@ -53,8 +53,8 @@ buffer
   style 0-43 dim
 24| "/keymap [default|vim] — Choose the default or Vim terminal editing keymap                   "
   style 0-72 dim
-25| "/language [zh|en] — Choose and persist the CLI/Web interface language                       "
-  style 0-68 dim
+25| "/language [en|zh|ar|fr|ru|es|ja|ko] — Choose and persist the terminal interface language    "
+  style 0-87 dim
 26| "/mcp [verbose] — List MCP tools visible to this session                                     "
   style 0-54 dim
 27| "/mention [path] — Insert a workspace file reference into the composer                       "

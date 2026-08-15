@@ -10,9 +10,9 @@ The browser already persists `locale.preference`, but the shipped terminal had o
 
 ## Decision
 
-The TUI bundle mounts the existing Host half of `dsh-client-locale`, so Web and TUI register and mutate the same `locale.preference` field in the shared settings document. The renderer adds `/language [zh|en]`; the bare command opens a composer-attached selector and field-addressed writes avoid replacing any other settings value. External `settings/updated` events refresh the live TUI.
+The TUI bundle mounts the existing Host half of `dsh-client-locale`, so Web and TUI register and mutate the same `locale.preference` field in the shared settings document. The setting accepts English, Chinese, Arabic, French, Russian, Spanish, Japanese, and Korean. The renderer adds `/language [en|zh|ar|fr|ru|es|ja|ko]`; the bare command opens a composer-attached selector and field-addressed writes avoid replacing any other settings value. External `settings/updated` events refresh the live TUI.
 
-Terminal-owned copy lives in a small typed bilingual dictionary. The welcome dashboard, default composer placeholder, editor footer, Settings hub, and language/appearance selectors read the current locale at render time. Model responses, tool payloads, custom placeholders, and third-party command text stay in their source language. The browser React runtime and dictionaries remain browser-owned.
+Terminal-owned copy lives in a typed eight-language dictionary. The welcome dashboard, default composer placeholder, editor footer, live-turn row, Settings hub, and language/appearance selectors read the current locale at render time. Model responses, tool payloads, custom placeholders, and third-party command text stay in their source language. The browser React runtime and dictionaries remain browser-owned: it applies shared Chinese and English preferences, and retains its browser-derived language when the stored preference is terminal-only.
 
 ## Alternatives considered
 
@@ -20,8 +20,8 @@ Copying the browser React locale runtime into the TUI was rejected because it wo
 
 ## Verification
 
-Focused tests prove the shared namespace mutation and an externally initiated locale update. Headless-terminal snapshots pin the Chinese Settings hub and the composer-attached language selector. The bundle test requires the locale Host row and its runtime dependency; package TypeScript and repository graph gates cover the new dependency edge.
+Focused tests prove all eight terminal locale ids, native-name command resolution, the shared namespace mutation, browser fallback for terminal-only preferences, and an externally initiated locale update. Headless-terminal snapshots pin the Chinese Settings hub and the eight-language composer selector. The bundle test requires the locale Host row and its runtime dependency; package TypeScript and repository graph checks cover the dependency edge.
 
 ## Consequences
 
-Changing language in Web or TUI now carries to the other surface through the same settings document, without a second preference store. This first terminal dictionary deliberately covers product chrome rather than arbitrary model or plugin content; further TUI-owned strings can migrate into the same typed copy table without changing the durable contract.
+Web and TUI share one preference store while interpreting only the locale dictionaries each front door ships. The terminal dictionary covers product chrome rather than arbitrary model or plugin content; further TUI-owned strings can migrate into the same typed copy table without changing the durable setting.

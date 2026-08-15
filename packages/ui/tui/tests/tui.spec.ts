@@ -47,7 +47,7 @@ import { WorkspaceFileSearch } from '../src/chat/file-autocomplete.ts'
 import { osc52ClipboardSequence } from '../src/chat/clipboard.ts'
 import { renderMarkdownTranscript } from '../src/chat/transcript-export.ts'
 import { CURSOR_BLINK_INTERVAL_MS } from '../src/chat/helpers.ts'
-import { formatDeepDivingStatus } from '../src/chat/language.ts'
+import { TUI_LOCALE_OPTIONS, formatDeepDivingStatus } from '../src/chat/language.ts'
 import { ResumePicker } from '../src/components/dialogs.ts'
 import {
   ACCENT_HUES,
@@ -474,6 +474,13 @@ describe('shared settings, appearance, and workspaces', () => {
     resultContext?.emit('settings/updated', localeNamespace, { preference: 'en' }, { preference: 'zh' }, 'update')
     await tick()
     expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
+
+    result.terminal.send('/language العربية')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(mutate).toHaveBeenCalledWith(localeNamespace, [{ op: 'set', path: ['preference'], value: 'ar' }])
+    expect(result.terminal.output).toContain('تم تغيير لغة الواجهة إلى العربية.')
+    expect(result.terminal.output).toContain('صِف مهمة، أو أرفق ملفًا باستخدام @، أو اكتب / لعرض الأوامر')
     await dispose(result)
   })
 
@@ -7656,9 +7663,14 @@ describe('terminal mounting', () => {
   })
 
   it('matches the Web label and Codex live-turn clock and interrupt hint', () => {
+    expect(TUI_LOCALE_OPTIONS.map(option => option.id)).toEqual([
+      'en', 'zh', 'ar', 'fr', 'ru', 'es', 'ja', 'ko',
+    ])
     expect(formatDeepDivingStatus(14_999, 'en')).toBe('Deep diving (14s • esc to interrupt)')
     expect(formatDeepDivingStatus(125_000, 'en')).toBe('Deep diving (2m 05s • esc to interrupt)')
     expect(formatDeepDivingStatus(125_000, 'zh')).toBe('正在深度求索 (2分05秒 • Esc 中断)')
+    expect(formatDeepDivingStatus(125_000, 'ar')).toBe('جارٍ الاستكشاف العميق (2د 05ث • Esc للمقاطعة)')
+    expect(formatDeepDivingStatus(125_000, 'ja')).toBe('深く探索中 (2分05秒 • Esc で中断)')
   })
 
   it('uses semantic palette roles for diff and patch fences', () => {

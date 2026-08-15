@@ -7,21 +7,39 @@ buffer
   style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-19 dim
-1-21| <blank>
-22| "                                                                                            "
-23| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
+1-15| <blank>
+16| "                                                                                            "
+17| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
   style 1-1 fg=bright-blue bold
   style 2-41 dim
-24| "                                                                                            "
-25| "  Enter 发送 · Shift+Enter 换行 · / 命令"
+18| "                                                                                            "
+19| "  Enter 发送 · Shift+Enter 换行 · / 命令"
   style 0-39 dim
-26| "╭ 语言 ────────────────────────────────────────────────────────────────────╮"
+20| "╭ 语言 ────────────────────────────────────────────────────────────────────╮"
   style 0-75 fg=bright-blue
-27| "│ → 中文                            当前                                   │"
+21| "│   English                                                                │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+22| "│ → 中文                            当前                                   │"
   style 0-0 fg=bright-blue
   style 2-39 fg=bright-blue inverse
   style 75-75 fg=bright-blue
-28| "│   English                                                                │"
+23| "│   العربية                                                                │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+24| "│   Français                                                               │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+25| "│   Русский                                                                │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+26| "│   Español                                                                │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+27| "│   日本語                                                                 │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+28| "│   한국어                                                                 │"
   style 0-0 fg=bright-blue
   style 75-75 fg=bright-blue
 29| "│ ↑/↓ 移动 • Enter 选择 • Esc 关闭                                         │"

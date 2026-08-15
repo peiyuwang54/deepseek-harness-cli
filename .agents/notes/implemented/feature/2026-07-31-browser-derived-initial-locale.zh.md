@@ -10,7 +10,7 @@ Status: implemented
 
 ## Decision
 
-**暂定 locale 先经浏览器、再经 `FALLBACK_LOCALE` 解析；显式 Host 偏好会实时替换它。** `packages/client/locale/src/client/index.ts` 中的 `resolveInitialLocale()` 在服务构造时运行，并表达浏览器／回落顺序。随后，非阻塞 settings 生命周期会应用 `$DSH_HOME/settings.yaml` 中可选的 `locale.preference`；若该值缺失，则继续使用由浏览器派生的值。
+**暂定 locale 先经浏览器、再经 `FALLBACK_LOCALE` 解析；浏览器支持的 Host 偏好会实时替换它。** `packages/client/locale/src/client/index.ts` 中的 `resolveInitialLocale()` 在服务构造时运行，并表达浏览器／回落顺序。随后，非阻塞 settings 生命周期会应用 `$DSH_HOME/settings.yaml` 中可选的 `zh` 或 `en` `locale.preference`；若该值缺失或仅受终端支持，则继续使用由浏览器派生的值。
 
 **浏览器匹配按主子标签进行，且遍历有序列表。** `detectBrowserLocale()` 遍历 `[...(navigator.languages ?? []), navigator.language]`，返回主子标签命中已提供 locale 的首个条目，因此 `zh-Hans-CN` 与 `zh-TW` 同归 `zh`、`en-GB` 归 `en`；而只请求本应用不提供的语言（`fr`、`de`）的浏览器则什么都匹配不到，交由 `FALLBACK_LOCALE` 接管。`navigator.language` 排在列表之后，并兜住那些 Navigator 上没有 `languages` 的宿主——DOM 库把它标注为必然存在，所以这份容忍带一条窄口径 lint 例外，与 `localStorage` 守卫表达的环境边界不信任同源。
 

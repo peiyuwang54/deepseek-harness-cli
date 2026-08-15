@@ -10,7 +10,7 @@ The Settings Language row opened every first visit in Chinese: `LocaleRuntime` r
 
 ## Decision
 
-**The provisional locale resolves through the browser, then `FALLBACK_LOCALE`; an explicit Host preference replaces it live.** `resolveInitialLocale()` in `packages/client/locale/src/client/index.ts` runs at service construction and expresses the browser/fallback order. The nonblocking settings lifecycle then applies optional `locale.preference` from `$DSH_HOME/settings.yaml`; absence leaves the browser-derived value active.
+**The provisional locale resolves through the browser, then `FALLBACK_LOCALE`; a browser-supported Host preference replaces it live.** `resolveInitialLocale()` in `packages/client/locale/src/client/index.ts` runs at service construction and expresses the browser/fallback order. The nonblocking settings lifecycle then applies an optional `zh` or `en` `locale.preference` from `$DSH_HOME/settings.yaml`; absence or a terminal-only preference leaves the browser-derived value active.
 
 **Browser matching is on the primary subtag, over the ordered list.** `detectBrowserLocale()` walks `[...(navigator.languages ?? []), navigator.language]` and returns the first entry whose primary subtag names a shipped locale, so `zh-Hans-CN` and `zh-TW` both land on `zh` and `en-GB` on `en`, while a browser asking only for languages this app does not ship (`fr`, `de`) yields nothing and leaves `FALLBACK_LOCALE` in charge. `navigator.language` trails the list and covers its absence on hosts that ship a Navigator without `languages` — the DOM lib types it as always present, so that tolerance carries a narrow lint exception, the same environment-boundary distrust the `localStorage` guards already express.
 

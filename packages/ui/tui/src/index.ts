@@ -176,6 +176,7 @@ import {
   readTuiThemePreference,
   registerTuiSettingsNamespaces,
   STATUS_LINE_ITEM_IDS,
+  tuiPersonalityPrompt,
   type SettingsController,
   type StatusLineItem,
   type TerminalTitleItem,
@@ -2735,6 +2736,15 @@ export function createTuiChat(
       },
     })
     commandCtx.commands.register({
+      name: 'personality',
+      description: 'Choose a communication style for DeepSeek',
+      input: { hint: '[friendly|pragmatic|status]' },
+      handler: ({ rawInput }) => {
+        settingsController.queuePersonalityCommand(rawInput)
+        return { kind: 'success' }
+      },
+    })
+    commandCtx.commands.register({
       name: 'settings',
       description: 'Show shared settings namespaces and the settings document',
       input: { hint: '[list|document]' },
@@ -2814,6 +2824,11 @@ export function createTuiChat(
     })
   })
   const fileReferencePromptFiber = agent.ctx.inject(['systemPrompt'], (promptCtx) => {
+    promptCtx.systemPrompt.section({
+      name: 'ui:tui-personality',
+      order: 1,
+      text: () => tuiPersonalityPrompt(settingsController.personality()),
+    })
     promptCtx.systemPrompt.section({
       name: 'ui:tui-file-reference',
       order: 99,

@@ -48,6 +48,10 @@ import { osc52ClipboardSequence } from '../src/chat/clipboard.ts'
 import { renderMarkdownTranscript, renderRawTranscript } from '../src/chat/transcript-export.ts'
 import { CURSOR_BLINK_INTERVAL_MS } from '../src/chat/helpers.ts'
 import { TUI_LOCALE_OPTIONS, formatDeepDivingStatus } from '../src/chat/language.ts'
+import {
+  TUI_PERSONALITY_SETTINGS_NAMESPACE,
+  tuiPersonalityPrompt,
+} from '../src/chat/settings.ts'
 import { ResumePicker } from '../src/components/dialogs.ts'
 import {
   ACCENT_HUES,
@@ -746,6 +750,73 @@ describe('shared settings, appearance, and workspaces', () => {
     expect(mutate).toHaveBeenCalledWith(localeNamespace, [{ op: 'set', path: ['preference'], value: 'ar' }])
     expect(result.terminal.output).toContain('تم تغيير لغة الواجهة إلى العربية.')
     expect(result.terminal.output).toContain('صِف مهمة، أو أرفق ملفًا باستخدام @، أو اكتب / لعرض الأوامر')
+    await dispose(result)
+  })
+
+  it('persists /personality and applies the selected style to model prompt assembly', async () => {
+    let preference = 'friendly'
+    let resultContext: Context | undefined
+    const mutate = vi.fn(async (
+      namespace: string,
+      ops: ReadonlyArray<{ op: string; path: readonly string[]; value?: unknown }>,
+    ) => {
+      const operation = ops[0]
+      if (namespace !== TUI_PERSONALITY_SETTINGS_NAMESPACE || operation?.op !== 'set') return
+      const previous = { preference }
+      preference = String(operation.value)
+      resultContext?.emit(
+        'settings/updated',
+        TUI_PERSONALITY_SETTINGS_NAMESPACE,
+        { preference },
+        previous,
+        'update',
+      )
+    })
+    const result = await setup({
+      configureContext: composeFrontDoorServices((ctx) => {
+        resultContext = ctx
+        ctx.provide('settings', {
+          get: (namespace: string) => namespace === TUI_PERSONALITY_SETTINGS_NAMESPACE
+            ? { preference }
+            : undefined,
+          mutate,
+          describe: () => [],
+          writable: true,
+          prepareDocument: () => Promise.resolve(undefined),
+        } as never)
+      }),
+    })
+    const promptText = async (): Promise<string | undefined> => {
+      const assembly = await result.ctx.systemPrompt.assemble(assembleContextFor(result.agent))
+      return assembly.sections.find(section => section.name === 'ui:tui-personality')?.text
+    }
+
+    expect(await promptText()).toBe(tuiPersonalityPrompt('friendly'))
+    result.terminal.send('/personality pragmatic')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(mutate).toHaveBeenCalledWith(TUI_PERSONALITY_SETTINGS_NAMESPACE, [{
+      op: 'set',
+      path: ['preference'],
+      value: 'pragmatic',
+    }])
+    expect(result.terminal.output).toContain('Personality: Pragmatic.')
+    expect(await promptText()).toBe(tuiPersonalityPrompt('pragmatic'))
+
+    result.terminal.send('/personality invalid')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Usage: /personality [friendly|pragmatic|status]')
+
+    resultContext?.emit(
+      'settings/updated',
+      TUI_PERSONALITY_SETTINGS_NAMESPACE,
+      { preference: 'friendly' },
+      { preference: 'pragmatic' },
+      'update',
+    )
+    await tick()
+    expect(await promptText()).toBe(tuiPersonalityPrompt('friendly'))
     await dispose(result)
   })
 

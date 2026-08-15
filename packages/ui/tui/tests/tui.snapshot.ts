@@ -112,6 +112,7 @@ const CHECKPOINTS = [
   'title-selector',
   'statusline-selector',
   'language-selector',
+  'personality-selector',
   'credential-onboarding',
   'workspace-selector',
   'workspace-handoff-recovered',
@@ -1620,6 +1621,7 @@ describe('TUI terminal-state snapshots', () => {
     const uiTheme = settingsNamespace('ui-theme')
     const locale = settingsNamespace('locale')
     const uiTerminal = settingsNamespace('ui-terminal')
+    const agentPersonality = settingsNamespace('agent-personality')
     const workspace = snapshotWorkspace(
       'snapshot-secondary-workspace',
       '/workspace/secondary',
@@ -1639,7 +1641,9 @@ describe('TUI terminal-state snapshots', () => {
               ? { preference: 'zh' }
               : namespace === uiTerminal
                 ? { titleItems: ['session-title', 'app-name'] }
-                : undefined,
+                : namespace === agentPersonality
+                  ? { preference: 'friendly' }
+                  : undefined,
           mutate: () => Promise.resolve(),
           describe: () => [{
             ns: uiTheme,
@@ -1697,6 +1701,13 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('language-selector', harness.terminal, { includeScrollback: true })
+
+    await renderAfter(harness, () => { harness.terminal.send('\x1b') })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/personality')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('personality-selector', harness.terminal, { includeScrollback: true })
 
     await renderAfter(harness, () => { harness.terminal.send('\x1b') })
     await renderAfter(harness, () => {

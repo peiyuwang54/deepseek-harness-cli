@@ -1,0 +1,42 @@
+terminal 92x32 buffer=alternate length=32 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=76 viewportRow=30 bufferRow=30
+buffer
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1-21| <blank>
+22| "                                                                                            "
+  style 0-91 bg=ansi-236
+23| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-41 bg=ansi-236 dim
+  style 42-91 bg=ansi-236
+24| "                                                                                            "
+  style 0-91 bg=ansi-236
+25| "  Enter 发送 · Shift+Enter 换行 · / 命令"
+  style 0-39 dim
+26| "╭ 沟通风格 ────────────────────────────────────────────────────────────────╮"
+  style 0-75 fg=bright-blue
+27| "│ → 友好                            当前                                   │"
+  style 0-0 fg=bright-blue
+  style 2-39 fg=bright-blue inverse
+  style 75-75 fg=bright-blue
+28| "│   务实                            简洁、专注任务、直截了当               │"
+  style 0-0 fg=bright-blue
+  style 8-59 dim
+  style 75-75 fg=bright-blue
+29| "│ ↑/↓ 移动 • Enter 选择 • Esc 关闭                                         │"
+  style 0-0 fg=bright-blue
+  style 2-33 dim
+  style 75-75 fg=bright-blue
+30| "╰──────────────────────────────────────────────────────────────────────────╯"
+  style 0-75 fg=bright-blue
+31| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 44-45 dim
+  style 48-72 dim
+  style 75-79 dim
+  style 82-91 dim

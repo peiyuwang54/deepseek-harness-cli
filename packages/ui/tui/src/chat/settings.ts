@@ -56,6 +56,24 @@ const TUI_ACCENT_SETTINGS_NAMESPACE = settingsNamespace('ui-accent')
 /** TUI-owned settings namespace for terminal title and status presentation. */
 const TUI_TERMINAL_SETTINGS_NAMESPACE = settingsNamespace('ui-terminal')
 
+/** Communication styles exposed by the Codex-shaped `/personality` command. */
+export const TUI_PERSONALITIES = ['friendly', 'pragmatic'] as const
+
+/** Persistent communication style applied to model requests from this TUI. */
+export type TuiPersonality = typeof TUI_PERSONALITIES[number]
+
+/** Default communication style used before a user stores a preference. */
+export const DEFAULT_TUI_PERSONALITY: TuiPersonality = 'friendly'
+
+/** TUI-owned settings namespace for the model communication style. */
+export const TUI_PERSONALITY_SETTINGS_NAMESPACE = settingsNamespace('agent-personality')
+
+/** Prompt text contributed for each communication style. */
+const PERSONALITY_PROMPTS: Readonly<Record<TuiPersonality, string>> = {
+  friendly: 'Communication style: be warm, collaborative, and helpful.',
+  pragmatic: 'Communication style: be concise, task-focused, and direct.',
+}
+
 /** Stable terminal-title fields accepted by `/title`. */
 export const TERMINAL_TITLE_ITEM_IDS = [
   'app-name',
@@ -151,6 +169,11 @@ const TerminalPresentationSettingsSchema: z<TerminalPresentationSettings> = z.ob
   statusLineItems: z.array(z.union([...STATUS_LINE_ITEM_IDS])),
 })
 
+/** Durable communication-style schema. */
+const TuiPersonalitySettingsSchema: z<{ preference: TuiPersonality }> = z.object({
+  preference: z.union([...TUI_PERSONALITIES]).default(DEFAULT_TUI_PERSONALITY),
+})
+
 /**
  * Register the TUI-owned accent and terminal-presentation namespaces on the
  * host settings service when one is composed.
@@ -161,8 +184,35 @@ export function registerTuiSettingsNamespaces(ctx: Context, registered?: () => v
   ctx.inject(['settings'], (settingsCtx) => {
     settingsCtx.settings.register(TUI_ACCENT_SETTINGS_NAMESPACE, AccentSettingsSchema)
     settingsCtx.settings.register(TUI_TERMINAL_SETTINGS_NAMESPACE, TerminalPresentationSettingsSchema)
+    settingsCtx.settings.register(TUI_PERSONALITY_SETTINGS_NAMESPACE, TuiPersonalitySettingsSchema)
     registered?.()
   })
+}
+
+/** Narrow an unknown setting to a supported communication style. */
+function isTuiPersonality(value: unknown): value is TuiPersonality {
+  return TUI_PERSONALITIES.some(personality => personality === value)
+}
+
+/**
+ * Read the persistent communication style.
+ * @param settings - optional settings provider.
+ * @returns stored style or the friendly default.
+ */
+export function readTuiPersonality(settings: SettingsProvider | undefined): TuiPersonality {
+  const section = settings?.get(TUI_PERSONALITY_SETTINGS_NAMESPACE)
+  if (typeof section !== 'object' || section === null) return DEFAULT_TUI_PERSONALITY
+  const preference = (section as { preference?: unknown }).preference
+  return isTuiPersonality(preference) ? preference : DEFAULT_TUI_PERSONALITY
+}
+
+/**
+ * Resolve the model instruction for one communication style.
+ * @param personality - selected communication style.
+ * @returns stable English system-prompt instruction.
+ */
+export function tuiPersonalityPrompt(personality: TuiPersonality): string {
+  return PERSONALITY_PROMPTS[personality]
 }
 
 /** Narrow one durable terminal-title id. */
@@ -266,10 +316,14 @@ export interface SettingsController {
   themePreference(): TuiThemePreference
   /** Current locale shared with the browser front door. */
   locale(): TuiLocale
+  /** Current model communication style. */
+  personality(): TuiPersonality
   /** Queue `/theme`; empty input opens the selector. */
   queueThemeCommand(raw: string): void
   /** Queue `/language`; empty input opens the selector. */
   queueLanguageCommand(raw: string): void
+  /** Queue `/personality`; empty input opens the selector. */
+  queuePersonalityCommand(raw: string): void
   /** Queue `/settings`; empty input opens the metadata hub. */
   queueSettingsCommand(raw: string): void
   /** Queue `/title`; empty input opens the terminal-title setup dialog. */
@@ -299,9 +353,11 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
   let themePreference = readTuiThemePreference(ctx.get('settings'))
   let accent = readTuiAccent(ctx.get('settings'))
   let locale = readTuiLocale(ctx.get('settings'))
+  let personality = readTuiPersonality(ctx.get('settings'))
   let settingsOverlay: TuiOverlaySession | undefined
   let themeOverlay: TuiOverlaySession | undefined
   let languageOverlay: TuiOverlaySession | undefined
+  let personalityOverlay: TuiOverlaySession | undefined
   let titleOverlay: TuiOverlaySession | undefined
   let statusLineOverlay: TuiOverlaySession | undefined
   let titleItems = readTuiTitleItems(ctx.get('settings'))
@@ -391,6 +447,24 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       deps.applyLocale(nextLocale)
     }
     if (!deps.isDisposed()) deps.appendNotice(tuiCopy(nextLocale).languageChanged)
+  }
+
+  const commitPersonality = async (nextPersonality: TuiPersonality): Promise<boolean> => {
+    const provider = settings()
+    if (provider?.get(TUI_PERSONALITY_SETTINGS_NAMESPACE) === undefined) {
+      deps.appendNotice('Personality settings are unavailable: the agent-personality namespace is not registered.', 'warning')
+      return false
+    }
+    await provider.mutate(TUI_PERSONALITY_SETTINGS_NAMESPACE, [{
+      op: 'set',
+      path: ['preference'],
+      value: nextPersonality,
+    }])
+    personality = nextPersonality
+    if (!deps.isDisposed()) {
+      deps.appendNotice(`Personality: ${nextPersonality === 'friendly' ? 'Friendly' : 'Pragmatic'}.`)
+    }
+    return true
   }
 
   const commitTitleItems = async (nextItems: readonly TerminalTitleItem[]): Promise<boolean> => {
@@ -529,6 +603,53 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     deps.requestRender()
   }
 
+  const showPersonality = (): void => {
+    const copy = tuiCopy(locale)
+    void personalityOverlay?.close()
+    const items: SettingsHubItem[] = [
+      {
+        value: 'friendly',
+        label: copy.personalityFriendly,
+        description: personality === 'friendly' ? copy.current : copy.personalityFriendlyDescription,
+      },
+      {
+        value: 'pragmatic',
+        label: copy.personalityPragmatic,
+        description: personality === 'pragmatic' ? copy.current : copy.personalityPragmaticDescription,
+      },
+    ]
+    const session = overlayManager.open({
+      create: () => new ActionDialog(
+        copy.personality,
+        items,
+        items.length,
+        palette,
+        (value) => {
+          void session.close()
+          if (!isTuiPersonality(value)) return
+          operations = operations.then(async () => { await commitPersonality(value) }).catch((error: unknown) => {
+            if (!deps.isDisposed()) deps.appendNotice(`Personality update failed: ${String(error)}`, 'error')
+          })
+        },
+        () => { void session.close() },
+        undefined,
+        copy.moveSelectClose,
+        false,
+      ),
+      options: {
+        width: resolved.modelDialogWidth,
+        maxHeight: resolved.modelDialogMaxHeight,
+        anchor: 'center',
+        margin: 1,
+      },
+    }, 'composer')
+    personalityOverlay = session
+    void session.closed.then(() => {
+      if (personalityOverlay === session) personalityOverlay = undefined
+    })
+    deps.requestRender()
+  }
+
   const showTitle = (): void => {
     void titleOverlay?.close()
     const original = [...titleItems]
@@ -624,6 +745,11 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     const items: SettingsHubItem[] = [
       { value: '@theme', label: 'Theme', description: `${themePreference} · ${accentHue(accent.light).label} / ${accentHue(accent.dark).label}` },
       { value: '@language', label: copy.language, description: tuiLocaleLabel(locale) },
+      {
+        value: '@personality',
+        label: copy.personality,
+        description: personality === 'friendly' ? copy.personalityFriendly : copy.personalityPragmatic,
+      },
       { value: '@title', label: 'Terminal title', description: titleItems.length === 0 ? 'disabled' : titleItems.join(' · ') },
       {
         value: '@statusline',
@@ -656,6 +782,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
           void session.close()
           if (value === '@theme') showTheme()
           else if (value === '@language') showLanguage()
+          else if (value === '@personality') showPersonality()
           else if (value === '@title') showTitle()
           else if (value === '@statusline') showStatusLine()
           else if (value === '@document') {
@@ -725,6 +852,23 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       return
     }
     await commitLocale(nextLocale)
+  }
+
+  const personalityCommand = async (raw: string): Promise<void> => {
+    const argument = raw.trim().toLowerCase()
+    if (argument === '') {
+      showPersonality()
+      return
+    }
+    if (argument === 'status') {
+      deps.appendNotice(`Personality: ${personality === 'friendly' ? 'Friendly' : 'Pragmatic'}.`)
+      return
+    }
+    if (!isTuiPersonality(argument)) {
+      deps.appendNotice('Usage: /personality [friendly|pragmatic|status]', 'warning')
+      return
+    }
+    await commitPersonality(argument)
   }
 
   const settingsCommand = async (raw: string): Promise<void> => {
@@ -820,6 +964,12 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       deps.applyLocale(preference)
       return
     }
+    if (namespace === TUI_PERSONALITY_SETTINGS_NAMESPACE) {
+      const preference = (next as { preference?: unknown }).preference
+      if (!isTuiPersonality(preference)) return
+      personality = preference
+      return
+    }
     if (namespace === TUI_ACCENT_SETTINGS_NAMESPACE) {
       const value = next as { light?: unknown; dark?: unknown }
       const light = isAccentId(value.light) ? value.light : accent.light
@@ -857,6 +1007,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
   return {
     themePreference: () => themePreference,
     locale: () => locale,
+    personality: () => personality,
     queueThemeCommand(raw): void {
       operations = operations.then(() => themeCommand(raw)).catch((error: unknown) => {
         if (!deps.isDisposed()) deps.appendNotice(`Theme command failed: ${String(error)}`, 'error')
@@ -865,6 +1016,11 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     queueLanguageCommand(raw): void {
       operations = operations.then(() => languageCommand(raw)).catch((error: unknown) => {
         if (!deps.isDisposed()) deps.appendNotice(`Language command failed: ${String(error)}`, 'error')
+      })
+    },
+    queuePersonalityCommand(raw): void {
+      operations = operations.then(() => personalityCommand(raw)).catch((error: unknown) => {
+        if (!deps.isDisposed()) deps.appendNotice(`Personality command failed: ${String(error)}`, 'error')
       })
     },
     queueSettingsCommand(raw): void {
@@ -886,6 +1042,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       settingsOverlay = undefined
       themeOverlay = undefined
       languageOverlay = undefined
+      personalityOverlay = undefined
       titleOverlay = undefined
       statusLineOverlay = undefined
     },

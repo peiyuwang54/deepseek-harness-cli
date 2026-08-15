@@ -46,6 +46,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/model off`、`/model high` 与 `/model max` 会直接选择当前路由公布的对应推理强度。不可用的等级只会报告 catalog 限制，不会改变选择。
 
+`/mcp [verbose]` 会列出当前 Agent 作用域工具注册表中可见的 MCP 限定工具。默认视图输出稳定的公开工具名；`verbose` 还会输出经规整的描述。它不会暴露无关工具，也不会推断工具注册表不持有的服务器连接状态。
+
 `/reload`（实验性，仅开发环境）会重新读取所有基于文件的 loader 配置树，并把 diff 应用到运行中 app：它手动调用 HMR（热模块替换）watcher 的配置路径；上下文中必须有 cordis Loader，否则退化为警告。它只在 agent 空闲时运行，并拒绝 reload 进行期间的再次进入。模块源代码热重载仍由 watcher 持有。挂载 `skills` 服务后，`/skill:<name> [instructions]` 会把该 skill 的指令作为一个 user 轮次加载到会话中；自动补全列出用户可调用的 skill，按精确名称调用时也会拒绝用户策略禁用的 skill。
 
 底部状态栏将会话报告的用量汇总为 `↑<uncached input> ↓<output>`；任何输入计费后，后面会显示 `cache <rate>%`，表示提供方缓存服务的已计费提示词 token 占比（未缓存输入加缓存读写），并四舍五入为百分比。左侧显示工作区和分支，右侧显示 idle／running 状态、当前模型、用量、已知的 token-meter 上下文压力和排队工作。终端过窄时会先让出中间空隙，再裁剪两侧内容。

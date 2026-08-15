@@ -166,6 +166,7 @@ import {
 } from './chat/workspace.ts'
 import { readTuiLocale, tuiCopy, type TuiLocale } from './chat/language.ts'
 import { latestVisibleAssistantText, osc52ClipboardSequence } from './chat/clipboard.ts'
+import { mcpCommandResult } from './chat/mcp-command.ts'
 import type { TuiResumeHost, TuiRuntime } from './runtime.ts'
 import { WorkspaceFileSearch } from './chat/file-autocomplete.ts'
 import { createTuiTerminalMode, parseTuiMouseEvent } from './chat/terminal-mode.ts'
@@ -2087,6 +2088,12 @@ export function createTuiChat(
       description: 'Insert a workspace file reference into the composer',
       input: { hint: '[path]' },
       handler: ({ rawInput }) => runMentionCommand(rawInput),
+    })
+    commandCtx.commands.register({
+      name: 'mcp',
+      description: 'List MCP tools visible to this session',
+      input: { hint: '[verbose]' },
+      handler: ({ rawInput }) => mcpCommandResult(rawInput, agent.ctx.tools.schemas(agent)),
     })
     commandCtx.commands.register({
       name: 'approve',

@@ -85,6 +85,7 @@ const CHECKPOINTS = [
   'model-selector-filtered',
   'model-switching',
   'model-reasoning-off',
+  'mcp-tools',
   'permissions-selector',
   'permissions-switching',
   'skills-selector',
@@ -1233,6 +1234,35 @@ describe('TUI terminal-state snapshots', () => {
     })
     await checkpoint('permissions-switching', harness.terminal, { includeScrollback: true })
     expect(harness.ctx.permissionPresets.current(harness.session.events)).toBe('danger-full-access')
+    await disposeSnapshot(harness)
+  })
+
+  it('pins the MCP tool catalog without unrelated tools', async () => {
+    const output: ToolDefinition['output'] = {
+      schema: { type: 'null' },
+      render: () => [],
+    }
+    const harness = await setupSnapshot({
+      tools: {
+        read: {
+          name: 'read', description: 'Read a local file', parameters: {}, output,
+          execute: async () => null,
+        },
+        github: {
+          name: 'mcp__github__search', description: 'Search GitHub repositories', parameters: {}, output,
+          execute: async () => null,
+        },
+        filesystem: {
+          name: 'mcp__filesystem__read_file', description: 'Read a remote file', parameters: {}, output,
+          execute: async () => null,
+        },
+      },
+    }, { columns: 92, rows: 32 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/mcp verbose')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('mcp-tools', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

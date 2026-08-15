@@ -46,6 +46,8 @@ The shared [`dsh-command-jobs`](../../jobs/command-jobs/README.md) plugin contri
 
 `/model off`, `/model high`, and `/model max` directly select that advertised effort for the current route. An unavailable level reports the catalog limitation without changing the selection.
 
+`/mcp [verbose]` lists the MCP-qualified tools visible through the current Agent's scoped tool registry. The default view prints stable public tool names; `verbose` also prints their normalized descriptions. It does not expose unrelated tools or infer server connection state that the tool registry does not own.
+
 `/reload` (EXPERIMENTAL, dev-only) re-reads every file-backed loader config tree and applies the diff to the running app — the HMR watcher's config path, invoked manually; it needs the cordis Loader in the context and degrades to a warning without one, runs only while the agent is idle, and refuses re-entry while a reload is in flight. Module-source hot reload remains watcher-owned. When a `skills` service is mounted, `/skill:<name> [instructions]` loads that skill's instructions into the conversation as a user turn; autocomplete lists user-invocable skills, and exact invocation rejects a skill whose user policy disables it.
 
 The bottom status bar sums the session's reported usage as `↑<uncached input> ↓<output>`, followed by `cache <rate>%` once any input has been billed — the share of billed prompt tokens (uncached input plus cache reads and writes) served from the provider cache, rounded to a percent. Its left side identifies the workspace and branch; its right side shows idle/running state, the current model, usage, token-meter context pressure when known, and queued work. The middle gap yields before either side is clipped on a narrow terminal.

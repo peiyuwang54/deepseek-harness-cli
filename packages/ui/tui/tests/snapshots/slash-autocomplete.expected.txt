@@ -32,7 +32,7 @@ viewport
   style 9-93 dim
 12| "  exit          Exit after the active turn reaches idle"
   style 6-54 dim
-13| "  (1/27)"
+13| "  (1/28)"
   style 0-7 dim
 14| "/workspace/project (tui-staging)              ▸ idle  deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold

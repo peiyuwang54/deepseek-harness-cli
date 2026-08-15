@@ -242,6 +242,28 @@ export function runCoordinatorContract(name: string, makeFixture: () => Promise<
       }
     })
 
+    it('never admits ephemeral live sessions to durable storage', async () => {
+      const fix = await makeFixture()
+      const { ctx, fiber } = await freshCtx(fix)
+      let session!: Session
+      const sessionFiber = await ctx.plugin(Object.assign((inner: Context) => {
+        session = inner.sessions.create(SessionId('ephemeral'), { meta: { cwd: WORK, ephemeral: true } })
+      }, { inject: ['sessions'] }))
+      try {
+        const id = SessionId('ephemeral')
+        send(session, oneTurnLog())
+        await ctx.sessions.flush(session)
+
+        expect(await ctx.sessionPersistence.list()).not.toContainEqual(expect.objectContaining({ id }))
+        await sessionFiber.dispose()
+        await expect(ctx.sessionPersistence.load(id)).rejects.toThrow()
+      } finally {
+        await sessionFiber.dispose()
+        await fiber.dispose()
+        await fix.cleanup()
+      }
+    })
+
     it('rejects crash-repair load while a live session owns the persisted prefix', async () => {
       const fix = await makeFixture()
       const { ctx, fiber } = await freshCtx(fix)

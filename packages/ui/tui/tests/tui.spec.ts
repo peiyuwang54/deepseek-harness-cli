@@ -20,7 +20,7 @@ import { createUserMessage,
 import { GOAL_CHANGE_VERSION, GoalId, type GoalSnapshotChangeMeta } from '@deepseek-ai/dsh-goal'
 import CommandService, { type CommandInvocation } from '@deepseek-ai/dsh-commands'
 import { compactCheckpointSource, CompactionId } from '@deepseek-ai/dsh-compaction'
-import SessionStore, { SessionId, type JsonValue, type SessionEvent, type SessionHeader, type TurnEndReason } from '@deepseek-ai/dsh-session'
+import SessionStore, { SessionId, type JsonValue, type SessionEvent, type SessionHeader, type TurnEndReason, type UserMessage } from '@deepseek-ai/dsh-session'
 import type { SessionRecord } from '@deepseek-ai/dsh-session-query'
 import SkillRegistry, { type SkillCatalogSnapshot, type SkillDefinition, type SkillProvider, type SkillSummary } from '@deepseek-ai/dsh-skill'
 import SessionTitleService from '@deepseek-ai/dsh-session-title'
@@ -5769,6 +5769,55 @@ describe('pi-tui chat lifecycle and transcript', () => {
 })
 
 describe('agent navigation command', () => {
+  it('queues /side messages and the hidden /btw alias through the navigation host', async () => {
+    const rootId = SessionId('main-session')
+    const queueSide = vi.fn(() => undefined)
+    const result = await setup({
+      agentNavigation: {
+        rootSessionId: rootId,
+        currentSessionId: () => rootId,
+        queueSwitch: () => undefined,
+        queueSide,
+      },
+    })
+
+    result.terminal.send('/side inspect this')
+    result.terminal.send('\r')
+    await tick()
+    expect(queueSide).toHaveBeenCalledWith('inspect this')
+
+    result.terminal.send('/btw quick question')
+    result.terminal.send('\r')
+    await tick()
+    expect(queueSide).toHaveBeenCalledWith('quick question')
+    expect(result.terminal.output).not.toContain('Unknown command: /btw')
+    await dispose(result)
+  })
+
+  it('limits side channels to inspection commands and returns on idle Ctrl+C', async () => {
+    const rootId = SessionId('main-session')
+    const parentId = SessionId('parent-session')
+    const queueCloseSide = vi.fn(() => undefined)
+    const result = await setup({
+      agentNavigation: {
+        rootSessionId: rootId,
+        currentSessionId: () => SessionId('main-session'),
+        queueSwitch: () => undefined,
+        sideConversation: () => ({ parentSessionId: parentId, transcriptStartSeq: 0 }),
+        queueCloseSide,
+      },
+    })
+
+    result.terminal.send('/rename should-not-run')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain("'/rename' is unavailable in side conversations")
+    result.terminal.send('\x03')
+    expect(queueCloseSide).toHaveBeenCalledOnce()
+    expect(result.exit).not.toHaveBeenCalled()
+    await dispose(result)
+  })
+
   it('opens one shared picker for /agent and /subagents and queues the selected live child', async () => {
     const rootId = SessionId('main-session')
     const childId = SessionId('live-child')
@@ -8127,6 +8176,81 @@ describe('terminal mounting', () => {
     await vi.waitFor(() => {
       expect(terminal.output.slice(terminal.output.lastIndexOf('Session status'))).toContain(rootId)
     })
+    await ctx.fiber.dispose()
+  })
+
+  it('creates, enters, and discards one ephemeral /side Agent in place', async () => {
+    const ctx = new Context()
+    provideTokenMeter(ctx)
+    provideLlmCatalog(ctx)
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(CommandService)
+    await ctx.plugin(UserInteractionService)
+    await ctx.plugin(TuiPromptService)
+    await ctx.plugin(SystemPrompt)
+    await ctx.plugin(ToolRegistry)
+    const rootId = SessionId('main')
+    const rootSession = ctx.sessions.create(rootId)
+    rootSession.append('turn/start', { turn: 1 })
+    appendUser(rootSession, 'parent request')
+    rootSession.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    const rootAgent = registerMountAgent(ctx, rootSession, 'idle')
+    rootAgent.options = { provider: 'deepseek-official', model: 'deepseek-v4-pro' }
+
+    const sidePrompts: UserMessage[] = []
+    let sideId: SessionId | undefined
+    let sideDisposed = false
+    ctx.agents.setFactory({
+      createAgent(_ownerCtx, options) {
+        const childSession = ctx.sessions.prepare(options.sessionId, {
+          ...options.seed === undefined ? {} : { seed: options.seed },
+          ...options.meta === undefined ? {} : { meta: options.meta },
+        })
+        const detachSession = ctx.sessions.enter(childSession)
+        ctx.sessions.announce(childSession)
+        const lifecycle = registerMountAgentLifecycle(ctx, childSession, 'idle')
+        lifecycle.agent.options = options.agentOptions ?? {}
+        lifecycle.agent.inject = () => {}
+        lifecycle.agent.followup = (message) => { sidePrompts.push(message) }
+        sideId = childSession.id
+        return Promise.resolve({
+          agent: lifecycle.agent,
+          async dispose() {
+            sideDisposed = true
+            lifecycle.dispose()
+            detachSession()
+          },
+        })
+      },
+      resume() {
+        return Promise.reject(new Error('resume is unused in this test'))
+      },
+    })
+
+    const terminal = new FakeTerminal()
+    const exit = vi.fn()
+    mountTui(ctx, { sessionId: rootId, theme: { color: false } }, { terminal, exit })
+    await tick()
+    terminal.output = ''
+    terminal.send('/side explain this code')
+    terminal.send('\r')
+    await vi.waitFor(() => { expect(terminal.started).toBe(2) })
+    expect(sideId).toMatch(/^side-/u)
+    expect(ctx.sessions.get(sideId!)?.header).toMatchObject({ ephemeral: true, parentSession: rootId })
+    expect(sidePrompts).toHaveLength(1)
+    expect(sidePrompts[0]?.content).toEqual([{ type: 'text', text: 'explain this code' }])
+    expect(terminal.output).toContain('SIDE · Ctrl+C return to parent')
+
+    terminal.send('/rename forbidden')
+    terminal.send('\r')
+    await tick()
+    expect(terminal.output).toContain("'/rename' is unavailable in side conversations")
+    terminal.send('\x03')
+    await vi.waitFor(() => { expect(terminal.started).toBe(3) })
+    expect(sideDisposed).toBe(true)
+    expect(ctx.sessions.get(sideId!)).toBeUndefined()
+    expect(exit).not.toHaveBeenCalled()
     await ctx.fiber.dispose()
   })
 

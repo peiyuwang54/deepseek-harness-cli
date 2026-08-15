@@ -1,0 +1,43 @@
+terminal 96x30 buffer=normal length=30 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor visible column=3 viewportRow=11 bufferRow=11
+buffer
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1| <blank>
+2| "                                                                                                "
+  style 0-95 bg=ansi-236
+3| " What does this helper return?                                                                  "
+  style 0-95 bg=ansi-236
+4| "                                                                                                "
+  style 0-95 bg=ansi-236
+5| <blank>
+6| "• It returns the validated session identifier.                                                  "
+  style 0-0 dim
+7| "Model wait 0.0s · Completed 2026-08-16 12:00:00                                                 "
+  style 0-46 dim
+8-9| <blank>
+10| "                                                                                                "
+  style 0-95 bg=ansi-236
+11| " › │Describe a task, @ a file, or / for commands                                                "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-95 bg=ansi-236
+12| "                                                                                                "
+  style 0-95 bg=ansi-236
+13| "  SIDE · Ctrl+C return to parent · Enter send · Shift+Enter newline · / commands"
+  style 0-79 dim
+14| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 48-49 dim
+  style 52-76 dim
+  style 79-83 dim
+  style 86-95 dim
+15| "                                       2 turns · 2 steps"
+  style 39-55 dim
+16-29| <blank>

@@ -24,6 +24,8 @@ DeepSeek 认证仍由共享 `ctx.credentials` provider 持有。所选 DeepSeek 
 
 终端命令 catalog 还会通过这个精确会话进程宿主公开 `/fork`。配对的 `command/run` 与 `command/done` 事件结算后，controller 会调用 `ctx.sessions.fork`，flush 子会话与来源会话，drain 输入，再切换到来源 workspace 中的子会话。切换被拒绝时，它会恢复终端并报告持久子会话 id，而不会删除子会话或修改来源会话。
 
+`/side [message]` 及其隐藏别名 `/btw` 会从父会话最近一个完整轮次前缀，在同一进程中创建第二个 Agent。它复用父会话的 preset 与模型选项，插入一条已记录的指令边界，关闭继承的 Plan 模式与 Goal 激活，并禁止子代理和 workflow 工具。Renderer 只显示该边界之后的事件，并将命令限制为只读 transcript 与 workspace 辅助项。Ctrl+C 会先中断运行中的旁路工作，再从空闲旁路返回未被修改的父会话。子会话 header 带 `ephemeral: true`；持久化协调器会忽略该生命周期的创建、事件、flush、dispose 与 HMR 接管，因此正常退出或进程崩溃都不会把它加入恢复存储。
+
 进程宿主还持有一套实时终端通道导航器。`/agent` 与 `/subagents` 会打开同一个附着 composer 的选择器，列出根 Agent 与 `ctx.subagents` 报告的存活后代；标签和模式来自持久 subagent projection，运行状态与可切换性来自 Agent registry。选择另一个存活条目只会 dispose 当前 renderer，并为所选 Agent 挂载新 renderer，不会停止任何 Agent 或修改 Session。当前 Agent 必须处于 idle，审批和提问 provider 才能安全卸载，但目标可以已经在运行。如果所选子 Agent 被 dispose，通道会返回仍存活的根 Agent。省略导航宿主或 subagent service 的自定义 embedding 会报告能力缺失；非活动后代仍通过 `/resume` 打开，不会被伪装成存活 Agent。
 
 `/archive` 是主 CLI 会话的非破坏性生命周期操作。它只在主 Agent 空闲时可用，并要求明确确认。Renderer 会先 flush Session，再让 `ctx.workspaceRegistry` 把该 id 加入持久归档集合；两步都成功后才请求退出进程。`/delete` 是破坏性对应操作：用户通过独立确认后，持久化服务会 flush 并删除当前日志，阻止 teardown 将其重新创建，renderer 随即退出。删除尚未结算时产生的事件会在后端操作失败时恢复。取消、所需能力缺失、存储失败或任一操作期间状态改变都会让当前 TUI 保持可用。
@@ -82,6 +84,8 @@ Agent 选择器对照了 Codex commit [`c494130`](https://github.com/openai/code
 
 当前 `/fork` 行为还对照了 OpenAI Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/chatwidget/slash_dispatch.rs) 及其[应用分派](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/app/event_dispatch.rs)。DeepSeek Harness 使用自己的持久 Session 日志与进程宿主，没有复制 Codex 源码。
 
+`/side` 生命周期对照了 OpenAI Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/app/side.rs)。DeepSeek Harness 使用自己的 Agent registry、Session 事件日志、提示词 registry 与 pi-tui renderer 实现可观察的父会话／旁路切换，没有复制 Rust 源码。
+
 恢复的 TUI 快照是 DeepSeek Harness 的第一方源码，取自删除提交 `10bb9cbf4a22b5095bb9ff04d1425907af8f08af` 之前的提交 `7248b5ec8f8769f882f12fd521504fa48e97bcf3`。当时仓库与 `@deepseek-ai/dsh-tui` 均声明 BSD 3-Clause。全仓库在 `c905c4694e317eff1f529f0fed047c2ce202d11a` 采用 MIT 时，该包已经被删除，因此历史快照没有参与那次机械式 package manifest 换证。恢复的实现继续保留 BSD 3-Clause 条款；当前迁移与新增内容采用 MIT。组合后的软件包因此声明精确 SPDX 表达式 `(MIT AND BSD-3-Clause)`，并由包内 `LICENSE` 保留两份声明和解释该边界。
 
 ## 验证
@@ -93,6 +97,8 @@ Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服
 凭据交互覆盖使用一个假的只写 provider 与无密钥终端 checkpoint。它证明首次使用检测、提交前掩码渲染、直接交付 `credentials.set`、配置来源报告，以及原始值不会出现在终端输出或 Session 事件中。
 
 `/fork` checkpoint 覆盖宿主失败恢复并显示保留的子会话 id。聚焦集成测试证明配对命令生命周期事件先于子会话 end-seed，子会话记录来源 parent 与 workspace，必须挂载持久化服务，参数会被拒绝，并且宿主失败时原终端仍可使用。
+
+`/side` checkpoint 固定一份隐藏继承父会话行与内部指令边界、但保留旁路提示词、回答和返回提示的 transcript。聚焦测试覆盖完整轮次 seed、首轮准入、preset 与模型继承、Plan 关闭、工具限制、隐藏 `/btw` 别名、旁路命令过滤、运行中与空闲时两阶段 Ctrl+C、同进程恢复父会话、Agent dispose，以及 ephemeral Session 完全不进入持久化。
 
 `/agent` checkpoint 会固定主项与后代项、当前标记、运行状态、模式和会话 id。聚焦测试覆盖 `/subagents` 别名、参数拒绝、宿主能力缺失、后代列举、当前运行时拒绝切换，以及真实终端重新挂载后由 `/status` 读取所选子 Session。
 

@@ -30,6 +30,7 @@
     { "path": "../../llm/llm-retry" },
     { "path": "../../interaction/commands" },
     { "path": "../../interaction/permission-presets" },
+    { "path": "../../plan/plan-mode" },
     { "path": "../../interaction/user-approval" },
     { "path": "../../interaction/user-questions" },
     { "path": "../../compaction/compaction" },

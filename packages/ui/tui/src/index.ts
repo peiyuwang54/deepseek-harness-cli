@@ -169,6 +169,11 @@ import { createApprovalQueue } from './chat/approvals.ts'
 import { createResumeController } from './chat/resume.ts'
 import { createForkController } from './chat/fork.ts'
 import {
+  createSideConversation,
+  discardSideConversation,
+  type SideConversationHandle,
+} from './chat/side.ts'
+import {
   createSettingsController,
   readTuiAccent,
   readTuiStatusLineItems,
@@ -210,6 +215,18 @@ import { TranscriptViewport } from './components/transcript-viewport.ts'
 const INIT_GUIDE_PROMPT = 'Inspect the current repository and initialize its contributor guidance. If AGENTS.md already exists in the current working directory, report that and do not modify it. Otherwise create a concise AGENTS.md grounded in this repository\'s actual structure, development commands, coding conventions, testing requirements, and security or configuration constraints. Do not invent commands or policies.'
 
 const REVIEW_CHANGES_PROMPT = 'Review the current workspace changes, including untracked files. Identify concrete bugs, regressions, security risks, and missing tests without modifying files. Report findings in severity order with file and line references. If there are no findings, state that explicitly.'
+
+/** Commands safe to expose while an ephemeral side thread owns the terminal. */
+const SIDE_CONVERSATION_COMMANDS = new Set([
+  'copy',
+  'diff',
+  'export',
+  'ide',
+  'mention',
+  'raw',
+  'status',
+  'usage',
+])
 
 export { TuiPromptService } from './prompt.ts'
 export { renderSkillInvocation } from './chat/skill-invocation.ts'
@@ -411,6 +428,15 @@ export function createTuiChat(
   const agent = ctx.agents.get(sessionId)
   if (agent === undefined) throw new Error(`ui-tui: session "${sessionId}" is not running`)
   const resolved = resolveTuiConfig(config)
+  const sideConversation = runtime.agentNavigation?.sideConversation?.(sessionId)
+  const isSideConversation = sideConversation !== undefined
+  const isVisibleTranscriptEvent = (event: SessionEvent): boolean => {
+    if (sideConversation !== undefined && event.seq < sideConversation.transcriptStartSeq) return false
+    return event.type !== 'user/message'
+      || event.data.source.kind !== 'plugin'
+      || event.data.source.plugin !== 'ui-tui-side'
+  }
+  const transcriptEvents = (): SessionEvent[] => agent.session.events.filter(isVisibleTranscriptEvent)
   let themePreference = readTuiThemePreference(ctx.get('settings'))
   let accent: AccentSelection = readTuiAccent(ctx.get('settings'))
   let titleItems = readTuiTitleItems(ctx.get('settings'))
@@ -463,16 +489,17 @@ export function createTuiChat(
   let vimState: VimState = 'insert'
   let vimPending = ''
   const refreshEditorFooter = (): void => {
+    const sidePrefix = isSideConversation ? 'SIDE · Ctrl+C return to parent · ' : ''
     if (keymap === 'vim' && vimState === 'normal') {
       editor.frameFooter = agent.status === 'running'
-        ? 'VIM NORMAL · Esc interrupt · i insert · h/j/k/l move'
-        : 'VIM NORMAL · i insert · h/j/k/l move · x delete'
+        ? `${sidePrefix}VIM NORMAL · Esc interrupt · i insert · h/j/k/l move`
+        : `${sidePrefix}VIM NORMAL · i insert · h/j/k/l move · x delete`
       return
     }
     const mode = keymap === 'vim' ? 'VIM INSERT · ' : ''
     editor.frameFooter = agent.status === 'running'
-      ? `${mode}${tuiCopy(locale).editorRunningFooter}`
-      : `${mode}${tuiCopy(locale).editorIdleFooter}`
+      ? `${sidePrefix}${mode}${tuiCopy(locale).editorRunningFooter}`
+      : `${sidePrefix}${mode}${tuiCopy(locale).editorIdleFooter}`
   }
   refreshEditorFooter()
   const todo = new TodoComponent(palette)
@@ -596,7 +623,7 @@ export function createTuiChat(
     if (implementation === undefined || implementation.fiber.state >= FIBER_FAILED) return undefined
     return ctx.get('sessionQuery', false)
   }
-  const isZeroState = (): boolean => !agent.session.events.some(event =>
+  const isZeroState = (): boolean => !isSideConversation && !agent.session.events.some(event =>
     event.type === 'turn/start'
     || event.type === 'user/message'
     || event.type === 'assistant/message'
@@ -640,6 +667,7 @@ export function createTuiChat(
   const formattedCwd = displayText(terminalWorkspaceLabel)
   const branch = runtime.gitBranch?.(cwd) ?? gitBranch(cwd)
   const readGoalFooterState = (): GoalFooterState | undefined => {
+    if (isSideConversation) return undefined
     const restored = foldGoal(agent.session.events)
     if (restored.goal === undefined) return undefined
     const live = ctx.get('goals')?.get(agent)
@@ -1367,7 +1395,7 @@ export function createTuiChat(
 
   const replaceTranscriptWithRawSource = (): void => {
     chat.clear()
-    const source = renderRawTranscript([...agent.session.events], showReasoning)
+    const source = renderRawTranscript(transcriptEvents(), showReasoning)
     if (source !== '') chat.addChild(new Text(displayText(source), 0, 0))
   }
 
@@ -1396,7 +1424,7 @@ export function createTuiChat(
     todo.update([])
     const transcriptCalls = transcriptToolCallIds(agent.session)
     let restored = false
-    for (const event of agent.session.events) {
+    for (const event of transcriptEvents()) {
       if (isReplacementSurfaceEvent(event)) {
         if (isCompactCheckpoint(event)) renderCompactionMarker()
         continue
@@ -2181,6 +2209,15 @@ export function createTuiChat(
     return { kind: 'success' }
   }
 
+  const runSideCommand = (raw: string): CommandResult => {
+    const navigation = runtime.agentNavigation
+    if (navigation?.queueSide === undefined) {
+      return { kind: 'error', text: 'Side conversations are unavailable in this TUI embedding.' }
+    }
+    const error = navigation.queueSide(raw.trim())
+    return error === undefined ? { kind: 'success' } : { kind: 'error', text: error }
+  }
+
   const runIdeCommand = (raw: string): CommandResult => {
     const argument = raw.trim()
     if (argument !== '') {
@@ -2264,7 +2301,7 @@ export function createTuiChat(
   }
 
   const runCopyCommand = (): CommandResult => {
-    const text = latestVisibleAssistantText(agent.session.events)
+    const text = latestVisibleAssistantText(transcriptEvents())
     if (text === undefined) return { kind: 'error', text: 'No assistant response is available to copy.' }
     try {
       runtime.terminal.write(osc52ClipboardSequence(text, process.env.TMUX !== undefined))
@@ -2276,7 +2313,7 @@ export function createTuiChat(
 
   const copyTranscriptExport = (): CommandResult => {
     try {
-      const markdown = renderMarkdownTranscript([...agent.session.events], showReasoning)
+      const markdown = renderMarkdownTranscript(transcriptEvents(), showReasoning)
       runtime.terminal.write(osc52ClipboardSequence(markdown, process.env.TMUX !== undefined))
       return { kind: 'success', text: 'Copied the complete conversation to the clipboard.' }
     } catch (error: unknown) {
@@ -2317,7 +2354,7 @@ export function createTuiChat(
       return { kind: 'success' }
     }
     try {
-      const markdown = renderMarkdownTranscript([...agent.session.events], showReasoning)
+      const markdown = renderMarkdownTranscript(transcriptEvents(), showReasoning)
       const path = await writeMarkdownTranscript(cwd, requestedPath, markdown, signal)
       return { kind: 'success', text: `Saved conversation to ${displayText(path)}.` }
     } catch (error: unknown) {
@@ -2446,14 +2483,16 @@ export function createTuiChat(
   let skillCommands: SlashCommand[] = []
   let skillCommandScan = 0
   const refreshCommandAutocomplete = (): void => {
+    const visibleCommands = ctx.commands.list(agent).filter(command =>
+      !isSideConversation || SIDE_CONVERSATION_COMMANDS.has(command.name))
     const base = new CombinedAutocompleteProvider(
       [
-        ...ctx.commands.list(agent).map(command => ({
+        ...visibleCommands.map(command => ({
           name: command.name,
           description: command.description,
           ...(command.input === undefined ? {} : { argumentHint: command.input.hint }),
         })),
-        ...skillCommands,
+        ...isSideConversation ? [] : skillCommands,
       ],
       agent.session.header.cwd ?? process.cwd(),
     )
@@ -2551,6 +2590,12 @@ export function createTuiChat(
       name: 'subagents',
       description: 'Switch the active agent thread',
       handler: ({ rawInput }) => runAgentCommand('subagents', rawInput),
+    })
+    commandCtx.commands.register({
+      name: 'side',
+      description: 'Start a temporary side conversation in an ephemeral fork',
+      input: { hint: '[message]' },
+      handler: ({ rawInput }) => runSideCommand(rawInput),
     })
     commandCtx.commands.register({
       name: 'keymap',
@@ -2840,13 +2885,24 @@ export function createTuiChat(
   })
 
   runCommand = (text: string): void => {
-    if (text.trim() === '/permissions' && ctx.get('permissionPresets') !== undefined) {
+    const trimmed = text.trim()
+    const firstSpace = trimmed.indexOf(' ')
+    const rawName = trimmed.slice(1, firstSpace < 0 ? undefined : firstSpace)
+    const commandName = rawName === 'btw' ? 'side' : rawName
+    if (isSideConversation && !SIDE_CONVERSATION_COMMANDS.has(commandName)) {
+      appendNotice(`'/${displayText(rawName)}' is unavailable in side conversations. Press Ctrl+C to return to the parent thread first.`, 'warning')
+      return
+    }
+    const normalizedText = rawName === 'btw'
+      ? `/side${firstSpace < 0 ? '' : trimmed.slice(firstSpace)}`
+      : text
+    if (normalizedText.trim() === '/permissions' && ctx.get('permissionPresets') !== undefined) {
       showPermissionsSelector()
       return
     }
     const controller = new AbortController()
     commandControllers.add(controller)
-    void ctx.commands.execute(agent, text, controller.signal).then(
+    void ctx.commands.execute(agent, normalizedText, controller.signal).then(
       (execution) => {
         if (disposed) return
         if (execution === undefined) {
@@ -2998,6 +3054,12 @@ export function createTuiChat(
     // `/skill:<name>` carries a colon, which the command registry's name
     // grammar rejects, so it is intercepted before generic command routing.
     if (text.startsWith(SKILL_COMMAND_PREFIX)) {
+      if (isSideConversation) {
+        editor.addToHistory(text)
+        editor.setText('')
+        appendNotice("'/skill' is unavailable in side conversations. Press Ctrl+C to return to the parent thread first.", 'warning')
+        return
+      }
       editor.addToHistory(text)
       editor.setText('')
       const { name: skillName, instructions } = parseSkillCommand(text)
@@ -3168,6 +3230,14 @@ export function createTuiChat(
         agent.cancel({ kind: 'user' })
       } else if (editor.getText() !== '') {
         editor.setText('')
+      } else if (isSideConversation) {
+        const navigation = runtime.agentNavigation
+        if (navigation?.queueCloseSide === undefined) {
+          appendNotice('This host cannot return from the side conversation.', 'warning')
+        } else {
+          const error = navigation.queueCloseSide()
+          if (error !== undefined) appendNotice(error, 'warning')
+        }
       } else {
         requestExit()
       }
@@ -3260,6 +3330,10 @@ export function createTuiChat(
         appendNotice(`Compaction failed: ${event.data.error}`, 'warning')
       }
       runtime.terminal.setProgress(runningStatus !== undefined)
+      requestRender()
+      return
+    }
+    if (!isVisibleTranscriptEvent(event)) {
       requestRender()
       return
     }
@@ -3380,7 +3454,7 @@ export function createTuiChat(
   }
 
   rebuildTranscript(true)
-  const restoredGoal = foldGoal(agent.session.events).goal
+  const restoredGoal = isSideConversation ? undefined : foldGoal(agent.session.events).goal
   /* v8 ignore next -- goal replay coverage lives with the goal seam; the TUI only formats its startup notice. */
   if (restoredGoal !== undefined && restoredGoal.phase !== 'complete') {
     appendNotice(
@@ -3462,6 +3536,8 @@ export function mountTui(ctx: Context, config: Config, runtime: TuiRuntime): voi
       let switchOperation = Promise.resolve()
       let switchPending = false
       let closed = false
+      const sideAbort = new AbortController()
+      let side: SideConversationHandle | undefined
 
       const belongsToRoot = (candidate: Agent): boolean => {
         let current = candidate.session
@@ -3483,22 +3559,23 @@ export function mountTui(ctx: Context, config: Config, runtime: TuiRuntime): voi
         channelRuntime,
       )
 
-      const performSwitch = async (targetSessionId: SessionId): Promise<void> => {
+      const performSwitch = async (targetSessionId: SessionId): Promise<boolean> => {
         const previousSessionId = activeSessionId
         const previousController = controller
         controller = undefined
         await previousController?.dispose()
-        if (closed) return
+        if (closed) return false
         try {
           controller = mountChannel(targetSessionId)
           activeSessionId = targetSessionId
+          return true
         } catch (error: unknown) {
           runtime.terminal.write(displayText(
             `ui-tui: could not switch to agent "${targetSessionId}": ${errorChain(error)}\n`,
           ))
           if (ctx.agents.get(previousSessionId) === undefined) {
             runtime.exit(1)
-            return
+            return false
           }
           try {
             controller = mountChannel(previousSessionId)
@@ -3508,20 +3585,111 @@ export function mountTui(ctx: Context, config: Config, runtime: TuiRuntime): voi
             ))
             runtime.exit(1)
           }
+          return false
         }
       }
 
-      const scheduleSwitch = (targetSessionId: SessionId): void => {
+      const scheduleOperation = (operation: () => Promise<void>): void => {
         switchPending = true
         switchTimer = setTimeout(() => {
           switchTimer = undefined
-          switchOperation = performSwitch(targetSessionId).finally(() => { switchPending = false })
+          switchOperation = operation().finally(() => { switchPending = false })
         }, 0)
+      }
+
+      const scheduleSwitch = (targetSessionId: SessionId): void => {
+        scheduleOperation(async () => { await performSwitch(targetSessionId) })
+      }
+
+      const reportNavigationFailure = (message: string): void => {
+        runtime.terminal.write(`${displayText(message)}\n`)
+      }
+
+      const discardSide = async (target: SideConversationHandle): Promise<void> => {
+        try {
+          await discardSideConversation(target)
+        } catch (error: unknown) {
+          reportNavigationFailure(`Could not discard side conversation "${target.handle.agent.id}": ${errorChain(error)}`)
+        }
+      }
+
+      const startSide = async (parentSessionId: SessionId, prompt: string): Promise<void> => {
+        const parent = ctx.agents.get(parentSessionId)
+        if (parent === undefined) {
+          reportNavigationFailure(`Could not start side conversation: parent agent "${parentSessionId}" is no longer running.`)
+          return
+        }
+        let created: SideConversationHandle | undefined
+        try {
+          created = await createSideConversation(parent, sideAbort.signal)
+          if (closed) {
+            await discardSide(created)
+            return
+          }
+          side = created
+          if (!await performSwitch(created.handle.agent.id)) {
+            side = undefined
+            await discardSide(created)
+            reportNavigationFailure('Could not switch into the new side conversation.')
+            return
+          }
+          if (prompt !== '') {
+            created.handle.agent.followup(createUserMessage({
+              content: [{ type: 'text', text: prompt }],
+              source: { kind: 'user' },
+            }))
+          }
+        } catch (error: unknown) {
+          if (created !== undefined && side === created) side = undefined
+          if (created !== undefined) await discardSide(created)
+          if (!closed && !sideAbort.signal.aborted) {
+            reportNavigationFailure(`Could not start side conversation: ${errorChain(error)}`)
+          }
+        }
+      }
+
+      const closeSide = async (targetSessionId: SessionId): Promise<void> => {
+        const closing = side
+        if (closing === undefined) return
+        if (!await performSwitch(targetSessionId)) {
+          reportNavigationFailure('Could not return from the side conversation; it remains open.')
+          return
+        }
+        side = undefined
+        await discardSide(closing)
       }
 
       const navigation: TuiAgentNavigation = {
         rootSessionId: sessionId,
         currentSessionId: () => activeSessionId,
+        sideConversation(targetSessionId) {
+          if (side?.handle.agent.id !== targetSessionId) return undefined
+          return {
+            parentSessionId: side.parentSessionId,
+            transcriptStartSeq: side.transcriptStartSeq,
+          }
+        },
+        queueSide(prompt) {
+          if (closed) return 'Agent navigation is shutting down.'
+          if (switchPending) return 'Another agent switch is already in progress.'
+          if (side !== undefined) return 'A side conversation is already open. Press Ctrl+C to return before starting another.'
+          const parent = ctx.agents.get(activeSessionId)
+          if (parent === undefined) return `Agent "${activeSessionId}" is no longer running.`
+          const parentSessionId = activeSessionId
+          scheduleOperation(() => startSide(parentSessionId, prompt))
+          return undefined
+        },
+        queueCloseSide() {
+          if (closed) return 'Agent navigation is shutting down.'
+          if (switchPending) return 'Another agent switch is already in progress.'
+          if (side === undefined || activeSessionId !== side.handle.agent.id) {
+            return 'No active side conversation is available to close.'
+          }
+          if (side.handle.agent.status !== 'idle') return 'Interrupt the side conversation before returning to its parent.'
+          const parentSessionId = side.parentSessionId
+          scheduleOperation(() => closeSide(parentSessionId))
+          return undefined
+        },
         queueSwitch(targetSessionId) {
           if (closed) return 'Agent navigation is shutting down.'
           if (switchPending) return 'Another agent switch is already in progress.'
@@ -3543,11 +3711,14 @@ export function mountTui(ctx: Context, config: Config, runtime: TuiRuntime): voi
       const channelRuntime: TuiRuntime = { ...runtime, agentNavigation: navigation }
       const disposeActiveAgent = ctx.on('agent/disposed', ({ agent: subject }) => {
         if (closed || switchPending || subject.id !== activeSessionId || activeSessionId === sessionId) return
-        if (ctx.agents.get(sessionId) !== undefined) scheduleSwitch(sessionId)
+        const target = side?.handle.agent.id === subject.id ? side.parentSessionId : sessionId
+        if (side?.handle.agent.id === subject.id) side = undefined
+        if (ctx.agents.get(target) !== undefined) scheduleSwitch(target)
       })
       controller = mountChannel(sessionId)
       return async () => {
         closed = true
+        sideAbort.abort(new Error('TUI host disposed'))
         disposeActiveAgent()
         if (switchTimer !== undefined) {
           clearTimeout(switchTimer)
@@ -3556,6 +3727,11 @@ export function mountTui(ctx: Context, config: Config, runtime: TuiRuntime): voi
         }
         await switchOperation
         await controller?.dispose()
+        if (side !== undefined) {
+          const closing = side
+          side = undefined
+          await discardSide(closing)
+        }
       }
     }, 'ui-tui')
   }

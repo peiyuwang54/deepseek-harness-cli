@@ -82,19 +82,21 @@ export interface CreateAgentOptions {
   readonly sessionId: SessionId
   /**
    * Session creation metadata: validated absolute `cwd`, `parentSession`
-   * fork lineage, the `seedLength` seed boundary, the coarse `origin`
-   * classification, and the `delegationDepth` recursion budget. Mirrors the
-   * `cwd`/`parentSession`/`seedLength`/`origin`/`delegationDepth` fields of
-   * {@link CreateSessionOptions.meta} in dsh-session (the internal-only
+   * fork lineage, the `seedLength` seed boundary, an `ephemeral` durability
+   * exclusion, the coarse `origin` classification, and the `delegationDepth`
+   * recursion budget. Mirrors those fields of {@link CreateSessionOptions.meta}
+   * in dsh-session (the internal-only
    * `createdAt`, used when reconstructing a persisted session, is deliberately
-   * excluded — a factory caller never sets it). This is durable session data,
-   * so the session boundary validates and snapshots it before asynchronous
-   * setup begins.
+   * excluded — a factory caller never sets it). The session boundary validates
+   * and snapshots this metadata before asynchronous setup begins; persistence
+   * ignores the complete lifecycle when `ephemeral` is true.
    */
   readonly meta?: {
     readonly cwd?: string
     readonly parentSession?: SessionId
     readonly seedLength?: number
+    /** Exclude the complete session lifecycle from durable persistence. */
+    readonly ephemeral?: true
     readonly origin?: 'subagent'
     readonly delegationDepth?: number
     readonly agentPreset?: string

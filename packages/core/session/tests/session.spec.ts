@@ -1050,6 +1050,7 @@ describe('Session', () => {
       { header: { ...base, seedLength: '1' }, error: /seedLength must be a non-negative safe integer/ },
       { header: { ...base, seedLength: 0.5 }, error: /seedLength must be a non-negative safe integer/ },
       { header: { ...base, seedLength: -1 }, error: /seedLength must be a non-negative safe integer/ },
+      { header: { ...base, ephemeral: false }, error: /ephemeral must be true when present/ },
     ]
 
     for (const { header, error } of cases) {

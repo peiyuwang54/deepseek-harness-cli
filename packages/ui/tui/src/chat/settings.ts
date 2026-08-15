@@ -57,13 +57,13 @@ const TUI_ACCENT_SETTINGS_NAMESPACE = settingsNamespace('ui-accent')
 const TUI_TERMINAL_SETTINGS_NAMESPACE = settingsNamespace('ui-terminal')
 
 /** Communication styles exposed by the Codex-shaped `/personality` command. */
-export const TUI_PERSONALITIES = ['friendly', 'pragmatic'] as const
+const TUI_PERSONALITIES = ['friendly', 'pragmatic'] as const
 
 /** Persistent communication style applied to model requests from this TUI. */
 export type TuiPersonality = typeof TUI_PERSONALITIES[number]
 
 /** Default communication style used before a user stores a preference. */
-export const DEFAULT_TUI_PERSONALITY: TuiPersonality = 'friendly'
+const DEFAULT_TUI_PERSONALITY: TuiPersonality = 'friendly'
 
 /** TUI-owned settings namespace for the model communication style. */
 export const TUI_PERSONALITY_SETTINGS_NAMESPACE = settingsNamespace('agent-personality')
@@ -75,7 +75,7 @@ const PERSONALITY_PROMPTS: Readonly<Record<TuiPersonality, string>> = {
 }
 
 /** Stable terminal-title fields accepted by `/title`. */
-export const TERMINAL_TITLE_ITEM_IDS = [
+const TERMINAL_TITLE_ITEM_IDS = [
   'app-name',
   'session-title',
   'workspace',
@@ -89,7 +89,7 @@ export const TERMINAL_TITLE_ITEM_IDS = [
 export type TerminalTitleItem = typeof TERMINAL_TITLE_ITEM_IDS[number]
 
 /** Default terminal title preserves the product's existing session-title-first presentation. */
-export const DEFAULT_TERMINAL_TITLE_ITEMS: readonly TerminalTitleItem[] = ['session-title', 'app-name']
+const DEFAULT_TERMINAL_TITLE_ITEMS: readonly TerminalTitleItem[] = ['session-title', 'app-name']
 
 /** User-facing catalog for the terminal-title setup dialog. */
 const TERMINAL_TITLE_CHOICES: readonly MultiSelectDialogChoice[] = [
@@ -124,7 +124,7 @@ export const STATUS_LINE_ITEM_IDS = [
 export type StatusLineItem = typeof STATUS_LINE_ITEM_IDS[number]
 
 /** Product footer fields used before the user creates an override. */
-export const DEFAULT_STATUS_LINE_ITEMS: readonly StatusLineItem[] = [
+const DEFAULT_STATUS_LINE_ITEMS: readonly StatusLineItem[] = [
   'goal',
   'details',
   'model',
@@ -199,7 +199,7 @@ function isTuiPersonality(value: unknown): value is TuiPersonality {
  * @param settings - optional settings provider.
  * @returns stored style or the friendly default.
  */
-export function readTuiPersonality(settings: SettingsProvider | undefined): TuiPersonality {
+function readTuiPersonality(settings: SettingsProvider | undefined): TuiPersonality {
   const section = settings?.get(TUI_PERSONALITY_SETTINGS_NAMESPACE)
   if (typeof section !== 'object' || section === null) return DEFAULT_TUI_PERSONALITY
   const preference = (section as { preference?: unknown }).preference

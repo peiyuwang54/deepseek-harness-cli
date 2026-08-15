@@ -30,7 +30,7 @@ viewport
   style 7-54 dim
 11| "  copy          Copy the latest assistant response to the terminal clipboard"
   style 6-75 dim
-12| "  (1/42)"
+12| "  (1/43)"
   style 0-7 dim
 13| "                                                  ▸   deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
   style 50-51 dim

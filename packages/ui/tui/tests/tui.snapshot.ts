@@ -97,6 +97,7 @@ const CHECKPOINTS = [
   'permissions-selector',
   'permissions-switching',
   'agent-selector',
+  'side-conversation',
   'archive-confirmation',
   'delete-confirmation',
   'debug-config',
@@ -1490,6 +1491,50 @@ describe('TUI terminal-state snapshots', () => {
     })
     await checkpoint('agent-selector', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
+  })
+
+  it('pins the isolated side transcript and return hint', async () => {
+    const dateNow = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-08-16T04:00:00.000Z'))
+    const rootId = SessionId('main-session')
+    let transcriptStartSeq = 0
+    const harness = await setupSnapshot({
+      omitInitialLifecycle: true,
+      beforeMount(session) {
+        session.append('turn/start', { turn: 1 })
+        appendUser(session, 'inherited parent request')
+        session.append('step/start', { turn: 1, step: 1 })
+        appendAssistant(session, [{ type: 'text', text: 'inherited parent answer' }])
+        session.append('step/end', { turn: 1, step: 1 })
+        session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+        transcriptStartSeq = session.events.length
+        session.append('turn/start', { turn: 2 })
+        session.append('user/message', createUserMessage({
+          content: [{ type: 'text', text: 'hidden side boundary' }],
+          source: { kind: 'plugin', plugin: 'ui-tui-side', form: 'instructions' },
+        }), { surfaceOp: 'append' })
+        appendUser(session, 'What does this helper return?')
+        session.append('step/start', { turn: 2, step: 1 })
+        appendAssistant(session, [{ type: 'text', text: 'It returns the validated session identifier.' }], undefined, {
+          turn: 2,
+          step: 1,
+        })
+        session.append('step/end', { turn: 2, step: 1 })
+        session.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
+      },
+      agentNavigation: {
+        rootSessionId: rootId,
+        currentSessionId: () => rootId,
+        queueSwitch: () => undefined,
+        sideConversation: () => ({
+          parentSessionId: SessionId('parent-session'),
+          transcriptStartSeq,
+        }),
+        queueCloseSide: () => undefined,
+      },
+    }, { columns: 96, rows: 30 })
+    await checkpoint('side-conversation', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+    dateNow.mockRestore()
   })
 
   it('pins the non-destructive session archive confirmation', async () => {

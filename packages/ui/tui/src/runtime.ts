@@ -50,6 +50,22 @@ export interface TuiAgentNavigation {
    * @returns An immediate validation error, or `undefined` when the switch was queued.
    */
   queueSwitch(sessionId: SessionId): string | undefined
+
+  /** Return presentation metadata when `sessionId` is the active ephemeral side thread. */
+  sideConversation?(sessionId: SessionId): {
+    readonly parentSessionId: SessionId
+    readonly transcriptStartSeq: number
+  } | undefined
+
+  /**
+   * Queue creation and selection of an ephemeral fork after command settlement.
+   * @param prompt - Optional first direct user message for the side thread.
+   * @returns An immediate validation error, or `undefined` when queued.
+   */
+  queueSide?(prompt: string): string | undefined
+
+  /** Queue restoration of the side thread's parent and disposal of the side. */
+  queueCloseSide?(): string | undefined
 }
 
 /** Optional process-lifecycle owner for an atomic resume handoff. */

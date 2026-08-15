@@ -79,6 +79,11 @@ export interface SessionHeader {
    */
   readonly seedLength?: number
   /**
+   * Runtime-only session whose header and events must never enter durable
+   * persistence. Persistence coordinators ignore its entire lifecycle.
+   */
+  readonly ephemeral?: true
+  /**
    * Coarse product classification for a session created as a subagent child.
    * This is presentation metadata, not proof that the child is continuable.
    */
@@ -115,6 +120,8 @@ export interface CreateSessionOptions {
     readonly parentSession?: SessionId
     readonly createdAt?: number
     readonly seedLength?: number
+    /** Exclude the complete session lifecycle from durable persistence. */
+    readonly ephemeral?: true
     readonly origin?: 'subagent'
     readonly delegationDepth?: number
     readonly agentPreset?: string

@@ -3,7 +3,7 @@
 &#8203;<div align="center">English | [中文](README.zh.md)</div>
 
 <p align="center">
-  <img src=".github/deepseek-cli-splash.svg" alt="DeepSeek CLI terminal preview" width="80%" />
+  <img src=".github/deepseek-cli-splash.png" alt="DeepSeek CLI terminal preview" width="80%" />
 </p>
 
 <p align="center"><strong>8 interface languages · 6 theme palettes · Plan, Goal, Skills, MCP, subagents, and automatic compaction</strong></p>

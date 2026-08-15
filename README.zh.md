@@ -3,7 +3,7 @@
 &#8203;<div align="center">[English](README.md) | 中文</div>
 
 <p align="center">
-  <img src=".github/deepseek-cli-splash.svg" alt="DeepSeek CLI 终端预览" width="80%" />
+  <img src=".github/deepseek-cli-splash.png" alt="DeepSeek CLI 终端预览" width="80%" />
 </p>
 
 <p align="center"><strong>8 种界面语言 · 6 套主题配色 · Plan、Goal、Skills、MCP、子代理与自动上下文压缩</strong></p>

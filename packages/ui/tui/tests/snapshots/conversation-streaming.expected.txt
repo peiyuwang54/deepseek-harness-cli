@@ -37,8 +37,8 @@ viewport
   style 2-2 dim
   style 4-47 dim
 20| "                                                                                                "
-21| "  Enter steer · Esc cancel · Shift+Enter newline"
-  style 0-47 fg=bright-blue
+21| "  Enter steer · Esc interrupt · Shift+Enter newline"
+  style 0-50 fg=bright-blue
 22| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 48-49 dim
   style 52-76 dim

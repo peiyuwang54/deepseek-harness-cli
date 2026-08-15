@@ -53,6 +53,7 @@ const CHECKPOINTS = [
   'step-timing-completed',
   'session-stats-completed',
   'session-stats-running',
+  'queued-steering-preview',
   'session-stats-narrow',
   'usage-command',
   'retry-scheduled',
@@ -612,6 +613,21 @@ describe('TUI terminal-state snapshots', () => {
     })
     await checkpoint('usage-command', harness.terminal, { includeScrollback: true })
     nowSpy.mockRestore()
+    await disposeSnapshot(harness)
+  })
+
+  it('pins the running-turn steering queue above the composer', async () => {
+    const clock = Date.parse('2026-07-21T12:00:00.000Z')
+    const harness = await setupSnapshot({
+      status: 'running',
+      cwd: '/workspace',
+      now: () => clock,
+    }, { columns: 92, rows: 28 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('Please check the tests after this tool call.')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('queued-steering-preview', harness.terminal)
     await disposeSnapshot(harness)
   })
 

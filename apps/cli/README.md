@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-The `dsh` command is the product launcher for profiles: ordered stacks of plugin-bundle patch layers under the user's own overrides. [`src/args.ts`](src/args.ts) owns the command grammar, and [`src/bin.ts`](src/bin.ts) loads only the selected runner. Invalid commands, options from another mode, configuration errors, and boot failures exit nonzero.
+The `dsh` command is the product launcher for profiles: ordered stacks of plugin-bundle patch layers under the user's own overrides. The Node package installs `deepseek` as a branded alias of the same entry; examples below retain `dsh` as the compatibility spelling. [`src/args.ts`](src/args.ts) owns the command grammar, and [`src/bin.ts`](src/bin.ts) loads only the selected runner. Invalid commands, options from another mode, configuration errors, and boot failures exit nonzero.
 
 ## Entry modes
 
@@ -53,7 +53,7 @@ npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-The first command runs the curl installer, which downloads the newest `deepseek-harness-cli-v*` release, verifies the tarball against the release's sha256 sidecar, and installs to `$HOME/.deepseek-harness-cli/bin` (`sh -s -- --to <dir>` overrides the directory, `--version <ver>` pins a version). The npm package is a shim over the per-platform executable; the Homebrew cask is served from the `peiyuwang54/homebrew-dsh` tap. See [the installer README](install/README.md) for the full contract and the planned minisign signature upgrade.
+The first command runs the curl installer, which downloads the newest `deepseek-harness-cli-v*` release, verifies the tarball against the release's sha256 sidecar, and installs to `$HOME/.deepseek-harness-cli/bin` (`sh -s -- --to <dir>` overrides the directory, `--version <ver>` pins a version). The npm package is a shim over the per-platform executable and installs both `deepseek-harness-cli` and `deepseek`; the Homebrew cask is served from the `peiyuwang54/homebrew-dsh` tap. See [the installer README](install/README.md) for the full contract and the planned minisign signature upgrade.
 
 Upgrading re-runs the same command — the curl installer replaces the binaries in place, `npm update -g @peiyuwang54/deepseek-harness-cli` pulls the newest version, and `brew upgrade deepseek-harness-cli` refreshes the cask.
 

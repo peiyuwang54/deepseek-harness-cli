@@ -1,0 +1,34 @@
+terminal 92x28 buffer=normal length=28 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=active
+title "DSH snapshot"
+cursor visible column=3 viewportRow=10 bufferRow=10
+viewport
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1-2| <blank>
+3| "✦ Deep diving (0s • esc to interrupt)"
+  style 0-0 fg=bright-blue
+4-5| <blank>
+6| "• Messages to be submitted after next tool call (press esc to interrupt and send"
+  style 0-0 fg=bright-blue
+  style 47-79 dim
+7| "  immediately)"
+  style 2-13 dim
+8| "  ↳ Please check the tests after this tool call."
+  style 0-47 dim
+9| "                                                                                            "
+10| " › │Describe a task, @ a file, or / for commands                                            "
+  style 1-1 fg=bright-blue bold
+  style 2-2 dim
+  style 4-47 dim
+11| "                                                                                            "
+12| "  Enter steer · Esc interrupt · Shift+Enter newline"
+  style 0-50 fg=bright-blue
+13| "                                    ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context1 queued"
+  style 36-37 dim
+  style 40-64 dim
+  style 67-71 dim
+  style 74-91 dim
+14-27| <blank>

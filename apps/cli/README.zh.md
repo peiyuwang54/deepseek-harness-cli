@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-`dsh` 是 DeepSeek Harness 中用于启动 profile 的命令；profile 由多个插件组合包 patch 层按顺序叠加而成，其上再应用用户自己的覆盖配置。[`src/args.ts`](src/args.ts) 负责命令语法，[`src/bin.ts`](src/bin.ts) 只加载选中的运行器。无效命令、来自其他模式的选项、配置错误和启动失败都会以非零状态退出。
+`dsh` 是 DeepSeek Harness 中用于启动 profile 的命令；profile 由多个插件组合包 patch 层按顺序叠加而成，其上再应用用户自己的覆盖配置。Node 软件包还会把 `deepseek` 安装为同一入口的品牌别名；下方示例继续用 `dsh` 表示兼容写法。[`src/args.ts`](src/args.ts) 负责命令语法，[`src/bin.ts`](src/bin.ts) 只加载选中的运行器。无效命令、来自其他模式的选项、配置错误和启动失败都会以非零状态退出。
 
 ## 入口模式
 
@@ -53,7 +53,7 @@ npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-第一个命令运行 curl 安装器：它下载最新的 `deepseek-harness-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，并安装到 `$HOME/.deepseek-harness-cli/bin`（`sh -s -- --to <dir>` 可覆盖目录，`--version <ver>` 可固定版本）。npm 包是覆盖各平台可执行程序的 shim；Homebrew cask 由 `peiyuwang54/homebrew-dsh` tap 提供。完整契约与计划中的 minisign 签名升级见[安装器 README](install/README.md)。
+第一个命令运行 curl 安装器：它下载最新的 `deepseek-harness-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，并安装到 `$HOME/.deepseek-harness-cli/bin`（`sh -s -- --to <dir>` 可覆盖目录，`--version <ver>` 可固定版本）。npm 包是覆盖各平台可执行程序的 shim，并同时安装 `deepseek-harness-cli` 与 `deepseek`；Homebrew cask 由 `peiyuwang54/homebrew-dsh` tap 提供。完整契约与计划中的 minisign 签名升级见[安装器 README](install/README.md)。
 
 升级只需重新运行同一命令——curl 安装器原地替换二进制、`npm update -g @peiyuwang54/deepseek-harness-cli` 拉取最新版本、`brew upgrade deepseek-harness-cli` 刷新 cask。
 

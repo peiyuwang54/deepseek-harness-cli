@@ -22,8 +22,8 @@ buffer
   style 2-2 dim
   style 4-47 dim
 11| "                                                                                                                        "
-12| "  Enter steer · Esc cancel · Shift+Enter newline"
-  style 0-47 fg=bright-blue
+12| "  Enter steer · Esc interrupt · Shift+Enter newline"
+  style 0-50 fg=bright-blue
 13| "                                                                    ▸   deepseek-v4-flash [alt+m]  ↑7.7k ↓32  0% context"
   style 68-69 dim
   style 72-96 dim

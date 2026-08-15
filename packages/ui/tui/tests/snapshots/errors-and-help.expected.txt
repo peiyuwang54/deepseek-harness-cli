@@ -14,7 +14,7 @@ buffer
   style 0-81 dim
 4| "Mouse wheel scrolls chat • drag selects terminal text • Up/Down stays in prompt history     "
   style 0-86 dim
-5| "Esc cancel turn • Ctrl+O cycle cards (collapse/expand/hide) • Ctrl+R toggle reasoning •     "
+5| "Esc interrupt turn • Ctrl+O cycle cards (collapse/expand/hide) • Ctrl+R toggle reasoning •  "
   style 0-91 dim
 6| "Ctrl+L redraw                                                                               "
   style 0-12 dim

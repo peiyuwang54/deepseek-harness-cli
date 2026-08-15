@@ -36,6 +36,8 @@ export interface TuiCopy {
   readonly editorRunningFooter: string
   readonly deepDiving: string
   readonly interruptHint: string
+  readonly pendingSteering: string
+  readonly pendingSteeringInterrupt: string
   readonly settings: string
   readonly appearance: string
   readonly language: string
@@ -66,9 +68,11 @@ const COPY: Readonly<Record<TuiLocale, TuiCopy>> = {
     shortcutHint: 'Enter sends · Shift+Enter newline · Alt+M model · ? shortcuts',
     inputPlaceholder: 'Describe a task, @ a file, or / for commands',
     editorIdleFooter: 'Enter send · Shift+Enter newline · / commands',
-    editorRunningFooter: 'Enter steer · Esc cancel · Shift+Enter newline',
+    editorRunningFooter: 'Enter steer · Esc interrupt · Shift+Enter newline',
     deepDiving: 'Deep diving',
     interruptHint: 'esc to interrupt',
+    pendingSteering: 'Messages to be submitted after next tool call',
+    pendingSteeringInterrupt: 'press esc to interrupt and send immediately',
     settings: 'Settings',
     appearance: 'Appearance',
     language: 'Language',
@@ -97,9 +101,11 @@ const COPY: Readonly<Record<TuiLocale, TuiCopy>> = {
     shortcutHint: 'Enter 发送 · Shift+Enter 换行 · Alt+M 模型 · ? 快捷键',
     inputPlaceholder: '描述任务，@ 添加文件，或输入 / 查看命令',
     editorIdleFooter: 'Enter 发送 · Shift+Enter 换行 · / 命令',
-    editorRunningFooter: 'Enter 引导 · Esc 取消 · Shift+Enter 换行',
+    editorRunningFooter: 'Enter 引导 · Esc 中断 · Shift+Enter 换行',
     deepDiving: '正在深度求索',
     interruptHint: 'Esc 中断',
+    pendingSteering: '将在下次工具调用后提交的消息',
+    pendingSteeringInterrupt: '按 Esc 中断并立即发送',
     settings: '设置',
     appearance: '外观',
     language: '语言',

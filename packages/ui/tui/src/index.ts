@@ -116,6 +116,7 @@ import {
   UserMessageComponent,
   type WelcomeRecentSession,
 } from './components/transcript.ts'
+import { PendingInputPreviewComponent } from './components/pending-input-preview.ts'
 import {
   ActionDialog,
   compactTargetLabel,
@@ -420,7 +421,7 @@ export function createTuiChat(
   const refreshEditorFooter = (): void => {
     if (keymap === 'vim' && vimState === 'normal') {
       editor.frameFooter = agent.status === 'running'
-        ? 'VIM NORMAL · Esc cancel · i insert · h/j/k/l move'
+        ? 'VIM NORMAL · Esc interrupt · i insert · h/j/k/l move'
         : 'VIM NORMAL · i insert · h/j/k/l move · x delete'
       return
     }
@@ -431,6 +432,7 @@ export function createTuiChat(
   }
   refreshEditorFooter()
   const todo = new TodoComponent(palette)
+  const pendingInputPreview = new PendingInputPreviewComponent(() => locale, palette)
   const compactionStatusLine = new Text('', 0, 0)
   let showReasoning = resolved.showReasoning
   // Ctrl+O cycles collapsed -> expanded -> hidden. Codex-style: hidden drops
@@ -458,7 +460,7 @@ export function createTuiChat(
   // TUI steering submissions that the inbox has not yet claimed or discarded.
   // Correlation ids avoid guessing whether a running-state submission actually
   // joined steering or fell back to the queued-turn FIFO during turn close.
-  const pendingSteering = new Set<MessageId>()
+  const pendingSteering = new Map<MessageId, UserMessage>()
   let disposed = false
   let shuttingDown: Promise<void> | undefined
   // Optional: skills mount conditionally, so read the global service store
@@ -670,6 +672,7 @@ export function createTuiChat(
       + promptContext.render(width).length
       + sessionStatsLine.render(width).length
       + questionContainer.render(width).length
+      + pendingInputPreview.render(width).length
       + composerOverlayContainer.render(width).length
       + editorAutocomplete.render(width).length
       + editor.render(width).length
@@ -687,6 +690,7 @@ export function createTuiChat(
   ui.addChild(todoContainer)
   ui.addChild(compactionStatusLine)
   ui.addChild(questionContainer)
+  ui.addChild(pendingInputPreview)
   ui.addChild(editor)
   ui.addChild(editorAutocomplete)
   ui.addChild(composerOverlayContainer)
@@ -923,6 +927,32 @@ export function createTuiChat(
 
   const refreshStatus = (): void => {
     renderStatus()
+  }
+
+  const refreshPendingSteering = (): void => {
+    pendingInputPreview.update([...pendingSteering.values()].map(message =>
+      contentText(message.content).trim()))
+    refreshStatus()
+  }
+
+  /** Interrupt the live call while retaining queued steering for the next turn. */
+  const interruptActiveTurn = (): void => {
+    const last = [...pendingSteering.values()].at(-1)
+    if (last === undefined) {
+      agent.cancel({ kind: 'user' })
+      return
+    }
+    agent.cancel({ kind: 'user' }, { keepInbox: true })
+    // Moving the final next-step item to next-turn both wakes the post-abort
+    // driver and preserves the original batch order: Inbox claims next-step
+    // before the one next-turn item.
+    if (!agent.inbox.remove(last.id)) {
+      agent.cancel({ kind: 'user' })
+      return
+    }
+    agent.steer(last)
+    pendingSteering.set(last.id, last)
+    refreshPendingSteering()
   }
 
   const parsedTool = (event: Extract<SessionEvent, { type: 'tool/call' }>): ToolCardComponent => {
@@ -1683,7 +1713,7 @@ export function createTuiChat(
         : resolved.mouse
           ? 'Page Up/Down scroll transcript • Ctrl+End follow latest • mouse wheel scrolls transcript or selectors'
           : 'Drag selects terminal text • Page Up/Down scroll transcript • Ctrl+End follow latest',
-      'Esc cancel turn • Ctrl+O cycle cards (collapse/expand/hide) • Ctrl+R toggle reasoning • Ctrl+L redraw',
+      'Esc interrupt turn • Ctrl+O cycle cards (collapse/expand/hide) • Ctrl+R toggle reasoning • Ctrl+L redraw',
       'Ctrl+C cancel while running; clear input or exit while idle • Ctrl+D exit',
       '',
       ...commandLines,
@@ -2328,8 +2358,8 @@ export function createTuiChat(
       }
       const message = createUserMessage({ content, source: { kind: 'user' } })
       agent.steer(message)
-      pendingSteering.add(message.id)
-      refreshStatus()
+      pendingSteering.set(message.id, message)
+      refreshPendingSteering()
       return
     }
     if (attachedContext === undefined) {
@@ -2612,7 +2642,7 @@ export function createTuiChat(
       return { consume: true }
     }
     if (matchesKey(data, Key.escape) && agent.status === 'running') {
-      agent.cancel({ kind: 'user' })
+      interruptActiveTurn()
       return { consume: true }
     }
     if (matchesKey(data, Key.ctrl('c'))) {
@@ -2732,21 +2762,30 @@ export function createTuiChat(
     requestRender()
   })
   const settlePendingSteering = (id: MessageId): void => {
-    if (pendingSteering.delete(id)) refreshStatus()
+    if (pendingSteering.delete(id)) refreshPendingSteering()
   }
   const disposeDequeued = ctx.on('agent/inbox/claimed', ({ agent: subject, message }) => {
     if (subject === agent) settlePendingSteering(message.id)
   })
   const disposeDiscarded = ctx.on('agent/inbox/discarded', ({ agent: subject, message }) => {
     if (subject !== agent) return
-    if (pendingSteering.delete(message.id)) refreshStatus()
+    if (pendingSteering.delete(message.id)) refreshPendingSteering()
   })
   const disposeStatus = ctx.on('agent/status', ({ agent: subject, status }) => {
     if (subject !== agent) return
-    // Leaving 'running' ends the turn's status line; clear any badge so the
-    // next running turn starts from zero (and a cancellation, which discards
-    // the queue without logging drains, cannot strand a stale count).
-    if (status !== 'running') pendingSteering.clear()
+    // A post-abort wake briefly crosses idle while its inbox survives. Keep
+    // only identities still owned by that inbox instead of clearing the batch.
+    if (status !== 'running') {
+      const pendingIds = new Set([
+        ...agent.inbox.nextStep.map(message => message.id),
+        ...agent.inbox.nextTurn.map(message => message.id),
+      ])
+      for (const id of pendingSteering.keys()) {
+        if (!pendingIds.has(id)) pendingSteering.delete(id)
+      }
+      pendingInputPreview.update([...pendingSteering.values()].map(message =>
+        contentText(message.content).trim()))
+    }
     setStatus(status)
   })
   const disposeError = ctx.on('agent/error', ({ agent: subject, turn, step, error }) => {

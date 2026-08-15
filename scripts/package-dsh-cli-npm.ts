@@ -115,7 +115,7 @@ function mainManifest(version: string) {
     type: 'module',
     description:
       'deepseek-harness-cli: profile boot, plugin management, and shipped terminal/browser aliases — npm shim over per-platform single-file executables',
-    bin: { 'deepseek-harness-cli': 'bin/deepseek-harness-cli.js' },
+    bin: { 'deepseek-harness-cli': 'bin/deepseek-harness-cli.js', deepseek: 'bin/deepseek-harness-cli.js' },
     files: ['bin'],
     optionalDependencies,
     repository: { type: 'git', url: REPOSITORY },

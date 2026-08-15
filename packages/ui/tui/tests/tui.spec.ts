@@ -2424,7 +2424,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('esc to interrupt')
     expect(result.terminal.output).not.toContain('Model wait 0.0s')
     expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
-    expect(result.terminal.output).toContain('Enter steer · Esc cancel')
+    expect(result.terminal.output).toContain('Enter steer · Esc interrupt')
     expect(result.terminal.output).toContain('│')
     expect(result.terminal.output).not.toContain('queued')
 
@@ -2474,6 +2474,11 @@ describe('pi-tui chat lifecycle and transcript', () => {
     submitSteering('second')
     await tick()
     expect(result.terminal.output).toContain('2 queued')
+    expect(result.terminal.output).toContain('Messages to be submitted after next tool call')
+    expect(result.terminal.output).toContain('press esc to interrupt and')
+    expect(result.terminal.output).toContain('immediately)')
+    expect(result.terminal.output).toContain('↳ first')
+    expect(result.terminal.output).toContain('↳ second')
 
     // Draining one submitted message decrements the badge.
     result.terminal.output = ''
@@ -2558,6 +2563,50 @@ describe('pi-tui chat lifecycle and transcript', () => {
     }
     await tick()
     expect(result.terminal.output).not.toContain('queued')
+
+    await dispose(result)
+  })
+
+  it('keeps pending steering visible and ordered when Escape interrupts the active call', async () => {
+    const result = await setup({ status: 'running', cwd: '/workspace' })
+    let interrupted = false
+    result.agent.cancel = (cause, options) => {
+      result.agent.cancelled.push(cause)
+      interrupted = true
+      if (options?.keepInbox !== true) result.agent.inbox.clear()
+    }
+    result.agent.steer = (message) => {
+      result.agent.inbox.append(interrupted ? 'next-turn' : 'next-step', message)
+    }
+
+    result.terminal.send('first pending message')
+    result.terminal.send('\r')
+    result.terminal.send('second pending message')
+    result.terminal.send('\r')
+    await tick()
+
+    expect(result.agent.inbox.nextStep.map(message => message.content[0])).toEqual([
+      { type: 'text', text: 'first pending message' },
+      { type: 'text', text: 'second pending message' },
+    ])
+    expect(result.terminal.output).toContain('↳ first pending message')
+    expect(result.terminal.output).toContain('↳ second pending message')
+
+    result.terminal.output = ''
+    result.terminal.send('\x1b')
+    result.terminal.resize(result.terminal.columns + 1)
+    await tick()
+
+    expect(result.agent.cancelled).toContainEqual({ kind: 'user' })
+    expect(result.agent.inbox.nextStep.map(message => message.content[0])).toEqual([
+      { type: 'text', text: 'first pending message' },
+    ])
+    expect(result.agent.inbox.nextTurn.map(message => message.content[0])).toEqual([
+      { type: 'text', text: 'second pending message' },
+    ])
+    expect(result.terminal.output).toContain('Messages to be submitted after next tool call')
+    expect(result.terminal.output).toContain('↳ first pending message')
+    expect(result.terminal.output).toContain('↳ second pending message')
 
     await dispose(result)
   })

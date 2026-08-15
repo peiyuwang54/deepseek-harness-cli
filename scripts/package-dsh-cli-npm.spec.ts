@@ -7,7 +7,7 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -52,6 +52,29 @@ describe('platformTarget', () => {
     ])
     for (const target of PLATFORMS) {
       expect(target.name).toBe(`${PACKAGE_NAME}-${target.os}-${target.cpu}`)
+    }
+  })
+})
+
+describe('command aliases', () => {
+  it('installs deepseek beside the compatibility command in source and generated packages', async () => {
+    const source = JSON.parse(readFileSync(join(root, 'apps', 'cli', 'package.json'), 'utf8')) as {
+      bin: Record<string, string>
+    }
+    expect(source.bin).toEqual({ dsh: 'lib/bin.js', deepseek: 'lib/bin.js' })
+
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-npm-alias-'))
+    try {
+      const packageDir = await layoutMainPackage(tmp, '0.0.0-alias')
+      const generated = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8')) as {
+        bin: Record<string, string>
+      }
+      expect(generated.bin).toEqual({
+        'deepseek-harness-cli': 'bin/deepseek-harness-cli.js',
+        deepseek: 'bin/deepseek-harness-cli.js',
+      })
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
     }
   })
 })

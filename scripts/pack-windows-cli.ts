@@ -45,6 +45,24 @@ function pnpmBin(): string {
 }
 
 /**
+ * Environment for packer subprocesses.
+ *
+ * `CI=true` makes `pnpm run` treat the checkout as a production install and
+ * delete workspace `devDependencies` (the `install.ps1` comment names the
+ * same footgun). A developer machine running the Windows installer must keep
+ * those packages so `build:lib` can still compile.
+ * @param base - usually `process.env`.
+ * @returns a copy that cannot enable a production prune.
+ */
+export function packerSubprocessEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const env = { ...base }
+  delete env.CI
+  env.npm_config_production = 'false'
+  env.NODE_ENV = base.NODE_ENV === 'production' ? 'development' : (base.NODE_ENV ?? 'development')
+  return env
+}
+
+/**
  * Render a command for logs and errors, quoting arguments with spaces.
  * @param command - the executable.
  * @param args - its arguments.
@@ -344,7 +362,7 @@ export class WindowsCliPack {
         cwd: root,
         stdio: 'inherit',
         shell: process.platform === 'win32',
-        env: { ...process.env, CI: 'true' },
+        env: packerSubprocessEnv(),
       })
       child.once('error', (error) => {
         reject(new Error(`pack-windows-cli: ${label} failed to spawn: ${error.message} (${printable})`))

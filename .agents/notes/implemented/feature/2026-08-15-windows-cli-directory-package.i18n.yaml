@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-15-windows-cli-directory-package.md
-2026-08-15-windows-cli-directory-package.md: e4c9fe10a1607f3689cd3ccfb6639ac626c93f0f
-2026-08-15-windows-cli-directory-package.zh.md: b1b2a47684f5b901770e06049e50ddbbb7b4f9f5
+2026-08-15-windows-cli-directory-package.md: 4dcad96423650ddc987eaa74fd35f9ce59b6e5a4
+2026-08-15-windows-cli-directory-package.zh.md: 292005e663c849d32bc7282f68ab2f1d20d6325a

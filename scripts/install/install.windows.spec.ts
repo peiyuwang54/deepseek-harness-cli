@@ -49,7 +49,14 @@ describe('scripts/install/install.ps1', () => {
     const installDir = join(root, 'installed')
     writeCompletePackage(packageDir)
 
-    await execa('powershell.exe', [
+    const powershell = join(
+      process.env.SystemRoot ?? 'C:\\Windows',
+      'System32',
+      'WindowsPowerShell',
+      'v1.0',
+      'powershell.exe',
+    )
+    await execa(powershell, [
       '-NoProfile',
       '-ExecutionPolicy',
       'Bypass',

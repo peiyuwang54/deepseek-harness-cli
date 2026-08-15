@@ -12,7 +12,7 @@ Status: implemented
 
 Windows 目录包从这份检出构建，并安装到其他按用户隔离的程序旁边。
 
-[`scripts/pack-windows-cli.ts`](../../../../scripts/pack-windows-cli.ts) 运行 `pnpm run build:lib`，再把 `pnpm --filter @deepseek-ai/dsh deploy --legacy --prod` 写入 `dist-windows/dsh`，补回 legacy deploy 漏掉的传递 workspace 包（包括 `@deepseek-ai/cosmokit`），复制宿主 `node.exe`，写出 `deepseek.cmd` 与 `dsh.cmd`，并把该目录压缩为 `dist-windows/dsh-win32-<arch>.zip`。打包器必须在 Windows 上运行，使原生 addon 和 `node.exe` 与目标机一致。它不构建 Web 前端。打好的树在安装前必须能成功执行 `node.exe lib/bin.js --version`。
+[`scripts/pack-windows-cli.ts`](../../../../scripts/pack-windows-cli.ts) 运行 `pnpm run build:lib`，再把 `pnpm --filter @deepseek-ai/dsh deploy --legacy --prod` 写入 `dist-windows/dsh`，补回 legacy deploy 漏掉的传递 workspace 包（包括 `@deepseek-ai/cosmokit`），复制宿主 `node.exe`，写出 `deepseek.cmd` 与 `dsh.cmd`，并把该目录压缩为 `dist-windows/dsh-win32-<arch>.zip`。打包器必须在 Windows 上运行，使原生 addon 和 `node.exe` 与目标机一致。它不构建 Web 前端。打好的树在安装前必须能成功执行 `node.exe lib/bin.js --version`。打包子进程不得设置 `CI=true`：否则 `pnpm run build:lib` 会删掉 workspace 的 `devDependencies`。
 
 [`scripts/install/install.ps1`](../../../../scripts/install/install.ps1) 是面向用户的入口。它从自身路径解析仓库根目录，在缺少 `node_modules` 时安装 workspace 依赖，调用打包器，用 `robocopy` 经暂存目录把该树复制到 `%LOCALAPPDATA%\Programs\dsh`（因此超过 MAX_PATH 的嵌套 `node_modules` 路径仍能复制），并把该文件夹追加到用户 PATH。它从不下载远程载荷。`DSH_INSTALL_DIR` 可覆盖安装位置。
 
@@ -22,7 +22,7 @@ Windows 目录包从这份检出构建，并安装到其他按用户隔离的程
 
 ## 测试
 
-`scripts/windows-cli-package.spec.ts` 固定启动器文本、manifest 字段、zip 名称和目标路径安全性。`scripts/pack-windows-cli.spec.ts` 覆盖 dry-run 命令行、跳过标志、非 Windows 上的宿主拒绝，以及未知标志的用法说明。`scripts/install/install.windows.spec.ts` 固定“不下载”约定，并在 win32 上把 fixture 树复制到 `-InstallDir`，且不修改 PATH。
+`scripts/windows-cli-package.spec.ts` 固定启动器文本、manifest 字段、zip 名称和目标路径安全性。`scripts/pack-windows-cli.spec.ts` 覆盖 dry-run 命令行、跳过标志、非 Windows 上的宿主拒绝、未知标志的用法说明，以及去掉 `CI=true` 的子进程环境。`scripts/install/install.windows.spec.ts` 固定“不下载”约定，并在 win32 上把 fixture 树复制到 `-InstallDir`，且不修改 PATH。
 
 ## 考虑过的备选方案
 

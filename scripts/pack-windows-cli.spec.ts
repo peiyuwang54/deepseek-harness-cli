@@ -1,11 +1,23 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { formatPackCommand, packWindowsCli, WindowsCliPack } from './pack-windows-cli.ts'
+import { formatPackCommand, packerSubprocessEnv, packWindowsCli, WindowsCliPack } from './pack-windows-cli.ts'
 
 afterEach(() => {
   vi.restoreAllMocks()
 })
 
 describe('pack-windows-cli', () => {
+  it('keeps workspace devDependencies when the parent env looks like CI', () => {
+    const env = packerSubprocessEnv({
+      CI: 'true',
+      NODE_ENV: 'production',
+      PATH: '/usr/bin',
+    })
+    expect(env.CI).toBeUndefined()
+    expect(env.NODE_ENV).toBe('development')
+    expect(env.npm_config_production).toBe('false')
+    expect(env.PATH).toBe('/usr/bin')
+  })
+
   it('quotes command arguments that contain spaces', () => {
     expect(formatPackCommand('pnpm.cmd', ['--filter', '@deepseek-ai/dsh', 'deploy', 'C:\\Program Files\\dsh']))
       .toBe(`pnpm.cmd --filter @deepseek-ai/dsh deploy ${JSON.stringify('C:\\Program Files\\dsh')}`)

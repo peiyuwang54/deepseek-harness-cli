@@ -1,0 +1,117 @@
+terminal 92x32 buffer=normal length=32 base=0 viewport=0
+lifecycle started=2 stopped=1 progress=inactive
+title "DSH snapshot"
+cursor visible column=3 viewportRow=23 bufferRow=23
+buffer
+0| "  ╭─ DeepSeek Harness CLI v0.1.0 ────────────────────────────────────────────────────────╮"
+  style 2-3 dim
+  style 5-12 fg=bright-blue bold
+  style 14-24 bold
+  style 26-31 dim
+  style 33-89 dim
+1| "  │            Welcome back!            │ What's new                                     │"
+  style 2-2 dim
+  style 15-27 bold
+  style 40-40 dim
+  style 42-51 fg=bright-blue bold
+  style 89-89 dim
+2| "  │                ⣀⣀⣀⣀⣤⡄  ⢠⡄           │ /skills browse and run agent skills            │"
+  style 2-2 dim
+  style 14-28 bold
+  style 40-40 dim
+  style 42-48 fg=bright-blue
+  style 89-89 dim
+3| "  │         ⢀⣴⣾⣿⣿⣿⣿⣿⣿⣤⡀ ⢻⣿⣶⣠⣤⣶⡟         │ /permissions choose approval and sandbox mode  │"
+  style 2-2 dim
+  style 11-30 bold
+  style 40-40 dim
+  style 42-53 fg=bright-blue
+  style 89-89 dim
+4| "  │        ⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡈⠻⣿⣿⡿⠟⠁         │ /model switch model and reasoning effort       │"
+  style 2-2 dim
+  style 11-30 bold
+  style 40-40 dim
+  style 42-47 fg=bright-blue
+  style 89-89 dim
+5| "  │          ⢸⣯  ⠉⠙⠻⣿⣿⣿⣯⡙⢿⣿⣾⣿⡇          │ /workspace start in another workspace          │"
+  style 2-2 dim
+  style 13-29 bold
+  style 40-40 dim
+  style 42-51 fg=bright-blue
+  style 89-89 dim
+6| "  │          ⢸⣿⡄    ⠈⠻⣿⣿⣧⣤⣿⣿⣿⠁          │ /resume search previous sessions               │"
+  style 2-2 dim
+  style 13-29 bold
+  style 40-40 dim
+  style 42-48 fg=bright-blue
+  style 89-89 dim
+7| "  │           ⢻⣿⣄  ⢀⣀ ⠙⣿⣿⣿⣿⡿⠃           │                                                │"
+  style 2-2 dim
+  style 13-28 bold
+  style 40-40 dim
+  style 89-89 dim
+8| "  │            ⠙⢿⣷⣤⣤⣿⣷⣦⣈⣻⣿⣿⣦⡄           │ Recent sessions                                │"
+  style 2-2 dim
+  style 13-28 bold
+  style 40-40 dim
+  style 42-56 bold
+  style 89-89 dim
+9| "  │                ⠉⠛⠻⠿⠿⠟⠛⠉             │ Session history unavailable in this profile.   │"
+  style 2-2 dim
+  style 15-26 bold
+  style 40-40 dim
+  style 42-85 dim
+  style 89-89 dim
+10| "  │                                     │                                                │"
+  style 2-2 dim
+  style 40-40 dim
+  style 89-89 dim
+11| "  │        preset: not composed         │ /help for commands · @ to attach a file        │"
+  style 2-2 dim
+  style 11-17 dim
+  style 40-40 dim
+  style 42-80 dim italic
+  style 89-89 dim
+12| "  │      model: deepseek-v4-flash       │                                                │"
+  style 2-2 dim
+  style 9-14 dim
+  style 40-40 dim
+  style 89-89 dim
+13| "  │      permissions: approval ask      │                                                │"
+  style 2-2 dim
+  style 9-20 dim
+  style 40-40 dim
+  style 89-89 dim
+14| "  │         /workspace/project          │                                                │"
+  style 2-2 dim
+  style 12-29 dim
+  style 40-40 dim
+  style 89-89 dim
+15| "  ╰─────────────────────────────────────┴────────────────────────────────────────────────╯"
+  style 2-89 dim
+16| "  "
+17| "               Enter sends · Shift+Enter newline · Alt+M model · ? shortcuts"
+  style 15-75 dim
+18| <blank>
+19| "Forked session session-1 remains available. Fork failed: snapshot host retained process     "
+  style 0-86 fg=red
+20-21| <blank>
+22| "                                                                                            "
+  style 0-91 bg=ansi-236
+23| " › │Describe a task, @ a file, or / for commands                                            "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-91 bg=ansi-236
+24| "                                                                                            "
+  style 0-91 bg=ansi-236
+25| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+26| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 44-45 dim
+  style 48-72 dim
+  style 75-79 dim
+  style 82-91 dim
+27-31| <blank>

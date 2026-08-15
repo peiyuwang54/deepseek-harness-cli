@@ -40,6 +40,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/new` 与 `/clear` 都要求 agent 处于 idle；它们会 flush 当前持久会话、释放终端，并请求随附进程宿主在同一个不可变 workspace 中启动全新对话。自定义宿主未提供 handoff 或替换被拒绝时，当前会话与终端仍可继续使用。
 
+`/fork` 是一个 agent 作用域命令，要求 agent 处于 idle 且已挂载持久会话存储。命令生命周期结算后，它会把完整的当前日志复制到一个带新 id 与 parent 链接的子会话，flush 两个会话，再请求同一个进程宿主在当前 workspace 中切换到子会话。切换失败时原终端仍可使用，并会报告保留的子会话 id，便于之后通过 `/resume` 恢复。
+
 `/init` 会安排一个普通用户轮次：先检查仓库，仅当当前目录不存在 `AGENTS.md` 时才创建简洁且基于事实的版本。`/review [instructions]` 会安排一次不修改文件的审查，覆盖 workspace 中已跟踪与未跟踪的改动，并按问题严重程度输出。两条命令都要求 agent 处于 idle，其提示词会走普通的持久 user-message 路径，不会绕过 agent loop。
 
 共享的 [`dsh-command-jobs`](../../jobs/command-jobs/README.md) 插件会贡献 `/ps` 与 `/stop`。`/ps` 在不消费输出的前提下列出本会话中处于运行或停止中状态的通用后台任务；`/stop` 请求取消全部运行中任务，并保持已经处于停止中状态的任务不变。

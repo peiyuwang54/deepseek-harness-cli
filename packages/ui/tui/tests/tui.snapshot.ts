@@ -109,6 +109,7 @@ const CHECKPOINTS = [
   'workspace-selector',
   'workspace-handoff-recovered',
   'new-session-handoff-recovered',
+  'fork-session-handoff-recovered',
   'errors-and-help',
   'disposed-terminal',
   'resume-sessions-loading',
@@ -1633,6 +1634,32 @@ describe('TUI terminal-state snapshots', () => {
     await checkpoint('resume-session-id', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
     dateNow.mockRestore()
+  })
+
+  it('pins current-session fork handoff recovery', async () => {
+    const handoff = vi.fn(() => Promise.reject(new Error('snapshot host retained process')))
+    const harness = await setupSnapshot({
+      cwd: '/workspace/project',
+      omitInitialLifecycle: true,
+      handoffResume: handoff,
+      configureContext: async (ctx) => {
+        await ctx.plugin(SystemPrompt)
+        await ctx.plugin(ToolRegistry)
+        ctx.provide('sessionPersistence', {} as never)
+        ctx.on('session/flush', () => undefined)
+      },
+    }, { columns: 92, rows: 32 })
+
+    await renderAfter(harness, () => {
+      harness.terminal.send('/fork')
+      harness.terminal.send('\r')
+    })
+    await vi.waitFor(() => {
+      expect(handoff).toHaveBeenCalledWith(SessionId('session-1'), '/workspace/project')
+    })
+    await new Promise(resolve => setTimeout(resolve, 25))
+    await checkpoint('fork-session-handoff-recovered', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
   })
 
   it('pins the detailed session diagnostics card', async () => {

@@ -909,6 +909,56 @@ describe('goodbye message and /resume', () => {
     await dispose(result)
   })
 
+  it('forks only after the command lifecycle settles and hands off the durable child', async () => {
+    const handoff = vi.fn<NonNullable<TuiRuntime['handoffResume']>>(
+      () => Promise.reject(new Error('test host retained process')),
+    )
+    const result = await setup({
+      cwd: '/workspace',
+      omitInitialLifecycle: true,
+      handoffResume: handoff,
+      configureContext: async (ctx) => {
+        ctx.provide('sessionPersistence', {} as never)
+        ctx.on('session/flush', () => undefined)
+      },
+    })
+
+    result.terminal.send('/fork')
+    result.terminal.send('\r')
+    await tick(); await tick()
+
+    const child = result.ctx.sessions.list().find(session => session.id !== result.session.id)
+    expect(child?.header.parentSession).toBe(result.session.id)
+    expect(child?.header.cwd).toBe('/workspace')
+    expect(child?.events.map(event => event.type)).toEqual([
+      'command/run',
+      'command/done',
+      'session/end-seed',
+    ])
+    expect(handoff).toHaveBeenCalledWith(child?.id, '/workspace')
+    expect(result.terminal.output).toContain(`Forked session ${String(child?.id)} remains available.`)
+    expect(result.terminal.output).toContain('Fork failed: test host retained process')
+    await dispose(result)
+  })
+
+  it('rejects fork arguments and compositions without durable session persistence', async () => {
+    const handoff = vi.fn<NonNullable<TuiRuntime['handoffResume']>>()
+    const result = await setup({ omitInitialLifecycle: true, handoffResume: handoff })
+
+    result.terminal.send('/fork saved-session')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Usage: /fork (no arguments)')
+
+    result.terminal.send('/fork')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('session persistence is not mounted')
+    expect(result.ctx.sessions.list()).toHaveLength(1)
+    expect(handoff).not.toHaveBeenCalled()
+    await dispose(result)
+  })
+
   it('handles selector navigation, empty matches, and backspace search edits', async () => {
     const target = header('keyboard-target', 10, '/workspace')
     const result = await setup({

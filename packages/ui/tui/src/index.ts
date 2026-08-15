@@ -163,6 +163,7 @@ import {
 import { createQuestionQueue } from './chat/questions.ts'
 import { createApprovalQueue } from './chat/approvals.ts'
 import { createResumeController } from './chat/resume.ts'
+import { createForkController } from './chat/fork.ts'
 import {
   createSettingsController,
   readTuiAccent,
@@ -1458,6 +1459,20 @@ export function createTuiChat(
     releaseTerminal,
     restoreTerminal,
   })
+  const forkController = createForkController({
+    ctx,
+    agent,
+    runtime,
+    resolved,
+    palette,
+    overlayManager,
+    appendNotice,
+    requestRender,
+    isDisposed,
+    agentStatus,
+    releaseTerminal,
+    restoreTerminal,
+  })
 
   const shutdown = (exitProcess: boolean): Promise<void> => {
     shuttingDown ??= (async () => {
@@ -1468,6 +1483,7 @@ export function createTuiChat(
       settingsController.clearOverlays()
       credentialsController.clearOverlay()
       workspaceController.clearOverlay()
+      forkController.dispose()
       clearStatus()
       for (const controller of commandControllers) controller.abort(new Error('TUI disposed'))
       commandControllers.clear()
@@ -2338,6 +2354,15 @@ export function createTuiChat(
         if (sessionId === '') resume.showResume()
         else resume.resume(SessionId(sessionId))
         return { kind: 'success' }
+      },
+    })
+    commandCtx.commands.register({
+      name: 'fork',
+      description: 'Fork this chat into a new session and switch to it',
+      handler: ({ rawInput }) => {
+        if (rawInput.trim() !== '') return { kind: 'error', text: 'Usage: /fork (no arguments)' }
+        const error = forkController.queueFork()
+        return error === undefined ? { kind: 'success' } : { kind: 'error', text: error }
       },
     })
     commandCtx.commands.register({

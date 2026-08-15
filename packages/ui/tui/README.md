@@ -40,6 +40,8 @@ While the agent is running, ordinary editor submissions call `agent.steer()`; ot
 
 `/new` and `/clear` require an idle agent, flush the current durable session, release the terminal, and ask the shipped process host to start a fresh chat in the same immutable workspace. A missing custom-host handoff or a rejected replacement leaves the current session and terminal usable.
 
+`/fork` is an agent-scoped command that requires an idle agent and durable session persistence. After its command lifecycle settles, it copies the complete current log into a child session with a fresh id and parent link, flushes both sessions, and asks the same process host to switch to the child in the current workspace. If that switch fails, the original terminal remains usable and reports the retained child id for a later `/resume`.
+
 `/init` schedules an ordinary user turn that inspects the repository and creates a concise, fact-based `AGENTS.md` only when the current directory does not already have one. `/review [instructions]` schedules a non-mutating review of tracked and untracked workspace changes, ordered by finding severity. Both commands require an idle agent, and their prompts follow the normal durable user-message path rather than bypassing the agent loop.
 
 The shared [`dsh-command-jobs`](../../jobs/command-jobs/README.md) plugin contributes `/ps` and `/stop`. `/ps` lists this session's running or stopping generic background jobs without consuming output; `/stop` requests cancellation of every running job and leaves an already stopping job alone.

@@ -71,6 +71,43 @@ export const COLOR_ROLES = ['text', 'dim', 'accent', 'brand', 'code', 'success',
 /** Names of the palette's attribute roles, in the order `/palette` prints them. */
 export const ATTRIBUTE_ROLES = ['bold', 'italic', 'underline', 'strike', 'selected'] as const
 
+/**
+ * Accent hues the interactive chrome and startup banner can take. Each entry
+ * pairs a truecolor 24-bit ink for brand surfaces and the banner gradient with
+ * ANSI 16-color role codes that remain theme-adaptive in every terminal.
+ */
+export const ACCENT_IDS = ['deepseek', 'cosmic-orange', 'mist-blue', 'sage', 'lavender', 'deep-blue'] as const
+
+/** One selectable accent hue. */
+export type AccentId = typeof ACCENT_IDS[number]
+
+/** The shipped default accent, unchanged from the original DeepSeek-blue chrome. */
+export const DEFAULT_ACCENT: AccentId = 'deepseek'
+
+/** A named accent hue: display label, truecolor ink, and ANSI fallbacks. */
+export interface AccentHue {
+  readonly id: AccentId
+  readonly label: string
+  /** 24-bit foreground ink for brand surfaces and the banner gradient. */
+  readonly rgb: readonly [number, number, number]
+  /** ANSI open code for the theme-adaptive `accent` role. */
+  readonly ansi: string
+  /** ANSI open code for the `brand` role when truecolor is unavailable. */
+  readonly brandAnsi: string
+  /** Banner gradient stops; the first is the accent ink. */
+  readonly gradient: readonly (readonly [number, number, number])[]
+}
+
+/** Narrow an unknown value to a shipped accent id. */
+export function isAccentId(value: unknown): value is AccentId {
+  return ACCENT_IDS.some(id => id === value)
+}
+
+/** Resolve one shipped accent hue, defaulting unknown ids to {@link DEFAULT_ACCENT}. */
+export function accentHue(id: AccentId): AccentHue {
+  return ACCENT_HUES.find(hue => hue.id === id) ?? ACCENT_HUES[0] as AccentHue
+}
+
 /** One role's SGR parameters and the reason it carries them. */
 export interface RoleSpec {
   /** SGR parameters that open the span, without the `ESC [` prefix or `m` suffix. */
@@ -94,12 +131,14 @@ export interface RoleSpec {
  * {@link brandText}).
  *
  * @param scheme - Active terminal color scheme; only `code` differs between them.
+ * @param accent - Active accent hue; selects the `accent` and `brand` ANSI codes.
  * @returns The SGR spec for every color and attribute role.
  */
-export function paletteSpec(scheme: TerminalColorScheme): {
+export function paletteSpec(scheme: TerminalColorScheme, accent: AccentId = DEFAULT_ACCENT): {
   readonly colors: Readonly<Record<typeof COLOR_ROLES[number], RoleSpec>>
   readonly attributes: Readonly<Record<typeof ATTRIBUTE_ROLES[number], RoleSpec>>
 } {
+  const hue = accentHue(accent)
   return {
     colors: {
       // The terminal's own foreground, emitted as no escape at all: ordinary body
@@ -112,10 +151,10 @@ export function paletteSpec(scheme: TerminalColorScheme): {
       // their default foreground, which made every "dim" surface the most
       // prominent text on screen.
       dim: { open: '2;39', close: '22;39', purpose: 'The one recessed tone: tool bodies, chrome, footers' },
-      // Bright blue keeps interactive chrome in the same family as DeepSeek's
-      // official #4D6BFE ink while remaining theme-adaptive ANSI.
-      accent: { open: '94', close: '39', purpose: 'DeepSeek-blue emphasis: role headers, prompt, borders' },
-      brand: { open: '34', close: '39', purpose: 'DeepSeek brand art when truecolor is unavailable' },
+      // The accent hue's ANSI code keeps interactive chrome theme-adaptive; its
+      // exact 24-bit ink reaches the banner gradient through `gradientText`.
+      accent: { open: hue.ansi, close: '39', purpose: 'Accent emphasis: role headers, prompt, borders' },
+      brand: { open: hue.brandAnsi, close: '39', purpose: 'Accent brand art when truecolor is unavailable' },
       // ANSI 36 (cyan) is difficult to read on a light background — use ANSI 34
       // (blue) which is legible on both light and dark schemes.
       code: scheme === 'light'
@@ -153,10 +192,11 @@ function ansi(spec: RoleSpec, enabled: boolean): (text: string) => string {
  *
  * @param enabled - Whether ANSI is emitted at all.
  * @param scheme - Active terminal color scheme; adjusts the code role.
- * @returns The role palette for the given scheme.
+ * @param accent - Active accent hue; selects the accent and brand ANSI codes.
+ * @returns The role palette for the given scheme and accent.
  */
-export function createPalette(enabled: boolean, scheme: TerminalColorScheme = 'dark'): Palette {
-  const spec = paletteSpec(scheme)
+export function createPalette(enabled: boolean, scheme: TerminalColorScheme = 'dark', accent: AccentId = DEFAULT_ACCENT): Palette {
+  const spec = paletteSpec(scheme, accent)
   const roles = {} as Record<string, unknown>
   for (const name of COLOR_ROLES) roles[name] = ansi(spec.colors[name], enabled)
   for (const name of ATTRIBUTE_ROLES) roles[name] = ansi(spec.attributes[name], enabled)
@@ -196,33 +236,56 @@ const BRAND_GRADIENT = [
   [36, 152, 255], // #2498FF
 ] as const
 
-/** Official DeepSeek icon ink from the shipped 24x24 SVG. */
-const DEEPSEEK_BRAND_RGB = BRAND_GRADIENT[0]
+/** Mix an RGB ink toward white by `amount`, lightening the banner gradient. */
+function tint(rgb: readonly [number, number, number], amount: number): readonly [number, number, number] {
+  return [
+    Math.round(rgb[0] + (255 - rgb[0]) * amount),
+    Math.round(rgb[1] + (255 - rgb[1]) * amount),
+    Math.round(rgb[2] + (255 - rgb[2]) * amount),
+  ]
+}
+
+/** Banner gradient for a non-default accent: ink, then two lightened stops. */
+function lightenGradient(rgb: readonly [number, number, number]): readonly (readonly [number, number, number])[] {
+  return [rgb, tint(rgb, 0.35), tint(rgb, 0.7)]
+}
+
+/** Shipped accent hues, ordered for the `/accent` selector. */
+export const ACCENT_HUES: readonly AccentHue[] = [
+  { id: 'deepseek', label: 'DeepSeek', rgb: [77, 107, 254], ansi: '94', brandAnsi: '34', gradient: BRAND_GRADIENT },
+  { id: 'cosmic-orange', label: 'Cosmic Orange', rgb: [247, 126, 45], ansi: '91', brandAnsi: '31', gradient: lightenGradient([247, 126, 45]) },
+  { id: 'mist-blue', label: 'Mist Blue', rgb: [162, 185, 220], ansi: '96', brandAnsi: '36', gradient: lightenGradient([162, 185, 220]) },
+  { id: 'sage', label: 'Sage', rgb: [180, 194, 148], ansi: '92', brandAnsi: '32', gradient: lightenGradient([180, 194, 148]) },
+  { id: 'lavender', label: 'Lavender', rgb: [230, 213, 241], ansi: '95', brandAnsi: '35', gradient: lightenGradient([230, 213, 241]) },
+  { id: 'deep-blue', label: 'Deep Blue', rgb: [50, 55, 74], ansi: '34', brandAnsi: '34', gradient: lightenGradient([50, 55, 74]) },
+]
 
 /**
- * Paint trusted static DeepSeek brand art with the official `#4D6BFE` ink.
+ * Paint trusted static brand art with the active accent's exact ink.
  * @param text - Static brand text or raster cells.
- * @returns text wrapped in the official truecolor foreground and a foreground reset.
+ * @param accent - Active accent hue; defaults to the DeepSeek blue.
+ * @returns text wrapped in the accent's truecolor foreground and a foreground reset.
  */
-export function brandText(text: string): string {
-  const [r, g, b] = DEEPSEEK_BRAND_RGB
+export function brandText(text: string, accent: AccentId = DEFAULT_ACCENT): string {
+  const [r, g, b] = accentHue(accent).rgb
   return `\x1b[38;2;${r};${g};${b}m${text}\x1b[39m`
 }
 
 /**
- * Sample {@link BRAND_GRADIENT} at fraction `t` via piecewise-linear
+ * Sample one accent's gradient at fraction `t` via piecewise-linear
  * interpolation across its stops.
  *
+ * @param gradient - The accent's gradient stops.
  * @param t - Position along the gradient; clamped to [0, 1].
  * @returns The interpolated `[r, g, b]` channels, each rounded to 0–255.
  */
-function brandColorAt(t: number): readonly [number, number, number] {
-  const span = Math.min(Math.max(t, 0), 1) * (BRAND_GRADIENT.length - 1)
-  const index = Math.min(Math.floor(span), BRAND_GRADIENT.length - 2)
+function brandColorAt(gradient: readonly (readonly [number, number, number])[], t: number): readonly [number, number, number] {
+  const span = Math.min(Math.max(t, 0), 1) * (gradient.length - 1)
+  const index = Math.min(Math.floor(span), gradient.length - 2)
   const local = span - index
   // `index` is clamped to a valid adjacent pair, so both lookups are in-bounds.
-  const from = BRAND_GRADIENT[index] as readonly [number, number, number]
-  const to = BRAND_GRADIENT[index + 1] as readonly [number, number, number]
+  const from = gradient[index] as readonly [number, number, number]
+  const to = gradient[index + 1] as readonly [number, number, number]
   return [
     Math.round(from[0] + (to[0] - from[0]) * local),
     Math.round(from[1] + (to[1] - from[1]) * local),
@@ -231,20 +294,22 @@ function brandColorAt(t: number): readonly [number, number, number] {
 }
 
 /**
- * Paint `text` left-to-right in the DeepSeek brand gradient with per-character
+ * Paint `text` left-to-right in the active accent's gradient with per-character
  * 24-bit foreground codes, resetting to the default foreground at the end.
  * Foreground-only, so it stays legible on any terminal background; the caller
  * gates it on truecolor support and wraps it in bold.
  *
  * @param text - Text to colorize; sampled once per character.
+ * @param accent - Active accent hue; defaults to the DeepSeek blue.
  * @returns `text` wrapped in truecolor SGR foreground codes.
  */
-export function gradientText(text: string): string {
+export function gradientText(text: string, accent: AccentId = DEFAULT_ACCENT): string {
   const glyphs = Array.from(text)
   const last = Math.max(1, glyphs.length - 1)
+  const gradient = accentHue(accent).gradient
   let painted = ''
   for (let index = 0; index < glyphs.length; index += 1) {
-    const [r, g, b] = brandColorAt(index / last)
+    const [r, g, b] = brandColorAt(gradient, index / last)
     painted += `\x1b[38;2;${r};${g};${b}m${glyphs[index]}`
   }
   return `${painted}\x1b[39m`
@@ -351,14 +416,16 @@ const PALETTE_SAMPLE = 'The quick brown fox 0123'
  * @param palette - Active role palette, used to paint each sample.
  * @param scheme - Active color scheme, reported in the heading and selecting the spec.
  * @param colorEnabled - Whether ANSI is emitted; reported so an unstyled listing is not confusing.
+ * @param accent - Active accent hue, so the printed SGR pairs match the live palette.
  * @returns The rendered rows, without a trailing blank.
  */
 export function renderPalette(
   palette: Palette,
   scheme: TerminalColorScheme,
   colorEnabled: boolean,
+  accent: AccentId = DEFAULT_ACCENT,
 ): string[] {
-  const spec = paletteSpec(scheme)
+  const spec = paletteSpec(scheme, accent)
   const width = Math.max(...[...COLOR_ROLES, ...ATTRIBUTE_ROLES].map(name => name.length))
   // Two rows per role: the painted sample beside its name and SGR pair, then the
   // purpose indented under it. Splitting the purpose onto its own row keeps every

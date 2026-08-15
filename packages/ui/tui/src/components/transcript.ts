@@ -30,7 +30,7 @@ import type {
 import type { FileDiff } from '@deepseek-ai/dsh-tools'
 import { preview, renderUnknownXml } from './xml-tool-output.ts'
 import { displayInlineText, displayText } from './text.ts'
-import { gradientText, type Palette } from './theme.ts'
+import { gradientText, type AccentId, type Palette } from './theme.ts'
 import { contentText, type ParsedArguments } from './content.ts'
 import {
   formatCompletionTime,
@@ -204,6 +204,7 @@ export class HeaderComponent implements Component {
     private readonly agent: Agent,
     private readonly palette: Palette,
     private readonly gradient: boolean,
+    private readonly accent: () => AccentId,
     private readonly dashboard?: () => WelcomeDashboardState,
     private readonly terminalRows?: () => number,
     private readonly locale: () => TuiLocale = () => 'en',
@@ -228,7 +229,7 @@ export class HeaderComponent implements Component {
   private renderCompact(width: number): string[] {
     const usable = Math.max(1, width - 2)
     const name = this.gradient
-      ? this.palette.bold(gradientText('DEEPSEEK'))
+      ? this.palette.bold(gradientText('DEEPSEEK', this.accent()))
       : this.palette.bold(this.palette.accent('DEEPSEEK'))
     const title = `${name} ${this.palette.bold('HARNESS')} ${this.palette.dim(`v${displayVersion}`)}`
     const lines = [title]
@@ -245,7 +246,7 @@ export class HeaderComponent implements Component {
     const rows = this.terminalRows?.() ?? 36
     const spacious = contentWidth >= 80 && rows >= 28
     const product = this.gradient
-      ? this.palette.bold(gradientText('DeepSeek'))
+      ? this.palette.bold(gradientText('DeepSeek', this.accent()))
       : this.palette.bold(this.palette.accent('DeepSeek'))
     const lines: string[] = []
     if (spacious) {

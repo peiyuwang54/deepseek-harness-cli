@@ -56,6 +56,7 @@ const CHECKPOINTS = [
   'queued-steering-preview',
   'session-stats-narrow',
   'usage-command',
+  'export-selector',
   'retry-scheduled',
   'retry-recovered',
   'retry-cancelled',
@@ -613,6 +614,21 @@ describe('TUI terminal-state snapshots', () => {
     })
     await checkpoint('usage-command', harness.terminal, { includeScrollback: true })
     nowSpy.mockRestore()
+    await disposeSnapshot(harness)
+  })
+
+  it('pins the complete-conversation export selector', async () => {
+    const harness = await setupSnapshot({
+      beforeMount(session) {
+        appendUser(session, 'Export this **conversation**.')
+        appendAssistant(session, [{ type: 'text', text: 'The Markdown is ready.' }])
+      },
+    }, { columns: 96, rows: 30 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/export')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('export-selector', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

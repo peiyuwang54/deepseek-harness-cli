@@ -85,6 +85,7 @@ import {
   renderPalette,
   selectTheme,
 } from './components/theme.ts'
+import type { AccentId } from './components/theme.ts'
 import { contentText, parseArguments } from './components/content.ts'
 import {
   cacheHitRate,
@@ -161,7 +162,9 @@ import { createApprovalQueue } from './chat/approvals.ts'
 import { createResumeController } from './chat/resume.ts'
 import {
   createSettingsController,
+  readTuiAccent,
   readTuiThemePreference,
+  registerTuiAccentSettings,
   type SettingsController,
   type TuiThemePreference,
 } from './chat/settings.ts'
@@ -171,6 +174,11 @@ import {
 } from './chat/workspace.ts'
 import { readTuiLocale, tuiCopy, type TuiLocale } from './chat/language.ts'
 import { latestVisibleAssistantText, osc52ClipboardSequence } from './chat/clipboard.ts'
+import {
+  renderMarkdownTranscript,
+  transcriptExportFilename,
+  writeMarkdownTranscript,
+} from './chat/transcript-export.ts'
 import { mcpCommandResult } from './chat/mcp-command.ts'
 import { gitDiff } from './chat/git-diff.ts'
 import { GoalTimingTracker, formatGoalFooterStatus, type GoalFooterState } from './chat/goal-status.ts'
@@ -372,11 +380,12 @@ export function createTuiChat(
   if (agent === undefined) throw new Error(`ui-tui: session "${sessionId}" is not running`)
   const resolved = resolveTuiConfig(config)
   let themePreference = readTuiThemePreference(ctx.get('settings'))
+  let accent = readTuiAccent(ctx.get('settings'))
   let locale = readTuiLocale(ctx.get('settings'))
   let terminalScheme: TerminalColorScheme = 'dark'
   let terminalBackground: RgbColor | undefined
   const initialScheme: TerminalColorScheme = themePreference === 'light' ? 'light' : 'dark'
-  const palette = createPalette(resolved.theme.color, initialScheme)
+  const palette = createPalette(resolved.theme.color, initialScheme, accent)
   let composerSurface = composerBackground(resolved.theme.color, initialScheme, terminalBackground)
   const mdTheme = markdownTheme(palette)
   // The software caret below provides deterministic blinking even when a
@@ -576,6 +585,7 @@ export function createTuiChat(
     agent,
     palette,
     resolved.theme.color && resolved.theme.truecolor,
+    () => accent,
     () => ({
       expanded: isZeroState(),
       preset: currentPreset(),
@@ -799,7 +809,7 @@ export function createTuiChat(
   const extensionTheme: TuiTheme = Object.freeze({
     text: (value: string) => palette.text(value),
     brand: (value: string) => resolved.theme.color
-      ? resolved.theme.truecolor ? brandText(value) : palette.brand(value)
+      ? resolved.theme.truecolor ? brandText(value, accent) : palette.brand(value)
       : value,
     dim: (value: string) => palette.dim(value),
     accent: (value: string) => palette.accent(value),
@@ -1488,7 +1498,7 @@ export function createTuiChat(
   const applyColorScheme = (scheme: TerminalColorScheme, force = false): void => {
     if (scheme === currentScheme && !force) return
     currentScheme = scheme
-    Object.assign(palette, createPalette(resolved.theme.color, scheme))
+    Object.assign(palette, createPalette(resolved.theme.color, scheme, accent))
     composerSurface = composerBackground(resolved.theme.color, scheme, terminalBackground)
     Object.assign(mdTheme, markdownTheme(palette))
     // `setStatus` below re-derives `editor.borderColor` from the new palette.
@@ -1502,6 +1512,18 @@ export function createTuiChat(
   const applyThemePreference = (preference: TuiThemePreference): void => {
     themePreference = preference
     applyColorScheme(preference === 'system' ? terminalScheme : preference)
+  }
+
+  /** Rebuild the palette and banner for a newly selected accent hue. */
+  const applyAccent = (nextAccent: AccentId): void => {
+    if (nextAccent === accent) return
+    accent = nextAccent
+    Object.assign(palette, createPalette(resolved.theme.color, currentScheme, accent))
+    Object.assign(mdTheme, markdownTheme(palette))
+    rebuildPreservingStreaming()
+    setStatus(agent.status)
+    header.invalidate()
+    requestRender()
   }
 
   /** Refresh copy-only terminal chrome without rewriting transcript content. */
@@ -1522,6 +1544,7 @@ export function createTuiChat(
     requestRender,
     isDisposed,
     applyTheme: applyThemePreference,
+    applyAccent,
     applyLocale,
   })
   workspaceController = createWorkspaceController({
@@ -1895,6 +1918,58 @@ export function createTuiChat(
     }
   }
 
+  const copyTranscriptExport = (): CommandResult => {
+    try {
+      const markdown = renderMarkdownTranscript([...agent.session.events], showReasoning)
+      runtime.terminal.write(osc52ClipboardSequence(markdown, process.env.TMUX !== undefined))
+      return { kind: 'success', text: 'Copied the complete conversation to the clipboard.' }
+    } catch (error: unknown) {
+      return { kind: 'error', text: `Copy failed: ${errorChain(error)}` }
+    }
+  }
+
+  const runExportCommand = async (
+    rawInput: string,
+    signal: AbortSignal,
+  ): Promise<CommandResult> => {
+    const requestedPath = rawInput.trim()
+    if (requestedPath === '') {
+      openActionDialog('Export conversation', [
+        {
+          value: 'copy',
+          label: 'Copy to clipboard',
+          description: 'copy the complete Markdown transcript',
+        },
+        {
+          value: 'save',
+          label: 'Save to file',
+          description: 'choose a Markdown filename',
+        },
+      ], (value) => {
+        if (value === 'copy') {
+          const result = copyTranscriptExport()
+          if (result.text !== undefined) {
+            appendNotice(result.text, result.kind === 'error' ? 'error' : 'info')
+          }
+          return
+        }
+        if (value === 'save') {
+          editor.setText(`/export ${transcriptExportFilename(agent.session.header.id)}`)
+          requestRender()
+        }
+      })
+      return { kind: 'success' }
+    }
+    try {
+      const markdown = renderMarkdownTranscript([...agent.session.events], showReasoning)
+      const path = await writeMarkdownTranscript(cwd, requestedPath, markdown, signal)
+      return { kind: 'success', text: `Saved conversation to ${displayText(path)}.` }
+    } catch (error: unknown) {
+      if (signal.aborted) throw error
+      return { kind: 'error', text: `Export failed: ${errorChain(error)}` }
+    }
+  }
+
   const runDiffCommand = async (rawInput: string, signal: AbortSignal): Promise<CommandResult> => {
     if (rawInput.trim() !== '') return { kind: 'error', text: 'Usage: /diff (no arguments)' }
     try {
@@ -1935,7 +2010,7 @@ export function createTuiChat(
   const showPalette = (): void => {
     chat.addChild(new Spacer(1))
     chat.addChild(new Text(
-      renderPalette(palette, currentScheme, resolved.theme.color).join('\n'), 0, 0,
+      renderPalette(palette, currentScheme, resolved.theme.color, accent).join('\n'), 0, 0,
     ))
     requestRender()
   }
@@ -2212,6 +2287,12 @@ export function createTuiChat(
       handler: runCopyCommand,
     })
     commandCtx.commands.register({
+      name: 'export',
+      description: 'Export the complete conversation as Markdown',
+      input: { hint: '[path]' },
+      handler: ({ rawInput, signal }) => runExportCommand(rawInput, signal),
+    })
+    commandCtx.commands.register({
       name: 'diff',
       description: 'Show the Git diff, including untracked files',
       handler: ({ rawInput, signal }) => runDiffCommand(rawInput, signal),
@@ -2273,6 +2354,15 @@ export function createTuiChat(
       input: { hint: '[light|dark|system]' },
       handler: ({ rawInput }) => {
         settingsController.queueThemeCommand(rawInput)
+        return { kind: 'success' }
+      },
+    })
+    commandCtx.commands.register({
+      name: 'accent',
+      description: 'Choose and persist the accent color',
+      input: { hint: '[deepseek|cosmic-orange|mist-blue|sage|lavender|deep-blue]' },
+      handler: ({ rawInput }) => {
+        settingsController.queueAccentCommand(rawInput)
         return { kind: 'success' }
       },
     })
@@ -2987,6 +3077,9 @@ export function apply(ctx: Context, config: Config): void {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error('ui-tui: both stdin and stdout must be TTYs; use the one-shot @deepseek-ai/dsh-cli-demo app for pipes')
   }
+  // The terminal accent section lives beside ui-theme/locale, so the TUI can
+  // persist it even when the Web client stack is not composed.
+  registerTuiAccentSettings(ctx)
   // Truecolor is a terminal capability, so detect it here at the process
   // boundary from COLORTERM; an explicit theme value still wins.
   const truecolor = config.theme?.truecolor ?? ['truecolor', '24bit'].includes(process.env.COLORTERM ?? '')

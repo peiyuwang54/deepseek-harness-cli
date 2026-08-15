@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, utimes, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
@@ -45,15 +45,18 @@ import {
 } from '../src/index.ts'
 import { WorkspaceFileSearch } from '../src/chat/file-autocomplete.ts'
 import { osc52ClipboardSequence } from '../src/chat/clipboard.ts'
+import { renderMarkdownTranscript } from '../src/chat/transcript-export.ts'
 import { CURSOR_BLINK_INTERVAL_MS } from '../src/chat/helpers.ts'
 import { formatDeepDivingStatus } from '../src/chat/language.ts'
 import { ResumePicker } from '../src/components/dialogs.ts'
 import {
+  ACCENT_HUES,
   ATTRIBUTE_ROLES,
   brandText,
   COLOR_ROLES,
   composerBackground,
   createPalette,
+  gradientText,
   highlightMarkdownCode,
   paletteSpec,
 } from '../src/components/theme.ts'
@@ -471,6 +474,55 @@ describe('shared settings, appearance, and workspaces', () => {
     resultContext?.emit('settings/updated', localeNamespace, { preference: 'en' }, { preference: 'zh' }, 'update')
     await tick()
     expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
+    await dispose(result)
+  })
+
+  it('persists /accent through the TUI ui-accent field and repaints the accent chrome', async () => {
+    const uiAccent = settingsNamespace('ui-accent')
+    let accent = 'deepseek'
+    let resultContext: Context | undefined
+    const mutate = vi.fn(async (
+      namespace: string,
+      ops: ReadonlyArray<{ op: string; path: readonly string[]; value?: unknown }>,
+    ) => {
+      const operation = ops[0]
+      if (namespace !== uiAccent || operation?.op !== 'set') return
+      const previous = { accent }
+      accent = String(operation.value)
+      resultContext?.emit('settings/updated', uiAccent, { accent }, previous, 'update')
+    })
+    const result = await setup({
+      config: { theme: { color: true } },
+      configureContext: composeFrontDoorServices((ctx) => {
+        resultContext = ctx
+        ctx.provide('settings', {
+          get: (namespace: string) => namespace === uiAccent ? { accent } : undefined,
+          mutate,
+          describe: () => [{
+            ns: uiAccent,
+            schema: { type: 'object' },
+            value: { accent },
+            revision: 0,
+            applies: 'live',
+          }],
+          writable: true,
+          documentPath: '/home/test/.dsh/settings.yml',
+          prepareDocument: () => Promise.resolve('/home/test/.dsh/settings.yml'),
+        } as never)
+      }),
+    })
+
+    result.terminal.send('/accent cosmic-orange')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(mutate).toHaveBeenCalledWith(uiAccent, [{ op: 'set', path: ['accent'], value: 'cosmic-orange' }])
+    expect(result.terminal.output).toContain('Accent: Cosmic Orange')
+
+    // The accent chrome repaints from the DeepSeek bright blue to bright red.
+    expect(resultContext).toBeDefined()
+    resultContext?.emit('settings/updated', uiAccent, { accent: 'deepseek' }, { accent: 'cosmic-orange' }, 'update')
+    await tick()
+    expect(result.terminal.output).toContain('\x1b[94m')
     await dispose(result)
   })
 
@@ -3550,6 +3602,55 @@ describe('pi-tui chat lifecycle and transcript', () => {
     })
 
     await dispose(result)
+  })
+
+  it('exports the complete Markdown conversation through the selector or a direct path', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-tui-command-export-'))
+    const result = await setup({ cwd: root })
+    try {
+      appendUser(result.session, 'Export **this** conversation.')
+      appendAssistant(result.session, [{ type: 'text', text: 'Complete answer.' }])
+      await tick()
+
+      result.terminal.send('/export')
+      result.terminal.send('\r')
+      await tick()
+      expect(result.terminal.output).toContain('Export conversation')
+      expect(result.terminal.output).toContain('Copy to clipboard')
+      expect(result.terminal.output).toContain('Save to file')
+      result.terminal.send('\r')
+      await tick()
+      const markdown = renderMarkdownTranscript(result.session.events, false)
+      expect(result.terminal.output).toContain(osc52ClipboardSequence(
+        markdown,
+        process.env.TMUX !== undefined,
+      ))
+      expect(result.terminal.output).toContain('Copied the complete conversation to the clipboard.')
+
+      result.terminal.send('/export')
+      result.terminal.send('\r')
+      await tick()
+      result.terminal.send('\x1b[B')
+      result.terminal.send('\r')
+      await tick()
+      expect(result.terminal.output).toContain('/export deepseek-session-main-session.md')
+      result.terminal.send('\x03')
+
+      result.terminal.send('/export conversation.md')
+      result.terminal.send('\r')
+      await vi.waitFor(async () => {
+        expect(await readFile(join(root, 'conversation.md'), 'utf8')).toBe(markdown)
+      })
+      expect(result.terminal.output).toContain('Saved conversation to')
+
+      result.terminal.send('/export conversation.md')
+      result.terminal.send('\r')
+      await vi.waitFor(() => { expect(result.terminal.output).toContain('Export failed:') })
+      expect(await readFile(join(root, 'conversation.md'), 'utf8')).toBe(markdown)
+    } finally {
+      await dispose(result)
+      await rm(root, { recursive: true, force: true })
+    }
   })
 
   it('renders /diff output and reports its empty, non-worktree, argument, and failure states', async () => {
@@ -7500,6 +7601,25 @@ describe('terminal mounting', () => {
 
   it('uses the official DeepSeek SVG ink for truecolor brand art', () => {
     expect(brandText('mark')).toBe('\x1b[38;2;77;107;254mmark\x1b[39m')
+  })
+
+  it('switches the accent role and banner gradient per accent hue', () => {
+    // Default keeps the original DeepSeek-blue chrome unchanged.
+    expect(paletteSpec('dark').colors.accent.open).toBe('94')
+    expect(brandText('x', 'deepseek')).toBe('\x1b[38;2;77;107;254mx\x1b[39m')
+    // A non-default accent changes both the ANSI fallback and the truecolor ink.
+    expect(paletteSpec('dark', 'cosmic-orange').colors.accent.open).toBe('91')
+    expect(paletteSpec('dark', 'cosmic-orange').colors.brand.open).toBe('31')
+    expect(brandText('x', 'cosmic-orange')).toBe('\x1b[38;2;247;126;45mx\x1b[39m')
+    expect(paletteSpec('dark', 'sage').colors.accent.open).toBe('92')
+    expect(paletteSpec('light', 'lavender').colors.accent.open).toBe('95')
+    // The gradient paints the accent ink first; unknown ids fall back to DeepSeek.
+    expect(gradientText('ab', 'cosmic-orange')).toContain('\x1b[38;2;247;126;45m')
+    expect(paletteSpec('dark', 'not-an-accent' as never).colors.accent.open).toBe('94')
+    for (const hue of ACCENT_HUES) {
+      expect(paletteSpec('dark', hue.id).colors.accent.open).toBe(hue.ansi)
+      expect(paletteSpec('dark', hue.id).colors.brand.open).toBe(hue.brandAnsi)
+    }
   })
 
   it('keeps interactive chrome in the DeepSeek blue family', () => {

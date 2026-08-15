@@ -34,24 +34,31 @@ env:
 jobs:
   pack:
     name: Pack npm tarballs
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     steps:
+      - name: Defer packing outside manual dispatch
+        if: github.event_name != 'workflow_dispatch'
+        run: echo "Packing is manual during pre-release. Dispatch this workflow to pack."
+
       # Complete history: the release scripts read tags.
       - uses: actions/checkout@v6
+        if: github.event_name == 'workflow_dispatch'
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - uses: pnpm/action-setup@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
+        if: github.event_name == 'workflow_dispatch'
         with:
           node-version: ${{ env.PRIMARY_NODE_VERSION }}
 
       - name: Configure pnpm store path
+        if: github.event_name == 'workflow_dispatch'
         id: pnpm-store
         run: |
           store_root="$HOME/.local/share/pnpm/store"
@@ -60,6 +67,7 @@ jobs:
           echo "path=$store_path" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache/restore@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
@@ -67,9 +75,11 @@ jobs:
             ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-
 
       - name: Install (immutable)
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm install --frozen-lockfile
 
       - name: Verify release version
+        if: github.event_name == 'workflow_dispatch'
         env:
           RELEASE_PUBLISH: ${{ inputs.publish }}
         run: pnpm run release:verify --family vendor
@@ -77,15 +87,19 @@ jobs:
       # The vendored packages publish their own sources and build outputs; the
       # host build produces what their manifests select.
       - name: Build
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm run build:lib:host
 
       - name: Pack release tarballs
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm run release:pack --family vendor --out dist/npm-vendor
 
       - name: Verify packed install
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm run release:verify-packed-install --family vendor --from dist/npm-vendor
 
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           name: vendor-npm-tarballs
           path: dist/npm-vendor/*

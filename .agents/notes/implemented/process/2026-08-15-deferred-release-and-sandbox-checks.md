@@ -10,7 +10,7 @@ Pre-release CLI feature work needs a short feedback loop, while npm publication 
 
 ## Decision
 
-Ordinary pull requests and `master` pushes retain the release workflow checks but skip npm packing and publication. The real-kernel Sandbox workflow also remains visible on `master` pushes while its OS matrix is skipped. Manual dispatch remains available for dsh/vendor package rehearsals and the bwrap, Landlock, and Seatbelt matrix.
+Ordinary pull requests and `master` pushes retain the release workflow checks. The pack jobs run and succeed with a message that packing is manual; they do not skip the check name. Publication stays dispatch-only. The real-kernel Sandbox workflow also remains visible on `master` pushes while its OS matrix is skipped. Manual dispatch remains available for dsh/vendor package rehearsals and the bwrap, Landlock, and Seatbelt matrix.
 
 This is a temporary pre-release policy while the CLI feature and terminal UI are changing quickly. Before the first tagged release, restore automatic package rehearsals and the platform sandbox matrix so release artifacts and confinement are proved on the publication candidate.
 
@@ -22,4 +22,4 @@ This is a temporary pre-release policy while the CLI feature and terminal UI are
 
 ## Consequences
 
-Feature iterations are judged by focused behavior tests, snapshots, type checks, and source gates instead of unrelated publication or scarce platform runners. A skipped check is explicit and does not claim that npm artifacts or real-kernel confinement passed.
+Feature iterations are judged by focused behavior tests, snapshots, type checks, and source gates instead of unrelated publication or scarce platform runners. A deferred pack check is green and does not claim that npm artifacts were produced. A skipped Sandbox matrix does not claim that real-kernel confinement passed. See [fork hosted CI](2026-08-15-fork-github-hosted-ci.md) for the pull-request check names.

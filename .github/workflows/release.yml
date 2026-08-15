@@ -34,24 +34,31 @@ env:
 jobs:
   pack:
     name: Pack npm tarballs
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     steps:
+      - name: Defer packing outside manual dispatch
+        if: github.event_name != 'workflow_dispatch'
+        run: echo "Packing is manual during pre-release. Dispatch this workflow to pack."
+
       # Complete history: the release scripts read tags.
       - uses: actions/checkout@v6
+        if: github.event_name == 'workflow_dispatch'
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - uses: pnpm/action-setup@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
+        if: github.event_name == 'workflow_dispatch'
         with:
           node-version: ${{ env.PRIMARY_NODE_VERSION }}
 
       - name: Configure pnpm store path
+        if: github.event_name == 'workflow_dispatch'
         id: pnpm-store
         run: |
           store_root="$HOME/.local/share/pnpm/store"
@@ -60,6 +67,7 @@ jobs:
           echo "path=$store_path" >> "$GITHUB_OUTPUT"
 
       - uses: actions/cache/restore@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
           key: ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
@@ -67,17 +75,21 @@ jobs:
             ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-
 
       - name: Install (immutable)
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm install --frozen-lockfile
 
       - name: Verify release version
+        if: github.event_name == 'workflow_dispatch'
         env:
           RELEASE_PUBLISH: ${{ inputs.publish }}
         run: pnpm run release:verify --family dsh
 
       - name: Build
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm run build
 
       - name: Pack release tarballs
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm run release:pack --family dsh --out dist/npm
 
       # The harness packages declare the vendored framework as a peer, and this
@@ -86,20 +98,24 @@ jobs:
       # publishes — so it installs that family's pack output too. Only dist/npm
       # is published.
       - name: Pack the vendored framework for verification
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm run release:pack --family vendor --out dist/npm-vendor
 
       # dsh-sandbox-local declares the Landlock entry as a runtime dependency, so
       # the verification needs its tarball. Its platform packages stay out: they
       # are optional, and building them needs a musl toolchain per architecture.
       - name: Pack the Landlock entry for verification
+        if: github.event_name == 'workflow_dispatch'
         run: |
           pnpm --dir native/landlock-run run build:ts
           pnpm --dir native/landlock-run/packages/entry pack --pack-destination "$PWD/dist/npm-landlock"
 
       - name: Verify packed install
+        if: github.event_name == 'workflow_dispatch'
         run: pnpm run release:verify-packed-install --family dsh --from dist/npm --from dist/npm-vendor --from dist/npm-landlock
 
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
         with:
           name: dsh-npm-tarballs
           path: dist/npm/*

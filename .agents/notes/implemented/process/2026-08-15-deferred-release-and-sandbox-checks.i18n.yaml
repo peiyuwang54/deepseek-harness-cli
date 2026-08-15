@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-08-15-deferred-release-and-sandbox-checks.md
-2026-08-15-deferred-release-and-sandbox-checks.md: a3c69c9e8b566719a25c178319ddf622be239428
-2026-08-15-deferred-release-and-sandbox-checks.zh.md: b8bf0f7429dbd7124803834df6bf09191a1558ca
+2026-08-15-deferred-release-and-sandbox-checks.md: 80c079a6ed260b5979100a18a1ba4f48e4cbe289
+2026-08-15-deferred-release-and-sandbox-checks.zh.md: c3af930bea11b7426bbb6e04ef4fe63128ef75dd

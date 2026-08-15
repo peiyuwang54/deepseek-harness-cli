@@ -26,7 +26,7 @@ The [source-run decision](../simplification/2026-08-10-source-run-without-manage
 
 ## Alternatives considered
 
-**Download a GitHub Release from `install.ps1`, as Codex does.** Rejected because this fork has no release asset or public installer host. The checkout is the payload.
+**Download a GitHub Release from `install.ps1`, as Codex does.** The download installer is now [`apps/cli/install/install.ps1`](../../../../apps/cli/install/install.ps1), owned by [the Windows exe release note](2026-08-15-windows-cli-exe-release.md). This directory packer remains the source-tree path when no release exists or the user wants the `node.exe` plus closure layout.
 
 **Ship a single-file `dsh.exe` through `pkg --sea`.** Rejected because the existing SEA pipeline excludes Windows and the TUI, and ConPTY plus native addons inside a virtual filesystem is a separate product. The directory tree is the Windows package.
 

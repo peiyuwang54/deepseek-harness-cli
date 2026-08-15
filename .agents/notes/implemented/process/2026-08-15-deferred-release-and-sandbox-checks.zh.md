@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-普通 pull request 与 `master` push 仍保留发布工作流检查，但跳过 npm 打包和发布。真实内核 Sandbox 工作流也继续出现在 `master` push 中，但跳过其操作系统矩阵。dsh／vendor 软件包演练以及 bwrap、Landlock、Seatbelt 矩阵仍可手动触发。
+普通 pull request 与 `master` push 仍保留发布工作流检查。pack 任务会运行并以“打包需手动触发”的说明成功，不再跳过该检查名。发布仍仅在 dispatch 时执行。真实内核 Sandbox 工作流也继续出现在 `master` push 中，但跳过其操作系统矩阵。dsh／vendor 软件包演练以及 bwrap、Landlock、Seatbelt 矩阵仍可手动触发。
 
 这是 CLI 功能与终端 UI 快速变化期间的临时预发布策略。第一个带标签的版本发布前，应恢复自动软件包演练与平台沙箱矩阵，让发布候选的软件包和隔离能力获得验证。
 
@@ -22,4 +22,4 @@ Status: implemented
 
 ## 后果
 
-功能迭代由聚焦行为测试、快照、类型检查和源码门禁判断，不再被无关的发布流程或稀缺平台 runner 阻塞。跳过状态会明确显示，也不会声称 npm 产物或真实内核隔离已经通过。
+功能迭代由聚焦行为测试、快照、类型检查和源码门禁判断，不再被无关的发布流程或稀缺平台 runner 阻塞。暂缓的 pack 检查为绿色，并不声称已经产出 npm 产物。跳过的 Sandbox 矩阵并不声称真实内核隔离已经通过。pull request 检查名见 [fork 托管 CI](2026-08-15-fork-github-hosted-ci.md)。

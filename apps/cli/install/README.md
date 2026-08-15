@@ -1,20 +1,25 @@
-# deepseek-harness-cli — curl installer
+# deepseek-harness-cli — release installers
 
 English | [中文](README.zh.md)
 
-The `install.sh` script downloads the single-file `deepseek-harness-cli`
+`install.sh` and `install.ps1` download the single-file `deepseek-harness-cli`
 executable from the `deepseek-harness-cli-v*` GitHub Releases of this fork and
-installs it under `$HOME/.deepseek-harness-cli/bin`, then adds that directory to
-your shell `PATH`.
+install it under `$HOME/.deepseek-harness-cli/bin`, then add that directory to
+`PATH`.
 
-Supported targets: macOS (`arm64`, `x64`) and Linux (`arm64`, `x64`). The script
-runs on plain POSIX `sh`; it needs only `curl`, `tar`, and a sha256 tool
-(`shasum` on macOS, `sha256sum` on Linux).
+Supported targets: macOS (`arm64`, `x64`), Linux (`arm64`, `x64`), and Windows
+(`x64`). The POSIX script needs `curl`, `tar`, and a sha256 tool (`shasum` on
+macOS, `sha256sum` on Linux). The PowerShell script needs `tar` and
+`Get-FileHash`, and writes `dsh.cmd` / `deepseek.cmd` beside the `.exe`.
 
 ## Install
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
+```
+
+```powershell
+irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.ps1 | iex
 ```
 
 After it finishes, restart your shell (or run the `export PATH=…` line it prints)

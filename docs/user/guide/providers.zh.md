@@ -2,7 +2,9 @@
 
 [English](providers.md) | 中文
 
-本指南假定你已按照[根 README](../../../README.md#run)启动 Web UI。模型变更会在下一次请求时生效，不需要重启服务器。
+Web 的**设置 → 模型**与 `$DSH_HOME/settings.yaml` 写入同一组 namespace。`tui` 和 `headless` 读取这些文件；`/settings document` 会打印 settings 路径。模型变更会在下一次请求时生效，不需要重启。
+
+`deepseek-official` 是随附的默认适配器；存在 `DEEPSEEK_API_KEY` 时它会一直保持注册。额外路由写在 `llm-pi-ai.providers` 下。`/model` 会列出所有已上线路由。本页其余部分按 Web 表单讲解；`tui` 手写的 YAML 见[根文档的其他提供方一节](../../../README.md#other-providers)。
 
 ## 配置 DeepSeek
 

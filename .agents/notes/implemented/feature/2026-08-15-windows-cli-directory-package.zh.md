@@ -26,7 +26,7 @@ Windows 目录包从这份检出构建，并安装到其他按用户隔离的程
 
 ## 考虑过的备选方案
 
-**像 Codex 那样，让 `install.ps1` 从 GitHub Release 下载。**否决，因为本 fork 没有 release 资产，也没有公开的安装器宿主。检出本身就是载荷。
+**像 Codex 那样，让 `install.ps1` 从 GitHub Release 下载。**下载安装器现在是 [`apps/cli/install/install.ps1`](../../../../apps/cli/install/install.ps1)，由 [Windows exe 发布说明](2026-08-15-windows-cli-exe-release.md)负责。本目录打包器仍是源码树路径：没有 release 时，或用户需要 `node.exe` 加闭包布局时使用。
 
 **通过 `pkg --sea` 发布单文件 `dsh.exe`。**否决，因为现有 SEA 流水线排除 Windows 和 TUI，而且把 ConPTY 与原生 addon 放进虚拟文件系统是另一项产品。目录树才是 Windows 封装包。
 

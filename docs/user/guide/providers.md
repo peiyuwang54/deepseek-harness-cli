@@ -2,7 +2,9 @@
 
 English | [中文](providers.zh.md)
 
-This guide assumes you started the Web UI through the [root README](../../../README.md#run). Model changes take effect on the next request without restarting the server.
+Web **Settings → Models** and `$DSH_HOME/settings.yaml` write the same namespaces. `tui` and `headless` read those files; `/settings document` prints the settings path. Model changes take effect on the next request without restarting.
+
+`deepseek-official` is the shipped default adapter and stays registered when `DEEPSEEK_API_KEY` is present. Extra routes live under `llm-pi-ai.providers`. `/model` lists every live route. The rest of this page walks the Web form; the [root other-providers section](../../../README.md#other-providers) shows the YAML that `tui` edits by hand.
 
 ## Configure DeepSeek
 

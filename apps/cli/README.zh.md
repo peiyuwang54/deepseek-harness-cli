@@ -45,7 +45,7 @@ profile 目录包含一个 `package.json`，其中记录树外插件依赖，以
 
 ## 安装
 
-`dsh` 以单文件可执行程序的形式，为 macOS（`arm64`、`x64`）与 Linux（`arm64`、`x64`）发布。任选其一即可安装：
+`dsh` 以单文件可执行程序的形式，为 macOS（`arm64`、`x64`）、Linux（`arm64`、`x64`）与 Windows（`x64`）发布。任选其一即可安装：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
@@ -53,7 +53,11 @@ npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-第一个命令运行 curl 安装器：它下载最新的 `deepseek-harness-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，并安装到 `$HOME/.deepseek-harness-cli/bin`（`sh -s -- --to <dir>` 可覆盖目录，`--version <ver>` 可固定版本）。npm 包是覆盖各平台可执行程序的 shim，并同时安装 `deepseek-harness-cli` 与 `deepseek`；Homebrew cask 由 `peiyuwang54/homebrew-dsh` tap 提供。完整契约与计划中的 minisign 签名升级见[安装器 README](install/README.md)。
+```powershell
+irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.ps1 | iex
+```
+
+第一个命令运行 curl 安装器：它下载最新的 `deepseek-harness-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，并安装到 `$HOME/.deepseek-harness-cli/bin`（`sh -s -- --to <dir>` 可覆盖目录，`--version <ver>` 可固定版本）。PowerShell 安装器为 Windows x64 做同样的事，并写出 `dsh.cmd` / `deepseek.cmd`。npm 包是覆盖各平台可执行程序的 shim，并同时安装 `deepseek-harness-cli` 与 `deepseek`；Homebrew cask 由 `peiyuwang54/homebrew-dsh` tap 提供（仅 macOS 与 Linux）。完整契约与计划中的 minisign 签名升级见[安装器 README](install/README.md)。
 
 升级只需重新运行同一命令——curl 安装器原地替换二进制、`npm update -g @peiyuwang54/deepseek-harness-cli` 拉取最新版本、`brew upgrade deepseek-harness-cli` 刷新 cask。
 
@@ -61,4 +65,4 @@ brew install peiyuwang54/dsh/deepseek-harness-cli
 
 生产运行需要已构建的包与前端产物。请在仓库根目录单独运行 `pnpm run build`，然后使用 `pnpm dsh <args...>` 运行 TypeScript 入口并转发所有参数；模块解析约定以[源码执行参考](reference/README.md#source-execution)为准。
 
-在 Windows 上，[`scripts/install/install.ps1`](../../scripts/install/install.ps1) 会把这份 CLI 的打包副本安装到 `%LOCALAPPDATA%\Programs\dsh`。用户不带参数时，该启动器会启动 `tui`；[`src/args.ts`](src/args.ts) 中的语法不变。
+在 Windows 上，[`install/install.ps1`](install/install.ps1) 会把 win-x64 发布版下载到 `$HOME/.deepseek-harness-cli/bin`。源码树目录打包器 [`scripts/install/install.ps1`](../../scripts/install/install.ps1) 仍会把 `node.exe` 闭包复制到 `%LOCALAPPDATA%\Programs\dsh`，并在用户不带参数时启动 `tui`；[`src/args.ts`](src/args.ts) 中的语法不变。

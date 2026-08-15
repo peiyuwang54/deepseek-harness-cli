@@ -1,15 +1,19 @@
-# deepseek-harness-cli — curl 安装器
+# deepseek-harness-cli — 发布安装器
 
 [English](README.md) | 中文
 
-`install.sh` 脚本从本 fork 的 `deepseek-harness-cli-v*` GitHub Releases 下载单文件 `deepseek-harness-cli` 可执行程序，安装到 `$HOME/.deepseek-harness-cli/bin`，并把该目录追加进 shell 的 `PATH`。
+`install.sh` 与 `install.ps1` 从本 fork 的 `deepseek-harness-cli-v*` GitHub Releases 下载单文件 `deepseek-harness-cli` 可执行程序，安装到 `$HOME/.deepseek-harness-cli/bin`，并把该目录追加进 `PATH`。
 
-支持目标：macOS（`arm64`、`x64`）与 Linux（`arm64`、`x64`）。脚本运行在普通 POSIX `sh` 上；只需要 `curl`、`tar` 与一个 sha256 工具（macOS 用 `shasum`，Linux 用 `sha256sum`）。
+支持目标：macOS（`arm64`、`x64`）、Linux（`arm64`、`x64`）与 Windows（`x64`）。POSIX 脚本需要 `curl`、`tar` 与一个 sha256 工具（macOS 用 `shasum`，Linux 用 `sha256sum`）。PowerShell 脚本需要 `tar` 与 `Get-FileHash`，并在 `.exe` 旁写出 `dsh.cmd` / `deepseek.cmd`。
 
 ## 安装
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
+```
+
+```powershell
+irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.ps1 | iex
 ```
 
 完成后请重启 shell（或运行它打印的 `export PATH=…` 那一行），让 `deepseek-harness-cli` 二进制进入 `PATH`。

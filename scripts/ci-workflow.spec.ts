@@ -69,7 +69,8 @@ describe('CI workflow', () => {
     expect(windowsNative['runs-on']).not.toContain('DSH_CI_FAILOVER_LINUX')
     expect(windowsNative['runs-on']).toContain('self-hosted')
     expect(windowsNative['runs-on']).toContain('dsh-win-ci')
-    expect(windowsNative['runs-on']).toContain('dsh-windows-2025-16core')
+    expect(windowsNative['runs-on']).toContain('windows-2025')
+    expect(windowsNative['runs-on']).not.toContain('dsh-windows-2025-16core')
     expect(windowsNative.name).toBe('windows node 24 / native complete')
     expect(windowsNative.if).toBe("github.event_name == 'pull_request'")
     const nativeCommandSteps = (windowsNative.steps as unknown[]).filter((step): step is Record<string, unknown> & { run: string } => (
@@ -93,12 +94,14 @@ describe('CI workflow', () => {
 
     // Linux failover is a separate switch: the three required Linux workers
     // and the verdict job resolve their pool through DSH_CI_FAILOVER_LINUX,
-    // never the Windows switch.
+    // never the Windows switch. The unset default is GitHub-hosted ubuntu-latest.
     for (const [jobName, job] of [['node-24', node24], ['node-24-coverage', node24Coverage], ['node-24-consumers', node24Consumers]] as const) {
       expect(typeof job['runs-on']).toBe('string')
       expect(job['runs-on'], `${jobName} runs-on must use the Linux failover switch`).toContain('DSH_CI_FAILOVER_LINUX')
       expect(job['runs-on'], `${jobName} runs-on must not use the Windows failover switch`).not.toContain('DSH_CI_FAILOVER_WINDOWS')
       expect(job['runs-on']).toContain('vm-backup')
+      expect(job['runs-on']).toContain('ubuntu-latest')
+      expect(job['runs-on']).not.toContain('dsh-ubuntu-24-04-16core')
     }
     expect(aggregate['runs-on']).toContain('DSH_CI_FAILOVER_LINUX')
     expect(aggregate['runs-on']).not.toContain('DSH_CI_FAILOVER_WINDOWS')
@@ -246,7 +249,12 @@ describe('Pre-release deferred workflows', () => {
         push: { branches: ['master'] },
       })
       expect(workflowEvent(workflow, 'workflow_dispatch')).toHaveProperty('inputs.publish')
-      expect(pack.if).toBe("github.event_name == 'workflow_dispatch'")
+      expect(pack.if).toBeUndefined()
+      if (!Array.isArray(pack.steps)) throw new TypeError(`${path} pack job must define steps`)
+      const defer = pack.steps.filter(isRecord).find(step => step.name === 'Defer packing outside manual dispatch')
+      expect(defer).toMatchObject({
+        if: "github.event_name != 'workflow_dispatch'",
+      })
     }
 
     const sandbox = loadWorkflow('.github/workflows/sandbox.yml')
@@ -433,6 +441,31 @@ describe('Python release workflows', () => {
 
     expect(macosCheck).toContain('scripts/check-macos-deployment-target.py')
     expect(macosCheck).toContain('"$EXE" "$EXE-spawn-helper"')
+  })
+})
+
+describe('deepseek-harness-cli release workflow', () => {
+  it('plans on every pull request and builds the five native targets only off pull_request', () => {
+    const workflow = loadWorkflow('.github/workflows/deepseek-harness-cli-release.yml')
+    const plan = workflowJob(workflow, 'plan')
+    const build = workflowJob(workflow, 'build')
+    const pack = workflowJob(workflow, 'package')
+    const release = workflowJob(workflow, 'release')
+    const npmPublish = workflowJob(workflow, 'npm-publish')
+    const brewTap = workflowJob(workflow, 'brew-tap')
+    if (!Array.isArray(plan.steps)) throw new TypeError('CLI release plan must define steps')
+
+    expect(workflow.on).toMatchObject({ pull_request: null })
+    expect(plan.if).toBeUndefined()
+    expect(JSON.stringify(plan.steps)).toContain('node24-win-x64 windows-2025')
+    expect(build.if).toBe("github.event_name != 'pull_request'")
+    expect(pack.if).toBe("github.event_name != 'pull_request'")
+    expect(release.if).toBe("github.event_name != 'pull_request'")
+    expect(npmPublish.if).toBe("github.event_name != 'pull_request'")
+    expect(brewTap.if).toBe("github.event_name != 'pull_request'")
+    expect(JSON.stringify(pack.steps)).toContain('scripts/gen-dsh-cask.ts')
+    expect(JSON.stringify(pack.steps)).toContain('deepseek-harness-cli-${cpu}-${os}.tar.gz')
+    expect(JSON.stringify(pack.steps)).toContain('win-x64')
   })
 })
 

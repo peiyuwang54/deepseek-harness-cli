@@ -15,7 +15,7 @@ export const PKG_SPEC = '@yao-pkg/pkg@6.21.0'
 export const OUT_DIR = 'dist-exe'
 
 /** Platform tags shared by pkg targets and release channel names. */
-const PLATFORMS = ['linux', 'macos'] as const
+const PLATFORMS = ['linux', 'macos', 'win'] as const
 type Platform = (typeof PLATFORMS)[number]
 
 /** CPU tags shared by pkg targets and release channel names. */
@@ -63,10 +63,7 @@ export class Target {
   private constructor(
     /** pkg Node range (`node<major>`). */
     readonly nodeRange: string,
-    /**
-     * pkg platform tag. Windows is a documented non-goal (see each product's
-     * architecture note).
-     */
+    /** pkg platform tag (`linux`, `macos`, or `win`). */
     readonly platform: Platform,
     /** pkg CPU tag. */
     readonly arch: Arch,
@@ -107,7 +104,13 @@ export class Target {
    * @returns the host target; throws on an unsupported host platform or arch.
    */
   static host(label: string): Target {
-    const platform = process.platform === 'darwin' ? 'macos' : process.platform === 'linux' ? 'linux' : undefined
+    const platform = process.platform === 'darwin'
+      ? 'macos'
+      : process.platform === 'linux'
+        ? 'linux'
+        : process.platform === 'win32'
+          ? 'win'
+          : undefined
     if (platform === undefined) {
       throw new Error(`${label}: unsupported host platform ${process.platform}; pass --targets explicitly.`)
     }
@@ -117,6 +120,18 @@ export class Target {
     }
     return new Target(DEFAULT_NODE_RANGE, platform, arch)
   }
+}
+
+/**
+ * Canonical product filename for one target. pkg on Windows writes a `.exe`
+ * suffix; the same name is used as `--output` so Linux and Windows hosts agree.
+ * @param basename - the product `outputBasename`.
+ * @param target - the parsed pkg target.
+ * @returns the filename under `dist-exe/`.
+ */
+export function productFileName(basename: string, target: Target): string {
+  const stem = `${basename}-${target.platform}-${target.arch}`
+  return target.platform === 'win' ? `${stem}.exe` : stem
 }
 
 /**
@@ -184,7 +199,7 @@ export class BuildCli {
     return [
       'Usage: pnpm exec tsx <product build script> [flags]',
       '',
-      '  --targets=<t1,t2,...>  pkg targets, e.g. node24-linux-x64,node24-linux-arm64,node24-macos-arm64.',
+      '  --targets=<t1,t2,...>  pkg targets, e.g. node24-linux-x64,node24-macos-arm64,node24-win-x64.',
       '                         Default: the host platform only (on node24).',
       '  --skip-build           skip `pnpm run build` (lib/ artifacts must already exist).',
       '  --dry-run              print every command and config patch without executing.',

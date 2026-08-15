@@ -189,12 +189,19 @@ class InstallerTestCase(unittest.TestCase):
     def assert_installed(self, os_name: str, install_dir: Path) -> None:
         binary = install_dir / "bin" / "deepseek-harness-cli"
         branded_binary = install_dir / "bin" / "deepseek"
+        short_binary = install_dir / "bin" / "dsh"
         self.assertTrue(binary.exists(), f"{binary} not installed")
         self.assertTrue(os.access(binary, os.X_OK), f"{binary} not executable")
         self.assertTrue(branded_binary.exists(), f"{branded_binary} not installed")
         self.assertTrue(os.access(branded_binary, os.X_OK), f"{branded_binary} not executable")
+        self.assertTrue(short_binary.exists(), f"{short_binary} not installed")
+        self.assertTrue(os.access(short_binary, os.X_OK), f"{short_binary} not executable")
         self.assertEqual(
             subprocess.run([str(branded_binary), "--version"], capture_output=True, text=True).stdout.strip(),
+            f"fake-dsh {VERSION}",
+        )
+        self.assertEqual(
+            subprocess.run([str(short_binary), "--version"], capture_output=True, text=True).stdout.strip(),
             f"fake-dsh {VERSION}",
         )
         if os_name == "macos":

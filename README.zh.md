@@ -6,7 +6,7 @@
   <img src=".github/deepseek-cli-splash.png" alt="DeepSeek CLI 终端预览" width="80%" />
 </p>
 
-<p align="center"><strong>8 种界面语言 · 6 套主题配色 · Plan、Goal、Skills、MCP、子代理与自动上下文压缩</strong></p>
+<p align="center"><strong>8 种界面语言 · 6 套主题配色 · 从规划到执行的智能体编程</strong></p>
 
 <p align="center">
   <img src=".github/deepseek-cli-theme-swatches.svg" alt="DeepSeek CLI 主题色：DeepSeek、宇宙橙、雾蓝、鼠尾草绿、薰衣草紫和深蓝" width="280" />
@@ -51,10 +51,12 @@ npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-进入项目目录，然后运行 `deepseek`：
+进入项目目录，然后运行 `deepseek` 或较短的别名 `dsh`：
 
 ```sh
 deepseek
+# or
+dsh
 ```
 
 首次启动时，将 DeepSeek API Key 粘贴到掩码输入框。Key 由共享凭据服务保存，不会进入聊天记录。之后可用 `/credentials` 查看来源、更换 Key 或删除已保存的值。

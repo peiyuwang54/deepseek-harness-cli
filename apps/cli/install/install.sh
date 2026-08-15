@@ -137,11 +137,12 @@ if [ "$OS" = macos ]; then
 fi
 install -m 0755 "$TMP/bin/deepseek-harness-cli" "$INSTALL_DIR/bin/deepseek-harness-cli"
 ln -sf deepseek-harness-cli "$INSTALL_DIR/bin/deepseek"
+ln -sf deepseek-harness-cli "$INSTALL_DIR/bin/dsh"
 if [ "$OS" = macos ]; then
   install -m 0755 "$TMP/bin/deepseek-harness-cli-spawn-helper" "$INSTALL_DIR/bin/deepseek-harness-cli-spawn-helper"
 fi
 
-echo "deepseek-harness-cli: installed to $INSTALL_DIR/bin/deepseek"
+echo "deepseek-harness-cli: installed $INSTALL_DIR/bin/deepseek and $INSTALL_DIR/bin/dsh"
 
 # --- PATH -------------------------------------------------------------------
 add_to_rc() {

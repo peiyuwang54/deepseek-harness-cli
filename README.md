@@ -6,7 +6,7 @@
   <img src=".github/deepseek-cli-splash.png" alt="DeepSeek CLI terminal preview" width="80%" />
 </p>
 
-<p align="center"><strong>8 interface languages · 6 theme palettes · Plan, Goal, Skills, MCP, subagents, and automatic compaction</strong></p>
+<p align="center"><strong>8 interface languages · 6 theme palettes · Agentic coding from plan to execution</strong></p>
 
 <p align="center">
   <img src=".github/deepseek-cli-theme-swatches.svg" alt="DeepSeek CLI theme colors: DeepSeek, Cosmic Orange, Mist Blue, Sage, Lavender, and Deep Blue" width="280" />
@@ -51,10 +51,12 @@ npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-Open a project directory and run `deepseek`:
+Open a project directory and start the CLI with `deepseek` or its shorter `dsh` alias:
 
 ```sh
 deepseek
+# or
+dsh
 ```
 
 On first launch, paste your DeepSeek API key into the masked prompt. The key is stored by the shared credential provider and never added to chat history. Use `/credentials` to inspect its source, replace it, or remove the saved value.

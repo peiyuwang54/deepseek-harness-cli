@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-15-dsh-cli-exe-distribution.md
-2026-08-15-dsh-cli-exe-distribution.md: 577afe8ef0756bd5796ffe8a18d28482649f36bb
-2026-08-15-dsh-cli-exe-distribution.zh.md: c3b9c577967faf6b34b1f3861c3aa97585f38aba
+2026-08-15-dsh-cli-exe-distribution.md: 388e5a404188e96d4ab2332a8b3951a0f6685f79
+2026-08-15-dsh-cli-exe-distribution.zh.md: f61aee2e190e0c18900dc455f8290e58a5bd74c9

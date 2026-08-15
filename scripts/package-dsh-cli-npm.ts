@@ -19,7 +19,7 @@ export const PACKAGE_NAME = '@peiyuwang54/deepseek-harness-cli'
 export const REPOSITORY = 'git+https://github.com/peiyuwang54/deepseek-harness-cli.git'
 
 export interface PlatformTarget {
-  readonly os: 'macos' | 'linux'
+  readonly os: 'macos' | 'linux' | 'win'
   readonly cpu: 'arm64' | 'x64'
   /** optionalDependencies alias key and shim package name, e.g. @peiyuwang54/deepseek-harness-cli-macos-arm64. */
   readonly name: string
@@ -30,10 +30,16 @@ export const PLATFORMS: ReadonlyArray<PlatformTarget> = ([
   { os: 'macos', cpu: 'x64' },
   { os: 'linux', cpu: 'arm64' },
   { os: 'linux', cpu: 'x64' },
+  { os: 'win', cpu: 'x64' },
 ] as const).map(target => ({ ...target, name: `${PACKAGE_NAME}-${target.os}-${target.cpu}` }))
 
-const OS_FROM_PLATFORM: Readonly<Record<string, PlatformTarget['os']>> = { darwin: 'macos', linux: 'linux' }
+const OS_FROM_PLATFORM: Readonly<Record<string, PlatformTarget['os']>> = { darwin: 'macos', linux: 'linux', win32: 'win' }
 const CPU_FROM_ARCH: Readonly<Record<string, PlatformTarget['cpu']>> = { arm64: 'arm64', x64: 'x64' }
+const NPM_OS: Readonly<Record<PlatformTarget['os'], 'darwin' | 'linux' | 'win32'>> = {
+  macos: 'darwin',
+  linux: 'linux',
+  win: 'win32',
+}
 
 /**
  * Map Node's platform/arch identifiers to the npm dist-tag suffixes.
@@ -45,7 +51,7 @@ export function platformTarget(platform = process.platform, arch = process.arch)
   const os = OS_FROM_PLATFORM[platform]
   const cpu = CPU_FROM_ARCH[arch]
   if (os === undefined || cpu === undefined) return null
-  return { os, cpu, name: `${PACKAGE_NAME}-${os}-${cpu}` }
+  return PLATFORMS.find(target => target.os === os && target.cpu === cpu) ?? null
 }
 
 function platformManifest(target: PlatformTarget, version: string) {
@@ -53,7 +59,7 @@ function platformManifest(target: PlatformTarget, version: string) {
     name: PACKAGE_NAME,
     version: `${version}-${target.os}-${target.cpu}`,
     description: `deepseek-harness-cli single-file executable for ${target.os}-${target.cpu}`,
-    os: [target.os],
+    os: [NPM_OS[target.os]],
     cpu: [target.cpu],
     // No `bin` field: the platform exe would collide with the main shim's
     // `deepseek-harness-cli` in node_modules/.bin. The shim resolves
@@ -84,12 +90,10 @@ export async function layoutPlatformPackage(
   const binDir = join(packageDir, 'bin')
   await mkdir(binDir, { recursive: true })
 
-  const exeSource = resolve(distDir, `deepseek-harness-cli-${target.os}-${target.cpu}`)
-  if (!existsSync(exeSource)) {
-    throw new Error(`package-dsh-cli-npm: ${exeSource} missing — build ${target.os}-${target.cpu} first.`)
-  }
-  await copyFile(exeSource, join(binDir, 'deepseek-harness-cli'))
-  await chmod(join(binDir, 'deepseek-harness-cli'), 0o755)
+  const exeSource = resolvePlatformExe(distDir, target)
+  const destName = target.os === 'win' ? 'deepseek-harness-cli.exe' : 'deepseek-harness-cli'
+  await copyFile(exeSource, join(binDir, destName))
+  await chmod(join(binDir, destName), 0o755)
 
   if (target.os === 'macos') {
     const helperSource = `${exeSource}-spawn-helper`
@@ -115,7 +119,11 @@ function mainManifest(version: string) {
     type: 'module',
     description:
       'deepseek-harness-cli: profile boot, plugin management, and shipped terminal/browser aliases — npm shim over per-platform single-file executables',
-    bin: { 'deepseek-harness-cli': 'bin/deepseek-harness-cli.js', deepseek: 'bin/deepseek-harness-cli.js' },
+    bin: {
+      'deepseek-harness-cli': 'bin/deepseek-harness-cli.js',
+      deepseek: 'bin/deepseek-harness-cli.js',
+      dsh: 'bin/deepseek-harness-cli.js',
+    },
     files: ['bin'],
     optionalDependencies,
     repository: { type: 'git', url: REPOSITORY },
@@ -126,7 +134,7 @@ function mainManifest(version: string) {
 
 /**
  * Lay out the main shim package: the ESM shim that resolves and spawns the
- * per-platform exe, plus optionalDependencies aliases for all four targets.
+ * per-platform exe, plus optionalDependencies aliases for every published target.
  * @param outDir - the packaging output root.
  * @param version - the release version, without a leading `v`.
  * @returns the package directory.
@@ -176,6 +184,22 @@ async function main(): Promise<void> {
   for (const target of targets) directories.push(await layoutPlatformPackage(outDir, target, version, distDir))
   directories.push(await layoutMainPackage(outDir, version))
   for (const directory of directories) console.log(directory)
+}
+
+/**
+ * Locate the built exe for a target. Windows products use a `.exe` suffix.
+ * @param distDir - the directory holding the built exes.
+ * @param target - the platform being packaged.
+ * @returns the absolute exe path.
+ */
+function resolvePlatformExe(distDir: string, target: PlatformTarget): string {
+  const stem = resolve(distDir, `deepseek-harness-cli-${target.os}-${target.cpu}`)
+  const candidates = target.os === 'win' ? [`${stem}.exe`, stem] : [stem]
+  const found = candidates.find(path => existsSync(path))
+  if (found === undefined) {
+    throw new Error(`package-dsh-cli-npm: ${stem} missing — build ${target.os}-${target.cpu} first.`)
+  }
+  return found
 }
 
 function resolveTargets(spec: string): ReadonlyArray<PlatformTarget> {

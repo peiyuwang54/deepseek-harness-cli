@@ -12,23 +12,24 @@ import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 
-const OS = { darwin: 'macos', linux: 'linux' }
+const OS = { darwin: 'macos', linux: 'linux', win32: 'win' }
 const CPU = { arm64: 'arm64', x64: 'x64' }
 
 const os = OS[process.platform]
 const cpu = CPU[process.arch]
-if (!os || !cpu) {
+if (!os || !cpu || (os === 'win' && cpu !== 'x64')) {
   console.error(
     `deepseek-harness-cli: unsupported platform ${process.platform}-${process.arch}. ` +
-      'Supported: macOS (arm64, x64) and Linux (arm64, x64).',
+      'Supported: macOS (arm64, x64), Linux (arm64, x64), and Windows (x64).',
   )
   process.exit(1)
 }
 
 const packageName = `@peiyuwang54/deepseek-harness-cli-${os}-${cpu}`
+const exeName = os === 'win' ? 'deepseek-harness-cli.exe' : 'deepseek-harness-cli'
 let executable
 try {
-  executable = require.resolve(`${packageName}/bin/deepseek-harness-cli`)
+  executable = require.resolve(`${packageName}/bin/${exeName}`)
 } catch {
   console.error(
     `deepseek-harness-cli: the ${packageName} package is not installed. ` +

@@ -104,6 +104,7 @@ const CHECKPOINTS = [
   'resume-sessions-loading',
   'resume-sessions',
   'resume-sessions-all-workspaces',
+  'resume-session-id',
   'command-parity',
   'background-job-commands',
   'status-diagnostics',
@@ -1448,6 +1449,14 @@ describe('TUI terminal-state snapshots', () => {
     await new Promise(resolve => setTimeout(resolve, 60))
     await harness.terminal.flush()
     await checkpoint('resume-sessions-all-workspaces', harness.terminal, { includeScrollback: true })
+    await renderAfter(harness, () => { harness.terminal.send('\x1b') })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/resume earlier-session')
+      harness.terminal.send('\r')
+    })
+    await new Promise(resolve => setTimeout(resolve, 60))
+    await harness.terminal.flush()
+    await checkpoint('resume-session-id', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
     dateNow.mockRestore()
   })

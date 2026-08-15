@@ -18,7 +18,7 @@ CLI 将 `dsh tui` 作为应用持有的 `tui` profile 的别名交付。该 prof
 
 Settings 与 workspace 状态属于 Host 平面的产品服务，而非浏览器所有权。TUI profile 组合与 Web 相同的文件设置 provider 和 `ui-theme.preference` schema，以及相同的 JSON storage／domain／workspace registry 栈。`/settings` 是一个脱敏 namespace／document hub，而非 Web React 表单的克隆；`/theme` 只 mutate preference 字段，因此绝不会因替换脱敏 section 而擦除同级 secret。`/workspace` 读取持久 registry 并请求全新会话 handoff；它绝不改写已绑定会话不可变的 `SessionHeader.cwd`。
 
-唯一一个 CLI 持有的进程 Host 同时实现 resume 与全新 workspace 迁移。Renderer 检查 idle／会话／目录状态，flush 当前会话，drain 输入，并释放 pi-tui 以及 alternate-screen／mouse mode；宿主随后保留所选 profile、patch 栈、environment 和会话参数，在目标目录中替换进程（在没有 `execve` 的平台上监督前台子进程）。所有可恢复校验都先于已提交 teardown。被拒绝的预提交 handoff 会重新进入终端 mode 并强制渲染完整帧，因为 pi-tui 的旧行缓存属于已放弃的 alternate buffer。Renderer seam 上的 `start(cwd)` 为可选方法，因此自定义的仅 resume embedding 仍兼容，即使随附宿主同时实现两种方法。
+唯一一个 CLI 持有的进程 Host 同时实现 resume 与全新 workspace 迁移。不带参数的 `/resume` 通过全 viewport 选择器发现持久会话；`/resume <session>` 会跳过发现，但仍将指定 id 送入相同的活跃状态、日志、模型路由与 workspace 预检。Renderer 检查 idle／会话／目录状态，flush 当前会话，drain 输入，并释放 pi-tui 以及 alternate-screen／mouse mode；宿主随后保留所选 profile、patch 栈、environment 和会话参数，在目标目录中替换进程（在没有 `execve` 的平台上监督前台子进程）。所有可恢复校验都先于已提交 teardown。被拒绝的预提交 handoff 会重新进入终端 mode 并强制渲染完整帧，因为 pi-tui 的旧行缓存属于已放弃的 alternate buffer。Renderer seam 上的 `start(cwd)` 为可选方法，因此自定义的仅 resume embedding 仍兼容，即使随附宿主同时实现两种方法。
 
 Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到当前 API。权威 `Session` 事件仍是唯一持久对话来源：replay 将这些事件折叠成已提交终端输出，实时 chunk、工具进度、问题与审批则是瞬时 projection。TUI 不会增加第二份聊天日志或工具 scheduler。它消费现有的作用域 command registry、Agent inbox 操作、session query/reference 服务、skill registry、工具 presenter、token meter 与模型选择 seam。
 

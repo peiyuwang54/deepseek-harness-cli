@@ -65,8 +65,8 @@ buffer
   style 0-87 dim
 30| "/rename <title> — Rename this session and pin its title                                     "
   style 0-54 dim
-31| "/resume — List this workspace's resumable sessions                                          "
-  style 0-49 dim
+31| "/resume [session] — Resume a saved chat                                                     "
+  style 0-38 dim
 32| "/settings [list|document] — Show shared settings namespaces and the settings document       "
   style 0-84 dim
 33| "/skills [name] — Browse and invoke user-invocable skills for this agent                     "

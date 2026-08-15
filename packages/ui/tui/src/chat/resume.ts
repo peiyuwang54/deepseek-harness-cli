@@ -50,6 +50,8 @@ export interface ResumeControllerDeps extends ChatChannelDeps, ChannelNotice {
 export interface ResumeController {
   /** Open the searchable session selector, scoped to this workspace until the user widens it. */
   showResume(): void
+  /** Preflight and hand off one exact persisted session without opening the selector. */
+  resume(sessionId: SessionId): void
 }
 
 /**
@@ -231,16 +233,20 @@ export function createResumeController(deps: ResumeControllerDeps): ResumeContro
     return { id: record.header.id, cwd }
   }
 
-  const handoffResume = async (candidate: ResumeCandidate, overlay: TuiOverlaySession): Promise<void> => {
+  const closeResumeOverlay = async (overlay: TuiOverlaySession | undefined): Promise<void> => {
+    await overlay?.close()
+    if (overlay !== undefined && resumeOverlay === overlay) resumeOverlay = undefined
+  }
+
+  const handoffResume = async (sessionId: SessionId, overlay?: TuiOverlaySession): Promise<void> => {
     if (resumeInFlight) return
     resumeInFlight = true
     let terminalReleased = false
     try {
-      const checked = await preflightResume(candidate.record.header.id)
+      const checked = await preflightResume(sessionId)
       const hostHandoff = runtime.handoffResume
       if (hostHandoff === undefined) {
-        await overlay.close()
-        resumeOverlay = undefined
+        await closeResumeOverlay(overlay)
         deps.appendNotice('Session is resumable, but this host cannot hand it off in place.', 'warning')
         return
       }
@@ -250,8 +256,7 @@ export function createResumeController(deps: ResumeControllerDeps): ResumeContro
       // Disposal can run while the flush promise is pending.
       if (deps.isDisposed()) return
       if (agent.status !== 'idle') throw new Error(`Resume requires an idle agent (status: ${agent.status}).`)
-      await overlay.close()
-      resumeOverlay = undefined
+      await closeResumeOverlay(overlay)
       await runtime.terminal.drainInput(100, 20)
       // Disposal can run while terminal draining is pending.
       if (deps.isDisposed()) return
@@ -268,8 +273,7 @@ export function createResumeController(deps: ResumeControllerDeps): ResumeContro
           deps.restoreTerminal()
           deps.appendNotice(`Resume handoff failed: ${errorChain(error)}`, 'error')
         } else {
-          await overlay.close()
-          resumeOverlay = undefined
+          await closeResumeOverlay(overlay)
           deps.appendNotice(`Resume failed: ${errorChain(error)}`, 'error')
         }
       }
@@ -305,7 +309,7 @@ export function createResumeController(deps: ResumeControllerDeps): ResumeContro
             workspaceLabel(agent.session.header.cwd),
             () => host.viewport.rows,
             palette,
-            (candidate) => { void handoffResume(candidate, session) },
+            (candidate) => { void handoffResume(candidate.record.header.id, session) },
             () => { void session.close() },
           )
           return picker
@@ -364,6 +368,9 @@ export function createResumeController(deps: ResumeControllerDeps): ResumeContro
         void session.close()
         deps.appendNotice(`Resume session scan failed: ${errorChain(error)}`, 'error')
       })
+    },
+    resume(sessionId): void {
+      void handoffResume(sessionId)
     },
   }
 }

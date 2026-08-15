@@ -2136,8 +2136,14 @@ export function createTuiChat(
     })
     commandCtx.commands.register({
       name: 'resume',
-      description: 'List this workspace\'s resumable sessions',
-      handler: () => { resume.showResume(); return { kind: 'success' } },
+      description: 'Resume a saved chat',
+      input: { hint: '[session]' },
+      handler: ({ rawInput }) => {
+        const sessionId = rawInput.trim()
+        if (sessionId === '') resume.showResume()
+        else resume.resume(SessionId(sessionId))
+        return { kind: 'success' }
+      },
     })
     commandCtx.commands.register({
       name: 'rename',

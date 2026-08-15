@@ -753,6 +753,35 @@ describe('goodbye message and /resume', () => {
     await dispose(result)
   })
 
+  it('resumes an exact persisted session id without opening the selector', async () => {
+    const target = header('direct-target', 10, '/direct-workspace')
+    const handoff = vi.fn<NonNullable<TuiRuntime['handoffResume']>>(
+      () => Promise.reject(new Error('test host retained process')),
+    )
+    const result = await setup({
+      cwd: '/workspace',
+      handoffResume: handoff,
+      sessionPersistence: {
+        list: async () => [target],
+        load: async () => ({ meta: target, events: resumeEvents('Direct target') }),
+      },
+    })
+
+    result.terminal.send('/resume direct-target')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(handoff).toHaveBeenCalledWith(target.id, '/direct-workspace')
+    expect(result.terminal.output).toContain('Resume handoff failed: test host retained process')
+    expect(result.terminal.output).not.toContain('Resume session')
+
+    result.terminal.send('/resume missing-target')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(result.terminal.output).toContain('Session "missing-target" is no longer available.')
+    expect(handoff).toHaveBeenCalledTimes(1)
+    await dispose(result)
+  })
+
   it('handles selector navigation, empty matches, and backspace search edits', async () => {
     const target = header('keyboard-target', 10, '/workspace')
     const result = await setup({

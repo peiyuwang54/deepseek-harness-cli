@@ -258,6 +258,33 @@ describe('Markdown transcript rendering', () => {
     expect(renderMarkdownTranscript(session.events, false)).toContain('    write result (error)\n')
   })
 
+  it('exports direct shell commands and every terminal outcome as activity', () => {
+    const session = Session.create(SessionId('shell-export'))
+    const outcomes = [
+      { id: 'ok', result: { exitCode: 0, signal: null, timedOut: false, aborted: false, stdout: { text: 'hello\n', truncated: false }, stderr: { text: 'note\n', truncated: false } } },
+      { id: 'timeout', result: { exitCode: null, signal: null, timedOut: true, aborted: false, stdout: { text: '', truncated: false }, stderr: { text: '', truncated: false } } },
+      { id: 'cancelled', result: { exitCode: null, signal: null, timedOut: false, aborted: true, stdout: { text: '', truncated: false }, stderr: { text: '', truncated: false } } },
+      { id: 'signal', result: { exitCode: null, signal: 'SIGTERM', timedOut: false, aborted: false, stdout: { text: '', truncated: false }, stderr: { text: '', truncated: false } } },
+      { id: 'unknown', result: { exitCode: null, signal: null, timedOut: false, aborted: false, stdout: { text: '', truncated: false }, stderr: { text: '', truncated: false } } },
+      { id: 'denied', result: { exitCode: 1, signal: null, timedOut: false, aborted: false, stdout: { text: '', truncated: false }, stderr: { text: '', truncated: false }, sandbox: { mode: 'read-only', denied: true } } },
+      { id: 'runner', result: { exitCode: 1, signal: null, timedOut: false, aborted: false, stdout: { text: '', truncated: false }, stderr: { text: '', truncated: false }, sandbox: { mode: 'workspace-write', denied: false, runnerFailed: true } } },
+    ] as const
+    for (const [index, item] of outcomes.entries()) {
+      session.append('tui/user-shell-start', { id: item.id, command: `command-${String(index)}`, cwd: '/workspace' })
+      session.append('tui/user-shell-result', { id: item.id, durationMs: index, result: item.result })
+    }
+
+    const raw = renderRawTranscript(session.events, false)
+    expect(raw).toContain('$ command-0\n/workspace\n\nhello\nnote\n[exit 0]')
+    expect(raw).toContain('[timed out]')
+    expect(raw).toContain('[cancelled]')
+    expect(raw).toContain('[signal SIGTERM]')
+    expect(raw).toContain('[exit unknown]')
+    expect(raw).toContain('[sandbox denied under read-only]')
+    expect(raw).toContain('[sandbox runner failed under workspace-write]')
+    expect(renderMarkdownTranscript(session.events, false)).toContain('## Activity')
+  })
+
   it('retains merge-extended content labels without trusting their payload', () => {
     const custom = { type: 'custom-block' } as unknown as ContentBlock
     const untyped = { value: 'opaque' } as unknown as ContentBlock

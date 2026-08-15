@@ -11,6 +11,7 @@ import { basename, dirname, resolve } from 'node:path'
 import { BlockAssembler, type ContentBlock } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-llm-retry'
 import { isReplacementSurfaceEvent, type SessionEvent } from '@deepseek-ai/dsh-session'
+import type { UserShellResult } from './user-shell.ts'
 
 interface MarkdownSection {
   readonly heading: 'User' | 'Assistant' | 'Reasoning' | 'Activity'
@@ -58,6 +59,19 @@ function userContent(blocks: readonly ContentBlock[]): string {
 
 function activityContent(blocks: readonly ContentBlock[]): string {
   return joinedContent(blocks, '\n')
+}
+
+/** Render one direct-shell outcome without terminal styling. */
+function userShellResultContent(result: UserShellResult): string {
+  const lines = [result.stdout.text.trimEnd()]
+  if (result.stderr.text !== '') lines.push(result.stderr.text.trimEnd())
+  if (result.timedOut) lines.push('[timed out]')
+  else if (result.aborted) lines.push('[cancelled]')
+  else if (result.signal !== null) lines.push(`[signal ${result.signal}]`)
+  else lines.push(`[exit ${result.exitCode ?? 'unknown'}]`)
+  if (result.sandbox?.denied === true) lines.push(`[sandbox denied under ${result.sandbox.mode}]`)
+  else if (result.sandbox?.runnerFailed === true) lines.push(`[sandbox runner failed under ${result.sandbox.mode}]`)
+  return lines.filter(Boolean).join('\n')
 }
 
 function appendAssistantSections(
@@ -206,6 +220,20 @@ function transcriptSections(
         })
         break
       }
+      case 'tui/user-shell-start':
+        sections.push({
+          heading: 'Activity',
+          body: `$ ${event.data.command}\n${event.data.cwd}`,
+          indent: true,
+        })
+        break
+      case 'tui/user-shell-result':
+        sections.push({
+          heading: 'Activity',
+          body: userShellResultContent(event.data.result),
+          indent: true,
+        })
+        break
       default:
         break
     }

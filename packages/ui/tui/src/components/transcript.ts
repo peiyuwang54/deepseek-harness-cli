@@ -40,6 +40,7 @@ import {
   type StepTimingTracker,
 } from '../chat/timing.ts'
 import { formatDeepDivingStatus, tuiCopy, type TuiLocale } from '../chat/language.ts'
+import type { UserShellResult } from '../chat/user-shell.ts'
 
 const packageMetadata = createRequire(import.meta.url)('@deepseek-ai/dsh-tui/package.json') as { version: string }
 const packageVersion = packageMetadata.version
@@ -661,6 +662,84 @@ abstract class CachedCardComponent implements Component {
    * @returns The card's rows.
    */
   protected abstract renderLines(width: number): string[]
+}
+
+/** A direct human `!command`, retained independently of model tool calls. */
+export class UserShellCommandComponent extends CachedCardComponent {
+  private result: UserShellResult | undefined
+  private visibility: ToolCardVisibility = 'collapsed'
+
+  constructor(
+    private readonly command: string,
+    private readonly cwd: string,
+    private readonly maxOutputLines: number,
+    private readonly palette: Palette,
+    private readonly running: boolean,
+  ) {
+    super()
+  }
+
+  /** Record the command outcome and replace any resumed-interruption state. */
+  settle(result: UserShellResult): void {
+    this.result = result
+    this.dropLines()
+  }
+
+  /** Set the shared transcript-detail visibility. */
+  setVisibility(visibility: ToolCardVisibility): void {
+    this.visibility = visibility
+    this.dropLines()
+  }
+
+  protected renderLines(width: number): string[] {
+    if (this.visibility === 'hidden') return []
+    const result = this.result
+    const interrupted = result === undefined && !this.running
+    const failed = interrupted || (result !== undefined && (
+      result.exitCode !== 0
+      || result.signal !== null
+      || result.timedOut
+      || result.aborted
+      || result.sandbox?.denied === true
+      || result.sandbox?.runnerFailed === true
+    ))
+    const statusColor = result === undefined && !interrupted
+      ? this.palette.warning
+      : failed ? this.palette.error : this.palette.success
+    const header = statusColor(truncateToWidth(
+      `${result === undefined && !interrupted ? '○' : '●'} Shell`,
+      Math.max(1, width - 2),
+      '',
+    ))
+    const body: string[] = [
+      this.palette.dim(`$ ${displayInlineText(this.command)}`),
+      this.palette.dim(displayInlineText(this.cwd)),
+    ]
+    if (interrupted) {
+      body.push(this.palette.error('Interrupted before a result was recorded.'))
+    } else if (result !== undefined) {
+      body.push(...displayText(result.stdout.text).split('\n').filter(Boolean).map(line => this.palette.dim(line)))
+      if (result.stderr.text !== '') {
+        if (result.stdout.text !== '') body.push(this.palette.dim('stderr:'))
+        body.push(...displayText(result.stderr.text).split('\n').filter(Boolean).map(line => this.palette.error(line)))
+      }
+      if (result.stdout.truncated) body.push(this.palette.dim('[stdout truncated]'))
+      if (result.stderr.truncated) body.push(this.palette.dim('[stderr truncated]'))
+      if (result.timedOut) body.push(this.palette.error('[timed out]'))
+      else if (result.aborted) body.push(this.palette.error('[cancelled]'))
+      else if (result.signal !== null) body.push(this.palette.error(`[signal ${displayInlineText(result.signal)}]`))
+      else body.push(this.palette.dim(`[exit ${result.exitCode ?? 'unknown'}]`))
+      if (result.sandbox?.denied === true) {
+        body.push(this.palette.error(`[sandbox denied under ${displayInlineText(result.sandbox.mode)}]`))
+      } else if (result.sandbox?.runnerFailed === true) {
+        body.push(this.palette.error(`[sandbox runner failed under ${displayInlineText(result.sandbox.mode)}]`))
+      }
+    }
+    const visibleBody = this.visibility === 'expanded'
+      ? body
+      : preview(body, this.maxOutputLines, count => this.palette.dim(`… +${count} lines (Ctrl+O to expand)`))
+    return ['', header, ...new Text(visibleBody.join('\n'), 0, 0).render(width)]
+  }
 }
 
 /** A tool call and its result, rendered as a collapsible status card. */

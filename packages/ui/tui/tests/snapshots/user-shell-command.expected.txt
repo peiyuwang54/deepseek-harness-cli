@@ -1,0 +1,42 @@
+terminal 96x36 buffer=normal length=36 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor visible column=3 viewportRow=11 bufferRow=11
+viewport
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1| <blank>
+2| "● Shell"
+  style 0-6 fg=green
+3| "$ ls                                                                                            "
+  style 0-3 dim
+4| "/workspace/project                                                                              "
+  style 0-17 dim
+5| "src                                                                                             "
+  style 0-2 dim
+6| "package.json                                                                                    "
+  style 0-11 dim
+7| "[exit 0]                                                                                        "
+  style 0-7 dim
+8-9| <blank>
+10| "                                                                                                "
+  style 0-95 bg=ansi-236
+11| " › │Describe a task, @ a file, or / for commands                                                "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-95 bg=ansi-236
+12| "                                                                                                "
+  style 0-95 bg=ansi-236
+13| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+14| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 48-49 dim
+  style 52-76 dim
+  style 79-83 dim
+  style 86-95 dim
+15-35| <blank>

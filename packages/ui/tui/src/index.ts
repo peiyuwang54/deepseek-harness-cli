@@ -5,6 +5,7 @@
  * @module @deepseek-ai/dsh-tui
  */
 
+import { randomUUID } from 'node:crypto'
 import {
   CombinedAutocompleteProvider,
   Container,
@@ -122,6 +123,7 @@ import {
   LiveTurnStatusComponent,
   StreamingAssistantComponent,
   ToolCardComponent,
+  UserShellCommandComponent,
   TodoComponent,
   UserMessageComponent,
   type WelcomeRecentSession,
@@ -230,6 +232,10 @@ import type {
 import { WorkspaceFileSearch } from './chat/file-autocomplete.ts'
 import { createTuiTerminalMode, parseTuiMouseEvent } from './chat/terminal-mode.ts'
 import { TranscriptViewport } from './components/transcript-viewport.ts'
+import {
+  createUserShellRunner,
+  type UserShellResult,
+} from './chat/user-shell.ts'
 
 const INIT_GUIDE_PROMPT = 'Inspect the current repository and initialize its contributor guidance. If AGENTS.md already exists in the current working directory, report that and do not modify it. Otherwise create a concise AGENTS.md grounded in this repository\'s actual structure, development commands, coding conventions, testing requirements, and security or configuration constraints. Do not invent commands or policies.'
 
@@ -507,8 +513,17 @@ export function createTuiChat(
   let keymap: TuiKeymap = 'default'
   let vimState: VimState = 'insert'
   let vimPending = ''
+  let activeUserShell: { id: string; controller: AbortController; task?: Promise<void> } | undefined
   const refreshEditorFooter = (): void => {
     const sidePrefix = isSideConversation ? 'SIDE · Ctrl+C return to parent · ' : ''
+    if (activeUserShell !== undefined) {
+      editor.frameFooter = `${sidePrefix}${tuiCopy(locale).shellRunningFooter}`
+      return
+    }
+    if (editor.getText().trimStart().startsWith('!')) {
+      editor.frameFooter = `${sidePrefix}${tuiCopy(locale).shellModeFooter}`
+      return
+    }
     if (keymap === 'vim' && vimState === 'normal') {
       editor.frameFooter = agent.status === 'running'
         ? `${sidePrefix}VIM NORMAL · Esc interrupt · i insert · h/j/k/l move`
@@ -594,6 +609,8 @@ export function createTuiChat(
   )
   const toolCards = new Map<string, ToolCardComponent>()
   const allToolCards = new Set<ToolCardComponent>()
+  const userShellCards = new Map<string, UserShellCommandComponent>()
+  const allUserShellCards = new Set<UserShellCommandComponent>()
   const contextCards = new Set<ContextCardComponent>()
   const liveErrors = new Set<string>()
   const commandControllers = new Set<AbortController>()
@@ -617,6 +634,7 @@ export function createTuiChat(
   // oxlint-disable-next-line prefer-const -- skill-browser callbacks run only after dispatch is assigned.
   let invokeSkill!: (name: string, instructions: string) => void
   let externalEditorActive = false
+  const userShellRunner = runtime.userShell ?? createUserShellRunner(ctx)
   const now = (): number => runtime.now?.() ?? Date.now()
   const liveStatusSpacer = new Spacer(1)
   const liveTurnStatus = new LiveTurnStatusComponent(
@@ -649,7 +667,8 @@ export function createTuiChat(
     || event.type === 'user/message'
     || event.type === 'assistant/message'
     || event.type === 'tool/call'
-    || event.type === 'tool/result')
+    || event.type === 'tool/result'
+    || event.type === 'tui/user-shell-start')
   const currentPreset = (): string =>
     ctx.get('agentPresets')?.composedPreset(agent.ctx)
     ?? agent.session.header.agentPreset
@@ -862,6 +881,10 @@ export function createTuiChat(
     editor.hintPrefix = inputPrompt
     promptContext.invalidate()
     ui.requestRender()
+  }
+  editor.onChange = () => {
+    refreshEditorFooter()
+    requestRender()
   }
   let cursorBlinkTimer: ReturnType<typeof setInterval> | undefined
   const stopCursorBlink = (): void => {
@@ -1344,6 +1367,28 @@ export function createTuiChat(
         trailStreamingTiming()
         break
       }
+      case 'tui/user-shell-start': {
+        const card = new UserShellCommandComponent(
+          event.data.command,
+          event.data.cwd,
+          resolved.maxToolOutputLines,
+          palette,
+          options.renderChunks,
+        )
+        card.setVisibility(toolsVisibility)
+        userShellCards.set(event.data.id, card)
+        allUserShellCards.add(card)
+        chat.addChild(card)
+        break
+      }
+      case 'tui/user-shell-result': {
+        const card = userShellCards.get(event.data.id)
+        if (card !== undefined) {
+          card.settle(event.data.result)
+          userShellCards.delete(event.data.id)
+        }
+        break
+      }
       case 'todo/write':
         todo.update(event.data.todos)
         break
@@ -1439,6 +1484,8 @@ export function createTuiChat(
     chat.clear()
     toolCards.clear()
     allToolCards.clear()
+    userShellCards.clear()
+    allUserShellCards.clear()
     contextCards.clear()
     assistantSteps.clear()
     streaming = undefined
@@ -1620,6 +1667,63 @@ export function createTuiChat(
     })
   }
 
+  /** Run one direct human shell command under the Session's standing sandbox policy. */
+  const launchUserShell = (command: string): void => {
+    if (activeUserShell !== undefined) {
+      appendNotice(tuiCopy(locale).shellAlreadyRunning, 'warning')
+      return
+    }
+    if (agent.status !== 'idle') {
+      appendNotice(tuiCopy(locale).shellWaitForTurn, 'warning')
+      return
+    }
+    const id = randomUUID()
+    const controller = new AbortController()
+    const startedAt = now()
+    const cwd = ctx.get('sandboxPolicy')?.resolve({ session: agent.session }).workspaceRoot
+      ?? agent.session.header.cwd
+      ?? process.cwd()
+    const active = { id, controller } as { id: string; controller: AbortController; task?: Promise<void> }
+    activeUserShell = active
+    agent.session.append('tui/user-shell-start', { id, command, cwd })
+    editor.disableSubmit = true
+    refreshEditorFooter()
+    runtime.terminal.setProgress(true)
+    requestRender()
+
+    const failureResult = (error: unknown): UserShellResult => ({
+      exitCode: null,
+      signal: null,
+      timedOut: false,
+      aborted: controller.signal.aborted,
+      stdout: { text: '', truncated: false },
+      stderr: { text: errorChain(error), truncated: false },
+    })
+    const record = (result: UserShellResult): void => {
+      agent.session.append('tui/user-shell-result', {
+        id,
+        durationMs: Math.max(0, now() - startedAt),
+        result,
+      })
+      fileSearch.invalidate()
+    }
+    active.task = userShellRunner({ command, agent, signal: controller.signal })
+      .then(record, (error: unknown) => { record(failureResult(error)) })
+      .then(async () => { await ctx.sessions.flush(agent.session) })
+      .catch((error: unknown) => {
+        if (!disposed) appendNotice(`Shell command could not be recorded: ${errorChain(error)}`, 'error')
+      })
+      .finally(() => {
+        if (activeUserShell?.id === id) activeUserShell = undefined
+        if (!disposed) {
+          editor.disableSubmit = false
+          refreshEditorFooter()
+          runtime.terminal.setProgress(runningStatus !== undefined || compacting !== undefined)
+          requestRender()
+        }
+      })
+  }
+
   const resume = createResumeController({
     ctx,
     agent,
@@ -1667,6 +1771,9 @@ export function createTuiChat(
       commandControllers.clear()
       for (const controller of referenceControllers) controller.abort(new Error('TUI disposed'))
       referenceControllers.clear()
+      const userShellTask = activeUserShell?.task
+      activeUserShell?.controller.abort(new Error('TUI disposed'))
+      await userShellTask
       await tuiServiceFiber?.dispose()
       tuiServiceFiber = undefined
       questions.rejectAll()
@@ -1807,6 +1914,7 @@ export function createTuiChat(
   const setToolsVisibility = (next: ToolCardVisibility, announce = true): void => {
     toolsVisibility = next
     for (const card of allToolCards) card.setVisibility(toolsVisibility)
+    for (const card of allUserShellCards) card.setVisibility(toolsVisibility)
     // Injected context is visible only in the explicitly expanded detail state.
     for (const card of contextCards) card.setExpanded(toolsVisibility === 'expanded')
     // Hidden mode folds each turn's steps into one assistant message; other
@@ -1960,6 +2068,7 @@ export function createTuiChat(
           : 'Drag selects terminal text • Page Up/Down scroll transcript • Ctrl+End follow latest',
       'Esc interrupt turn • Ctrl+O cycle cards (collapse/expand/hide) • Ctrl+R toggle reasoning • Ctrl+L redraw',
       'Ctrl+G edit the current draft in VISUAL or EDITOR',
+      '!command run a local shell command under the current sandbox policy',
       'Ctrl+C cancel while running; clear input or exit while idle • Ctrl+D exit',
       '',
       ...commandLines,
@@ -3223,6 +3332,25 @@ export function createTuiChat(
     const restoreSubmittedInput = (): void => {
       if (editor.getText() === '') editor.setText(value)
     }
+    if (text.startsWith('!')) {
+      const command = text.slice(1).trim()
+      if (command === '') {
+        editor.setText('')
+        appendNotice(tuiCopy(locale).shellPromptHelp, 'info')
+        return
+      }
+      if (agent.status !== 'idle' || activeUserShell !== undefined) {
+        restoreSubmittedInput()
+        appendNotice(agent.status !== 'idle'
+          ? tuiCopy(locale).shellWaitForTurn
+          : tuiCopy(locale).shellAlreadyRunning, 'warning')
+        return
+      }
+      editor.addToHistory(text)
+      editor.setText('')
+      launchUserShell(command)
+      return
+    }
     // `/skill:<name>` carries a colon, which the command registry's name
     // grammar rejects, so it is intercepted before generic command routing.
     if (text.startsWith(SKILL_COMMAND_PREFIX)) {
@@ -3397,12 +3525,22 @@ export function createTuiChat(
       launchExternalEditor()
       return { consume: true }
     }
+    if (matchesKey(data, Key.escape) && activeUserShell !== undefined) {
+      activeUserShell.controller.abort(new Error('Shell command cancelled by user'))
+      return { consume: true }
+    }
     if (matchesKey(data, Key.escape) && agent.status === 'running') {
       interruptActiveTurn()
       return { consume: true }
     }
+    if (matchesKey(data, Key.escape) && editor.getText().trim() === '!') {
+      editor.setText('')
+      return { consume: true }
+    }
     if (matchesKey(data, Key.ctrl('c'))) {
-      if (agent.status === 'running') {
+      if (activeUserShell !== undefined) {
+        activeUserShell.controller.abort(new Error('Shell command cancelled by user'))
+      } else if (agent.status === 'running') {
         agent.cancel({ kind: 'user' })
       } else if (editor.getText() !== '') {
         editor.setText('')
@@ -3982,6 +4120,7 @@ export function apply(ctx: Context, config: Config): void {
       terminal: new ProcessTerminal(),
       exit: (code) => { disposeRootAndExit(ctx, code) },
       externalEditor: editInExternalEditor,
+      userShell: createUserShellRunner(ctx),
       ...resumeHost === undefined ? {} : { handoffResume: (sessionId, cwd) => resumeHost.handoff(sessionId, cwd) },
       ...startWorkspace === undefined ? {} : { handoffWorkspace: cwd => startWorkspace(cwd) },
       ...goodbyeMessage === undefined ? {} : { goodbyeMessage },

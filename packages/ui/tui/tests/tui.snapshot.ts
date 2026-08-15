@@ -69,6 +69,7 @@ const CHECKPOINTS = [
   'banner-gradient',
   'file-autocomplete',
   'external-editor-draft',
+  'user-shell-command',
   'slash-autocomplete',
   'skill-autocomplete',
   'session-title-autocomplete',
@@ -931,6 +932,28 @@ describe('TUI terminal-state snapshots', () => {
       expect(await harness.terminal.snapshot()).toContain('Review this draft · revised outside the TUI')
     })
     await checkpoint('external-editor-draft', harness.terminal)
+    await disposeSnapshot(harness)
+  })
+
+  it('pins a direct user shell command and its sandboxed result', async () => {
+    const harness = await setupSnapshot({
+      omitInitialLifecycle: true,
+      userShell: async () => ({
+        exitCode: 0,
+        signal: null,
+        timedOut: false,
+        aborted: false,
+        stdout: { text: 'src\npackage.json\n', truncated: false },
+        stderr: { text: '', truncated: false },
+        sandbox: { mode: 'workspace-write', denied: false },
+      }),
+    })
+    harness.terminal.send('!ls')
+    harness.terminal.send('\r')
+    await vi.waitFor(async () => {
+      expect(await harness.terminal.snapshot()).toContain('[exit 0]')
+    })
+    await checkpoint('user-shell-command', harness.terminal)
     await disposeSnapshot(harness)
   })
 

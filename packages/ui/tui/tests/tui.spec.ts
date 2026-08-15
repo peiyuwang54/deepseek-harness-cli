@@ -46,6 +46,7 @@ import {
 import { WorkspaceFileSearch } from '../src/chat/file-autocomplete.ts'
 import { osc52ClipboardSequence } from '../src/chat/clipboard.ts'
 import { MissingExternalEditorError } from '../src/chat/external-editor.ts'
+import type { UserShellRequest, UserShellResult } from '../src/chat/user-shell.ts'
 import { renderMarkdownTranscript, renderRawTranscript } from '../src/chat/transcript-export.ts'
 import { CURSOR_BLINK_INTERVAL_MS } from '../src/chat/helpers.ts'
 import { TUI_LOCALE_OPTIONS, formatDeepDivingStatus } from '../src/chat/language.ts'
@@ -735,6 +736,11 @@ describe('shared settings, appearance, and workspaces', () => {
     expect(mutate).toHaveBeenCalledWith(localeNamespace, [{ op: 'set', path: ['preference'], value: 'zh' }])
     expect(result.terminal.output).toContain('界面语言已切换为中文。')
     expect(result.terminal.output).toContain('描述任务，@ 添加文件，或输入 / 查看命令')
+    result.terminal.send('!')
+    await tick()
+    expect(result.terminal.output).toContain('Shell 模式 · Enter 运行 · Esc 清空')
+    result.terminal.send('\x1b')
+    await tick()
     result.terminal.send('/archive')
     result.terminal.send('\r')
     await tick()
@@ -5047,6 +5053,131 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await tick()
     expect(result.terminal.output).toBe(output)
     await result.ctx.fiber.dispose()
+  })
+
+  it('runs a leading-bang command outside the model and retains its result card', async () => {
+    const completed = Promise.withResolvers<UserShellResult>()
+    const userShell = vi.fn((_request: UserShellRequest) => completed.promise)
+    const result = await setup({ omitInitialLifecycle: true, userShell })
+    result.terminal.send('!printf hello')
+    await tick()
+    expect(result.terminal.output).toContain('Shell mode · Enter run · Esc clear')
+    result.terminal.output = ''
+    result.terminal.send('\r')
+    await tick()
+
+    expect(userShell).toHaveBeenCalledOnce()
+    expect(userShell.mock.calls[0]?.[0].command).toBe('printf hello')
+    expect(userShell.mock.calls[0]?.[0].agent).toBe(result.agent)
+    expect(result.agent.sent).toEqual([])
+    expect(result.session.events.at(-1)).toMatchObject({
+      type: 'tui/user-shell-start',
+      data: { command: 'printf hello', cwd: '/workspace' },
+    })
+    expect(result.terminal.output).toContain('○ Shell')
+    expect(result.terminal.output).toContain('$ printf hello')
+    expect(result.terminal.output).toContain('Shell command running · Esc interrupt')
+
+    completed.resolve({
+      exitCode: 0,
+      signal: null,
+      timedOut: false,
+      aborted: false,
+      stdout: { text: 'hello\n', truncated: false },
+      stderr: { text: '', truncated: false },
+      sandbox: { mode: 'workspace-write', denied: false },
+    })
+    await vi.waitFor(() => {
+      expect(result.session.events.at(-1)?.type).toBe('tui/user-shell-result')
+    })
+    expect(result.terminal.output).toContain('● Shell')
+    expect(result.terminal.output).toContain('hello')
+    expect(result.terminal.output).toContain('[exit 0]')
+    expect(result.terminal.output).toContain('Enter send · Shift+Enter newline · / commands')
+
+    result.terminal.output = ''
+    result.terminal.send('\x1b[A')
+    await tick()
+    expect(result.terminal.output.replaceAll(/\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07|\r/g, ''))
+      .toContain('!printf hello')
+    await dispose(result)
+  })
+
+  it('keeps a shell command draft while the Agent is running', async () => {
+    const userShell = vi.fn()
+    const result = await setup({ status: 'running', userShell })
+    result.terminal.send('!git status')
+    result.terminal.send('\r')
+    await tick()
+    expect(userShell).not.toHaveBeenCalled()
+    expect(result.terminal.output).toContain('Wait for the active turn to finish before running a shell command.')
+    expect(result.terminal.output).toContain('!git status')
+    await dispose(result)
+  })
+
+  it('explains an empty shell prompt and lets Escape leave shell mode', async () => {
+    const result = await setup({ omitInitialLifecycle: true, userShell: vi.fn() })
+    result.terminal.send('!')
+    await tick()
+    expect(result.terminal.output).toContain('Shell mode · Enter run · Esc clear')
+    result.terminal.output = ''
+    result.terminal.send('\x1b')
+    await tick()
+    expect(result.terminal.output).not.toContain('Shell mode · Enter run · Esc clear')
+
+    result.terminal.send('!')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Shell mode: type ! followed by a command, then press Enter.')
+    await dispose(result)
+  })
+
+  it('cancels an active user shell command with Escape and waits for it during disposal', async () => {
+    const aborted = vi.fn()
+    const userShell = vi.fn(({ signal }: { signal: AbortSignal }) => new Promise<UserShellResult>((resolve) => {
+      signal.addEventListener('abort', () => {
+        aborted()
+        resolve({
+          exitCode: null,
+          signal: 'SIGTERM',
+          timedOut: false,
+          aborted: true,
+          stdout: { text: '', truncated: false },
+          stderr: { text: '', truncated: false },
+        })
+      }, { once: true })
+    }))
+    const result = await setup({ omitInitialLifecycle: true, userShell })
+    result.terminal.send('!sleep 10')
+    result.terminal.send('\r')
+    await tick()
+    result.terminal.send('\x1b')
+    await vi.waitFor(() => {
+      expect(aborted).toHaveBeenCalledOnce()
+      expect(result.session.events.at(-1)?.type).toBe('tui/user-shell-result')
+    })
+    expect(result.terminal.output).toContain('[cancelled]')
+
+    result.terminal.send('!sleep 20')
+    result.terminal.send('\r')
+    await tick()
+    await result.controller.dispose()
+    expect(aborted).toHaveBeenCalledTimes(2)
+    await result.ctx.fiber.dispose()
+  })
+
+  it('records a rejected shell host as a settled transcript error', async () => {
+    const result = await setup({
+      omitInitialLifecycle: true,
+      userShell: () => Promise.reject(new Error('runner unavailable')),
+    })
+    result.terminal.send('!echo hi')
+    result.terminal.send('\r')
+    await vi.waitFor(() => {
+      expect(result.session.events.at(-1)?.type).toBe('tui/user-shell-result')
+    })
+    expect(result.terminal.output).toContain('runner unavailable')
+    await dispose(result)
   })
 
   it('opens a keyboard selector and switches the session model without sending slash text to the agent', async () => {

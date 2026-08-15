@@ -53,6 +53,7 @@ export interface TuiHarnessOptions {
   gitDiff?: TuiRuntime['gitDiff']
   externalImport?: TuiRuntime['externalImport']
   externalEditor?: TuiRuntime['externalEditor']
+  userShell?: TuiRuntime['userShell']
   /** Fake-agent creation options (`provider`/`model` seed the model selector's initial target). */
   agentOptions?: AgentOptions
   contextWindow?: number
@@ -273,6 +274,7 @@ export async function createTuiTestHarness<TerminalType extends Terminal, Exit e
     ...(options.gitDiff === undefined ? {} : { gitDiff: options.gitDiff }),
     ...(options.externalImport === undefined ? {} : { externalImport: options.externalImport }),
     ...(options.externalEditor === undefined ? {} : { externalEditor: options.externalEditor }),
+    ...(options.userShell === undefined ? {} : { userShell: options.userShell }),
     ...(options.handoffResume === undefined ? {} : { handoffResume: options.handoffResume }),
     ...(options.handoffWorkspace === undefined ? {} : { handoffWorkspace: options.handoffWorkspace }),
     ...(options.agentNavigation === undefined ? {} : { agentNavigation: options.agentNavigation }),

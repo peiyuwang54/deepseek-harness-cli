@@ -11,6 +11,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { GitDiffResult } from './chat/git-diff.ts'
 import type { ExternalImportGateway } from './chat/external-import.ts'
 import type { ExternalEditor } from './chat/external-editor.ts'
+import type { UserShellRunner } from './chat/user-shell.ts'
 
 /** Source category for one launcher-composed configuration layer. */
 export type TuiConfigLayerKind = 'bundle' | 'profile' | 'home' | 'overlay' | 'runtime' | 'environment'
@@ -127,6 +128,8 @@ export interface TuiRuntime {
   externalImport?: ExternalImportGateway
   /** Host override for editing the current composer draft outside the TUI. */
   externalEditor?: ExternalEditor
+  /** Host override for direct `!command` execution. */
+  userShell?: UserShellRunner
   /** Monotonic-enough wall clock for elapsed status rendering. Defaults to `Date.now`. */
   now?(): number
   /** Host-owned process handoff; absent leaves the session selectable but not resumable in place. */

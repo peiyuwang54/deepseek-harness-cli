@@ -875,6 +875,46 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 来源：[`packages/workflow/tool-workflow/src/types.ts:47`](../packages/workflow/tool-workflow/src/types.ts)
 
+### `tui/*`
+
+<a id="tuiuser-shell-result--log-only"></a>
+
+#### `tui/user-shell-result` — log-only
+
+```ts persistence-catalog
+/**
+ * The settled outcome for one prior `tui/user-shell-start`. It is log-only
+ * and preserves the executor's bounded output and sandbox facts for resume.
+ */
+'tui/user-shell-result': {
+  id: string
+  durationMs: number
+  result: UserShellResult
+}
+```
+
+来源：[`packages/ui/tui/src/chat/user-shell.ts:83`](../packages/ui/tui/src/chat/user-shell.ts)
+
+<a id="tuiuser-shell-start--log-only"></a>
+
+#### `tui/user-shell-start` — log-only
+
+```ts persistence-catalog
+/**
+ * A direct human `!command` started. This is a log-only TUI transcript
+ * event and never enters model context. `id` pairs it with at most one
+ * `tui/user-shell-result`; an unmatched start represents an interrupted
+ * process. The command may be recorded only while the Agent is idle.
+ */
+'tui/user-shell-start': {
+  id: string
+  command: string
+  cwd: string
+}
+```
+
+来源：[`packages/ui/tui/src/chat/user-shell.ts:74`](../packages/ui/tui/src/chat/user-shell.ts)
+
 ### `turn/*`
 
 <a id="turnend--log-only"></a>

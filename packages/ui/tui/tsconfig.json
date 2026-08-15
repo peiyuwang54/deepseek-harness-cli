@@ -27,6 +27,8 @@
     { "path": "../../session/session-stats" },
     { "path": "../../session/session-title" },
     { "path": "../../settings/settings" },
+    { "path": "../../sandbox/sandbox-policy" },
+    { "path": "../../shell/shell" },
     { "path": "../../session-query/session-query" },
     { "path": "../../llm/llm" },
     { "path": "../../llm/token-meter" },

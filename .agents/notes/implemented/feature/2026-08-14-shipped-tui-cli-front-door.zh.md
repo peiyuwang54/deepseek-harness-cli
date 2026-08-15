@@ -42,6 +42,8 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 
 Ctrl+G 会通过用户的 `VISUAL` 或 `EDITOR` 命令编辑当前 composer 草稿。Renderer 会在继承 stdio 的子进程启动前释放 pi-tui、alternate-screen、cursor 与 mouse 所有权，并在编辑器退出后重新取得这些 mode、强制渲染完整帧。草稿经由一个私有临时 Markdown 文件传递；成功或失败后都会删除该文件，其内容只有在用户提交后才进入 Session。同一时间只允许一个编辑器 handoff；若 renderer 在子进程存活期间被 dispose，则不会重新挂载。
 
+以 `!` 开头的输入会在根 Agent 空闲时提交一条精确的人类 shell 命令。TUI 消费已组合的 `ctx.shell` 能力和当前 Session 的沙箱策略，不自行启动子进程，也不把文本转换成模型轮次。`tui/user-shell-start` 与 `tui/user-shell-result` 形成按 id 配对的持久记录，包含命令、绝对工作目录、有界输出、耗时、退出状态和沙箱信息；恢复、raw 模式与 transcript 导出投影相同事件，缺少结果的 start 会显示为已中断。执行期间 composer 不可用，Escape 或 Ctrl+C 会中止请求，缺少 Shell 或必需的 Sandbox Policy 能力时会明确失败。由于该命令是用户的精确指令，而不是模型提出的工具调用，它不会再次请求批准；所选沙箱策略仍是执行权威。
+
 终端命令 catalog 包含受 Codex 启发的 `/skills`、`/agent`、`/subagents`、`/archive`、`/delete`、`/keymap`、`/vim`、`/fast`、`/experimental`、`/ide`、`/mention`、`/copy`、`/export`、`/diff`、`/rename`、`/init`、`/review`、`/new`、`/clear`、`/ps`、`/stop`、`/clean` 与 `/approve` 适配器，但不引入 Codex 运行时状态。Skill 仍是 Agent 作用域 registry 条目；Vim 是 pi-tui editor 之上的输入模式 projection；fast 模式仅选择元数据标识为低延迟变体的已公布路由，并保留先前路由以便可逆切换。Experiments 启动现有终端 action，而不创建第二个 feature-flag store。在 embedding 提供 IDE bridge 之前，IDE 上下文会退化为终端宿主诊断、`@` 引用与 workspace handoff；mention 复用这条文件引用 composer 路径。Copy 选择 transcript 中最新可见的 assistant Markdown，并写入 OSC 52 帧，同时支持 tmux 透传和编码前 100,000 字节上限。Export 从稳定的 Session event 快照投影完整的人类可见 transcript，排除注入上下文和仅供模型使用的替换节点；它可以复制该 Markdown，也可以先写入并 sync 同目录临时文件，再用不覆盖目标的 hard link 发布。Diff 会读取未暂存 worktree，并为未跟踪且未忽略的文件生成 no-index diff，而不修改 index；它会禁用 Git textconv、外部 diff、hook、文件系统 monitor 以及已配置的 clean/process 可执行程序，并由展示配置限制每个子进程的运行时间。Rename 将标题规范化、持久 `session/title` 记录和固定行为交给 session-title service。Init 与 review 只在 agent 处于 idle 时，把仓库指引和不修改文件的 worktree 审查提示作为普通持久用户轮次准入；可选的 review 指令仍属于同一条已记录消息。New 与 clear 都会在 idle 检查与 session flush 后进入当前不可变 workspace 的既有全新进程 handoff；宿主未提供或拒绝迁移时，当前会话仍可使用。全局 `command-jobs` Consumer 把 Codex 的后台终端命令映射到调用者可见的活动 `ctx.jobs`：`/ps` 使用不消费输出的 snapshot，`/stop` 与 `/clean` 只请求取消 `running` 任务，并保持 `stopping` 工作不变。该用户侧 controller 让任务准入不依赖 preset 是否公开面向模型的 `job_*` 工具，而注册表的所有者检查会阻止一个 session 列出或取消其他 session 的任务。Approve 会把活动队列条目结算为 `allowed-once`，或为下一个工具和理由与最新交互拒绝完全匹配的请求预批准一次；如果下一个请求不匹配，它会消耗该授权但不会获得批准，因此该命令不能扩大会话策略，也不会创建持久授权。`/status` 保持为会话诊断 projection，不打印 system prompt 或已注册工具 catalog。
 
 工作区文件补全会先应用仓库 `.git/info/exclude`、父级与嵌套 `.gitignore`，以及嵌套 `.ignore` 规则，再展示直接或模糊候选。工具结果会同时刷新有界索引与 ignore 状态。部署可独立关闭 ignore 文件解释，而固定目录 basename 排除项仍然生效。目录 symlink 仍不参与遍历。
@@ -106,6 +108,8 @@ Hook 浏览器对照了 Codex commit [`c494130`](https://github.com/openai/codex
 
 外部草稿编辑对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/external_editor.rs) 及其[终端 handoff](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/app/input.rs)。DeepSeek Harness 使用自己的 Node 进程边界、临时文件生命周期与 pi-tui 终端所有者实现相同的可观察 Ctrl+G 流程；没有复制 Rust 源码。
 
+直接 shell 输入对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/chatwidget/input_submission.rs) 及其[线程路由](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/thread_routing.rs)。DeepSeek Harness 使用自身的 Shell 能力、沙箱策略服务、Session 事件词汇和 pi-tui 组件；没有复制 Rust 源码。
+
 ## 参考与来源边界
 
 我们研究了 Gemini CLI 与 OpenAI Codex 的进程模式分离、终端输入路由、已提交／实时渲染、审批、恢复、headless 输出纪律与 PTY 测试。当前命令名称与行为固定到 OpenAI Codex commit [`22bf16a`](https://github.com/openai/codex/blob/22bf16a37ed45006c0226541874abd7449c29911/codex-rs/tui/src/slash_command.rs)，分派细节来自 [`slash_dispatch.rs`](https://github.com/openai/codex/blob/22bf16a37ed45006c0226541874abd7449c29911/codex-rs/tui/src/chatwidget/slash_dispatch.rs)，回复与人类消息展示来自 [`messages.rs`](https://github.com/openai/codex/blob/22bf16a37ed45006c0226541874abd7449c29911/codex-rs/tui/src/history_cell/messages.rs)，运行状态计时来自 [`status_indicator_widget.rs`](https://github.com/openai/codex/blob/22bf16a37ed45006c0226541874abd7449c29911/codex-rs/tui/src/status_indicator_widget.rs)，Goal footer 计时来自 [`goal_status.rs`](https://github.com/openai/codex/blob/22bf16a37ed45006c0226541874abd7449c29911/codex-rs/tui/src/chatwidget/goal_status.rs)，剪贴板上限来自 [`clipboard_copy.rs`](https://github.com/openai/codex/blob/22bf16a37ed45006c0226541874abd7449c29911/codex-rs/tui/src/clipboard_copy.rs)。`/diff` 的安全行为与未跟踪文件处理还对照了 Codex commit [`4861236`](https://github.com/openai/codex/blob/4861236f06d0df397436531b4aa3d7fa6975959c/codex-rs/tui/src/get_git_diff.rs)；运行中输入预览与 Markdown transcript 导出则分别对照了 Codex commit [`e5470f1`](https://github.com/openai/codex/blob/e5470f1bce099442d73e491ce63d189d355b061e/codex-rs/tui/src/bottom_pane/pending_input_preview.rs) 及其 [`transcript_export.rs`](https://github.com/openai/codex/blob/e5470f1bce099442d73e491ce63d189d355b061e/codex-rs/tui/src/app/transcript_export.rs)。我们还检查了采用 MIT 许可证的 [`dsh-TUI`](https://github.com/ccch1mneyyy/dsh-TUI/tree/9a0559b820fb0a8733089560916dfeb75075c244) 对斜杠命令目录、排队输入验证、压缩投影、主题持久化和启动器检查的实现；没有复制其 Ink renderer 与 rc.6 兼容层。Codex 与 Gemini 的许可证允许带署名复用，但本实现没有复制这些仓库的源码。官方 Claude Code 与检查过的 all-rights-reserved 源码重建只贡献了高层可观察行为，没有复制代码或非平凡表达。`@earendil-works/pi-tui` 仍是显式依赖，并带有本地兼容 patch 与生成的第三方声明。
@@ -154,6 +158,8 @@ Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服
 
 外部编辑器 checkpoint 会固定 Ctrl+G handoff 后保存的草稿。聚焦测试覆盖命令优先级、POSIX 与 Windows 环境变量语法、临时文件清理、终端释放与恢复、抑制重复启动、编辑器错误和 renderer dispose 竞态。
 
+直接 shell checkpoint 会固定一张不产生模型轮次的已完成 `!command` 卡片。聚焦测试覆盖 Shell 与 Sandbox Policy 解析、当前工作区执行、有界结果分离、仅空闲时准入、空输入、composer 锁定、Escape 与 Ctrl+C 取消、失败恢复、回放、详情切换、raw 与导出 transcript 投影，以及持久 start/result 不变量。
+
 ## 考虑过的替代方案
 
 **继续只把 Web 作为交互式产品。** 不采用：所需部署是交互式 CLI，而 Web 无法满足终端原生工作流、pipe 边界或 SSH／tmux 使用方式。
@@ -165,6 +171,8 @@ Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服
 **在终端 shim 中嵌入 Web React settings 与 conversation tree。** 不采用：这会把浏览器 transport、DOM layout 和 client 侧 state 所有权跨过 Host 边界。TUI 改为消费相同的 settings、workspace、preset 和 session 服务，并为它们提供终端原生选择器与 renderer。
 
 **让 TTY 检测静默回退到 headless。** 不采用：重定向交互式命令会改变其协议与审批语义。显式 profile 就是边界：`tui` 要求终端，`headless` 面向自动化。
+
+**把 `!command` 交给模型工具循环，或由 TUI 自己启动 shell。** 不采用：前者会把精确的人类输入变成模型轮次，后者会绕过已组合的平台 Shell 与沙箱策略 provider。TUI 保持为这些能力的 consumer，只记录它自身持有的直接命令生命周期。
 
 根 Slash catalog 会过滤嵌套的 `skill:` 行，直到用户明确进入 `/skill:` namespace，并把 `/skills` 保留为普通命令大小的发现入口。
 

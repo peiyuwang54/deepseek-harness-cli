@@ -14,9 +14,11 @@ Renderer 默认使用终端原生 inline scrollback。鼠标滚轮只滚动不�
 
 提示词区域是无边框多行 composer，其水平留白和背景与每张已提交的用户消息卡片保持一致。提交后的提示词会继续显示在 transcript 中，但不带 `You:` 或提示符标签，同时也保留在持久 Session 和编辑器历史中。操作提示会根据 idle／running 状态切换发送或 steer／cancel 文案，第一条底部状态栏则把紧凑 token 用量、模型和上下文压力与可编辑文本分开。第二条居中统计栏会复用 Web 的全日志 `sessionStats` 投影与 token 计量，显示轮次／步骤、LLM 与工具总耗时、平均 TTFT、解码吞吐、缓存命中率以及计费输入／输出 token。缺失事实会整组省略而不是伪造为零；窄终端会在单行内省略，不会折行挤压编辑器。这些标签投影自当前服务和会话事件，不是另一套 UI 配置真相源。
 
+当 Agent 处于 idle 状态时，输入 `!command` 会通过已组合的 `ctx.shell` 执行器，按当前 Session 的 sandbox policy 运行这条确切命令。该命令不会启动模型 turn，也不会进入模型上下文；其有界 stdout、stderr、退出状态和 sandbox 事实会保留在持久 TUI transcript 与 `/export` 中。进程结算前 composer 会暂停，Escape 或 Ctrl+C 可以取消命令。未组合 shell 能力的 profile 会报告能力缺失，不会启动不受限制的子进程。
+
 受 Codex 启发的开发者命令是 Harness 服务之上的终端原生适配器。`/skills` 浏览当前 Agent 作用域中面向用户可调用的 catalog；`/keymap` 与 `/vim` 在默认编辑和 Vim Insert／Normal 模式间切换 composer；`/fast` 仅选择元数据真正标识为 flash、fast、turbo 或 lite 的已公布路由，没有这类路由时不会假称加速。`/experimental` 统一启动现有的 fast、Vim、reasoning 可见性与 Loader reload action。`/ide` 报告检测到的终端宿主，并提供 `@` 文件引用或 workspace handoff；没有 IDE bridge 时仍无法捕获已打开文件与选区。`/approve` 会允许活动请求一次，或为下一个与最新交互拒绝在工具和理由上完全匹配的请求预批准一次；如果下一个请求不匹配，它会消耗该授权但不会获得批准，命令也绝不改变 permission preset。
 
-本包（package）只持有交互式终端展示和输入。它注入 `agents`、[`commands`](../../interaction/commands/README.md)、`approval`、`llm`、`systemPrompt`、`tokenMeter`、`tools` 和 `userQuestions`，在组合存在时可选读取 `credentials`、`hooks`、`settings`、`skills` 与 `workspaceRegistry` 服务，然后驱动由 app 或开发者代码创建或恢复的 agent。Agent 生命周期、持久化、审批策略与模型侧 [`ask_user_question`](../../interaction/tool-ask-user/README.md) 工具仍是独立组合项。
+本包（package）只持有交互式终端展示和输入。它注入 `agents`、[`commands`](../../interaction/commands/README.md)、`approval`、`llm`、`systemPrompt`、`tokenMeter`、`tools` 和 `userQuestions`，在组合存在时可选读取 `credentials`、`hooks`、`sandboxPolicy`、`settings`、`shell`、`skills` 与 `workspaceRegistry` 服务，然后驱动由 app 或开发者代码创建或恢复的 agent。Agent 生命周期、持久化、审批策略与模型侧 [`ask_user_question`](../../interaction/tool-ask-user/README.md) 工具仍是独立组合项。
 
 终端成功启动后，本包会提供终端本地的 `ctx.tui` 扩展服务。注入该服务的插件可以使用组件工厂和受限布局选项调用 `openOverlay()`；宿主会公开 viewport、语义化主题（包括终端安全的 DeepSeek `brand` 样式）、显示文本转义、重绘、关闭和生命周期信号，但不公开 pi-tui 树、终端、焦点控制器或 overlay 句柄。插件 overlay、附着 composer 的选择器、用户问题与审批请求虽然位置不同，但共用一个 FIFO 焦点队列。每个请求都是调用方插件 fiber 的 effect，因此卸载会移除排队工作，或在清理结算前关闭可见工作；终端关闭会先卸载依赖项，再停止 pi-tui。Overlay 状态不会记录或回放。组件代码受信任，可以渲染 ANSI 样式，但必须通过 `host.display()` 处理不受信任文本。
 

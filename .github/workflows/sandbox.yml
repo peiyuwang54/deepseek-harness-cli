@@ -1,5 +1,6 @@
-# Sandbox CI: the keyless real-kernel confinement proofs. This master-only
-# reference stays outside the pull-request verdict; rationale lives in
+# Sandbox CI: the keyless real-kernel confinement proofs. During pre-release
+# feature development the master-push check reports skipped and the matrix is
+# available by manual dispatch; rationale lives in
 # .agents/notes/implemented/process/2026-07-21-serial-cross-platform-ci-reference.md.
 # A separate workflow from ci.yml because the axis is different — these jobs
 # fan out over OS×runner (kernel capabilities), not node versions. The Landlock
@@ -10,6 +11,7 @@ name: Sandbox
 on:
   push:
     branches: [master]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -40,6 +42,7 @@ jobs:
   # e2e.yml's key preflight guards against. Each leg therefore asserts BOTH
   # its platform files actually ran: `Test Files  2 passed (2)`, no skips.
   sandbox-e2e:
+    if: github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:

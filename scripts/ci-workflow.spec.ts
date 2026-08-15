@@ -235,6 +235,30 @@ describe('E2B e2e workflow', () => {
   })
 })
 
+describe('Pre-release deferred workflows', () => {
+  it('keeps package and real-kernel checks visible on push but executable only by manual dispatch', () => {
+    for (const path of ['.github/workflows/release.yml', '.github/workflows/release-vendor.yml']) {
+      const workflow = loadWorkflow(path)
+      const pack = workflowJob(workflow, 'pack')
+
+      expect(workflow.on).toMatchObject({
+        pull_request: null,
+        push: { branches: ['master'] },
+      })
+      expect(workflowEvent(workflow, 'workflow_dispatch')).toHaveProperty('inputs.publish')
+      expect(pack.if).toBe("github.event_name == 'workflow_dispatch'")
+    }
+
+    const sandbox = loadWorkflow('.github/workflows/sandbox.yml')
+    const sandboxE2e = workflowJob(sandbox, 'sandbox-e2e')
+    expect(sandbox.on).toEqual({
+      push: { branches: ['master'] },
+      workflow_dispatch: null,
+    })
+    expect(sandboxE2e.if).toBe("github.event_name == 'workflow_dispatch'")
+  })
+})
+
 describe('Real-API e2e workflow', () => {
   it('is manual-only and fails loud before running the live suite', () => {
     const workflow = loadWorkflow('.github/workflows/e2e.yml')

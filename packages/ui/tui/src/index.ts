@@ -57,6 +57,7 @@ import type {} from '@deepseek-ai/dsh-session-persistence'
 import type { SessionQueryEngine } from '@deepseek-ai/dsh-session-query'
 import type { SkillRegistry } from '@deepseek-ai/dsh-skill'
 import type {} from '@deepseek-ai/dsh-hook-protocol'
+import type { PluginInventoryGateway } from '@deepseek-ai/dsh-host-plugin-inventory'
 // Optional service used by the live agent picker. The type import also
 // declaration-merges `ctx.subagents` onto Cordis Context.
 import type {} from '@deepseek-ai/dsh-subagent'
@@ -202,6 +203,7 @@ import {
 } from './chat/transcript-export.ts'
 import { mcpCommandResult } from './chat/mcp-command.ts'
 import { hooksCommandResult } from './chat/hooks-command.ts'
+import { pluginsCommandResult } from './chat/plugins-command.ts'
 import { gitDiff } from './chat/git-diff.ts'
 import { GoalTimingTracker, formatGoalFooterStatus, type GoalFooterState } from './chat/goal-status.ts'
 import type {
@@ -2640,6 +2642,15 @@ export function createTuiChat(
       description: 'Inspect configured lifecycle hook bridges and handlers',
       input: { hint: '[verbose]' },
       handler: ({ rawInput }) => hooksCommandResult(rawInput, ctx.get('hooks')),
+    })
+    commandCtx.commands.register({
+      name: 'plugins',
+      description: 'Browse plugins configured in the current profile',
+      input: { hint: '[verbose] [query]' },
+      handler: ({ rawInput }) => pluginsCommandResult(
+        rawInput,
+        ctx.get('pluginInventory') as PluginInventoryGateway | undefined,
+      ),
     })
     commandCtx.commands.register({
       name: 'approve',

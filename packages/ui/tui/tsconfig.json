@@ -18,6 +18,7 @@
     { "path": "../../core/tools" },
     { "path": "../../goal/goal" },
     { "path": "../../hooks/hook-protocol" },
+    { "path": "../../host/plugin-inventory" },
     { "path": "../../context/session-reference" },
     { "path": "../../session/session-persistence" },
     { "path": "../../session/session-projection" },

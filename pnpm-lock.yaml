@@ -1730,6 +1730,9 @@ importers:
       '@deepseek-ai/dsh-code-runtime-worker-thread':
         specifier: workspace:^
         version: link:../../code-runtime/code-runtime-worker-thread
+      '@deepseek-ai/dsh-host-plugin-inventory':
+        specifier: workspace:^
+        version: link:../../host/plugin-inventory
       '@deepseek-ai/dsh-session-reference':
         specifier: workspace:^
         version: link:../../context/session-reference
@@ -8501,6 +8504,9 @@ importers:
       '@deepseek-ai/dsh-hook-protocol':
         specifier: workspace:^
         version: link:../../hooks/hook-protocol
+      '@deepseek-ai/dsh-host-plugin-inventory':
+        specifier: workspace:^
+        version: link:../../host/plugin-inventory
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants

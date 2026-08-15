@@ -68,6 +68,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/hooks [verbose]` 会列出可选 `ctx.hooks` 中成功加载的 Claude Code 与 Codex hook 桥接配置。默认视图报告每个来源和可运行 handler 总数；`verbose` 展开生命周期点、matcher、命令、超时覆盖与已解析但被跳过的 handler。该命令只用于诊断且为只读；启用、信任、禁用或编辑 hook 仍由 profile 配置负责。
 
+`/plugins [verbose] [query]` 会浏览当前 profile 的实时 Cordis Loader 清单。默认输出最多 20 行，并报告配置总数、active 数与 disabled 数；query 可按模块标识或 Loader id 过滤，`verbose` 则补充完整值与根 Fiber 阶段。该浏览器为只读。安装 profile 软件包需在 chat 外运行 `deepseek plugin --profile tui add <package>`；移除或更新时在相同位置使用 `remove` 或 `update`，也可使用等价的 `dsh` 写法。
+
 `/reload`（实验性，仅开发环境）会重新读取所有基于文件的 loader 配置树，并把 diff 应用到运行中 app：它手动调用 HMR（热模块替换）watcher 的配置路径；上下文中必须有 cordis Loader，否则退化为警告。它只在 agent 空闲时运行，并拒绝 reload 进行期间的再次进入。模块源代码热重载仍由 watcher 持有。挂载 `skills` 服务后，`/skill:<name> [instructions]` 会把该 skill 的指令作为一个 user 轮次加载到会话中；自动补全列出用户可调用的 skill，按精确名称调用时也会拒绝用户策略禁用的 skill。
 
 默认紧凑 footer 右侧显示 Goal／详情状态、当前模型、`↑<uncached input> ↓<output>`、已知的 token-meter 上下文压力和排队工作。左侧默认为空，因此工作目录和分支在通过 `/statusline` 选择或通过 `theme.leftPrompt` 配置前不会占用聊天宽度。默认项也不含 idle 状态和缓存命中率：实时工作由对话尾部的动态状态表达，缓存命中率则保留在详细会话统计行。

@@ -96,6 +96,7 @@ const CHECKPOINTS = [
   'goal-status-complete',
   'mcp-tools',
   'hooks-browser',
+  'plugins-browser',
   'permissions-selector',
   'permissions-switching',
   'agent-selector',
@@ -328,6 +329,35 @@ async function configureSnapshotHooks(ctx: Context): Promise<void> {
     ],
     skipped: [{ point: 'Stop', reason: 'async hook' }],
   })
+}
+
+async function configureSnapshotPlugins(ctx: Context): Promise<void> {
+  await ctx.plugin(SystemPrompt)
+  await ctx.plugin(ToolRegistry)
+  ctx.provide('pluginInventory', {
+    list: () => ({
+      entries: [
+        {
+          entryId: 'tool-bash',
+          moduleName: '@deepseek-ai/dsh-tool-bash',
+          enabled: true,
+          fiberPhase: 'active',
+        },
+        {
+          entryId: 'web-search',
+          moduleName: '@deepseek-ai/dsh-web-search-deepseek',
+          enabled: false,
+          fiberPhase: null,
+        },
+        {
+          entryId: 'custom-reviewer',
+          moduleName: '@example/dsh-reviewer',
+          enabled: true,
+          fiberPhase: 'failed',
+        },
+      ],
+    }),
+  } as never)
 }
 
 async function configureGoalStatus(ctx: Context): Promise<void> {
@@ -1486,6 +1516,18 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('hooks-browser', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins current-profile plugin filtering and lifecycle diagnostics', async () => {
+    const harness = await setupSnapshot({
+      configureContext: configureSnapshotPlugins,
+    }, { columns: 104, rows: 32 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/plugins verbose custom')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('plugins-browser', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

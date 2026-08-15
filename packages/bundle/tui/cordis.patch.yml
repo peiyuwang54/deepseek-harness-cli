@@ -114,6 +114,11 @@
     - id: locale
       name: '@deepseek-ai/dsh-client-locale'
 
+    # The terminal's /plugins browser reads the same current Loader inventory
+    # as Web settings. Package installation remains an outer CLI operation.
+    - id: plugin-inventory
+      name: '@deepseek-ai/dsh-host-plugin-inventory'
+
     # Reuse the durable Web workspace ledger. The terminal picker starts a
     # fresh process in the selected directory; it never rewrites a live
     # session's immutable cwd.

@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-这是随发行版交付的交互式终端组合包。[`cordis.patch.yml`](cordis.patch.yml) 叠加在 [`dsh-base`](../base/README.md) 之上；当 renderer 持有终端 raw mode 时禁用模块 HMR，并加入 Code Mode、共享 agent-preset 名单、`ui-theme` 设置注册、JSON 持久化的 workspace 存储／注册表、跨 Session 引用、tmux 上下文、默认 standard preset 的 `ask_user_question`、TUI prompt 注册表、应用自有的命令行提供方和终端 runner。它不挂载 HTTP server、Web runtime 或浏览器 client；settings、storage、workspace 与 preset 服务是共享的 Host 平面设施，而非 Web 专用 UI 代码。
+这是随发行版交付的交互式终端组合包。[`cordis.patch.yml`](cordis.patch.yml) 叠加在 [`dsh-base`](../base/README.md) 之上；当 renderer 持有终端 raw mode 时禁用模块 HMR，并加入 Code Mode、共享 agent-preset 名单、`ui-theme` 设置注册、只读 Loader 插件清单、JSON 持久化的 workspace 存储／注册表、跨 Session 引用、tmux 上下文、默认 standard preset 的 `ask_user_question`、TUI prompt 注册表、应用自有的命令行提供方和终端 runner。它不挂载 HTTP server、Web runtime 或浏览器 client；settings、storage、workspace、plugin-inventory 与 preset 服务是共享的 Host 平面设施，而非 Web 专用 UI 代码。
 
 [`src/startup.ts`](src/startup.ts) 持有直接 `deepseek` 命令的 `--resume`、`--full-auto`、`--yolo`、`--dangerously-bypass-approvals-and-sandbox` 与 `--help` 参数；`dsh tui` 保留为兼容写法。一次成功的交互启动会发布唯一且不可变的 `tuiStartup.identity`：要么是新的 `main-session-<uuid>`，要么是指定的持久化 Session。Agent 发布前，`--full-auto` 会固定配置中的 `workspace-write` + `never` preset，两种无限制写法则会固定 `danger-full-access` + `never` preset。缺少所需 preset 时会在 presentation 挂载前失败，且两种模式不能同时使用。命令 registry 有意不包含会话级启动快捷命令；运行中切换继续使用 `/permissions`。Startup 还会提供 renderer 所需的 main-session 身份与可打印的 `deepseek --resume` 命令。帮助信息仍可在管道中使用；除此之外，若一次本应成功的启动缺少 TTY stdin 或 stdout，它会在依赖较多的 runner 激活前请求有界失败退出。
 

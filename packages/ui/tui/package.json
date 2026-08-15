@@ -51,6 +51,7 @@
     "@deepseek-ai/dsh-credentials": "workspace:^",
     "@deepseek-ai/dsh-goal": "workspace:^",
     "@deepseek-ai/dsh-hook-protocol": "workspace:^",
+    "@deepseek-ai/dsh-host-plugin-inventory": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/dsh-llm-retry": "workspace:^",
@@ -80,6 +81,9 @@
       "optional": true
     },
     "@deepseek-ai/dsh-hook-protocol": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-host-plugin-inventory": {
       "optional": true
     },
     "@deepseek-ai/dsh-permission-presets": {
@@ -123,6 +127,7 @@
     "@deepseek-ai/dsh-cordis-host-runner": "workspace:^",
     "@deepseek-ai/dsh-goal": "workspace:^",
     "@deepseek-ai/dsh-hook-protocol": "workspace:^",
+    "@deepseek-ai/dsh-host-plugin-inventory": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-jobs": "workspace:^",
     "@deepseek-ai/dsh-jobs-local": "workspace:^",

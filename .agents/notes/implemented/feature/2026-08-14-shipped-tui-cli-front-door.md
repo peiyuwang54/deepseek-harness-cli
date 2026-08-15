@@ -56,6 +56,8 @@ Direct `/model off`, `/model high`, and `/model max` reuse the current route's a
 
 `/hooks [verbose]` projects successfully loaded Claude Code and Codex bridge configurations from the read-only `ctx.hooks` registry. The base bundle mounts the registry, each bridge contributes its absolute source path, runnable lifecycle entries, and skipped handlers for its effect lifetime, and the TUI expands commands, matchers, and timeout overrides only in verbose mode. Profile composition remains the authority for enabling, trusting, disabling, or editing hooks.
 
+`/plugins [verbose] [query]` projects the existing Host plugin inventory into the terminal with bounded output, package or Loader-id filtering, and optional root Fiber diagnostics. The TUI bundle mounts the same inventory provider as Web settings, while package mutation remains outside chat through the profile-aware `deepseek plugin` command. This keeps the renderer read-only and avoids creating a second plugin or marketplace state store.
+
 `/usage` records the existing shared session-statistics line in the transcript. It reports observed conversation timings and token buckets; provider account limits remain absent because no account-quota service supplies them.
 
 A true zero-state session uses an adaptive split welcome card rather than stretching the compact transcript header across an empty viewport. Its composition borrows the left-identity/right-update rhythm of Claude Code while retaining only first-party DeepSeek content: the left column renders the official SVG-derived Braille whale in the terminal foreground and projects preset, model, permission, and workspace from their owning services; the right column names real Harness commands and the newest queryable sessions. The mark is black on light terminals without becoming invisible on dark themes, and its reduced tier avoids Kitty/iTerm image protocols. The first durable turn contracts the card to a product-only transcript header, so neither a banner subtitle nor a session id survives into conversation. The multiline composer and submitted human cards use the Web theme's exact light and dark user-bubble tokens selected by `/theme`; a separate bottom bar shows Goal, model, compact usage, context pressure, and queued work while leaving its default left side empty so workspace and branch do not consume conversation width.
@@ -81,6 +83,8 @@ The status-line setup was compared with Codex commit [`c494130`](https://github.
 Personality selection was compared with Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/chatwidget/settings_popups.rs). DeepSeek Harness uses its own settings and system-prompt registries, and no Rust source was copied.
 
 The hook browser was compared with Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/chatwidget/hooks.rs) and its [`hooks_browser_view.rs`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/bottom_pane/hooks_browser_view.rs). DeepSeek Harness reads its own bridge registry and profile-owned configuration rather than reproducing Codex's trust and mutation surfaces; no Rust source was copied.
+
+The plugin browser was compared with Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/chatwidget/plugins.rs). Codex's remote marketplaces, account policies, and application-server install flow do not apply to the local open-source CLI. DeepSeek Harness instead reads its existing Cordis Loader inventory and directs mutation to its existing profile package command; no Rust source was copied.
 
 ## Reference and provenance boundary
 
@@ -117,6 +121,8 @@ The `/statusline` checkpoint pins enabled fields, ordering controls, and the bou
 The `/personality` selector has a keyless checkpoint. Focused integration coverage proves settings mutation, invalid-argument handling, external-update adoption, and prompt reassembly for both communication styles.
 
 `/hooks verbose` has a keyless terminal checkpoint. Registry unit tests cover handler totals, registration order, effect disposal, and immutable snapshots; both real bridge integration suites prove that parsed runnable and skipped handlers appear in the catalog without making it mandatory for execution.
+
+`/plugins verbose <query>` has a keyless terminal checkpoint. Focused tests cover lifecycle totals, compact rows, module and Loader-id filtering, full diagnostics, empty results, and profiles without the optional inventory service.
 
 ## Alternatives considered
 

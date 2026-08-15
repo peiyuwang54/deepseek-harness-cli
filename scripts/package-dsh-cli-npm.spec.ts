@@ -7,7 +7,7 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -22,8 +22,15 @@ import {
 
 const root = resolve(import.meta.dirname, '..')
 const host = platformTarget()
-const hostExe = host === null ? undefined : resolve(root, 'dist-exe', `deepseek-harness-cli-${host.os}-${host.cpu}`)
-const HOST_EXE_PRESENT = hostExe !== undefined && existsSync(hostExe)
+const hostStem = host === null ? undefined : resolve(root, 'dist-exe', `deepseek-harness-cli-${host.os}-${host.cpu}`)
+const hostExe = hostStem === undefined
+  ? undefined
+  : existsSync(`${hostStem}.exe`)
+    ? `${hostStem}.exe`
+    : existsSync(hostStem)
+      ? hostStem
+      : undefined
+const HOST_EXE_PRESENT = hostExe !== undefined
 
 function runIn(dir: string, command: string, args: string[]): string {
   return execFileSync(command, args, { cwd: dir, encoding: 'utf8', timeout: 120_000 }).trim()
@@ -35,10 +42,11 @@ describe('platformTarget', () => {
     expect(platformTarget('darwin', 'x64')).toMatchObject({ os: 'macos', cpu: 'x64' })
     expect(platformTarget('linux', 'arm64')).toMatchObject({ os: 'linux', cpu: 'arm64' })
     expect(platformTarget('linux', 'x64')).toMatchObject({ os: 'linux', cpu: 'x64' })
+    expect(platformTarget('win32', 'x64')).toMatchObject({ os: 'win', cpu: 'x64' })
   })
 
   it('rejects unsupported platforms and architectures', () => {
-    expect(platformTarget('win32', 'x64')).toBeNull()
+    expect(platformTarget('win32', 'arm64')).toBeNull()
     expect(platformTarget('linux', 'ia32')).toBeNull()
     expect(platformTarget('darwin', 'ppc64')).toBeNull()
   })
@@ -49,9 +57,33 @@ describe('platformTarget', () => {
       'linux-x64',
       'macos-arm64',
       'macos-x64',
+      'win-x64',
     ])
     for (const target of PLATFORMS) {
       expect(target.name).toBe(`${PACKAGE_NAME}-${target.os}-${target.cpu}`)
+    }
+  })
+})
+
+describe('layoutPlatformPackage', () => {
+  it('copies the Windows exe basename and npm os field', async () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-npm-win-'))
+    try {
+      const distDir = join(tmp, 'dist')
+      mkdirSync(distDir)
+      writeFileSync(join(distDir, 'deepseek-harness-cli-win-x64.exe'), 'fake-exe')
+      const win = PLATFORMS.find(target => target.os === 'win' && target.cpu === 'x64')
+      expect(win).toBeDefined()
+      const packageDir = await layoutPlatformPackage(join(tmp, 'out'), win!, '0.0.0-win', distDir)
+      expect(existsSync(join(packageDir, 'bin', 'deepseek-harness-cli.exe'))).toBe(true)
+      const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8')) as {
+        os: string[]
+        cpu: string[]
+      }
+      expect(manifest.os).toEqual(['win32'])
+      expect(manifest.cpu).toEqual(['x64'])
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
     }
   })
 })
@@ -72,6 +104,7 @@ describe('command aliases', () => {
       expect(generated.bin).toEqual({
         'deepseek-harness-cli': 'bin/deepseek-harness-cli.js',
         deepseek: 'bin/deepseek-harness-cli.js',
+        dsh: 'bin/deepseek-harness-cli.js',
       })
     } finally {
       rmSync(tmp, { recursive: true, force: true })

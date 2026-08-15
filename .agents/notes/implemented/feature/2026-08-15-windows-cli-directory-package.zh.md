@@ -26,9 +26,9 @@ Windows 目录包从这份检出构建，并安装到其他按用户隔离的程
 
 ## 考虑过的备选方案
 
-**像 Codex 那样，让 `install.ps1` 从 GitHub Release 下载。**否决，因为本 fork 没有 release 资产，也没有公开的安装器宿主。检出本身就是载荷。
+**像 Codex 那样，让本打包器的 `install.ps1` 从 GitHub Release 下载。**对目录包否决：[`scripts/install/install.ps1`](../../../../scripts/install/install.ps1) 仍从不拉取远程载荷，检出仍是该路径的输入。发布下载在 [`apps/cli/install/install.ps1`](../../../../apps/cli/install/install.ps1)；见 [win-x64 exe 发布](2026-08-15-windows-cli-exe-release.md)。
 
-**通过 `pkg --sea` 发布单文件 `dsh.exe`。**否决，因为现有 SEA 流水线排除 Windows 和 TUI，而且把 ConPTY 与原生 addon 放进虚拟文件系统是另一项产品。目录树才是 Windows 封装包。
+**用单文件 exe 替换本打包器。**否决，因为检出在没有 release 时仍需要安装路径，且目录树是包含宿主 `node.exe`、不经过 pkg 虚拟文件系统的布局。[win-x64 exe](2026-08-15-windows-cli-exe-release.md) 是另一项产品。
 
 **把 clone 加入 PATH 并启动 `pnpm dsh`。**否决，因为删除或移动检出就会让已安装命令失效，而且源码运行笔记已经拒绝由启动器接管检出。
 
@@ -38,4 +38,4 @@ Windows 目录包从这份检出构建，并安装到其他按用户隔离的程
 
 ## 影响
 
-Windows 用户可以 clone 本仓库，运行 `scripts/install/install.ps1`，然后在新终端中调用 `deepseek`。已安装副本独立于这份检出，`dsh` 仍可用于 profile 命令。该包体积较大（包含 `node.exe` 和生产闭包）、未经签名，并且面向 TUI / headless：在此布局中不支持 `dsh web`。之后的公开 URL 可以托管同一份 `install.ps1` 和 zip，而不必改动打好的目录树。
+Windows 用户可以 clone 本仓库，运行 `scripts/install/install.ps1`，然后在新终端中调用 `deepseek`。已安装副本独立于这份检出，`dsh` 仍可用于 profile 命令。该包体积较大（包含 `node.exe` 和生产闭包）、未经签名，并且面向 TUI / headless：在此布局中不支持 `dsh web`。一行发布安装是 [`apps/cli/install/install.ps1`](../../../../apps/cli/install/install.ps1)。

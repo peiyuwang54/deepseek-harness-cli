@@ -1,5 +1,5 @@
 # Build and distribute the deepseek-harness-cli single-file executable across three
-# channels: GitHub Releases (curl|sh), npm (@peiyuwang54/deepseek-harness-cli), and a
+# channels: GitHub Releases (curl|sh and install.ps1), npm (@peiyuwang54/deepseek-harness-cli), and a
 # Homebrew cask pushed to peiyuwang54/homebrew-dsh. Runs on every deepseek-harness-cli-v*
 # tag push or from a manual dispatch; a manual dispatch is also the only way to
 # release without pushing a tag first. The build/package/release jobs are
@@ -55,7 +55,7 @@ jobs:
           version="${version#v}"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Compute the four-target matrix
+      - name: Compute the five-target matrix
         id: matrix
         run: |
           set -euo pipefail
@@ -69,6 +69,7 @@ jobs:
           node24-linux-arm64 ubuntu-24.04-arm
           node24-macos-arm64 macos-15
           node24-macos-x64 macos-15-intel
+          node24-win-x64 windows-2025
           EOF
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
@@ -77,6 +78,9 @@ jobs:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
@@ -150,6 +154,7 @@ jobs:
         run: |
           set -euo pipefail
           exe="$PWD/dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}"
+          if [ ! -e "$exe" ] && [ -e "$exe.exe" ]; then exe="$exe.exe"; fi
           [ -x "$exe" ] || { echo "::error::$exe missing or not executable"; exit 1; }
           actual="$(DSH_TELEMETRY_DISABLED=1 "$exe" --version)"
           [ "$actual" = "$VERSION" ] || {
@@ -181,6 +186,7 @@ jobs:
           name: deepseek-harness-cli-exe-${{ steps.product.outputs.platform }}
           path: |
             dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}
+            dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}.exe
             dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}-spawn-helper
           if-no-files-found: error
           retention-days: 7
@@ -216,25 +222,29 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist-release
-          for target in macos-arm64 macos-x64 linux-arm64 linux-x64; do
-            arch="${target%-*}"; os="${target#*-}"
+          for target in macos-arm64 macos-x64 linux-arm64 linux-x64 win-x64; do
+            os="${target%-*}"
+            cpu="${target#*-}"
+            exe="dist-exe/deepseek-harness-cli-$target"
+            dest_name=deepseek-harness-cli
+            if [ ! -e "$exe" ] && [ -e "$exe.exe" ]; then exe="$exe.exe"; dest_name=deepseek-harness-cli.exe; fi
             stage="$RUNNER_TEMP/stage-$target"
             mkdir -p "$stage/bin"
-            cp "dist-exe/deepseek-harness-cli-$target" "$stage/bin/deepseek-harness-cli"
-            chmod +x "$stage/bin/deepseek-harness-cli"
+            cp "$exe" "$stage/bin/$dest_name"
+            chmod +x "$stage/bin/$dest_name"
             if [ "$os" = macos ]; then
               cp "dist-exe/deepseek-harness-cli-$target-spawn-helper" "$stage/bin/deepseek-harness-cli-spawn-helper"
               chmod +x "$stage/bin/deepseek-harness-cli-spawn-helper"
             fi
-            (cd "$stage" && tar -czf "$GITHUB_WORKSPACE/dist-release/deepseek-harness-cli-${arch}-${os}.tar.gz" bin)
-            (cd dist-release && sha256sum "deepseek-harness-cli-${arch}-${os}.tar.gz" > "deepseek-harness-cli-${arch}-${os}.sha256")
+            (cd "$stage" && tar -czf "$GITHUB_WORKSPACE/dist-release/deepseek-harness-cli-${cpu}-${os}.tar.gz" bin)
+            (cd dist-release && sha256sum "deepseek-harness-cli-${cpu}-${os}.tar.gz" > "deepseek-harness-cli-${cpu}-${os}.sha256")
           done
 
       - name: Lay out npm packages
         run: pnpm exec tsx scripts/package-dsh-cli-npm.ts --version "$VERSION" --dir dist-exe --out dist-npm
 
       - name: Generate Homebrew cask
-        run: pnpm exec tsx scripts/gen-deepseek-harness-cli-cask.ts --version "$VERSION" --dir dist-exe --out deepseek-harness-cli.rb
+        run: pnpm exec tsx scripts/gen-dsh-cask.ts --version "$VERSION" --dir dist-release --out deepseek-harness-cli.rb
 
       - uses: actions/upload-artifact@v4
         with:
@@ -316,7 +326,7 @@ jobs:
           set -euo pipefail
           if [[ "$VERSION" == *-* ]]; then main_tag=next; else main_tag=latest; fi
           npm publish "dist-npm/main" --tag "$main_tag"
-          for target in macos-arm64 macos-x64 linux-arm64 linux-x64; do
+          for target in macos-arm64 macos-x64 linux-arm64 linux-x64 win-x64; do
             npm publish "dist-npm/platform/${VERSION}-${target}" --tag "$target"
           done
 

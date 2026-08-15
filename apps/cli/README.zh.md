@@ -48,7 +48,7 @@ profile 目录包含一个 `package.json`，其中记录树外插件依赖，以
 
 ## 安装
 
-`dsh` 以单文件可执行程序的形式，为 macOS（`arm64`、`x64`）与 Linux（`arm64`、`x64`）发布。任选其一即可安装：
+`dsh` 以单文件可执行程序的形式，为 macOS（`arm64`、`x64`）、Linux（`arm64`、`x64`）与 Windows（`x64`）发布。任选其一即可安装：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
@@ -56,12 +56,16 @@ npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-第一个命令运行 curl 安装器：它下载最新的 `deepseek-harness-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，并在 `$HOME/.deepseek-harness-cli/bin` 下同时安装 `deepseek` 和兼容名称 `deepseek-harness-cli`（`sh -s -- --to <dir>` 可覆盖目录，`--version <ver>` 可固定版本）。npm 与 Homebrew 渠道也会公开这两个名称。完整契约与计划中的 minisign 签名升级见[安装器 README](install/README.md)。
+```powershell
+irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.ps1 | iex
+```
 
-升级只需重新运行同一命令——curl 安装器原地替换二进制、`npm update -g @peiyuwang54/deepseek-harness-cli` 拉取最新版本、`brew upgrade deepseek-harness-cli` 刷新 cask。
+curl 与 `irm` 安装器会下载最新的 `deepseek-harness-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，并安装到 `$HOME/.deepseek-harness-cli/bin`（`sh -s -- --to <dir>` 或 `-InstallDir` 可覆盖目录；`--version` / `-Version` 可固定版本）。Windows 还会写出 `dsh.cmd` 与 `deepseek.cmd`。npm 渠道包含 Windows x64；Homebrew 只覆盖 macOS 与 Linux。完整契约与计划中的 minisign 签名升级见[安装器 README](install/README.md)。
+
+升级只需重新运行同一命令——curl 与 `irm` 安装器原地替换二进制、`npm update -g @peiyuwang54/deepseek-harness-cli` 拉取最新版本、`brew upgrade deepseek-harness-cli` 刷新 cask。
 
 ## 开发
 
 生产运行需要已构建的包与前端产物。请在仓库根目录单独运行 `pnpm run build`，然后使用 `pnpm dsh <args...>` 运行 TypeScript 入口并转发所有参数；模块解析约定以[源码执行参考](reference/README.md#source-execution)为准。
 
-在 Windows 上，[`scripts/install/install.ps1`](../../scripts/install/install.ps1) 会把带 `deepseek.cmd` 与 `dsh.cmd` 的 CLI 打包副本安装到 `%LOCALAPPDATA%\Programs\dsh`。两个启动器在没有参数时都会打开 TUI。
+在 Windows 上，发布安装器是 [`apps/cli/install/install.ps1`](install/install.ps1)。需要目录包时，[`scripts/install/install.ps1`](../../scripts/install/install.ps1) 仍会把一份检出打包到 `%LOCALAPPDATA%\Programs\dsh`，并带上 `deepseek.cmd` 与 `dsh.cmd`。两个启动器在没有参数时都会打开 TUI。

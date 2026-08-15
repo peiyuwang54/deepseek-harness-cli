@@ -26,9 +26,9 @@ The [source-run decision](../simplification/2026-08-10-source-run-without-manage
 
 ## Alternatives considered
 
-**Download a GitHub Release from `install.ps1`, as Codex does.** Rejected because this fork has no release asset or public installer host. The checkout is the payload.
+**Download a GitHub Release from this packer's `install.ps1`, as Codex does.** Rejected for the directory package: [`scripts/install/install.ps1`](../../../../scripts/install/install.ps1) still never fetches a remote payload, and the checkout remains that path's input. The release download lives in [`apps/cli/install/install.ps1`](../../../../apps/cli/install/install.ps1); see [the win-x64 exe release](2026-08-15-windows-cli-exe-release.md).
 
-**Ship a single-file `dsh.exe` through `pkg --sea`.** Rejected because the existing SEA pipeline excludes Windows and the TUI, and ConPTY plus native addons inside a virtual filesystem is a separate product. The directory tree is the Windows package.
+**Replace this packer with the single-file exe.** Rejected because a checkout still needs a no-release install path, and the directory tree is the layout that includes a host `node.exe` without pkg's virtual filesystem. The [win-x64 exe](2026-08-15-windows-cli-exe-release.md) is a separate product.
 
 **Add the clone to PATH and launch `pnpm dsh`.** Rejected because deleting or moving the checkout would break the installed command, and the source-run note already refuses a launcher that owns the checkout.
 
@@ -38,4 +38,4 @@ The [source-run decision](../simplification/2026-08-10-source-run-without-manage
 
 ## Consequences
 
-A Windows user can clone this repository, run `scripts/install/install.ps1`, and then invoke `deepseek` from a new terminal. The installed copy is independent of the checkout, and `dsh` remains available for profile commands. The package is large (it includes `node.exe` and the production closure), unsigned, and TUI/headless-oriented: `dsh web` is unsupported in this layout. A later public URL can host the same `install.ps1` plus zip without changing the packed tree.
+A Windows user can clone this repository, run `scripts/install/install.ps1`, and then invoke `deepseek` from a new terminal. The installed copy is independent of the checkout, and `dsh` remains available for profile commands. The package is large (it includes `node.exe` and the production closure), unsigned, and TUI/headless-oriented: `dsh web` is unsupported in this layout. The one-line release install is [`apps/cli/install/install.ps1`](../../../../apps/cli/install/install.ps1).

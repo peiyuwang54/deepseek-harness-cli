@@ -20,6 +20,17 @@ const HOMEPAGE = `https://github.com/${REPO}`
 const TARGETS = ['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x64'] as const
 type Target = (typeof TARGETS)[number]
 
+/**
+ * Published GitHub Release stem for one Homebrew target. install.sh downloads
+ * `deepseek-harness-cli-<cpu>-<os>.tar.gz`; the cask URL uses the same order.
+ * @param target - an `os-cpu` key such as `macos-arm64`.
+ * @returns the `<cpu>-<os>` stem, e.g. `arm64-macos`.
+ */
+export function releaseAssetStem(target: Target): string {
+  const [os, cpu] = target.split('-') as [string, string]
+  return `${cpu}-${os}`
+}
+
 export type PlatformShas = Record<Target, string>
 
 /**
@@ -72,15 +83,15 @@ end
 }
 
 /**
- * Read the four `dsh-<target>.sha256` sidecars. Each sidecar is
- * `<hexdigest>  dsh-<arch>-<os>.tar.gz` as published with the release.
+ * Read the four `deepseek-harness-cli-<cpu>-<os>.sha256` sidecars. Each sidecar
+ * is `<hexdigest>  deepseek-harness-cli-<cpu>-<os>.tar.gz` as published.
  * @param dir - the directory holding the sidecars.
  * @returns the parsed digests.
  */
 export async function readPlatformShas(dir: string): Promise<PlatformShas> {
   const shas = {} as PlatformShas
   for (const target of TARGETS) {
-    const sidecar = join(dir, `deepseek-harness-cli-${target}.sha256`)
+    const sidecar = join(dir, `deepseek-harness-cli-${releaseAssetStem(target)}.sha256`)
     if (!existsSync(sidecar)) throw new Error(`gen-dsh-cask: ${sidecar} missing — build ${target} first.`)
     const digest = (await readFile(sidecar, 'utf8')).trim().split(/\s+/)[0]
     if (digest === undefined || !/^[0-9a-f]{64}$/.test(digest)) {

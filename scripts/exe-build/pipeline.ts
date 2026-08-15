@@ -11,7 +11,7 @@ import { existsSync, statSync } from 'node:fs'
 import { chmod, copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve, sep } from 'node:path'
 
-import { OUT_DIR, PKG_SPEC, Target, type BuildCli, type ExeProduct } from './config.ts'
+import { OUT_DIR, PKG_SPEC, Target, productFileName, type BuildCli, type ExeProduct } from './config.ts'
 import { copyPackageTree, materializePackageLinks } from './package-tree.ts'
 
 const root = resolve(import.meta.dirname, '..', '..')
@@ -187,7 +187,7 @@ class ExeBuild {
    * @returns the executable path and, on macOS, its helper path.
    */
   async pack(target: Target): Promise<string[]> {
-    const product = join(this.outDir, `${this.product.outputBasename}-${target.platform}-${target.arch}`)
+    const product = join(this.outDir, productFileName(this.product.outputBasename, target))
     await this.prepareNativePty(target)
     if (!this.cli.dryRun) await mkdir(this.outDir, { recursive: true })
     await this.run(`pkg ${target.spec}`, pnpmBin(), [

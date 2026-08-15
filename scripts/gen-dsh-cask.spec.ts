@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { generateCask, readPlatformShas } from './gen-dsh-cask.ts'
+import { generateCask, readPlatformShas, releaseAssetStem } from './gen-dsh-cask.ts'
 
 const SHAS = {
   'macos-arm64': 'a'.repeat(64),
@@ -17,6 +17,13 @@ const SHAS = {
   'linux-arm64': 'c'.repeat(64),
   'linux-x64': 'd'.repeat(64),
 }
+
+describe('releaseAssetStem', () => {
+  it('writes the published <cpu>-<os> sidecar stem', () => {
+    expect(releaseAssetStem('macos-arm64')).toBe('arm64-macos')
+    expect(releaseAssetStem('linux-x64')).toBe('x64-linux')
+  })
+})
 
 describe('generateCask', () => {
   it('builds the per-platform URL from Homebrew arch/os macros and the version tag', () => {
@@ -46,7 +53,8 @@ describe('readPlatformShas', () => {
   it('parses the published sidecar format', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-cask-spec-'))
     for (const [target, digest] of Object.entries(SHAS)) {
-      writeFileSync(join(dir, `deepseek-harness-cli-${target}.sha256`), `${digest}  deepseek-harness-cli-${target}.tar.gz\n`)
+      const stem = releaseAssetStem(target as keyof typeof SHAS)
+      writeFileSync(join(dir, `deepseek-harness-cli-${stem}.sha256`), `${digest}  deepseek-harness-cli-${stem}.tar.gz\n`)
     }
     expect(await readPlatformShas(dir)).toEqual(SHAS)
   })
@@ -54,12 +62,12 @@ describe('readPlatformShas', () => {
   it('rejects a missing sidecar', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-cask-spec-'))
     mkdirSync(dir, { recursive: true })
-    await expect(readPlatformShas(dir)).rejects.toThrow(/deepseek-harness-cli-macos-arm64\.sha256 missing/)
+    await expect(readPlatformShas(dir)).rejects.toThrow(/deepseek-harness-cli-arm64-macos\.sha256 missing/)
   })
 
   it('rejects a non-hex digest', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-cask-spec-'))
-    writeFileSync(join(dir, 'deepseek-harness-cli-macos-arm64.sha256'), 'not-a-digest\n')
+    writeFileSync(join(dir, 'deepseek-harness-cli-arm64-macos.sha256'), 'not-a-digest\n')
     await expect(readPlatformShas(dir)).rejects.toThrow(/64-hex sha256/)
   })
 })

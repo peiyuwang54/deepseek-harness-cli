@@ -62,8 +62,12 @@ done
 case "$(uname -s)" in
   Darwin) OS=macos ;;
   Linux) OS=linux ;;
+  MINGW*|MSYS*|CYGWIN*|Windows_NT)
+    echo "deepseek-harness-cli: this installer is POSIX sh. On Windows run apps/cli/install/install.ps1." >&2
+    exit 1
+    ;;
   *)
-    echo "deepseek-harness-cli: unsupported operating system $(uname -s); supported: macOS, Linux." >&2
+    echo "deepseek-harness-cli: unsupported operating system $(uname -s); supported: macOS, Linux, Windows (install.ps1)." >&2
     exit 1
     ;;
 esac

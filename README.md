@@ -22,9 +22,15 @@ macOS or Linux:
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
 ```
 
-Windows currently installs from a source checkout:
+Windows (x64) downloads the newest `deepseek-harness-cli-v*` release:
+
+```powershell
+irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.ps1 | iex
+```
 
 <a id="install-windows"></a>
+
+The source checkout still builds the directory package when you want a host `node.exe` tree instead of the release exe:
 
 ```powershell
 git clone https://github.com/peiyuwang54/deepseek-harness-cli.git

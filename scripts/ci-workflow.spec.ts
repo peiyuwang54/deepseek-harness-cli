@@ -475,6 +475,19 @@ describe('Git hooks', () => {
   })
 })
 
+describe('CLI release workflow', () => {
+  it('builds win-x64 on windows-2025 beside the four Unix targets', () => {
+    const workflow = loadWorkflow('.github/workflows/deepseek-harness-cli-release.yml')
+    const plan = workflowJob(workflow, 'plan')
+    if (!Array.isArray(plan.steps)) throw new TypeError('plan job must define steps')
+    const matrixStep = plan.steps.find((step): step is Record<string, unknown> & { run: string } => (
+      isRecord(step) && typeof step.run === 'string' && step.run.includes('node24-win-x64')
+    ))
+    expect(matrixStep?.run).toContain('node24-win-x64 windows-2025')
+    expect(matrixStep?.run).toContain('node24-linux-x64 ubuntu-latest')
+  })
+})
+
 function loadWorkflow(path: string): Record<string, unknown> {
   const workflow: unknown = yaml.load(readFileSync(resolve(root, path), 'utf8'))
   if (!isRecord(workflow)) throw new TypeError(`${path} must define a workflow`)

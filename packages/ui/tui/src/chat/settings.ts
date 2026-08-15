@@ -84,6 +84,55 @@ const TERMINAL_TITLE_CHOICES: readonly MultiSelectDialogChoice[] = [
   { value: 'session-id', label: 'Session ID', description: 'full durable session identifier' },
 ]
 
+/** Stable footer fields accepted by `/statusline`. */
+export const STATUS_LINE_ITEM_IDS = [
+  'goal',
+  'details',
+  'status',
+  'model',
+  'reasoning',
+  'tokens',
+  'context',
+  'queued',
+  'preset',
+  'permissions',
+  'workspace',
+  'git-branch',
+  'session-title',
+  'session-id',
+] as const
+
+/** One persisted footer field. */
+export type StatusLineItem = typeof STATUS_LINE_ITEM_IDS[number]
+
+/** Product footer fields used before the user creates an override. */
+export const DEFAULT_STATUS_LINE_ITEMS: readonly StatusLineItem[] = [
+  'goal',
+  'details',
+  'model',
+  'tokens',
+  'context',
+  'queued',
+]
+
+/** User-facing catalog for the ordered footer setup dialog. */
+const STATUS_LINE_CHOICES: readonly MultiSelectDialogChoice[] = [
+  { value: 'goal', label: 'Goal', description: 'active Goal state and elapsed time' },
+  { value: 'details', label: 'Details', description: 'reasoning and tool-card expansion marker' },
+  { value: 'status', label: 'Run status', description: 'idle or running state' },
+  { value: 'model', label: 'Model', description: 'current model with reasoning effort' },
+  { value: 'reasoning', label: 'Reasoning effort', description: 'current effort only' },
+  { value: 'tokens', label: 'Tokens', description: 'uncached input and output totals' },
+  { value: 'context', label: 'Context', description: 'context-window percentage used' },
+  { value: 'queued', label: 'Queued work', description: 'messages waiting while the agent runs' },
+  { value: 'preset', label: 'Preset', description: 'active agent preset' },
+  { value: 'permissions', label: 'Permissions', description: 'active permission preset' },
+  { value: 'workspace', label: 'Workspace', description: 'current working directory' },
+  { value: 'git-branch', label: 'Git branch', description: 'omitted outside a Git worktree' },
+  { value: 'session-title', label: 'Session title', description: 'omitted when unnamed' },
+  { value: 'session-id', label: 'Session ID', description: 'full durable session identifier' },
+]
+
 /** Durable accent section schema; also the wire envelope validation against it. */
 const AccentSettingsSchema: z<AccentSelection> = z.object({
   light: z.union([...ACCENT_IDS]).default(DEFAULT_ACCENT),
@@ -93,11 +142,13 @@ const AccentSettingsSchema: z<AccentSelection> = z.object({
 /** Durable terminal presentation section. */
 interface TerminalPresentationSettings {
   titleItems: TerminalTitleItem[]
+  statusLineItems?: StatusLineItem[]
 }
 
 /** Durable terminal-presentation schema and file-input validation. */
 const TerminalPresentationSettingsSchema: z<TerminalPresentationSettings> = z.object({
   titleItems: z.array(z.union([...TERMINAL_TITLE_ITEM_IDS])).default([...DEFAULT_TERMINAL_TITLE_ITEMS]),
+  statusLineItems: z.array(z.union([...STATUS_LINE_ITEM_IDS])),
 })
 
 /**
@@ -134,6 +185,28 @@ function resolveTitleItems(section: unknown): TerminalTitleItem[] {
  */
 export function readTuiTitleItems(settings: SettingsProvider | undefined): TerminalTitleItem[] {
   return resolveTitleItems(settings?.get(TUI_TERMINAL_SETTINGS_NAMESPACE))
+}
+
+/** Narrow one durable footer id. */
+function isStatusLineItem(value: unknown): value is StatusLineItem {
+  return STATUS_LINE_ITEM_IDS.some(item => item === value)
+}
+
+/** Resolve an optional durable footer override to valid, de-duplicated ordering. */
+function resolveStatusLineItems(section: unknown): StatusLineItem[] | undefined {
+  if (typeof section !== 'object' || section === null) return undefined
+  const items = (section as { statusLineItems?: unknown }).statusLineItems
+  if (!Array.isArray(items)) return undefined
+  return [...new Set(items.filter(isStatusLineItem))]
+}
+
+/**
+ * Read the optional footer override; absence preserves the profile's prompt template.
+ * @param settings - optional settings provider.
+ * @returns persisted footer ordering or `undefined` when the profile template remains active.
+ */
+export function readTuiStatusLineItems(settings: SettingsProvider | undefined): StatusLineItem[] | undefined {
+  return resolveStatusLineItems(settings?.get(TUI_TERMINAL_SETTINGS_NAMESPACE))
 }
 
 /** Narrow an unknown settings value to the shared preference vocabulary. */
@@ -183,6 +256,8 @@ export interface SettingsControllerDeps extends ChatChannelDeps, ChannelNotice {
   applyLocale(locale: TuiLocale): void
   /** Preview or commit the ordered terminal-title fields. */
   applyTitle(items: readonly TerminalTitleItem[]): void
+  /** Preview or commit footer fields; undefined restores the profile template. */
+  applyStatusLine(items: readonly StatusLineItem[] | undefined): void
 }
 
 /** Terminal Settings and appearance controller. */
@@ -199,6 +274,8 @@ export interface SettingsController {
   queueSettingsCommand(raw: string): void
   /** Queue `/title`; empty input opens the terminal-title setup dialog. */
   queueTitleCommand(raw: string): void
+  /** Queue `/statusline`; empty input opens the ordered footer setup dialog. */
+  queueStatusLineCommand(raw: string): void
   /** Close settings-owned overlays during shutdown. */
   clearOverlays(): void
   /** Remove the shared settings listener. */
@@ -226,7 +303,9 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
   let themeOverlay: TuiOverlaySession | undefined
   let languageOverlay: TuiOverlaySession | undefined
   let titleOverlay: TuiOverlaySession | undefined
+  let statusLineOverlay: TuiOverlaySession | undefined
   let titleItems = readTuiTitleItems(ctx.get('settings'))
+  let statusLineItems = readTuiStatusLineItems(ctx.get('settings'))
   let operations = Promise.resolve()
 
   const settings = (): SettingsProvider | undefined => ctx.get('settings')
@@ -327,6 +406,20 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     }])
     titleItems = [...nextItems]
     deps.applyTitle(titleItems)
+    return true
+  }
+
+  const commitStatusLineItems = async (nextItems: readonly StatusLineItem[] | undefined): Promise<boolean> => {
+    const provider = settings()
+    if (provider?.get(TUI_TERMINAL_SETTINGS_NAMESPACE) === undefined) {
+      deps.appendNotice('Status line settings are unavailable: the ui-terminal namespace is not registered.', 'warning')
+      return false
+    }
+    await provider.mutate(TUI_TERMINAL_SETTINGS_NAMESPACE, [nextItems === undefined
+      ? { op: 'unset', path: ['statusLineItems'] }
+      : { op: 'set', path: ['statusLineItems'], value: [...nextItems] }])
+    statusLineItems = nextItems === undefined ? undefined : [...nextItems]
+    deps.applyStatusLine(statusLineItems)
     return true
   }
 
@@ -477,6 +570,49 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     deps.requestRender()
   }
 
+  const showStatusLine = (): void => {
+    void statusLineOverlay?.close()
+    const original = statusLineItems === undefined ? undefined : [...statusLineItems]
+    const selected = statusLineItems ?? DEFAULT_STATUS_LINE_ITEMS
+    const session = overlayManager.open({
+      create: () => new MultiSelectDialog(
+        'Configure Status Line',
+        STATUS_LINE_CHOICES,
+        selected,
+        resolved.maxModelOptions,
+        palette,
+        (values) => { deps.applyStatusLine(values.filter(isStatusLineItem)) },
+        (values) => {
+          void session.close()
+          const nextItems = values.filter(isStatusLineItem)
+          operations = operations.then(async () => {
+            if (!await commitStatusLineItems(nextItems)) deps.applyStatusLine(original)
+            else if (!deps.isDisposed()) deps.appendNotice(`Status line: ${nextItems.length === 0 ? 'disabled' : nextItems.join(' · ')}.`)
+          }).catch((error: unknown) => {
+            deps.applyStatusLine(original)
+            if (!deps.isDisposed()) deps.appendNotice(`Status line update failed: ${String(error)}`, 'error')
+          })
+        },
+        () => {
+          deps.applyStatusLine(original)
+          void session.close()
+        },
+        true,
+      ),
+      options: {
+        width: resolved.modelDialogWidth,
+        maxHeight: resolved.modelDialogMaxHeight,
+        anchor: 'center',
+        margin: 1,
+      },
+    }, 'composer')
+    statusLineOverlay = session
+    void session.closed.then(() => {
+      if (statusLineOverlay === session) statusLineOverlay = undefined
+    })
+    deps.requestRender()
+  }
+
   const showSettings = (): void => {
     const copy = tuiCopy(locale)
     const provider = settings()
@@ -489,6 +625,13 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       { value: '@theme', label: 'Theme', description: `${themePreference} · ${accentHue(accent.light).label} / ${accentHue(accent.dark).label}` },
       { value: '@language', label: copy.language, description: tuiLocaleLabel(locale) },
       { value: '@title', label: 'Terminal title', description: titleItems.length === 0 ? 'disabled' : titleItems.join(' · ') },
+      {
+        value: '@statusline',
+        label: 'Status line',
+        description: statusLineItems === undefined
+          ? 'profile template'
+          : statusLineItems.length === 0 ? 'disabled' : statusLineItems.join(' · '),
+      },
       {
         value: '@document',
         label: copy.settingsDocument,
@@ -514,6 +657,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
           if (value === '@theme') showTheme()
           else if (value === '@language') showLanguage()
           else if (value === '@title') showTitle()
+          else if (value === '@statusline') showStatusLine()
           else if (value === '@document') {
             operations = operations.then(showDocument).catch((error: unknown) => {
               if (!deps.isDisposed()) deps.appendNotice(`Settings document failed: ${String(error)}`, 'error')
@@ -632,6 +776,41 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     }
   }
 
+  const statusLineCommand = async (raw: string): Promise<void> => {
+    const argument = raw.trim()
+    if (argument === '') {
+      showStatusLine()
+      return
+    }
+    if (argument === 'status') {
+      deps.appendNotice(`Status line: ${statusLineItems === undefined
+        ? 'profile template'
+        : statusLineItems.length === 0 ? 'disabled' : statusLineItems.join(' · ')}.`)
+      return
+    }
+    if (argument === 'reset') {
+      if (await commitStatusLineItems(undefined) && !deps.isDisposed()) {
+        deps.appendNotice('Status line reset to the active profile template.')
+      }
+      return
+    }
+    if (argument === 'off') {
+      if (await commitStatusLineItems([]) && !deps.isDisposed()) deps.appendNotice('Status line disabled.')
+      return
+    }
+    const tokens = argument.startsWith('set ')
+      ? argument.slice(4).split(/[\s,]+/u).filter(Boolean)
+      : []
+    if (tokens.length === 0 || tokens.some(token => !isStatusLineItem(token))) {
+      deps.appendNotice(`Usage: /statusline [status|reset|off|set <${STATUS_LINE_ITEM_IDS.join('|')}> ...]`, 'warning')
+      return
+    }
+    const selected = [...new Set(tokens.filter(isStatusLineItem))]
+    if (await commitStatusLineItems(selected) && !deps.isDisposed()) {
+      deps.appendNotice(`Status line: ${selected.join(' · ')}.`)
+    }
+  }
+
   const disposeSettingsUpdates = ctx.on('settings/updated', (namespace, next) => {
     if (typeof next !== 'object' || next === null) return
     if (namespace === TUI_LOCALE_SETTINGS_NAMESPACE) {
@@ -652,9 +831,20 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     }
     if (namespace === TUI_TERMINAL_SETTINGS_NAMESPACE) {
       const nextItems = resolveTitleItems(next)
-      if (nextItems.length === titleItems.length && nextItems.every((item, index) => item === titleItems[index])) return
-      titleItems = nextItems
-      deps.applyTitle(titleItems)
+      if (nextItems.length !== titleItems.length || nextItems.some((item, index) => item !== titleItems[index])) {
+        titleItems = nextItems
+        deps.applyTitle(titleItems)
+      }
+      const nextStatusLineItems = resolveStatusLineItems(next)
+      const statusLineChanged = nextStatusLineItems === undefined
+        ? statusLineItems !== undefined
+        : statusLineItems === undefined
+          || nextStatusLineItems.length !== statusLineItems.length
+          || nextStatusLineItems.some((item, index) => item !== statusLineItems?.[index])
+      if (statusLineChanged) {
+        statusLineItems = nextStatusLineItems
+        deps.applyStatusLine(statusLineItems)
+      }
       return
     }
     if (namespace !== TUI_THEME_SETTINGS_NAMESPACE) return
@@ -687,11 +877,17 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
         if (!deps.isDisposed()) deps.appendNotice(`Title command failed: ${String(error)}`, 'error')
       })
     },
+    queueStatusLineCommand(raw): void {
+      operations = operations.then(() => statusLineCommand(raw)).catch((error: unknown) => {
+        if (!deps.isDisposed()) deps.appendNotice(`Status line command failed: ${String(error)}`, 'error')
+      })
+    },
     clearOverlays(): void {
       settingsOverlay = undefined
       themeOverlay = undefined
       languageOverlay = undefined
       titleOverlay = undefined
+      statusLineOverlay = undefined
     },
     detach(): void {
       disposeSettingsUpdates()

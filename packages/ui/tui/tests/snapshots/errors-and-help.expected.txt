@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=71 base=39 viewport=39
+terminal 92x32 buffer=normal length=73 base=41 viewport=41
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=3 viewportRow=27 bufferRow=66
+cursor visible column=3 viewportRow=27 bufferRow=68
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-blue bold
@@ -89,58 +89,62 @@ buffer
   style 0-70 dim
 42| "/status — Show session status and token usage                                               "
   style 0-44 dim
-43| "/subagents — Switch the active agent thread                                                 "
-  style 0-42 dim
-44| "/theme [light|dark|system] [accent [light|dark] [id]] — Choose and persist appearance and   "
+43| "/statusline [status|reset|off|set <items...>] — Configure which items appear in the status  "
   style 0-91 dim
-45| "accent color                                                                                "
+44| "line                                                                                        "
+  style 0-3 dim
+45| "/subagents — Switch the active agent thread                                                 "
+  style 0-42 dim
+46| "/theme [light|dark|system] [accent [light|dark] [id]] — Choose and persist appearance and   "
+  style 0-91 dim
+47| "accent color                                                                                "
   style 0-11 dim
-46| "/title [status|reset|set <items...>] — Configure terminal window title fields               "
+48| "/title [status|reset|set <items...>] — Configure terminal window title fields               "
   style 0-76 dim
-47| "/usage — Show this session's model timing and token usage                                   "
+49| "/usage — Show this session's model timing and token usage                                   "
   style 0-56 dim
-48| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
+50| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
   style 0-73 dim
-49| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
+51| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
   style 0-81 dim
-50| "/skill:<name> [instructions] — load a skill into the conversation                           "
+52| "/skill:<name> [instructions] — load a skill into the conversation                           "
   style 0-64 dim
-51| <blank>
-52| "provider stream failed after partial output                                                 "
-  style 0-42 fg=red
 53| <blank>
-54| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
-  style 0-46 dim
+54| "provider stream failed after partial output                                                 "
+  style 0-42 fg=red
 55| <blank>
-56| "The previous process ended during this turn.                                                "
-  style 0-43 fg=yellow
+56| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
+  style 0-46 dim
 57| <blank>
-58| "Turn stopped: the agent was disposed.                                                       "
-  style 0-36 fg=yellow
+58| "The previous process ended during this turn.                                                "
+  style 0-43 fg=yellow
 59| <blank>
-60| "Turn ended: plugin-policy.                                                                  "
-  style 0-25 fg=yellow
+60| "Turn stopped: the agent was disposed.                                                       "
+  style 0-36 fg=yellow
 61| <blank>
-62| "Unknown command: /unknown-advanced-command                                                  "
+62| "Turn ended: plugin-policy.                                                                  "
+  style 0-25 fg=yellow
+63| <blank>
+64| "Unknown command: /unknown-advanced-command                                                  "
   style 0-41 fg=yellow
-63-64| <blank>
-65| "                                                                                            "
+65-66| <blank>
+67| "                                                                                            "
   style 0-91 bg=ansi-236
-66| " › │Describe a task, @ a file, or / for commands                                            "
+68| " › │Describe a task, @ a file, or / for commands                                            "
   style 0-0 bg=ansi-236
   style 1-1 fg=bright-blue bg=ansi-236 bold
   style 2-2 bg=ansi-236 dim
   style 3-3 bg=ansi-236
   style 4-47 bg=ansi-236 dim
   style 48-91 bg=ansi-236
-67| "                                                                                            "
+69| "                                                                                            "
   style 0-91 bg=ansi-236
-68| "  Enter send · Shift+Enter newline · / commands"
+70| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-69| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+71| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 44-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-70| "                                      1 turn · 1 step"
+72| "                                      1 turn · 1 step"
   style 38-52 dim

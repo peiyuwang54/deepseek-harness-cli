@@ -587,6 +587,102 @@ describe('shared settings, appearance, and workspaces', () => {
     await dispose(result)
   })
 
+  it('persists, reorders, previews, and resets /statusline fields', async () => {
+    const terminalNamespace = settingsNamespace('ui-terminal')
+    let section: { titleItems: string[]; statusLineItems?: string[] } = {
+      titleItems: ['session-title', 'app-name'],
+      statusLineItems: ['workspace', 'model'],
+    }
+    let resultContext: Context | undefined
+    const mutate = vi.fn(async (
+      namespace: string,
+      ops: ReadonlyArray<{ op: string; path: readonly string[]; value?: unknown }>,
+    ) => {
+      const operation = ops[0]
+      if (namespace !== terminalNamespace || operation?.path.join('.') !== 'statusLineItems') return
+      const previous = section
+      section = operation.op === 'unset'
+        ? { titleItems: section.titleItems }
+        : { ...section, statusLineItems: [...operation.value as string[]] }
+      resultContext?.emit('settings/updated', terminalNamespace, section, previous, 'update')
+    })
+    const result = await setup({
+      cwd: '/workspace',
+      config: { theme: { rightPrompt: 'PROFILE FOOTER' } },
+      configureContext: composeFrontDoorServices((ctx) => {
+        resultContext = ctx
+        ctx.provide('settings', {
+          get: (namespace: string) => namespace === terminalNamespace ? section : undefined,
+          mutate,
+          describe: () => [],
+          writable: true,
+          prepareDocument: () => Promise.resolve(undefined),
+        } as never)
+      }),
+    })
+    expect(result.terminal.output).toContain('/workspace')
+    expect(result.terminal.output).toContain('deepseek-v4-flash [alt+m]')
+    expect(result.terminal.output).not.toContain('PROFILE FOOTER')
+
+    result.terminal.send('/statusline set permissions tokens')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(mutate).toHaveBeenLastCalledWith(terminalNamespace, [{
+      op: 'set',
+      path: ['statusLineItems'],
+      value: ['permissions', 'tokens'],
+    }])
+
+    result.terminal.send('/statusline')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Configure Status Line')
+    expect(result.terminal.output).toContain('←/→ reorder')
+    result.terminal.send('\x1b[C')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(mutate).toHaveBeenLastCalledWith(terminalNamespace, [{
+      op: 'set',
+      path: ['statusLineItems'],
+      value: ['tokens', 'permissions'],
+    }])
+
+    result.terminal.send('/statusline')
+    result.terminal.send('\r')
+    await tick()
+    result.terminal.output = ''
+    result.terminal.send(' ')
+    await tick()
+    expect(result.terminal.output).not.toContain('↑0 ↓0')
+    result.terminal.output = ''
+    result.terminal.send('\x1b')
+    await tick()
+    expect(result.terminal.output).toContain('↑0 ↓0')
+
+    result.terminal.send('/statusline reset')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(mutate).toHaveBeenLastCalledWith(terminalNamespace, [{
+      op: 'unset',
+      path: ['statusLineItems'],
+    }])
+    expect(result.terminal.output).toContain('PROFILE FOOTER')
+
+    result.terminal.send('/statusline off')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(mutate).toHaveBeenLastCalledWith(terminalNamespace, [{
+      op: 'set',
+      path: ['statusLineItems'],
+      value: [],
+    }])
+    result.terminal.send('/statusline invalid')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Usage: /statusline [status|reset|off|set')
+    await dispose(result)
+  })
+
   it('shares /language with the Web locale preference and refreshes terminal chrome', async () => {
     const localeNamespace = settingsNamespace('locale')
     let preference = 'en'

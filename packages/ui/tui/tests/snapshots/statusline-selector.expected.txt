@@ -1,0 +1,73 @@
+terminal 92x32 buffer=alternate length=32 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=76 viewportRow=30 bufferRow=30
+buffer
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1-13| <blank>
+14| "                                                                                            "
+  style 0-91 bg=ansi-236
+15| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-41 bg=ansi-236 dim
+  style 42-91 bg=ansi-236
+16| "                                                                                            "
+  style 0-91 bg=ansi-236
+17| "  Enter 发送 · Shift+Enter 换行 · / 命令"
+  style 0-39 dim
+18| "╭ Configure Status Line ───────────────────────────────────────────────────╮"
+  style 0-75 fg=bright-blue
+19| "│ → ☑ Goal                          active Goal state and elapsed time     │"
+  style 0-0 fg=bright-blue
+  style 2-69 fg=bright-blue inverse
+  style 75-75 fg=bright-blue
+20| "│   ☑ Details                       reasoning and tool-card expansion ma   │"
+  style 0-0 fg=bright-blue
+  style 13-71 dim
+  style 75-75 fg=bright-blue
+21| "│   ☑ Model                         current model with reasoning effort    │"
+  style 0-0 fg=bright-blue
+  style 11-70 dim
+  style 75-75 fg=bright-blue
+22| "│   ☑ Tokens                        uncached input and output totals       │"
+  style 0-0 fg=bright-blue
+  style 12-67 dim
+  style 75-75 fg=bright-blue
+23| "│   ☑ Context                       context-window percentage used         │"
+  style 0-0 fg=bright-blue
+  style 13-65 dim
+  style 75-75 fg=bright-blue
+24| "│   ☑ Queued work                   messages waiting while the agent run   │"
+  style 0-0 fg=bright-blue
+  style 17-71 dim
+  style 75-75 fg=bright-blue
+25| "│   ☐ Run status                    idle or running state                  │"
+  style 0-0 fg=bright-blue
+  style 16-56 dim
+  style 75-75 fg=bright-blue
+26| "│   ☐ Reasoning effort              current effort only                    │"
+  style 0-0 fg=bright-blue
+  style 22-54 dim
+  style 75-75 fg=bright-blue
+27| "│   (1/14)                                                                 │"
+  style 0-0 fg=bright-blue
+  style 2-9 dim
+  style 75-75 fg=bright-blue
+28| "│                                                                          │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+29| "│ ↑/↓ select • ←/→ reorder • Space toggle • Enter save • Esc cancel        │"
+  style 0-0 fg=bright-blue
+  style 2-66 dim
+  style 75-75 fg=bright-blue
+30| "╰──────────────────────────────────────────────────────────────────────────╯"
+  style 0-75 fg=bright-blue
+31| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 44-45 dim
+  style 48-72 dim
+  style 75-79 dim
+  style 82-91 dim

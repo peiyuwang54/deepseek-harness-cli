@@ -227,12 +227,22 @@ export class StatusCardComponent implements Component {
 /** The left/right template line rendered above the editor. */
 export class PromptContextComponent implements Component {
   constructor(
-    private readonly leftTemplate: readonly TuiPromptTemplateToken[],
-    private readonly rightTemplate: readonly TuiPromptTemplateToken[],
+    private leftTemplate: readonly TuiPromptTemplateToken[],
+    private rightTemplate: readonly TuiPromptTemplateToken[],
     private readonly resolve: (name: string) => string | undefined,
   ) {}
 
   invalidate(): void {}
+
+  /** Replace the footer templates after a live settings preview or update. */
+  setTemplates(
+    leftTemplate: readonly TuiPromptTemplateToken[],
+    rightTemplate: readonly TuiPromptTemplateToken[],
+  ): void {
+    this.leftTemplate = leftTemplate
+    this.rightTemplate = rightTemplate
+    this.invalidate()
+  }
 
   render(width: number): string[] {
     const right = truncateToWidth(renderTuiPromptTemplate(this.rightTemplate, this.resolve), width, '')
@@ -563,18 +573,31 @@ export type MultiSelectDialogChoice = ActionDialogChoice
 export class MultiSelectDialog implements Component {
   private list: SelectList
   private readonly enabled: Set<string>
+  private choices: MultiSelectDialogChoice[]
 
   constructor(
     private readonly title: string,
-    private readonly choices: readonly MultiSelectDialogChoice[],
+    choices: readonly MultiSelectDialogChoice[],
     selected: readonly string[],
     private readonly maxVisible: number,
     private readonly palette: Palette,
     private readonly preview: (values: readonly string[]) => void,
     private readonly done: (values: readonly string[]) => void,
     private readonly cancel: () => void,
+    private readonly orderable = false,
   ) {
     this.enabled = new Set(selected)
+    const selectedOrder = new Map(selected.map((value, index) => [value, index]))
+    this.choices = this.orderable
+      ? [...choices].sort((left, right) => {
+        const leftIndex = selectedOrder.get(left.value)
+        const rightIndex = selectedOrder.get(right.value)
+        if (leftIndex !== undefined && rightIndex !== undefined) return leftIndex - rightIndex
+        if (leftIndex !== undefined) return -1
+        if (rightIndex !== undefined) return 1
+        return choices.indexOf(left) - choices.indexOf(right)
+      })
+      : [...choices]
     this.list = this.buildList(selected[0])
   }
 
@@ -611,6 +634,24 @@ export class MultiSelectDialog implements Component {
     this.preview(this.values())
   }
 
+  /** Move the highlighted row within the persisted display ordering. */
+  private move(direction: -1 | 1): void {
+    const selected = this.list.getSelectedItem()
+    /* v8 ignore next -- a non-empty choice catalog always has one selection. */
+    if (selected === null) return
+    const index = this.choices.findIndex(choice => choice.value === selected.value)
+    const target = index + direction
+    if (index < 0 || target < 0 || target >= this.choices.length) return
+    const current = this.choices[index]
+    const displaced = this.choices[target]
+    /* v8 ignore next -- both indices are range-checked above. */
+    if (current === undefined || displaced === undefined) return
+    this.choices[target] = current
+    this.choices[index] = displaced
+    this.list = this.buildList(selected.value)
+    this.preview(this.values())
+  }
+
   invalidate(): void {
     this.list.invalidate()
   }
@@ -619,6 +660,8 @@ export class MultiSelectDialog implements Component {
     if (matchesKey(data, Key.escape) || matchesKey(data, Key.ctrl('c'))) this.cancel()
     else if (matchesKey(data, Key.space)) this.toggle()
     else if (matchesKey(data, Key.enter)) this.done(this.values())
+    else if (this.orderable && matchesKey(data, Key.left)) this.move(-1)
+    else if (this.orderable && matchesKey(data, Key.right)) this.move(1)
     else this.list.handleInput(data)
     this.invalidate()
   }
@@ -628,7 +671,9 @@ export class MultiSelectDialog implements Component {
     return renderDialog(this.title, [
       ...this.list.render(innerWidth),
       '',
-      this.palette.dim('↑/↓ move • Space toggle • Enter save • Esc cancel'),
+      this.palette.dim(this.orderable
+        ? '↑/↓ select • ←/→ reorder • Space toggle • Enter save • Esc cancel'
+        : '↑/↓ move • Space toggle • Enter save • Esc cancel'),
     ], width, this.palette)
   }
 }

@@ -7,31 +7,35 @@ buffer
   style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
-1-16| <blank>
-17| "                                                                                            "
+1-15| <blank>
+16| "                                                                                            "
   style 0-91 bg=ansi-236
-18| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
+17| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
   style 0-0 bg=ansi-236
   style 1-1 fg=bright-blue bg=ansi-236 bold
   style 2-41 bg=ansi-236 dim
   style 42-91 bg=ansi-236
-19| "                                                                                            "
+18| "                                                                                            "
   style 0-91 bg=ansi-236
-20| "  Enter 发送 · Shift+Enter 换行 · / 命令"
+19| "  Enter 发送 · Shift+Enter 换行 · / 命令"
   style 0-39 dim
-21| "╭ 设置 ────────────────────────────────────────────────────────────────────╮"
+20| "╭ 设置 ────────────────────────────────────────────────────────────────────╮"
   style 0-75 fg=bright-blue
-22| "│ → Theme                           dark · DeepSeek / DeepSeek             │"
+21| "│ → Theme                           dark · DeepSeek / DeepSeek             │"
   style 0-0 fg=bright-blue
   style 2-61 fg=bright-blue inverse
   style 75-75 fg=bright-blue
-23| "│   语言                            中文                                   │"
+22| "│   语言                            中文                                   │"
   style 0-0 fg=bright-blue
   style 8-39 dim
   style 75-75 fg=bright-blue
-24| "│   Terminal title                  session-title · app-name               │"
+23| "│   Terminal title                  session-title · app-name               │"
   style 0-0 fg=bright-blue
   style 18-59 dim
+  style 75-75 fg=bright-blue
+24| "│   Status line                     profile template                       │"
+  style 0-0 fg=bright-blue
+  style 15-51 dim
   style 75-75 fg=bright-blue
 25| "│   设置文件                        /home/snapshot/.dsh/settings.yml       │"
   style 0-0 fg=bright-blue

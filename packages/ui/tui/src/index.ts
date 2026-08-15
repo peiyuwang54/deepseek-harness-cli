@@ -70,6 +70,7 @@ import {
 import {
   parseTuiPromptTemplate,
   renderTuiPromptTemplate,
+  type TuiPromptTemplateToken,
   type TuiPromptValueHandle,
 } from './prompt.ts'
 import type {
@@ -170,10 +171,13 @@ import { createForkController } from './chat/fork.ts'
 import {
   createSettingsController,
   readTuiAccent,
+  readTuiStatusLineItems,
   readTuiTitleItems,
   readTuiThemePreference,
   registerTuiSettingsNamespaces,
+  STATUS_LINE_ITEM_IDS,
   type SettingsController,
+  type StatusLineItem,
   type TerminalTitleItem,
   type TuiThemePreference,
 } from './chat/settings.ts'
@@ -409,6 +413,7 @@ export function createTuiChat(
   let themePreference = readTuiThemePreference(ctx.get('settings'))
   let accent: AccentSelection = readTuiAccent(ctx.get('settings'))
   let titleItems = readTuiTitleItems(ctx.get('settings'))
+  let statusLineItems = readTuiStatusLineItems(ctx.get('settings'))
   let locale = readTuiLocale(ctx.get('settings'))
   let terminalScheme: TerminalColorScheme = 'dark'
   const initialScheme: TerminalColorScheme = themePreference === 'light' ? 'light' : 'dark'
@@ -671,6 +676,15 @@ export function createTuiChat(
     || symbolValue === undefined || indicatorValue === undefined) {
     throw new Error('TUI prompt built-ins failed to initialize')
   }
+  const statusLinePromptValues = new Map<StatusLineItem, TuiPromptValueHandle>()
+  for (const item of STATUS_LINE_ITEM_IDS) {
+    statusLinePromptValues.set(item, ctx.tuiPrompt.register(`statusline/${item}`))
+  }
+  const setStatusLinePromptValue = (item: StatusLineItem, value: string | undefined): void => {
+    const handle = statusLinePromptValues.get(item)
+    if (handle === undefined) throw new Error(`TUI status line field failed to initialize: ${item}`)
+    handle.set(value)
+  }
   const updatePromptValues = (): void => {
     const renderTime = now()
     cwdValue.set(palette.bold(palette.accent(formattedCwd)))
@@ -697,15 +711,40 @@ export function createTuiChat(
         elapsedMs: goalTimingTracker.elapsedAt(agent.session.events, goalFooterState.id, renderTime),
       })
     goalValue.set(goalStatus === undefined ? undefined : `${palette.accent(goalStatus)}  `)
+    setStatusLinePromptValue('goal', goalStatus === undefined ? undefined : palette.accent(goalStatus))
+    setStatusLinePromptValue('details', palette.dim(detailsExpanded ? '▾' : '▸'))
+    setStatusLinePromptValue('status', palette.dim(agent.status))
+    setStatusLinePromptValue('model', palette.dim(`${modelLabel} [alt+m]`))
+    setStatusLinePromptValue('reasoning', target.current?.reasoningEffort === undefined
+      ? undefined
+      : palette.dim(displayInlineText(target.current.reasoningEffort)))
+    setStatusLinePromptValue('tokens', palette.dim(usage))
+    setStatusLinePromptValue('context', contextWindow === undefined
+      ? undefined
+      : palette.dim(`${Math.min(100, Math.round(ctx.tokenMeter.measure(agent.session).totalTokens / contextWindow * 100))}% context`))
+    setStatusLinePromptValue('queued', queued === undefined ? undefined : palette.dim(queued))
+    setStatusLinePromptValue('preset', palette.dim(displayInlineText(currentPreset())))
+    setStatusLinePromptValue('permissions', palette.dim(displayInlineText(currentPermission())))
+    setStatusLinePromptValue('workspace', palette.dim(formattedCwd))
+    setStatusLinePromptValue('git-branch', branch === undefined ? undefined : palette.dim(displayText(branch)))
+    setStatusLinePromptValue('session-title', sessionTitle === undefined ? undefined : palette.dim(displayText(sessionTitle)))
+    setStatusLinePromptValue('session-id', palette.dim(displayText(agent.session.id)))
     symbolValue.set(palette.bold(palette.accent('dsh')))
     compactionStatusLine.setText(compacting === undefined
       ? ''
       : palette.dim(`Context being compacted ${formatStatusDuration(renderTime - compacting.startedAt)}`))
     indicatorValue.set(`${palette.bold(palette.accent('›'))}${palette.dim(' ')}`)
   }
+  const profileLeftPromptTemplate = parseTuiPromptTemplate(displayInlineText(resolved.theme.leftPrompt))
+  const profileRightPromptTemplate = parseTuiPromptTemplate(displayInlineText(resolved.theme.rightPrompt))
+  const statusLinePromptTemplate = (items: readonly StatusLineItem[]): readonly TuiPromptTemplateToken[] =>
+    parseTuiPromptTemplate(items.map(item => `\${statusline/${item}}`).join('  '))
+  let promptRightTemplate = statusLineItems === undefined
+    ? profileRightPromptTemplate
+    : statusLinePromptTemplate(statusLineItems)
   const promptContext = new PromptContextComponent(
-    parseTuiPromptTemplate(displayInlineText(resolved.theme.leftPrompt)),
-    parseTuiPromptTemplate(displayInlineText(resolved.theme.rightPrompt)),
+    profileLeftPromptTemplate,
+    promptRightTemplate,
     valueName => ctx.tuiPrompt.get(valueName),
   )
   const transcriptViewport = new TranscriptViewport(chat, (width) => {
@@ -1645,6 +1684,14 @@ export function createTuiChat(
     applyTitle: (items) => {
       titleItems = [...items]
       updateTerminalTitle()
+    },
+    applyStatusLine: (items) => {
+      statusLineItems = items === undefined ? undefined : [...items]
+      promptRightTemplate = statusLineItems === undefined
+        ? profileRightPromptTemplate
+        : statusLinePromptTemplate(statusLineItems)
+      promptContext.setTemplates(profileLeftPromptTemplate, promptRightTemplate)
+      requestRender()
     },
   })
   credentialsController = createCredentialsController({
@@ -2673,6 +2720,15 @@ export function createTuiChat(
       },
     })
     commandCtx.commands.register({
+      name: 'statusline',
+      description: 'Configure which items appear in the status line',
+      input: { hint: '[status|reset|off|set <items...>]' },
+      handler: ({ rawInput }) => {
+        settingsController.queueStatusLineCommand(rawInput)
+        return { kind: 'success' }
+      },
+    })
+    commandCtx.commands.register({
       name: 'workspace',
       description: 'Choose or add a workspace and start a fresh session there',
       input: { hint: '[directory]' },
@@ -2945,13 +3001,13 @@ export function createTuiChat(
     const markerValue = (name: string): string | undefined =>
       name === valueName ? marker : ctx.tuiPrompt.get(name)
     const right = truncateToWidth(renderTuiPromptTemplate(
-      parseTuiPromptTemplate(displayInlineText(resolved.theme.rightPrompt)),
+      promptRightTemplate,
       markerValue,
     ), width, '')
     const rightWidth = visibleWidth(right)
     const leftCapacity = Math.max(0, width - rightWidth - (rightWidth === 0 ? 0 : 2))
     const left = truncateToWidth(renderTuiPromptTemplate(
-      parseTuiPromptTemplate(displayInlineText(resolved.theme.leftPrompt)),
+      profileLeftPromptTemplate,
       markerValue,
     ), leftCapacity, '')
     const targetLine = rightWidth === 0
@@ -2991,8 +3047,8 @@ export function createTuiChat(
         requestRender()
         return { consume: true }
       }
-      const detailsTarget = promptMouseTarget('details')
-      const modelTarget = promptMouseTarget('model')
+      const detailsTarget = promptMouseTarget(statusLineItems === undefined ? 'details' : 'statusline/details')
+      const modelTarget = promptMouseTarget(statusLineItems === undefined ? 'model' : 'statusline/model')
       if (!overlayManager.hasActiveOverlay() && mouseEvent.action === 'press' && mouseEvent.button === 'left'
         && detailsTarget !== undefined && mouseEvent.row === detailsTarget.row
         && mouseEvent.column >= detailsTarget.firstColumn && mouseEvent.column <= detailsTarget.lastColumn) {
@@ -3215,6 +3271,7 @@ export function createTuiChat(
     disposeSkillChanges()
     disposePromptChanges()
     for (const value of promptValues) value.dispose()
+    for (const value of statusLinePromptValues.values()) value.dispose()
     stopBannerReveal()
     disposeSessionEvents()
     disposeGoalChanges()

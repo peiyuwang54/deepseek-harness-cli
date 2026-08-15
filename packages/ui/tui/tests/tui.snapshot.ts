@@ -109,6 +109,7 @@ const CHECKPOINTS = [
   'settings-hub',
   'theme-selector',
   'title-selector',
+  'statusline-selector',
   'language-selector',
   'credential-onboarding',
   'workspace-selector',
@@ -1684,6 +1685,13 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('title-selector', harness.terminal, { includeScrollback: true })
+
+    await renderAfter(harness, () => { harness.terminal.send('\x1b') })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/statusline')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('statusline-selector', harness.terminal, { includeScrollback: true })
 
     await renderAfter(harness, () => { harness.terminal.send('\x1b') })
     await renderAfter(harness, () => {

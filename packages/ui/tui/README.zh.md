@@ -52,6 +52,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/title` 配置终端窗口或标签页标题，不会重命名持久 Session。不带参数的 `/title` 会打开多选对话框，可选择应用名、Session 标题、工作区、运行状态、模型、推理强度与 Session id。Space 切换字段并实时预览终端标题，Enter 将按目录顺序排列的选择持久化到 `ui-terminal.titleItems`，Escape 恢复之前的标题。`/title status`、`/title reset` 与 `/title set <item> ...` 分别用于非交互查看、恢复默认值和指定明确顺序。修改持久 Session 标题仍使用 `/rename`。
 
+`/statusline` 配置紧凑 footer。不带参数时会打开有序多选对话框：Up/Down 选择行，Left/Right 调整顺序，Space 切换并实时预览，Enter 持久化 `ui-terminal.statusLineItems`，Escape 恢复之前的 footer。可选字段包括 Goal、详情、运行状态、模型、推理强度、token 与上下文用量、排队工作、preset、权限、工作区、Git 分支、Session 标题和 Session id；暂不可用的值会被省略。`/statusline status`、`/statusline off`、`/statusline reset` 与 `/statusline set <item> ...` 支持脚本调用。Reset 会恢复当前 profile 的 `theme.rightPrompt`，不会生成第二套默认值。
+
 `/init` 会安排一个普通用户轮次：先检查仓库，仅当当前目录不存在 `AGENTS.md` 时才创建简洁且基于事实的版本。`/review [instructions]` 会安排一次不修改文件的审查，覆盖 workspace 中已跟踪与未跟踪的改动，并按问题严重程度输出。两条命令都要求 agent 处于 idle，其提示词会走普通的持久 user-message 路径，不会绕过 agent loop。
 
 共享的 [`dsh-command-jobs`](../../jobs/command-jobs/README.md) 插件会贡献 `/ps`、`/stop` 与别名 `/clean`。`/ps` 在不消费输出的前提下列出本会话中处于运行或停止中状态的通用后台任务；`/stop` 与 `/clean` 请求取消全部运行中任务，并保持已经处于停止中状态的任务不变。
@@ -64,7 +66,7 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/reload`（实验性，仅开发环境）会重新读取所有基于文件的 loader 配置树，并把 diff 应用到运行中 app：它手动调用 HMR（热模块替换）watcher 的配置路径；上下文中必须有 cordis Loader，否则退化为警告。它只在 agent 空闲时运行，并拒绝 reload 进行期间的再次进入。模块源代码热重载仍由 watcher 持有。挂载 `skills` 服务后，`/skill:<name> [instructions]` 会把该 skill 的指令作为一个 user 轮次加载到会话中；自动补全列出用户可调用的 skill，按精确名称调用时也会拒绝用户策略禁用的 skill。
 
-紧凑底部状态栏右侧显示 Goal／详情状态、当前模型、`↑<uncached input> ↓<output>`、已知的 token-meter 上下文压力和排队工作。默认左侧为空，因此工作目录和分支不会占用聊天宽度；`/status` 仍保留这两项诊断，嵌入方也可通过 `theme.leftPrompt` 主动恢复。它同样不显示 idle 状态和缓存命中率：实时工作由对话尾部的动态状态表达，缓存命中率则保留在详细会话统计行。
+默认紧凑 footer 右侧显示 Goal／详情状态、当前模型、`↑<uncached input> ↓<output>`、已知的 token-meter 上下文压力和排队工作。左侧默认为空，因此工作目录和分支在通过 `/statusline` 选择或通过 `theme.leftPrompt` 配置前不会占用聊天宽度。默认项也不含 idle 状态和缓存命中率：实时工作由对话尾部的动态状态表达，缓存命中率则保留在详细会话统计行。
 
 `/status` 会向 transcript 添加一张时间点诊断卡片，并在 agent 运行时保持可用。它报告会话 id、标题、工作目录、所选提供方／模型、所选推理强度或默认行为、reasoning 块可见性、agent 状态、事件／轮次／步骤／工具调用计数、精确输入／输出／缓存 token bucket、KV-cache 命中率、token-meter 上下文用量与容量、创建时间和最新事件时间。缺失标题、模型、缓存输入或上下文容量时会明确标记，而非推断。该卡片只存在于终端，不会重复紧凑 footer，也不会打印 system prompt 或已注册工具 catalog。
 
@@ -122,7 +124,7 @@ Reasoning 首次渲染时默认在 `Think` 标题下显示。提交的用户卡�
 | `theme.color` | `TuiConfig` | `true` | 应用内置 ANSI palette（参见[颜色](#color)） |
 | `theme.truecolor` | `TuiConfig` | 进程入口检测 `COLORTERM`；direct runtime 调用使用 `false` | 启用 24-bit 启动渐变与 DeepSeek 品牌色 |
 | `theme.leftPrompt` | `TuiConfig` | 空 | 可选的底部状态栏左对齐模板；默认隐藏工作区和分支 |
-| `theme.rightPrompt` | `TuiConfig` | `${goal}${details}${model}${token_meter/usage}${context}${queued}` | 底部状态栏右对齐模板；缓存命中率仅保留在会话统计行 |
+| `theme.rightPrompt` | `TuiConfig` | `${goal}${details}${model}${token_meter/usage}${context}${queued}` | `/statusline` 尚未保存覆盖项时使用的底部状态栏右对齐模板 |
 | `theme.inputPrompt` | `TuiConfig` | `${indicator}` | 编辑器首行前缀模板 |
 | `theme.inputPlaceholder` | `TuiConfig` | `Describe a task, @ a file, or / for commands` | 空编辑器 placeholder |
 | `title` | `TuiConfig` | `DeepSeek Harness` | 终端窗口标题的产品后缀 |

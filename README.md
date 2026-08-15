@@ -101,3 +101,7 @@ Report bugs in [GitHub Issues](https://github.com/peiyuwang54/deepseek-harness-c
 ## License
 
 This project is licensed under MIT. Restored TUI code retains its BSD-3-Clause notice; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Community
+
+- LinuxDo — <https://linux.do>

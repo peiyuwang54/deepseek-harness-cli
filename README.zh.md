@@ -101,3 +101,7 @@ pnpm dsh
 ## 许可证
 
 本项目采用 MIT 协议。恢复的 TUI 代码保留 BSD-3-Clause 声明；详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+## 社区友链
+
+- LinuxDo — <https://linux.do>

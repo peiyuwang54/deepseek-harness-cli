@@ -25,8 +25,19 @@ def test_otool_parser_uses_the_newest_macho_slice() -> None:
     assert checker.parse_otool_deployment_target(output) == (13, 5)
 
 
+def test_otool_parser_accepts_the_legacy_macos_load_command() -> None:
+    output = """
+      cmd LC_VERSION_MIN_MACOSX
+  cmdsize 16
+  version 10.13
+      sdk 10.14.1
+    """
+
+    assert checker.parse_otool_deployment_target(output) == (10, 13)
+
+
 def test_otool_parser_requires_a_deployment_target() -> None:
-    with pytest.raises(ValueError, match="contains no LC_BUILD_VERSION"):
+    with pytest.raises(ValueError, match="contains no LC_BUILD_VERSION or LC_VERSION_MIN_MACOSX"):
         checker.parse_otool_deployment_target("Load command 0\n")
 
 

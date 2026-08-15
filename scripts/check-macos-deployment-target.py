@@ -32,12 +32,25 @@ def claimed_version(platform_tag: str) -> tuple[int, ...]:
 
 def parse_otool_deployment_target(output: str) -> tuple[int, ...]:
     """Return the newest deployment target from one or more Mach-O slices."""
-    versions = [
-        parse_version(match.group(1))
-        for match in re.finditer(r"^\s*minos\s+(\d+(?:\.\d+)*)\s*$", output, re.MULTILINE)
-    ]
+    versions: list[tuple[int, ...]] = []
+    load_command: str | None = None
+    for line in output.splitlines():
+        stripped = line.strip()
+        command = re.fullmatch(r"cmd\s+(LC_[A-Z0-9_]+)", stripped)
+        if command is not None:
+            load_command = command.group(1)
+            continue
+        field = "minos" if load_command == "LC_BUILD_VERSION" else "version"
+        if load_command not in {"LC_BUILD_VERSION", "LC_VERSION_MIN_MACOSX"}:
+            continue
+        version = re.fullmatch(rf"{field}\s+(\d+(?:\.\d+)*)", stripped)
+        if version is not None:
+            versions.append(parse_version(version.group(1)))
+            load_command = None
     if not versions:
-        raise ValueError("otool output contains no LC_BUILD_VERSION deployment target")
+        raise ValueError(
+            "otool output contains no LC_BUILD_VERSION or LC_VERSION_MIN_MACOSX deployment target"
+        )
     return max(versions)
 
 

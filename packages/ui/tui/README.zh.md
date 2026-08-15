@@ -50,7 +50,7 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/init` 会安排一个普通用户轮次：先检查仓库，仅当当前目录不存在 `AGENTS.md` 时才创建简洁且基于事实的版本。`/review [instructions]` 会安排一次不修改文件的审查，覆盖 workspace 中已跟踪与未跟踪的改动，并按问题严重程度输出。两条命令都要求 agent 处于 idle，其提示词会走普通的持久 user-message 路径，不会绕过 agent loop。
 
-共享的 [`dsh-command-jobs`](../../jobs/command-jobs/README.md) 插件会贡献 `/ps` 与 `/stop`。`/ps` 在不消费输出的前提下列出本会话中处于运行或停止中状态的通用后台任务；`/stop` 请求取消全部运行中任务，并保持已经处于停止中状态的任务不变。
+共享的 [`dsh-command-jobs`](../../jobs/command-jobs/README.md) 插件会贡献 `/ps`、`/stop` 与别名 `/clean`。`/ps` 在不消费输出的前提下列出本会话中处于运行或停止中状态的通用后台任务；`/stop` 与 `/clean` 请求取消全部运行中任务，并保持已经处于停止中状态的任务不变。
 
 `/model`、Alt+M 或左键点击编辑器旁的模型徽标，会把建议性的 `ctx.llm` catalog 紧贴在 composer 下方打开，而不是放在终端中央。列表上方设有一个过滤框，按对每行 `provider/model` 标签、模型名称和描述的大小写不敏感子串匹配来缩小行集，并在高亮行仍通过过滤时保持其选中状态。Up/Down 或鼠标滚轮在模型间移动。专用的 `Reasoning effort` 行会始终列出适配器为高亮模型公布的精确等级（包括存在时的 `Off`），并用方括号标记当前选择；Tab 或 Right 向前切换，Shift+Tab 或 Left 向后切换。Enter 选择当前可见的模型与推理强度组合；Escape 会先清除非空过滤内容，再次按下才关闭选择器。适配器未公布默认推理强度时，该行还会包含 `Default`，用于清除显式选择并保留提供方行为；没有 reasoning 元数据的模型会显示 `Not available`。选择器不会合成、自动调整或在模型之间转移推理强度。`/model <model>` 仍可直接选择无歧义的模型 id，`/model <provider>/<model>` 则选择精确目标，并在存在时使用其适配器默认值。已配置目标或最新记录的请求 header 会初始化选择器；由于 catalog 仅提供建议，未列出的当前模型仍会显示。选择仅对本 TUI 会话有效。提示词组装会为一个步骤建立目标快照，替换 `{{provider}}` 和 `{{model}}`，并通过 `agent/request` 应用同一个提供方／模型／推理强度目标；因此组装期间的切换会从后续步骤开始生效。请求 header 会持久记录真正到达模型的目标，未使用的选择则只存在于进程本地。
 

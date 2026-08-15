@@ -69,16 +69,16 @@ describe('command-jobs real Loader composition', () => {
       }),
     })
 
-    expect(context.commands.list(owner).map(command => command.name)).toEqual(['ps', 'stop'])
+    expect(context.commands.list(owner).map(command => command.name)).toEqual(['clean', 'ps', 'stop'])
     expect((await context.commands.execute(owner, '/ps', new AbortController().signal))?.result).toEqual({
       kind: 'success',
       text: `Background jobs\n\n  • ${id} [bash] running — pnpm test`,
     })
-    expect((await context.commands.execute(owner, '/stop', new AbortController().signal))?.result).toEqual({
+    expect((await context.commands.execute(owner, '/clean', new AbortController().signal))?.result).toEqual({
       kind: 'success',
       text: 'Requested cancellation for 1 background job.',
     })
-    expect(cancels).toEqual(['Stopped by /stop.'])
+    expect(cancels).toEqual(['Stopped by /clean.'])
     expect(owner.session.deriveMessages()).toEqual([])
 
     settle({ status: 'killed' })

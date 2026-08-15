@@ -1,5 +1,5 @@
 /**
- * Human-facing `/ps` and `/stop` commands over the background-job registry.
+ * Human-facing `/ps`, `/stop`, and `/clean` commands over the background-job registry.
  * @module @deepseek-ai/dsh-command-jobs
  */
 
@@ -11,8 +11,6 @@ export const name = 'command-jobs'
 export const inject = ['commands', 'jobs']
 
 const PS_USAGE = 'Usage: /ps (no arguments)'
-const STOP_USAGE = 'Usage: /stop (no arguments)'
-const STOP_REASON = 'Stopped by /stop.'
 const MAX_LABEL_CODE_POINTS = 80
 
 /** Return whether a job still owns live producer work. */
@@ -53,9 +51,11 @@ function cancellationFailure(error: unknown): string {
   return 'unknown cancellation failure'
 }
 
-/** Execute one argument-free `/stop` request against every running visible job. */
-function executeStop(ctx: Context, invocation: CommandInvocation): CommandResult {
-  if (invocation.rawInput.trim().length > 0) return { kind: 'error', text: STOP_USAGE }
+/** Execute one argument-free stop alias against every running visible job. */
+function executeStop(ctx: Context, invocation: CommandInvocation, command: 'stop' | 'clean'): CommandResult {
+  if (invocation.rawInput.trim().length > 0) {
+    return { kind: 'error', text: `Usage: /${command} (no arguments)` }
+  }
   const running = ctx.jobs.list(invocation.agent).filter(job => job.status === 'running')
   if (running.length === 0) return { kind: 'success', text: 'No running background jobs to stop.' }
 
@@ -63,7 +63,7 @@ function executeStop(ctx: Context, invocation: CommandInvocation): CommandResult
   const failures: string[] = []
   for (const job of running) {
     try {
-      if (ctx.jobs.kill(job.id, invocation.agent, STOP_REASON) === 'requested') requested += 1
+      if (ctx.jobs.kill(job.id, invocation.agent, `Stopped by /${command}.`) === 'requested') requested += 1
     } catch (error: unknown) {
       failures.push(`${job.id}: ${cancellationFailure(error)}`)
     }
@@ -91,6 +91,11 @@ export function apply(ctx: Context): void {
   ctx.commands.register({
     name: 'stop',
     description: 'Stop all running background jobs',
-    handler: invocation => executeStop(ctx, invocation),
+    handler: invocation => executeStop(ctx, invocation, 'stop'),
+  })
+  ctx.commands.register({
+    name: 'clean',
+    description: 'Alias for /stop',
+    handler: invocation => executeStop(ctx, invocation, 'clean'),
   })
 }

@@ -1868,7 +1868,7 @@ describe('TUI terminal-state snapshots', () => {
     await disposeSnapshot(harness)
   })
 
-  it('lists and stops background jobs through shared commands', async () => {
+  it('lists and stops background jobs through shared commands and the /clean alias', async () => {
     const harness = await setupSnapshot({}, { columns: 92, rows: 32 })
     await harness.ctx.plugin(LocalJobRegistry)
     await harness.ctx.plugin(CommandJobs)
@@ -1888,10 +1888,10 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await renderAfter(harness, () => {
-      harness.terminal.send('/stop')
+      harness.terminal.send('/clean')
       harness.terminal.send('\r')
     })
-    expect(cancels).toEqual(['Stopped by /stop.'])
+    expect(cancels).toEqual(['Stopped by /clean.'])
     await checkpoint('background-job-commands', harness.terminal, { includeScrollback: true })
     settle({ status: 'killed' })
     await new Promise<void>((resolve) => { setTimeout(resolve, 0) })

@@ -63,11 +63,13 @@ describe('@deepseek-ai/dsh-command-jobs registration', () => {
     expect(test.ctx.commands.list(test.owner)).toEqual(expect.arrayContaining([
       { name: 'ps', description: 'List running background jobs' },
       { name: 'stop', description: 'Stop all running background jobs' },
+      { name: 'clean', description: 'Alias for /stop' },
     ]))
 
     await test.plugin.dispose()
     expect(test.ctx.commands.find(test.owner, 'ps')).toBeUndefined()
     expect(test.ctx.commands.find(test.owner, 'stop')).toBeUndefined()
+    expect(test.ctx.commands.find(test.owner, 'clean')).toBeUndefined()
     expect(() => test.ctx.jobs.start(producer('sleep 60').spec)).toThrow('no job controller serves this agent')
     await test.ctx.fiber.dispose()
   })
@@ -156,6 +158,26 @@ describe('/stop human command', () => {
     })
     expect(stopping.cancels).toEqual([undefined])
     stopping.settle({ status: 'killed' })
+    await tick()
+    await test.ctx.fiber.dispose()
+  })
+
+  it('supports Codex-compatible /clean as the same owner-scoped operation', async () => {
+    const test = await harness()
+    const cancellable = producer('sleep 60')
+    test.ctx.jobs.start(cancellable.spec)
+
+    expect(await run(test.ctx, test.owner, '/clean')).toEqual({
+      kind: 'success',
+      text: 'Requested cancellation for 1 background job.',
+    })
+    expect(cancellable.cancels).toEqual(['Stopped by /clean.'])
+    expect(await run(test.ctx, test.owner, '/clean later')).toEqual({
+      kind: 'error',
+      text: 'Usage: /clean (no arguments)',
+    })
+
+    cancellable.settle({ status: 'killed' })
     await tick()
     await test.ctx.fiber.dispose()
   })

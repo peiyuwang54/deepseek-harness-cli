@@ -13,6 +13,7 @@ import type {} from '@deepseek-ai/dsh-llm-retry'
 import { Session, SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import {
   renderMarkdownTranscript,
+  renderRawTranscript,
   resolveTranscriptExportPath,
   transcriptExportFilename,
   writeMarkdownTranscript,
@@ -60,6 +61,26 @@ afterEach(async () => {
 })
 
 describe('Markdown transcript rendering', () => {
+  it('renders copy-friendly source without roles or rich prefixes', () => {
+    const session = Session.create(SessionId('raw-transcript'))
+    expect(renderRawTranscript(session.events, false)).toBe('')
+    appendDirectUser(session, [{ type: 'text', text: 'Keep **source**.\n' }])
+    appendAssistant(session, [
+      { type: 'reasoning', text: 'Inspect `raw`.' },
+      { type: 'text', text: '- one\n- two\n' },
+    ])
+
+    expect(renderRawTranscript(session.events, false)).toBe([
+      'Keep **source**.',
+      '- one\n- two',
+    ].join('\n\n'))
+    expect(renderRawTranscript(session.events, true)).toBe([
+      'Keep **source**.',
+      'Inspect `raw`.',
+      '- one\n- two',
+    ].join('\n\n'))
+  })
+
   it('rejects a snapshot with no human-visible conversation', () => {
     const session = Session.create(SessionId('empty-export'))
     session.append('user/message', createUserMessage({

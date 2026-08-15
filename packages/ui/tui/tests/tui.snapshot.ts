@@ -57,6 +57,7 @@ const CHECKPOINTS = [
   'session-stats-narrow',
   'usage-command',
   'export-selector',
+  'raw-transcript',
   'retry-scheduled',
   'retry-recovered',
   'retry-cancelled',
@@ -1204,6 +1205,24 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('Then suggest a simpler version.')
     })
     await checkpoint('shell-prompt-multiline', harness.terminal)
+    await disposeSnapshot(harness)
+  })
+
+  it('pins copy-friendly raw transcript source without rich message decoration', async () => {
+    const harness = await setupSnapshot({
+      beforeMount(session) {
+        appendUser(session, 'Keep **Markdown source** selectable.')
+        appendAssistant(session, [
+          { type: 'reasoning', text: 'Inspect the `raw` presentation.' },
+          { type: 'text', text: '- first item\n- second item' },
+        ])
+      },
+    }, { columns: 78, rows: 24 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/raw on')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('raw-transcript', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

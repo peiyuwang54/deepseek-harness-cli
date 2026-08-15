@@ -30,7 +30,7 @@ viewport
   style 13-74 dim
 11| "  details       [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility"
   style 9-93 dim
-12| "  (1/33)"
+12| "  (1/34)"
   style 0-7 dim
 13| "                                                  ▸   deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
   style 50-51 dim

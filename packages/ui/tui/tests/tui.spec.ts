@@ -45,7 +45,7 @@ import {
 } from '../src/index.ts'
 import { WorkspaceFileSearch } from '../src/chat/file-autocomplete.ts'
 import { osc52ClipboardSequence } from '../src/chat/clipboard.ts'
-import { renderMarkdownTranscript } from '../src/chat/transcript-export.ts'
+import { renderMarkdownTranscript, renderRawTranscript } from '../src/chat/transcript-export.ts'
 import { CURSOR_BLINK_INTERVAL_MS } from '../src/chat/helpers.ts'
 import { TUI_LOCALE_OPTIONS, formatDeepDivingStatus } from '../src/chat/language.ts'
 import { ResumePicker } from '../src/components/dialogs.ts'
@@ -3769,6 +3769,44 @@ describe('pi-tui chat lifecycle and transcript', () => {
       await dispose(result)
       await rm(root, { recursive: true, force: true })
     }
+  })
+
+  it('toggles a copy-friendly raw transcript while retaining literal Markdown source', async () => {
+    const result = await setup()
+    appendUser(result.session, 'Copy **this** conversation.')
+    appendAssistant(result.session, [
+      { type: 'reasoning', text: 'private *reason*' },
+      { type: 'text', text: 'Complete **answer**.' },
+    ])
+    await tick()
+
+    expect(renderRawTranscript(result.session.events, true)).toBe([
+      'Copy **this** conversation.',
+      'private *reason*',
+      'Complete **answer**.',
+    ].join('\n\n'))
+    expect(renderRawTranscript(result.session.events, false)).toBe([
+      'Copy **this** conversation.',
+      'Complete **answer**.',
+    ].join('\n\n'))
+
+    const run = async (command: string): Promise<void> => {
+      result.terminal.send(command)
+      result.terminal.send('\r')
+      await tick()
+    }
+    await run('/raw on')
+    expect(result.terminal.output).toContain('Raw output mode on: transcript text is shown for clean terminal selection.')
+    await run('/raw status')
+    expect(result.terminal.output).toContain('Raw output mode is on.')
+    await run('/raw invalid')
+    expect(result.terminal.output).toContain('Usage: /raw [on|off|status]')
+    await run('/raw off')
+    expect(result.terminal.output).toContain('Raw output mode off: rich transcript rendering restored.')
+    await run('/raw')
+    await run('/raw')
+
+    await dispose(result)
   })
 
   it('renders /diff output and reports its empty, non-worktree, argument, and failure states', async () => {

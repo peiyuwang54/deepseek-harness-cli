@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=66 base=34 viewport=34
+terminal 92x32 buffer=normal length=67 base=35 viewport=35
 lifecycle started=1 stopped=1 progress=inactive
 title "DSH snapshot"
-cursor visible column=0 viewportRow=31 bufferRow=65
+cursor visible column=0 viewportRow=31 bufferRow=66
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-blue bold
@@ -67,69 +67,71 @@ buffer
   style 0-67 dim
 31| "/quit — Exit after the active turn reaches idle                                             "
   style 0-46 dim
-32| "/reload — EXPERIMENTAL (dev): re-read loader config files and apply the diff (idle only)    "
+32| "/raw [on|off|status] — Toggle copy-friendly plain transcript rendering                      "
+  style 0-69 dim
+33| "/reload — EXPERIMENTAL (dev): re-read loader config files and apply the diff (idle only)    "
   style 0-87 dim
-33| "/rename <title> — Rename this session and pin its title                                     "
+34| "/rename <title> — Rename this session and pin its title                                     "
   style 0-54 dim
-34| "/resume [session] — Resume a saved chat                                                     "
+35| "/resume [session] — Resume a saved chat                                                     "
   style 0-38 dim
-35| "/review [instructions] — Review the current workspace changes                               "
+36| "/review [instructions] — Review the current workspace changes                               "
   style 0-60 dim
-36| "/settings [list|document] — Show shared settings namespaces and the settings document       "
+37| "/settings [list|document] — Show shared settings namespaces and the settings document       "
   style 0-84 dim
-37| "/skills [name] — Browse and invoke user-invocable skills for this agent                     "
+38| "/skills [name] — Browse and invoke user-invocable skills for this agent                     "
   style 0-70 dim
-38| "/status — Show session status and token usage                                               "
+39| "/status — Show session status and token usage                                               "
   style 0-44 dim
-39| "/theme [light|dark|system] [accent [light|dark] [id]] — Choose and persist appearance and   "
+40| "/theme [light|dark|system] [accent [light|dark] [id]] — Choose and persist appearance and   "
   style 0-91 dim
-40| "accent color                                                                                "
+41| "accent color                                                                                "
   style 0-11 dim
-41| "/usage — Show this session's model timing and token usage                                   "
+42| "/usage — Show this session's model timing and token usage                                   "
   style 0-56 dim
-42| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
+43| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
   style 0-73 dim
-43| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
+44| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
   style 0-81 dim
-44| "/skill:<name> [instructions] — load a skill into the conversation                           "
+45| "/skill:<name> [instructions] — load a skill into the conversation                           "
   style 0-64 dim
-45| <blank>
-46| "provider stream failed after partial output                                                 "
+46| <blank>
+47| "provider stream failed after partial output                                                 "
   style 0-42 fg=red
-47| <blank>
-48| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
+48| <blank>
+49| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
   style 0-46 dim
-49| <blank>
-50| "The previous process ended during this turn.                                                "
+50| <blank>
+51| "The previous process ended during this turn.                                                "
   style 0-43 fg=yellow
-51| <blank>
-52| "Turn stopped: the agent was disposed.                                                       "
+52| <blank>
+53| "Turn stopped: the agent was disposed.                                                       "
   style 0-36 fg=yellow
-53| <blank>
-54| "Turn ended: plugin-policy.                                                                  "
+54| <blank>
+55| "Turn ended: plugin-policy.                                                                  "
   style 0-25 fg=yellow
-55| <blank>
-56| "Unknown command: /unknown-advanced-command                                                  "
+56| <blank>
+57| "Unknown command: /unknown-advanced-command                                                  "
   style 0-41 fg=yellow
-57-58| <blank>
-59| "                                                                                            "
+58-59| <blank>
+60| "                                                                                            "
   style 0-91 bg=ansi-236
-60| " › │Describe a task, @ a file, or / for commands                                            "
+61| " › │Describe a task, @ a file, or / for commands                                            "
   style 0-0 bg=ansi-236
   style 1-1 fg=bright-blue bg=ansi-236 bold
   style 2-2 bg=ansi-236 dim
   style 3-3 bg=ansi-236
   style 4-47 bg=ansi-236 dim
   style 48-91 bg=ansi-236
-61| "                                                                                            "
+62| "                                                                                            "
   style 0-91 bg=ansi-236
-62| "  Enter send · Shift+Enter newline · / commands"
+63| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-63| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+64| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 44-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-64| "                                      1 turn · 1 step"
+65| "                                      1 turn · 1 step"
   style 38-52 dim
-65| <blank>
+66| <blank>

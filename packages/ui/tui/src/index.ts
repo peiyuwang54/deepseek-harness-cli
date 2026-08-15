@@ -180,6 +180,7 @@ import { readTuiLocale, tuiCopy, type TuiLocale } from './chat/language.ts'
 import { latestVisibleAssistantText, osc52ClipboardSequence } from './chat/clipboard.ts'
 import {
   renderMarkdownTranscript,
+  renderRawTranscript,
   transcriptExportFilename,
   writeMarkdownTranscript,
 } from './chat/transcript-export.ts'
@@ -449,6 +450,7 @@ export function createTuiChat(
   const pendingInputPreview = new PendingInputPreviewComponent(() => locale, palette)
   const compactionStatusLine = new Text('', 0, 0)
   let showReasoning = resolved.showReasoning
+  let rawOutputMode = false
   // Ctrl+O cycles collapsed -> expanded -> hidden. Codex-style: hidden drops
   // tool cards entirely, collapsed previews, expanded shows full bodies.
   let toolsVisibility: ToolCardVisibility = 'collapsed'
@@ -552,7 +554,7 @@ export function createTuiChat(
     }
   }
   const trailLiveTurnStatus = (): void => {
-    if (runningStatus === undefined) return
+    if (runningStatus === undefined || rawOutputMode) return
     removeLiveTurnStatus()
     chat.addChild(liveStatusSpacer)
     chat.addChild(liveTurnStatus)
@@ -798,7 +800,8 @@ export function createTuiChat(
   const appendNotice = (message: string, kind: 'info' | 'warning' | 'error' = 'info'): void => {
     const color = kind === 'error' ? palette.error : kind === 'warning' ? palette.warning : palette.dim
     chat.addChild(new Spacer(1))
-    chat.addChild(new Text(color(displayText(message)), 0, 0))
+    const text = displayText(message)
+    chat.addChild(new Text(rawOutputMode ? text : color(text), 0, 0))
     trailLiveTurnStatus()
     requestRender()
   }
@@ -806,10 +809,9 @@ export function createTuiChat(
   const appendGitDiff = (source: string): void => {
     const text = displayText(source.trimEnd())
     chat.addChild(new Spacer(1))
-    chat.addChild(new Text([
-      palette.accent('Git diff'),
-      ...highlightMarkdownCode(text, 'diff', palette),
-    ].join('\n'), 0, 0))
+    chat.addChild(new Text(rawOutputMode
+      ? text
+      : [palette.accent('Git diff'), ...highlightMarkdownCode(text, 'diff', palette)].join('\n'), 0, 0))
     trailLiveTurnStatus()
     requestRender()
   }
@@ -1285,6 +1287,12 @@ export function createTuiChat(
     chat.addChild(new Text(palette.dim(COMPACTION_MARKER), 0, 0))
   }
 
+  const replaceTranscriptWithRawSource = (): void => {
+    chat.clear()
+    const source = renderRawTranscript([...agent.session.events], showReasoning)
+    if (source !== '') chat.addChild(new Text(displayText(source), 0, 0))
+  }
+
   /**
    * Replay the human transcript from the append-only log. The model-visible
    * surface shadows compacted ranges, so it is not the source here: every
@@ -1349,6 +1357,7 @@ export function createTuiChat(
     // component deliberately preserves streamed blocks, but its cached timing
     // otherwise reflects the instant of the last chunk before this rebuild.
     preserved?.component.invalidate()
+    if (rawOutputMode) replaceTranscriptWithRawSource()
     trailLiveTurnStatus()
     requestRender()
   }
@@ -1360,6 +1369,29 @@ export function createTuiChat(
       component,
       attached: chat.children.includes(component),
     })
+  }
+
+  const setRawOutputMode = (enabled: boolean): void => {
+    rawOutputMode = enabled
+    rebuildPreservingStreaming()
+  }
+
+  const runRawCommand = (rawInput: string): CommandResult => {
+    const argument = rawInput.trim().toLowerCase()
+    if (argument === 'status') {
+      return { kind: 'success', text: `Raw output mode is ${rawOutputMode ? 'on' : 'off'}.` }
+    }
+    if (argument === '' || argument === 'on' || argument === 'off') {
+      const enabled = argument === '' ? !rawOutputMode : argument === 'on'
+      setRawOutputMode(enabled)
+      return {
+        kind: 'success',
+        text: enabled
+          ? 'Raw output mode on: transcript text is shown for clean terminal selection.'
+          : 'Raw output mode off: rich transcript rendering restored.',
+      }
+    }
+    return { kind: 'error', text: 'Usage: /raw [on|off|status]' }
   }
 
   const questions = createQuestionQueue({
@@ -2336,6 +2368,12 @@ export function createTuiChat(
       handler: ({ rawInput }) => runDetails(rawInput),
     })
     commandCtx.commands.register({
+      name: 'raw',
+      description: 'Toggle copy-friendly plain transcript rendering',
+      input: { hint: '[on|off|status]' },
+      handler: ({ rawInput }) => runRawCommand(rawInput),
+    })
+    commandCtx.commands.register({
       name: 'palette',
       description: 'Show every color and attribute role this terminal renders',
       handler: () => { showPalette(); return { kind: 'success' } },
@@ -2884,6 +2922,7 @@ export function createTuiChat(
       return
     }
     renderEvent(event, { addHistory: false, renderChunks: true })
+    if (rawOutputMode) replaceTranscriptWithRawSource()
     trailLiveTurnStatus()
     requestRender()
   })

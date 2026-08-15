@@ -162,20 +162,10 @@ function renderSections(sections: readonly MarkdownSection[]): string {
   return markdown
 }
 
-/**
- * Render the complete human-visible session transcript as Markdown. Direct
- * user input, visible assistant messages, paired tool activity, and the current
- * open model stream are included; injected context and model-only replacement
- * events are excluded. Reasoning follows the TUI's current disclosure setting.
- * @param events - stable snapshot of the active session log.
- * @param showReasoning - whether reasoning blocks are visible and exportable.
- * @returns complete Markdown transcript with raw message Markdown preserved.
- * @throws {Error} when the snapshot has no conversation content or an open stream cannot be assembled.
- */
-export function renderMarkdownTranscript(
+function transcriptSections(
   events: readonly SessionEvent[],
   showReasoning: boolean,
-): string {
+): MarkdownSection[] {
   const sections: MarkdownSection[] = []
   const calls = visibleToolCalls(events)
   for (const event of events) {
@@ -223,8 +213,43 @@ export function renderMarkdownTranscript(
   for (const blocks of liveAssistantBlocks(events)) {
     appendAssistantSections(sections, blocks, showReasoning)
   }
+  return sections
+}
+
+/**
+ * Render the complete human-visible session transcript as Markdown. Direct
+ * user input, visible assistant messages, paired tool activity, and the current
+ * open model stream are included; injected context and model-only replacement
+ * events are excluded. Reasoning follows the TUI's current disclosure setting.
+ * @param events - stable snapshot of the active session log.
+ * @param showReasoning - whether reasoning blocks are visible and exportable.
+ * @returns complete Markdown transcript with raw message Markdown preserved.
+ * @throws {Error} when the snapshot has no conversation content or an open stream cannot be assembled.
+ */
+export function renderMarkdownTranscript(
+  events: readonly SessionEvent[],
+  showReasoning: boolean,
+): string {
+  const sections = transcriptSections(events, showReasoning)
   if (sections.length === 0) throw new Error('No conversation content to export.')
   return renderSections(sections)
+}
+
+/**
+ * Render the visible conversation as unstyled source text for terminal
+ * selection. Human and assistant Markdown remains literal, activity is plain
+ * text, and role headings are omitted.
+ * @param events - stable snapshot of the active session log.
+ * @param showReasoning - whether reasoning source is included.
+ * @returns copy-friendly transcript source, or an empty string before the first visible message.
+ */
+export function renderRawTranscript(
+  events: readonly SessionEvent[],
+  showReasoning: boolean,
+): string {
+  return transcriptSections(events, showReasoning)
+    .map(section => section.body.trimEnd())
+    .join('\n\n')
 }
 
 /**

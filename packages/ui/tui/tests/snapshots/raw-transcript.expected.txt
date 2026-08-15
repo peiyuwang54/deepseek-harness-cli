@@ -1,0 +1,37 @@
+terminal 78x24 buffer=normal length=24 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor visible column=3 viewportRow=12 bufferRow=12
+buffer
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1| "Keep **Markdown source** selectable.                                          "
+2| "                                                                              "
+3| "Inspect the `raw` presentation.                                               "
+4| "                                                                              "
+5| "- first item                                                                  "
+6| "- second item                                                                 "
+7| <blank>
+8| "Raw output mode on: transcript text is shown for clean terminal selection.    "
+9-10| <blank>
+11| "                                                                              "
+  style 0-77 bg=ansi-236
+12| " › │Describe a task, @ a file, or / for commands                              "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-77 bg=ansi-236
+13| "                                                                              "
+  style 0-77 bg=ansi-236
+14| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+15| "                              ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 30-31 dim
+  style 34-58 dim
+  style 61-65 dim
+  style 68-77 dim
+16-23| <blank>

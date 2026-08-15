@@ -16,11 +16,16 @@ viewport
   style 18-23 dim
 1-2| <blank>
 3| "                                                                                                "
+  style 0-95 bg=#2c2c2e
 4| " › │Describe a task, @ a file, or / for commands                                                "
-  style 1-1 fg=bright-blue bold
-  style 2-2 dim
-  style 4-47 dim
+  style 0-0 bg=#2c2c2e
+  style 1-1 fg=bright-blue bg=#2c2c2e bold
+  style 2-2 bg=#2c2c2e dim
+  style 3-3 bg=#2c2c2e
+  style 4-47 bg=#2c2c2e dim
+  style 48-95 bg=#2c2c2e
 5| "                                                                                                "
+  style 0-95 bg=#2c2c2e
 6| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
 7| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"

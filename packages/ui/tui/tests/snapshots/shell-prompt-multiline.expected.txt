@@ -9,15 +9,24 @@ viewport
   style 18-23 dim
 1-2| <blank>
 3| "                                            "
+  style 0-43 bg=ansi-236
 4| "   ↑ 1 more                                 "
-  style 1-10 dim
+  style 0-0 bg=ansi-236
+  style 1-10 bg=ansi-236 dim
+  style 11-43 bg=ansi-236
 5| " enough detail to wrap across multiple      "
+  style 0-43 bg=ansi-236
 6| " full-width continuation rows without       "
+  style 0-43 bg=ansi-236
 7| " leaving a prompt-sized gap at the right    "
+  style 0-43 bg=ansi-236
 8| " edge.                                      "
+  style 0-43 bg=ansi-236
 9| "   Then suggest a simpler version.          "
-  style 34-34 inverse
+  style 0-33 bg=ansi-236
+  style 34-34 bg=ansi-236 inverse
 10| "                                            "
+  style 0-43 bg=ansi-236
 11| "  Enter send · Shift+Enter newline · / comma"
   style 0-43 dim
 12| "▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% con"

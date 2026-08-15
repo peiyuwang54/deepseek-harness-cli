@@ -105,6 +105,7 @@ const CHECKPOINTS = [
   'settings-hub',
   'theme-selector',
   'language-selector',
+  'credential-onboarding',
   'workspace-selector',
   'workspace-handoff-recovered',
   'new-session-handoff-recovered',
@@ -138,18 +139,21 @@ async function checkpoint(
 ): Promise<void> {
   observedCheckpoints.add(name)
   const violations = terminal.themeViolations()
+  const isChatSurface = (entry: string): boolean =>
+    entry.endsWith('rgb-bg,explicit-bg') || /extended-bg-\d+,explicit-bg$/u.test(entry)
   if (bannerGradient) {
-    // The banner paints its product name in the DeepSeek brand gradient with
-    // 24-bit foreground codes: the sole sanctioned truecolor. Require it to be
-    // present and to never leak a background or extended-palette color into the
-    // otherwise theme-agnostic UI.
-    expect(violations, `${name} must render the banner gradient`).not.toEqual([])
+    // Fixed color is confined to the banner foreground and the selected
+    // theme's composer/user-card background.
+    expect(violations.some(entry => entry.endsWith('rgb-fg')), `${name} must render the banner gradient`).toBe(true)
     expect(
-      violations.every(entry => entry.endsWith('rgb-fg')),
-      `${name} must confine truecolor to the banner foreground`,
+      violations.every(entry => entry.endsWith('rgb-fg') || isChatSurface(entry)),
+      `${name} must confine truecolor to the banner foreground and chat surfaces`,
     ).toBe(true)
   } else {
-    expect(violations, `${name} must remain theme-agnostic`).toEqual([])
+    expect(
+      violations.every(isChatSurface),
+      `${name} must confine fixed color to chat surfaces`,
+    ).toBe(true)
   }
   const snapshot = await terminal.snapshot(options)
   const path = join(SNAPSHOTS_DIR, `${name}.expected.txt`)
@@ -1342,6 +1346,31 @@ describe('TUI terminal-state snapshots', () => {
     await disposeSnapshot(harness)
   })
 
+  it('pins masked first-use DeepSeek credential onboarding', async () => {
+    const harness = await setupSnapshot({
+      omitInitialLifecycle: true,
+      configureContext: async (ctx) => {
+        await ctx.plugin(SystemPrompt)
+        await ctx.plugin(ToolRegistry)
+        ctx.provide('credentials', {
+          describe: () => Promise.resolve({ configured: false, writable: true }),
+          set: () => Promise.resolve(),
+          unset: () => Promise.resolve(),
+          resolve: () => Promise.resolve(undefined),
+        } as never)
+      },
+    }, { columns: 92, rows: 32 })
+    await vi.waitFor(async () => {
+      expect(await harness.terminal.snapshot()).toContain('Connect DeepSeek')
+    })
+    await renderAfter(harness, () => { harness.terminal.send('sk-snapshot-secret') })
+    const rendered = await harness.terminal.snapshot({ includeScrollback: true })
+    expect(rendered).not.toContain('sk-snapshot-secret')
+    expect(rendered).toContain('••••')
+    await checkpoint('credential-onboarding', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
   it('pins the MCP tool catalog without unrelated tools', async () => {
     const output: ToolDefinition['output'] = {
       schema: { type: 'null' },
@@ -1483,6 +1512,10 @@ describe('TUI terminal-state snapshots', () => {
         } as never)
       },
     }, { columns: 92, rows: 32 })
+
+    await vi.waitFor(async () => {
+      expect(await harness.terminal.snapshot()).toContain('DEEPSEEK HARNESS')
+    })
 
     await renderAfter(harness, () => {
       harness.terminal.send('/settings')

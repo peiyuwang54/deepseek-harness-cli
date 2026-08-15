@@ -18,6 +18,8 @@ DeepSeek Harness 保留了随发行版交付的 Web 应用和单次执行／head
 
 Settings 与 workspace 状态属于 Host 平面的产品服务，而非浏览器所有权。TUI profile 组合与 Web 相同的文件设置 provider 和 `ui-theme.preference` schema，以及相同的 JSON storage／domain／workspace registry 栈。`/settings` 是一个脱敏 namespace／document hub，而非 Web React 表单的克隆；`/theme` 只 mutate preference 字段，因此绝不会因替换脱敏 section 而擦除同级 secret。`/workspace` 读取持久 registry 并请求全新会话 handoff；它绝不改写已绑定会话不可变的 `SessionHeader.cwd`。
 
+DeepSeek 认证仍由共享 `ctx.credentials` provider 持有。所选 DeepSeek 路由没有配置 `DEEPSEEK_API_KEY` 时，终端会打开一个附着 composer 的首次使用掩码输入框；之后切换到 DeepSeek 模型也会执行同一检查。原始值会从瞬时输入组件直接交给 `credentials.set`，绝不进入编辑器历史、命令文本、Session 事件或 transcript 输出。`/credentials` 只公开配置状态、provider 来源与可写性，并且只接受通过该掩码组件输入的替换值。TUI 无法覆盖从启动环境继承的只读凭据，删除操作也只针对 provider 管理的已保存值。
+
 唯一一个 CLI 持有的进程 Host 同时实现 resume 与全新 workspace 迁移。不带参数的 `/resume` 通过全 viewport 选择器发现持久会话；`/resume <session>` 会跳过发现，但仍将指定 id 送入相同的活跃状态、日志、模型路由与 workspace 预检。Renderer 检查 idle／会话／目录状态，flush 当前会话，drain 输入，并释放 pi-tui 以及 alternate-screen／mouse mode；宿主随后保留所选 profile、patch 栈、environment 和会话参数，在目标目录中替换进程（在没有 `execve` 的平台上监督前台子进程）。所有可恢复校验都先于已提交 teardown。被拒绝的预提交 handoff 会重新进入终端 mode 并强制渲染完整帧，因为 pi-tui 的旧行缓存属于已放弃的 alternate buffer。Renderer seam 上的 `start(cwd)` 为可选方法，因此自定义的仅 resume embedding 仍兼容，即使随附宿主同时实现两种方法。
 
 Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到当前 API。权威 `Session` 事件仍是唯一持久对话来源：replay 将这些事件折叠成已提交终端输出，实时 chunk、工具进度、问题与审批则是瞬时 projection。TUI 不会增加第二份聊天日志或工具 scheduler。它消费现有的作用域 command registry、Agent inbox 操作、session query/reference 服务、skill registry、工具 presenter、token meter 与模型选择 seam。
@@ -55,6 +57,8 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 专用命令 checkpoint 固定 skill 浏览器、keymap 选择器、Vim Normal footer、真实 fast-route 切换、experiment 启动器、IDE 降级界面、空审批状态、剪贴板通知、完整对话导出选择器、Git diff 展示、持久 rename、文件 mention 插入、全新会话 handoff 恢复、后台任务列举与取消，以及仅含会话信息的 status 卡。单元与 Loader 组装测试固定 `/new` 和 `/clear` 的 idle、参数、当前 workspace 与宿主失败行为，按所有者隔离的 `/ps` 过滤、不消费读取、标签上限、`/stop` 取消原因、部分失败与 controller disposal、OSC 52 成帧、tmux 透传、剪贴板 payload 上限、最新可见回复选择、原始 Markdown 保留、transcript 过滤、实时流组装、安全路径解析、sync 后的不覆盖发布与清理、`/diff` 参数与失败状态、已跟踪／未跟踪组合、忽略文件排除和配置 filter 抑制。Approval-service 测试证明程序化命令授权会产生与对话框相同的持久 asked／decided 配对。
 
 Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服务测试、ANSI 感知的 headless-terminal 组件测试与无密钥终端状态快照覆盖。专用零状态 checkpoint 锁定双栏欢迎卡、继承终端前景色的鲸鱼、真实状态标签、最近会话投影、统一背景的 composer 与底部状态栏；交互测试则锁定它在第一个 turn 时收缩。排队 steering checkpoint 锁定 composer 上方的有序预览与中断提示；组件测试锁定空、窄屏、本地化、换行和逐消息截断状态，交互测试则锁定按身份排空及 Escape 保持顺序的重新排队。行为测试会锁定 composer 与已提交记录的背景一致性、实时“正在深度求索”计时与中断文案、Goal 计时状态转换、光标可见—隐藏—可见阶段及 dispose。以真实 tmux 终端启动编译后 CLI 还确认了光标可见／空白交替抓帧，以及模型选择器能从 `[High]` 移动到 `[Max]`。Model、Skills、permissions、Settings、Appearance 与 workspace 快照会锁定 composer—picker—状态行的顺序。完成态、运行态与窄屏 checkpoint 会锁定共享统计栏，包括不折行的宽度边界。权限选择器与一次已提交的 preset 切换通过真实 Command 和 Projection 服务各有一份终端状态 checkpoint。Settings、Appearance、workspace picker 与 handoff 失败恢复各有一份终端状态 checkpoint；交互测试还锁定仅字段 theme mutate、设置文档发现、不可变 cwd，以及重复 Enter 下在首个 await 前占用的 single-flight latch。应用 bundle 具有启动、身份、非 TTY、preset 安全的 Agent 创建／恢复、session-stats 组合与 patch 形状测试。CLI 测试覆盖别名、profile 选择、help、非 TTY 失败、随发行版配置、替换参数忠实度、shutdown 前校验、POSIX exec 与受监督子进程后备。软件包 typecheck、host typecheck、Loader／配置约束、软件包发布约束、生成 catalog、文档链接、许可证与第三方声明均为必需门禁。
+
+凭据交互覆盖使用一个假的只写 provider 与无密钥终端 checkpoint。它证明首次使用检测、提交前掩码渲染、直接交付 `credentials.set`、配置来源报告，以及原始值不会出现在终端输出或 Session 事件中。
 
 ## 考虑过的替代方案
 

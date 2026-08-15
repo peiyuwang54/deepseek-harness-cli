@@ -16,7 +16,7 @@ Renderer 默认使用终端原生 inline scrollback。鼠标滚轮只滚动不�
 
 受 Codex 启发的开发者命令是 Harness 服务之上的终端原生适配器。`/skills` 浏览当前 Agent 作用域中面向用户可调用的 catalog；`/keymap` 与 `/vim` 在默认编辑和 Vim Insert／Normal 模式间切换 composer；`/fast` 仅选择元数据真正标识为 flash、fast、turbo 或 lite 的已公布路由，没有这类路由时不会假称加速。`/experimental` 统一启动现有的 fast、Vim、reasoning 可见性与 Loader reload action。`/ide` 报告检测到的终端宿主，并提供 `@` 文件引用或 workspace handoff；没有 IDE bridge 时仍无法捕获已打开文件与选区。`/approve` 会允许活动请求一次，或为下一个与最新交互拒绝在工具和理由上完全匹配的请求预批准一次；如果下一个请求不匹配，它会消耗该授权但不会获得批准，命令也绝不改变 permission preset。
 
-本包（package）只持有交互式终端展示和输入。它注入 `agents`、[`commands`](../../interaction/commands/README.md)、`approval`、`llm`、`systemPrompt`、`tokenMeter`、`tools` 和 `userQuestions`，在组合存在时可选读取 `settings`、`skills` 与 `workspaceRegistry` 服务，然后驱动由 app 或开发者代码创建或恢复的 agent。Agent 生命周期、持久化、审批策略与模型侧 [`ask_user_question`](../../interaction/tool-ask-user/README.md) 工具仍是独立组合项。
+本包（package）只持有交互式终端展示和输入。它注入 `agents`、[`commands`](../../interaction/commands/README.md)、`approval`、`llm`、`systemPrompt`、`tokenMeter`、`tools` 和 `userQuestions`，在组合存在时可选读取 `credentials`、`settings`、`skills` 与 `workspaceRegistry` 服务，然后驱动由 app 或开发者代码创建或恢复的 agent。Agent 生命周期、持久化、审批策略与模型侧 [`ask_user_question`](../../interaction/tool-ask-user/README.md) 工具仍是独立组合项。
 
 终端成功启动后，本包会提供终端本地的 `ctx.tui` 扩展服务。注入该服务的插件可以使用组件工厂和受限布局选项调用 `openOverlay()`；宿主会公开 viewport、语义化主题（包括终端安全的 DeepSeek `brand` 样式）、显示文本转义、重绘、关闭和生命周期信号，但不公开 pi-tui 树、终端、焦点控制器或 overlay 句柄。插件 overlay、附着 composer 的选择器、用户问题与审批请求虽然位置不同，但共用一个 FIFO 焦点队列。每个请求都是调用方插件 fiber 的 effect，因此卸载会移除排队工作，或在清理结算前关闭可见工作；终端关闭会先卸载依赖项，再停止 pi-tui。Overlay 状态不会记录或回放。组件代码受信任，可以渲染 ANSI 样式，但必须通过 `host.display()` 处理不受信任文本。
 
@@ -58,9 +58,11 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/usage` 会记录一份时点副本，其内容来自与 Web composer 共享的同一条全会话统计线：已完成轮次与步骤、LLM 与工具耗时、平均 TTFT、解码吞吐率、缓存命中率，以及不相交的输入／输出 token 总量。DeepSeek Harness 不公开提供方账户配额服务，因此该命令报告实测会话用量，不会虚构账户限额或重置日期。
 
+所选 DeepSeek 路由缺少 `DEEPSEEK_API_KEY` 时，首次使用会打开一个附着 composer 的掩码输入框。原始 Key 不会进入编辑器、命令参数、Session 日志、transcript 或输入历史；Enter 会把它直接交给共享 `ctx.credentials` provider，Escape 则跳过本次启动的引导。`/credentials [status|set|unset]` 只报告配置状态、来源与可写性；新值只能通过同一个掩码输入框提交，删除操作也只移除 provider 管理的已保存值。从启动环境继承的 Key 在 TUI 内保持只读。
+
 `/settings` 是基于共享可选 `ctx.settings` provider 的终端 hub。不带参数时，它显示基于文件的设置文档与所有已注册 namespace 的脱敏元数据（实时／重启作用域、继承值／用户覆盖，以及已隐藏 secret 的数量）；`/settings list` 打印同样的 namespace 摘要，`/settings document` 则准备并报告可编辑文档路径。它刻意不复制 Web React 表单，也不会把一个完整的脱敏 section 写回，因为这类替换可能擦除已存的 secret。`/theme [deepseek|light|dark|system] [id]` 是终端安全的实时 action：它以字段级 mutate 更改与 Web client 共用的 `ui-theme.preference` namespace，跟随外部设置更新，并通过终端颜色方案报告解析 `system`。不带参数的 `/theme` 会打开一个统一选择器，不再拆分「外观」与「配色」。
 
-统一选择器在顶部展示一个 `DeepSeek` 系统默认行，然后为每种色调展示 `Light ·` 与 `Dark ·` 主题卡。选择卡片会一起提交明暗外观与色调；每个背景仍会在 TUI 自有的 `ui-accent` section 中记住非活跃选择。当前主题会一起重绘 prompt、边框、角色标题、选择状态、composer 与已提交用户卡片；真彩色终端还会按背景同步重绘启动 banner 渐变与品牌色——深色终端用亮色、浅色终端用深色——而 16 色终端继续使用适配主题的 ANSI 回退。
+统一选择器在顶部展示一个 `DeepSeek` 系统默认行，然后为每种色调展示 `Light ·` 与 `Dark ·` 主题卡。选择卡片会一起提交明暗外观与色调；每个背景仍会在 TUI 自有的 `ui-accent` section 中记住非活跃选择。即使终端不回复背景色查询，当前主题也会一起重绘 prompt、边框、角色标题、选择状态、零状态欢迎面板、composer 与已提交用户卡片。只有 composer 和已提交用户卡片使用背景填充；欢迎面板保留终端背景。卡片表面在终端支持时使用精确 24 位背景，否则回退到 xterm 256 色。真彩色终端的启动 banner 与品牌色还会按背景使用对应色值——深色终端用亮色、浅色终端用深色——前景角色则继续使用适配主题的 ANSI 回退。
 
 `/language [en|zh|ar|fr|ru|es|ja|ko]` 会写入共用的 `locale.preference` 设置，并提供英文、中文、阿拉伯文、法文、俄文、西班牙文、日文和韩文终端文案。不带参数的 `/language` 会打开附着 composer 的选择器；TUI 中的修改会立即刷新欢迎面板、默认输入 placeholder、编辑器 footer、运行状态行与设置界面。浏览器会采用共用的英文或中文选择；若持久化设置仅受终端支持，则浏览器继续采用其自身检测到的语言。模型回复、工具载荷、自定义 placeholder 和第三方命令文案保留来源语言，不做机器翻译。
 

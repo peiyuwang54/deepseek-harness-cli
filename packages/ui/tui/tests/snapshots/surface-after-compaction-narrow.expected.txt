@@ -9,10 +9,15 @@ buffer
   style 18-23 dim
 1| <blank>
 2| "                                            "
+  style 0-43 bg=ansi-236
 3| " Old prompt with a long line that exercises "
+  style 0-43 bg=ansi-236
 4| " wrapping and stays visible after           "
+  style 0-43 bg=ansi-236
 5| " compaction.                                "
+  style 0-43 bg=ansi-236
 6| "                                            "
+  style 0-43 bg=ansi-236
 7-8| <blank>
 9| "● Tool / bash / Run the coverage gate"
   style 0-36 fg=green
@@ -35,11 +40,15 @@ buffer
   style 0-32 dim
 19-20| <blank>
 21| "                                            "
+  style 0-43 bg=ansi-236
 22| " › │Describe a task, @ a file, or / for com "
-  style 1-1 fg=bright-blue bold
-  style 2-2 dim
-  style 4-42 dim
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-42 bg=ansi-236 dim
 23| "                                            "
+  style 0-43 bg=ansi-236
 24| "  Enter send · Shift+Enter newline · / comma"
   style 0-43 dim
 25| "▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% con"

@@ -58,10 +58,12 @@ const AccentSettingsSchema: z<AccentSelection> = z.object({
  * Register the TUI accent namespace on the host settings service when one is
  * composed, exactly like the Web `ui-theme` and `locale` sections.
  * @param ctx - Context whose optional settings service owns the section.
+ * @param registered - Called after the namespace has loaded its stored value.
  */
-export function registerTuiAccentSettings(ctx: Context): void {
+export function registerTuiAccentSettings(ctx: Context, registered?: () => void): void {
   ctx.inject(['settings'], (settingsCtx) => {
     settingsCtx.settings.register(TUI_ACCENT_SETTINGS_NAMESPACE, AccentSettingsSchema)
+    registered?.()
   })
 }
 

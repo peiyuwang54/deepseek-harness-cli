@@ -3,15 +3,20 @@ lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
 cursor hidden column=76 viewportRow=30 bufferRow=30
 buffer
-0| " DEEPSEEK HA"
+0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-blue bold
-  style 10-11 bold
+  style 10-16 bold
+  style 18-23 dim
 1-10| <blank>
 11| "                                                                                            "
+  style 0-91 bg=ansi-236
 12| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
-  style 1-1 fg=bright-blue bold
-  style 2-41 dim
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-41 bg=ansi-236 dim
+  style 42-91 bg=ansi-236
 13| "                                                                                            "
+  style 0-91 bg=ansi-236
 14| "  Enter 发送 · Shift+Enter 换行 · / 命令"
   style 0-39 dim
 15| "╭ Theme ───────────────────────────────────────────────────────────────────╮"

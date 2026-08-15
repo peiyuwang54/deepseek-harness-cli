@@ -9,8 +9,11 @@ buffer
   style 18-23 dim
 1| <blank>
 2| "                                                                                                    "
+  style 0-99 bg=ansi-236
 3| " Unsafe user \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                          "
+  style 0-99 bg=ansi-236
 4| "                                                                                                    "
+  style 0-99 bg=ansi-236
 5| <blank>
 6| "• Think                                                                                             "
   style 0-0 dim

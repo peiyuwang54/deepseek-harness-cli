@@ -33,6 +33,7 @@
     { "path": "../../interaction/user-approval" },
     { "path": "../../interaction/user-questions" },
     { "path": "../../compaction/compaction" },
+    { "path": "../../credentials/credentials" },
     { "path": "../../skill/skill" },
     { "path": "../../subprocess/subprocess" },
     { "path": "../../workspace/workspace" },

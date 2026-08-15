@@ -235,20 +235,48 @@ export function createPalette(enabled: boolean, scheme: TerminalColorScheme = 'd
  * DeepSeek default keeps the Web user-bubble tokens; other accents tint that
  * same surface so the card and interactive chrome change as one theme.
  * @param enabled - Whether ANSI color output is enabled.
+ * @param truecolor - Whether the terminal accepts 24-bit background colors.
  * @param scheme - Resolved terminal appearance.
- * @param background - Terminal default background reported through OSC 11.
  * @param accent - Active accent hue for this appearance.
  * @returns Background wrapper that resets only the background color group.
  */
 export function composerBackground(
   enabled: boolean,
+  truecolor: boolean,
   scheme: TerminalColorScheme,
-  background: RgbColor | undefined,
   accent: AccentId = DEFAULT_ACCENT,
 ): (text: string) => string {
-  if (!enabled || background === undefined) return text => text
+  if (!enabled) return text => text
   const color = accentSurface(accent, scheme)
-  return text => `\x1b[48;2;${color.r};${color.g};${color.b}m${text}\x1b[49m`
+  const open = truecolor
+    ? `\x1b[48;2;${color.r};${color.g};${color.b}m`
+    : `\x1b[48;5;${String(nearestXtermColor(color))}m`
+  return text => `${open}${text}\x1b[49m`
+}
+
+/** Find the closest color in the standard xterm 256-color cube and grayscale ramp. */
+function nearestXtermColor(color: RgbColor): number {
+  let bestCode = 16
+  let bestDistance = Number.POSITIVE_INFINITY
+  const consider = (code: number, r: number, g: number, b: number): void => {
+    const distance = (color.r - r) ** 2 + (color.g - g) ** 2 + (color.b - b) ** 2
+    if (distance >= bestDistance) return
+    bestCode = code
+    bestDistance = distance
+  }
+  const levels = [0, 95, 135, 175, 215, 255] as const
+  for (let r = 0; r < levels.length; r += 1) {
+    for (let g = 0; g < levels.length; g += 1) {
+      for (let b = 0; b < levels.length; b += 1) {
+        consider(16 + 36 * r + 6 * g + b, levels[r] as number, levels[g] as number, levels[b] as number)
+      }
+    }
+  }
+  for (let index = 0; index < 24; index += 1) {
+    const level = 8 + index * 10
+    consider(232 + index, level, level, level)
+  }
+  return bestCode
 }
 
 /** Derive a quiet card fill from one accent while preserving the DeepSeek Web defaults. */

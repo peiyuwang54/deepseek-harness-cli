@@ -9,10 +9,14 @@ buffer
   style 18-23 dim
 1-19| <blank>
 20| "                                                                                            "
+  style 0-91 bg=ansi-236
 21| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
-  style 1-1 fg=bright-blue bold
-  style 2-41 dim
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-41 bg=ansi-236 dim
+  style 42-91 bg=ansi-236
 22| "                                                                                            "
+  style 0-91 bg=ansi-236
 23| "  Enter 发送 · Shift+Enter 换行 · / 命令"
   style 0-39 dim
 24| "╭ Select workspace ────────────────────────────────────────────────────────╮"

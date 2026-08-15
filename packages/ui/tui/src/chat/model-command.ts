@@ -25,6 +25,8 @@ import type { ChannelNotice, ChatChannelDeps } from './channel.ts'
 export interface ModelControllerDeps extends ChatChannelDeps, ChannelNotice {
   /** Shared selected-target handle owned by the channel. */
   readonly target: ModelSelectionRef
+  /** Observe a committed model route selection. */
+  selected?(): void
 }
 
 /** Model-selection controller for one chat channel. */
@@ -125,6 +127,7 @@ export function createModelController(deps: ModelControllerDeps): ModelControlle
       ...reasoningEffort === undefined ? {} : { reasoningEffort },
     }
     resolveContextWindow(target.current)
+    deps.selected?.()
     const reasoning = targetReasoningLabel(selected, reasoningEffort)
     deps.appendNotice([
       `Model selected: ${targetLabel(selected)}.`,

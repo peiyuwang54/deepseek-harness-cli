@@ -18,7 +18,6 @@ import {
   visibleWidth,
   type Component,
   type EditorTheme,
-  type RgbColor,
   type SlashCommand,
   type TerminalColorScheme,
 } from '@earendil-works/pi-tui'
@@ -157,6 +156,10 @@ import {
   createModelController,
   type ModelController,
 } from './chat/model-command.ts'
+import {
+  createCredentialsController,
+  type CredentialsController,
+} from './chat/credentials.ts'
 import { createQuestionQueue } from './chat/questions.ts'
 import { createApprovalQueue } from './chat/approvals.ts'
 import { createResumeController } from './chat/resume.ts'
@@ -383,12 +386,11 @@ export function createTuiChat(
   let accent: AccentSelection = readTuiAccent(ctx.get('settings'))
   let locale = readTuiLocale(ctx.get('settings'))
   let terminalScheme: TerminalColorScheme = 'dark'
-  let terminalBackground: RgbColor | undefined
   const initialScheme: TerminalColorScheme = themePreference === 'light' ? 'light' : 'dark'
   let currentScheme: TerminalColorScheme = initialScheme
   const currentAccent = (): AccentId => accent[currentScheme]
   const palette = createPalette(resolved.theme.color, initialScheme, currentAccent())
-  let composerSurface = composerBackground(resolved.theme.color, initialScheme, terminalBackground, currentAccent())
+  let composerSurface = composerBackground(resolved.theme.color, resolved.theme.truecolor, initialScheme, currentAccent())
   const mdTheme = markdownTheme(palette)
   // The software caret below provides deterministic blinking even when a
   // terminal profile ignores DECSCUSR. Keep pi-tui's hardware cursor enabled
@@ -524,6 +526,8 @@ export function createTuiChat(
   // `updatePromptValues()` call until after the assignment so no read precedes it.
   // oxlint-disable-next-line prefer-const -- single assignment is a forward-reference, not a const.
   let modelController!: ModelController
+  // oxlint-disable-next-line prefer-const -- model-selection callbacks run only after this assignment.
+  let credentialsController!: CredentialsController
   // oxlint-disable-next-line prefer-const -- assigned after palette-dependent callbacks are declared.
   let settingsController!: SettingsController
   // oxlint-disable-next-line prefer-const -- assigned after shared terminal handoff callbacks are declared.
@@ -883,6 +887,7 @@ export function createTuiChat(
     appendNotice,
     requestRender,
     isDisposed,
+    selected: () => { credentialsController.promptIfMissing() },
   })
   updatePromptValues()
   if (isZeroState()) void loadWelcomeSessions()
@@ -1461,6 +1466,7 @@ export function createTuiChat(
       overlayManager.beginShutdown()
       modelController.resetContextResolution()
       settingsController.clearOverlays()
+      credentialsController.clearOverlay()
       workspaceController.clearOverlay()
       clearStatus()
       for (const controller of commandControllers) controller.abort(new Error('TUI disposed'))
@@ -1498,11 +1504,11 @@ export function createTuiChat(
   }
 
   /** Swap the palette and all derived themes for the resolved terminal color scheme. */
-  const applyColorScheme = (scheme: TerminalColorScheme, force = false): void => {
-    if (scheme === currentScheme && !force) return
+  const applyColorScheme = (scheme: TerminalColorScheme): void => {
+    if (scheme === currentScheme) return
     currentScheme = scheme
     Object.assign(palette, createPalette(resolved.theme.color, scheme, currentAccent()))
-    composerSurface = composerBackground(resolved.theme.color, scheme, terminalBackground, currentAccent())
+    composerSurface = composerBackground(resolved.theme.color, resolved.theme.truecolor, scheme, currentAccent())
     Object.assign(mdTheme, markdownTheme(palette))
     // `setStatus` below re-derives `editor.borderColor` from the new palette.
     rebuildPreservingStreaming()
@@ -1522,7 +1528,7 @@ export function createTuiChat(
     if (nextAccent.light === accent.light && nextAccent.dark === accent.dark) return
     accent = nextAccent
     Object.assign(palette, createPalette(resolved.theme.color, currentScheme, currentAccent()))
-    composerSurface = composerBackground(resolved.theme.color, currentScheme, terminalBackground, currentAccent())
+    composerSurface = composerBackground(resolved.theme.color, resolved.theme.truecolor, currentScheme, currentAccent())
     Object.assign(mdTheme, markdownTheme(palette))
     rebuildPreservingStreaming()
     setStatus(agent.status)
@@ -1550,6 +1556,17 @@ export function createTuiChat(
     applyTheme: applyThemePreference,
     applyAccent,
     applyLocale,
+  })
+  credentialsController = createCredentialsController({
+    ctx,
+    resolved,
+    palette,
+    overlayManager,
+    appendNotice,
+    requestRender,
+    isDisposed,
+    locale: () => locale,
+    shouldPrompt: () => target.current?.provider === 'deepseek-official',
   })
   workspaceController = createWorkspaceController({
     ctx,
@@ -1580,11 +1597,6 @@ export function createTuiChat(
   // so we keep the dark-optimised palette. Swallow a query-write failure for the
   // same reason.
   ui.queryTerminalColorScheme({ timeoutMs: 2000 }).catch(() => {})
-  void ui.queryTerminalBackgroundColor({ timeoutMs: 2000 }).then((background) => {
-    if (background === undefined || disposed) return
-    terminalBackground = background
-    applyColorScheme(currentScheme, true)
-  }).catch(() => {})
 
   const setToolsVisibility = (next: ToolCardVisibility, announce = true): void => {
     toolsVisibility = next
@@ -2353,6 +2365,15 @@ export function createTuiChat(
       },
     })
     commandCtx.commands.register({
+      name: 'credentials',
+      description: 'Inspect or update the DeepSeek API key',
+      input: { hint: '[status|set|unset]' },
+      handler: ({ rawInput }) => {
+        credentialsController.queueCommand(rawInput)
+        return { kind: 'success' }
+      },
+    })
+    commandCtx.commands.register({
       name: 'theme',
       description: 'Choose and persist appearance and accent color',
       input: { hint: '[light|dark|system] [accent [light|dark] [id]]' },
@@ -2979,6 +3000,7 @@ export function createTuiChat(
     new TuiExtensionServiceImpl(serviceCtx, agent, overlayManager)
   })
   startBannerReveal()
+  credentialsController.promptOnFirstUse()
 
   // Invoke an embedding-selected skill exactly as a typed `/skill:<name>` once
   // the chat is live and the agent is idle. The embedding owns fresh/resume
@@ -3072,29 +3094,35 @@ export function apply(ctx: Context, config: Config): void {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     throw new Error('ui-tui: both stdin and stdout must be TTYs; use the one-shot @deepseek-ai/dsh-cli-demo app for pipes')
   }
-  // The terminal accent section lives beside ui-theme/locale, so the TUI can
-  // persist it even when the Web client stack is not composed.
-  registerTuiAccentSettings(ctx)
-  // Truecolor is a terminal capability, so detect it here at the process
-  // boundary from COLORTERM; an explicit theme value still wins.
-  const truecolor = config.theme?.truecolor ?? ['truecolor', '24bit'].includes(process.env.COLORTERM ?? '')
-  const resumeHost = ctx.get('tuiResumeHost')
-  const startWorkspace = resumeHost?.start?.bind(resumeHost)
-  const goodbyeMessage = ctx.get('tuiGoodbyeMessage')
-  // The launcher seeds a guided fresh session's first turn through this key; a
-  // config value still wins. Consumed in createTuiChat via config.initialSkill.
-  const initialSkill = config.initialSkill ?? ctx.get('tuiInitialSkill')
-  mountTui(ctx, Object.assign(
-    {},
-    config,
-    { theme: Object.assign({}, config.theme, { truecolor }) },
-    initialSkill === undefined ? {} : { initialSkill },
-  ), {
-    terminal: new ProcessTerminal(),
-    exit: (code) => { disposeRootAndExit(ctx, code) },
-    ...resumeHost === undefined ? {} : { handoffResume: (sessionId, cwd) => resumeHost.handoff(sessionId, cwd) },
-    ...startWorkspace === undefined ? {} : { handoffWorkspace: cwd => startWorkspace(cwd) },
-    ...goodbyeMessage === undefined ? {} : { goodbyeMessage },
-  })
+  let mounted = false
+  const mount = (): void => {
+    if (mounted) return
+    mounted = true
+    // Truecolor is a terminal capability, so detect it here at the process
+    // boundary from COLORTERM; an explicit theme value still wins.
+    const truecolor = config.theme?.truecolor ?? ['truecolor', '24bit'].includes(process.env.COLORTERM ?? '')
+    const resumeHost = ctx.get('tuiResumeHost')
+    const startWorkspace = resumeHost?.start?.bind(resumeHost)
+    const goodbyeMessage = ctx.get('tuiGoodbyeMessage')
+    // The launcher seeds a guided fresh session's first turn through this key; a
+    // config value still wins. Consumed in createTuiChat via config.initialSkill.
+    const initialSkill = config.initialSkill ?? ctx.get('tuiInitialSkill')
+    mountTui(ctx, Object.assign(
+      {},
+      config,
+      { theme: Object.assign({}, config.theme, { truecolor }) },
+      initialSkill === undefined ? {} : { initialSkill },
+    ), {
+      terminal: new ProcessTerminal(),
+      exit: (code) => { disposeRootAndExit(ctx, code) },
+      ...resumeHost === undefined ? {} : { handoffResume: (sessionId, cwd) => resumeHost.handoff(sessionId, cwd) },
+      ...startWorkspace === undefined ? {} : { handoffWorkspace: cwd => startWorkspace(cwd) },
+      ...goodbyeMessage === undefined ? {} : { goodbyeMessage },
+    })
+  }
+  // A composed settings service must load ui-accent before createTuiChat reads it.
+  const waitForAccentSettings = ctx.get('settings') !== undefined
+  registerTuiAccentSettings(ctx, mount)
+  if (!waitForAccentSettings) mount()
 }
 /* v8 ignore stop */

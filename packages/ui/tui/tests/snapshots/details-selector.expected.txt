@@ -9,8 +9,11 @@ buffer
   style 18-23 dim
 1| <blank>
 2| "                                                                                                    "
+  style 0-99 bg=ansi-236
 3| " Inspect the renderer.                                                                              "
+  style 0-99 bg=ansi-236
 4| "                                                                                                    "
+  style 0-99 bg=ansi-236
 5| <blank>
 6| "• Running the check now.                                                                            "
   style 0-0 dim
@@ -38,10 +41,14 @@ buffer
   style 0-32 dim
 21-22| <blank>
 23| "                                                                                                    "
+  style 0-99 bg=ansi-236
 24| " › Describe a task, @ a file, or / for commands                                                     "
-  style 1-1 fg=bright-blue bold
-  style 2-46 dim
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-46 bg=ansi-236 dim
+  style 47-99 bg=ansi-236
 25| "                                                                                                    "
+  style 0-99 bg=ansi-236
 26| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
 27| "╭ Transcript details ──────────────────────────────────────────────────╮"

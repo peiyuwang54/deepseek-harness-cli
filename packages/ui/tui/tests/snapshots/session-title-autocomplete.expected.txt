@@ -9,11 +9,15 @@ viewport
   style 18-23 dim
 1-2| <blank>
 3| "                                                                                                "
+  style 0-95 bg=ansi-236
 4| " › @design                                                                                      "
-  style 1-1 fg=bright-blue bold
-  style 2-2 dim
-  style 10-10 inverse
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-9 bg=ansi-236
+  style 10-10 bg=ansi-236 inverse
 5| "                                                                                                "
+  style 0-95 bg=ansi-236
 6| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
 7| "→ Session · Searchable design re  opaque-source-id · /workspace/project · 1970-01-01T00:00:00."

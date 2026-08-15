@@ -97,11 +97,16 @@ buffer
   style 0-24 dim
 20-21| <blank>
 22| "                                                                                                "
+  style 0-95 bg=ansi-236
 23| " › │Describe a task, @ a file, or / for commands                                                "
-  style 1-1 fg=bright-blue bold
-  style 2-2 dim
-  style 4-47 dim
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-95 bg=ansi-236
 24| "                                                                                                "
+  style 0-95 bg=ansi-236
 25| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
 26| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"

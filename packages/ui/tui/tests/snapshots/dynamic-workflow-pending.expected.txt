@@ -20,11 +20,16 @@ buffer
 10| "return { reports, verdict: 'covered' }                                                          "
 11-12| <blank>
 13| "                                                                                                "
+  style 0-95 bg=ansi-236
 14| " › │Describe a task, @ a file, or / for commands                                                "
-  style 1-1 fg=bright-blue bold
-  style 2-2 dim
-  style 4-47 dim
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-95 bg=ansi-236
 15| "                                                                                                "
+  style 0-95 bg=ansi-236
 16| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
 17| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"

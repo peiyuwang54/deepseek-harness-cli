@@ -384,6 +384,149 @@ const COPY: Readonly<Record<TuiLocale, TuiCopy>> = {
   },
 }
 
+/** Terminal copy for DeepSeek credential onboarding and management. */
+export interface CredentialCopy {
+  readonly title: string
+  readonly connectTitle: string
+  readonly connectDetail: string
+  readonly updateDetail: string
+  readonly inputHint: string
+  readonly savingHint: string
+  readonly configured: string
+  readonly missing: string
+  readonly source: string
+  readonly configure: string
+  readonly replace: string
+  readonly remove: string
+  readonly close: string
+  readonly confirmRemove: string
+  readonly cancel: string
+  readonly saved: string
+  readonly removed: string
+  readonly unavailable: string
+  readonly readOnly: string
+  readonly empty: string
+  readonly illegalCharacters: string
+  readonly failed: string
+  readonly usage: string
+  readonly moveSelectClose: string
+}
+
+const CREDENTIAL_COPY: Readonly<Record<TuiLocale, CredentialCopy>> = {
+  en: {
+    title: 'DeepSeek API key', connectTitle: 'Connect DeepSeek',
+    connectDetail: 'Paste your DeepSeek API key. It is masked and never added to chat history.',
+    updateDetail: 'Paste the replacement DeepSeek API key. The value stays hidden.',
+    inputHint: 'Enter save • Esc skip', savingHint: 'Saving…', configured: 'Configured', missing: 'Not configured',
+    source: 'source', configure: 'Set API key', replace: 'Replace API key', remove: 'Remove saved API key',
+    close: 'Close', confirmRemove: 'Remove the saved DeepSeek API key?', cancel: 'Cancel',
+    saved: 'DeepSeek API key saved.', removed: 'Saved DeepSeek API key removed.',
+    unavailable: 'Credential storage is unavailable in this profile.',
+    readOnly: 'The active API key comes from a read-only environment source. Change it before starting DeepSeek CLI.',
+    empty: 'Enter an API key.', illegalCharacters: 'API keys may contain printable ASCII characters only.',
+    failed: 'Credential update failed', usage: 'Usage: /credentials [status|set|unset]',
+    moveSelectClose: '↑/↓ move • Enter select • Esc close',
+  },
+  zh: {
+    title: 'DeepSeek API Key', connectTitle: '连接 DeepSeek',
+    connectDetail: '粘贴 DeepSeek API Key。输入会被遮蔽，也不会进入聊天记录。',
+    updateDetail: '粘贴新的 DeepSeek API Key，内容始终隐藏。',
+    inputHint: 'Enter 保存 • Esc 跳过', savingHint: '正在保存…', configured: '已配置', missing: '未配置',
+    source: '来源', configure: '设置 API Key', replace: '更换 API Key', remove: '删除已保存的 API Key',
+    close: '关闭', confirmRemove: '删除已保存的 DeepSeek API Key？', cancel: '取消',
+    saved: 'DeepSeek API Key 已保存。', removed: '已删除保存的 DeepSeek API Key。',
+    unavailable: '当前配置未提供凭据存储。',
+    readOnly: '当前 API Key 来自只读环境变量，请在启动 DeepSeek CLI 前修改。',
+    empty: '请输入 API Key。', illegalCharacters: 'API Key 只能包含可打印 ASCII 字符。',
+    failed: '凭据更新失败', usage: '用法：/credentials [status|set|unset]',
+    moveSelectClose: '↑/↓ 移动 • Enter 选择 • Esc 关闭',
+  },
+  ar: {
+    title: 'مفتاح DeepSeek API', connectTitle: 'اتصال DeepSeek',
+    connectDetail: 'ألصق مفتاح DeepSeek API. سيبقى مخفيًا ولن يُضاف إلى سجل المحادثة.',
+    updateDetail: 'ألصق مفتاح DeepSeek API البديل. تبقى القيمة مخفية.',
+    inputHint: 'Enter حفظ • Esc تخطي', savingHint: 'جارٍ الحفظ…', configured: 'مُعدّ', missing: 'غير مُعدّ',
+    source: 'المصدر', configure: 'تعيين مفتاح API', replace: 'استبدال مفتاح API', remove: 'حذف المفتاح المحفوظ',
+    close: 'إغلاق', confirmRemove: 'حذف مفتاح DeepSeek API المحفوظ؟', cancel: 'إلغاء',
+    saved: 'تم حفظ مفتاح DeepSeek API.', removed: 'تم حذف مفتاح DeepSeek API المحفوظ.',
+    unavailable: 'تخزين بيانات الاعتماد غير متاح في هذا الملف التعريفي.',
+    readOnly: 'يأتي مفتاح API النشط من بيئة للقراءة فقط. غيّره قبل تشغيل DeepSeek CLI.',
+    empty: 'أدخل مفتاح API.', illegalCharacters: 'يجب أن يحتوي مفتاح API على أحرف ASCII قابلة للطباعة فقط.',
+    failed: 'فشل تحديث بيانات الاعتماد', usage: 'الاستخدام: /credentials [status|set|unset]',
+    moveSelectClose: '↑/↓ تنقّل • Enter اختيار • Esc إغلاق',
+  },
+  fr: {
+    title: 'Clé API DeepSeek', connectTitle: 'Connecter DeepSeek',
+    connectDetail: 'Collez votre clé API DeepSeek. Elle est masquée et jamais ajoutée à l’historique.',
+    updateDetail: 'Collez la nouvelle clé API DeepSeek. La valeur reste masquée.',
+    inputHint: 'Enter enregistrer • Esc ignorer', savingHint: 'Enregistrement…', configured: 'Configurée', missing: 'Non configurée',
+    source: 'source', configure: 'Définir la clé API', replace: 'Remplacer la clé API', remove: 'Supprimer la clé enregistrée',
+    close: 'Fermer', confirmRemove: 'Supprimer la clé API DeepSeek enregistrée ?', cancel: 'Annuler',
+    saved: 'Clé API DeepSeek enregistrée.', removed: 'Clé API DeepSeek enregistrée supprimée.',
+    unavailable: 'Le stockage des identifiants n’est pas disponible dans ce profil.',
+    readOnly: 'La clé API active vient d’un environnement en lecture seule. Modifiez-la avant de lancer DeepSeek CLI.',
+    empty: 'Saisissez une clé API.', illegalCharacters: 'La clé API ne peut contenir que des caractères ASCII imprimables.',
+    failed: 'Échec de la mise à jour des identifiants', usage: 'Utilisation : /credentials [status|set|unset]',
+    moveSelectClose: '↑/↓ déplacer • Enter sélectionner • Esc fermer',
+  },
+  ru: {
+    title: 'Ключ DeepSeek API', connectTitle: 'Подключить DeepSeek',
+    connectDetail: 'Вставьте ключ DeepSeek API. Он скрыт и не попадает в историю чата.',
+    updateDetail: 'Вставьте новый ключ DeepSeek API. Значение останется скрытым.',
+    inputHint: 'Enter сохранить • Esc пропустить', savingHint: 'Сохранение…', configured: 'Настроен', missing: 'Не настроен',
+    source: 'источник', configure: 'Задать ключ API', replace: 'Заменить ключ API', remove: 'Удалить сохранённый ключ',
+    close: 'Закрыть', confirmRemove: 'Удалить сохранённый ключ DeepSeek API?', cancel: 'Отмена',
+    saved: 'Ключ DeepSeek API сохранён.', removed: 'Сохранённый ключ DeepSeek API удалён.',
+    unavailable: 'Хранилище учётных данных недоступно в этом профиле.',
+    readOnly: 'Активный ключ API задан в среде только для чтения. Измените его до запуска DeepSeek CLI.',
+    empty: 'Введите ключ API.', illegalCharacters: 'Ключ API может содержать только печатные символы ASCII.',
+    failed: 'Не удалось обновить учётные данные', usage: 'Использование: /credentials [status|set|unset]',
+    moveSelectClose: '↑/↓ перемещение • Enter выбор • Esc закрыть',
+  },
+  es: {
+    title: 'Clave API de DeepSeek', connectTitle: 'Conectar DeepSeek',
+    connectDetail: 'Pega tu clave API de DeepSeek. Se oculta y nunca se añade al historial del chat.',
+    updateDetail: 'Pega la nueva clave API de DeepSeek. El valor permanece oculto.',
+    inputHint: 'Enter guardar • Esc omitir', savingHint: 'Guardando…', configured: 'Configurada', missing: 'Sin configurar',
+    source: 'origen', configure: 'Configurar clave API', replace: 'Reemplazar clave API', remove: 'Eliminar clave guardada',
+    close: 'Cerrar', confirmRemove: '¿Eliminar la clave API de DeepSeek guardada?', cancel: 'Cancelar',
+    saved: 'Clave API de DeepSeek guardada.', removed: 'Clave API de DeepSeek guardada eliminada.',
+    unavailable: 'El almacenamiento de credenciales no está disponible en este perfil.',
+    readOnly: 'La clave API activa procede de un entorno de solo lectura. Cámbiala antes de iniciar DeepSeek CLI.',
+    empty: 'Introduce una clave API.', illegalCharacters: 'La clave API solo puede contener caracteres ASCII imprimibles.',
+    failed: 'No se pudo actualizar la credencial', usage: 'Uso: /credentials [status|set|unset]',
+    moveSelectClose: '↑/↓ mover • Enter seleccionar • Esc cerrar',
+  },
+  ja: {
+    title: 'DeepSeek API キー', connectTitle: 'DeepSeek に接続',
+    connectDetail: 'DeepSeek API キーを貼り付けます。入力は隠され、チャット履歴には追加されません。',
+    updateDetail: '新しい DeepSeek API キーを貼り付けます。値は常に非表示です。',
+    inputHint: 'Enter 保存 • Esc スキップ', savingHint: '保存中…', configured: '設定済み', missing: '未設定',
+    source: '取得元', configure: 'API キーを設定', replace: 'API キーを変更', remove: '保存済み API キーを削除',
+    close: '閉じる', confirmRemove: '保存済み DeepSeek API キーを削除しますか？', cancel: 'キャンセル',
+    saved: 'DeepSeek API キーを保存しました。', removed: '保存済み DeepSeek API キーを削除しました。',
+    unavailable: 'このプロファイルでは認証情報ストレージを利用できません。',
+    readOnly: '有効な API キーは読み取り専用の環境変数から取得されています。DeepSeek CLI の起動前に変更してください。',
+    empty: 'API キーを入力してください。', illegalCharacters: 'API キーには印刷可能な ASCII 文字だけを使用できます。',
+    failed: '認証情報の更新に失敗しました', usage: '使用法: /credentials [status|set|unset]',
+    moveSelectClose: '↑/↓ 移動 • Enter 選択 • Esc 閉じる',
+  },
+  ko: {
+    title: 'DeepSeek API 키', connectTitle: 'DeepSeek 연결',
+    connectDetail: 'DeepSeek API 키를 붙여 넣으세요. 입력은 가려지며 채팅 기록에 추가되지 않습니다.',
+    updateDetail: '새 DeepSeek API 키를 붙여 넣으세요. 값은 계속 숨겨집니다.',
+    inputHint: 'Enter 저장 • Esc 건너뛰기', savingHint: '저장 중…', configured: '설정됨', missing: '설정되지 않음',
+    source: '출처', configure: 'API 키 설정', replace: 'API 키 교체', remove: '저장된 API 키 삭제',
+    close: '닫기', confirmRemove: '저장된 DeepSeek API 키를 삭제할까요?', cancel: '취소',
+    saved: 'DeepSeek API 키를 저장했습니다.', removed: '저장된 DeepSeek API 키를 삭제했습니다.',
+    unavailable: '이 프로필에서는 자격 증명 저장소를 사용할 수 없습니다.',
+    readOnly: '활성 API 키가 읽기 전용 환경에서 제공됩니다. DeepSeek CLI를 시작하기 전에 변경하세요.',
+    empty: 'API 키를 입력하세요.', illegalCharacters: 'API 키에는 인쇄 가능한 ASCII 문자만 사용할 수 있습니다.',
+    failed: '자격 증명 업데이트 실패', usage: '사용법: /credentials [status|set|unset]',
+    moveSelectClose: '↑/↓ 이동 • Enter 선택 • Esc 닫기',
+  },
+}
+
 /** Narrow an unknown setting to a locale with complete terminal copy. */
 export function isTuiLocale(value: unknown): value is TuiLocale {
   return TUI_LOCALES.some(locale => locale === value)
@@ -412,6 +555,11 @@ export function readTuiLocale(settings: SettingsProvider | undefined): TuiLocale
 /** Resolve terminal shell copy for a selected shared locale. */
 export function tuiCopy(locale: TuiLocale): TuiCopy {
   return COPY[locale]
+}
+
+/** Resolve credential-management copy for a selected terminal locale. */
+export function tuiCredentialCopy(locale: TuiLocale): CredentialCopy {
+  return CREDENTIAL_COPY[locale]
 }
 
 /**

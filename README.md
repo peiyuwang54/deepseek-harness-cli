@@ -1,10 +1,16 @@
 <p align="center"><strong>DeepSeek CLI</strong> is an open-source coding agent powered by DeepSeek that runs locally in your terminal.</p>
 
+&#8203;<div align="center">English | [中文](README.zh.md)</div>
+
 <p align="center">
   <img src=".github/deepseek-cli-splash.svg" alt="DeepSeek CLI terminal preview" width="80%" />
 </p>
 
-English | [中文](README.zh.md)
+<p align="center"><strong>8 interface languages · 6 theme palettes · Plan, Goal, Skills, MCP, subagents, and automatic compaction</strong></p>
+
+<p align="center">
+  <img src=".github/deepseek-cli-theme-swatches.svg" alt="DeepSeek CLI theme colors: DeepSeek, Cosmic Orange, Mist Blue, Sage, Lavender, and Deep Blue" width="280" />
+</p>
 
 ---
 
@@ -45,14 +51,15 @@ npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-Set your API key, open a project directory, and run `deepseek`:
+Open a project directory and run `deepseek`:
 
 ```sh
-export DEEPSEEK_API_KEY="your-key"
 deepseek
 ```
 
-PowerShell uses `$env:DEEPSEEK_API_KEY="your-key"`.
+On first launch, paste your DeepSeek API key into the masked prompt. The key is stored by the shared credential provider and never added to chat history. Use `/credentials` to inspect its source, replace it, or remove the saved value.
+
+For automation, set `DEEPSEEK_API_KEY` before launch (`$env:DEEPSEEK_API_KEY="your-key"` in PowerShell). An inherited environment value is read-only inside the CLI.
 
 ### Permission modes
 
@@ -68,7 +75,7 @@ deepseek --yolo
 
 - Code reading, editing, shell tools, web search, skills, MCP, and subagents.
 - Persistent sessions with resume, plan, goal, queued messages, and automatic context compaction.
-- A Codex-style terminal UI with themes and English, Chinese, Arabic, French, Russian, Spanish, Japanese, and Korean.
+- A Codex-style terminal UI with six theme palettes and English, Chinese, Arabic, French, Russian, Spanish, Japanese, and Korean.
 - Plugin-based profiles for terminal, headless automation, and the Web UI.
 
 <a id="run-from-source"></a>

@@ -556,6 +556,90 @@ export interface ActionDialogChoice {
   readonly description?: string
 }
 
+/** Copy and callbacks for a masked API-key entry dialog. */
+export interface CredentialDialogOptions {
+  /** Dialog title. */
+  readonly title: string
+  /** Short explanation shown above the input. */
+  readonly detail: string
+  /** Hint shown while the dialog is accepting input. */
+  readonly inputHint: string
+  /** Hint shown while the credential provider commits the value. */
+  readonly savingHint: string
+  /** Validate and persist the raw value; an error string keeps the dialog open. */
+  readonly submit: (value: string) => Promise<string | undefined>
+  /** Close without storing a value. */
+  readonly cancel: () => void
+  /** Request a frame after asynchronous state changes. */
+  readonly requestRender: () => void
+}
+
+/**
+ * Masked single-line credential editor. The raw value stays inside pi-tui's
+ * input buffer and is never returned by {@link render}.
+ */
+export class CredentialDialog implements Component, Focusable {
+  private readonly input = new Input()
+  private error = ''
+  private saving = false
+  focused = false
+
+  constructor(
+    private readonly options: CredentialDialogOptions,
+    private readonly palette: Palette,
+  ) {
+    this.input.onSubmit = (value) => { void this.submit(value) }
+    this.input.onEscape = () => {
+      if (!this.saving) this.options.cancel()
+    }
+  }
+
+  invalidate(): void {
+    this.input.invalidate()
+  }
+
+  handleInput(data: string): void {
+    if (this.saving) return
+    this.input.focused = this.focused
+    this.input.handleInput(data)
+    this.invalidate()
+  }
+
+  private async submit(value: string): Promise<void> {
+    if (this.saving) return
+    this.saving = true
+    this.error = ''
+    this.options.requestRender()
+    const error = await this.options.submit(value)
+    if (error === undefined) {
+      this.input.setValue('')
+      return
+    }
+    this.saving = false
+    this.error = error
+    this.options.requestRender()
+  }
+
+  render(width: number): string[] {
+    const innerWidth = Math.max(1, width - 4)
+    const valueLength = this.input.getValue().length
+    const available = Math.max(1, innerWidth - 3)
+    const hidden = valueLength > available
+      ? `…${'•'.repeat(Math.max(0, available - 1))}`
+      : '•'.repeat(valueLength)
+    const cursor = this.focused && !this.saving ? '\x1b[7m \x1b[27m' : ' '
+    const maskedInput = truncateToWidth(`› ${hidden}${cursor}`, innerWidth, '')
+    const body = [
+      ...wrapTextWithAnsi(this.palette.text(displayText(this.options.detail)), innerWidth),
+      '',
+      maskedInput,
+      this.palette.dim(this.saving ? this.options.savingHint : this.options.inputHint),
+      ...this.error === '' ? [] : [this.palette.error(displayText(this.error))],
+    ]
+    return renderDialog(this.options.title, body, width, this.palette)
+  }
+}
+
 /** Small searchable-free action selector shared by slash-command hubs. */
 export class ActionDialog implements Component {
   private readonly list: SelectList

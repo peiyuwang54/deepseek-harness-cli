@@ -94,10 +94,14 @@ buffer
   style 17-77 dim
 18-19| <blank>
 20| "                                                                                                "
+  style 0-95 bg=ansi-236
 21| " › Describe a task, @ a file, or / for commands                                                 "
-  style 1-1 fg=bright-blue bold
-  style 2-46 dim
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-46 bg=ansi-236 dim
+  style 47-95 bg=ansi-236
 22| "                                                                                                "
+  style 0-95 bg=ansi-236
 23| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
 24| "╭ Update Permissions ──────────────────────────────────────────────────────╮"

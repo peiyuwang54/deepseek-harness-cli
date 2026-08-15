@@ -19,11 +19,16 @@ viewport
 8| "  ↳ Please check the tests after this tool call."
   style 0-47 dim
 9| "                                                                                            "
+  style 0-91 bg=ansi-236
 10| " › │Describe a task, @ a file, or / for commands                                            "
-  style 1-1 fg=bright-blue bold
-  style 2-2 dim
-  style 4-47 dim
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-91 bg=ansi-236
 11| "                                                                                            "
+  style 0-91 bg=ansi-236
 12| "  Enter steer · Esc interrupt · Shift+Enter newline"
   style 0-50 fg=bright-blue
 13| "                                    ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context1 queued"

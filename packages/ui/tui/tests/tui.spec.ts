@@ -375,6 +375,45 @@ describe('shared settings, appearance, and workspaces', () => {
     install(ctx)
   }
 
+  it('onboards a missing DeepSeek key through masked input without logging it', async () => {
+    let configured = false
+    const set = vi.fn(async (_ref: string, _value: string) => { configured = true })
+    const unset = vi.fn(async () => { configured = false })
+    const result = await setup({
+      configureContext: composeFrontDoorServices((ctx) => {
+        ctx.provide('credentials', {
+          describe: () => Promise.resolve({
+            configured,
+            ...configured ? { source: 'file' } : {},
+            writable: true,
+          }),
+          set,
+          unset,
+          resolve: () => Promise.resolve(undefined),
+        } as never)
+      }),
+    })
+    const secret = 'sk-terminal-secret'
+    await tick(); await tick()
+    expect(result.terminal.output).toContain('Connect DeepSeek')
+    result.terminal.send(secret)
+    await tick()
+    expect(result.terminal.output).not.toContain(secret)
+    expect(result.terminal.output).toContain('••••')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(set).toHaveBeenCalledWith('DEEPSEEK_API_KEY', secret)
+    expect(result.terminal.output).toContain('DeepSeek API key saved.')
+    expect(JSON.stringify(result.session.events)).not.toContain(secret)
+
+    result.terminal.send('/credentials')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(result.terminal.output).toContain('Configured')
+    expect(result.terminal.output).toContain('source: file')
+    await dispose(result)
+  })
+
   it('persists /theme through the shared ui-theme field and exposes the settings document', async () => {
     const uiTheme = settingsNamespace('ui-theme')
     let preference = 'system'
@@ -392,7 +431,7 @@ describe('shared settings, appearance, and workspaces', () => {
     })
     let resultContext: Context | undefined
     const result = await setup({
-      config: { theme: { color: true } },
+      config: { theme: { color: true, truecolor: true } },
       configureContext: composeFrontDoorServices((ctx) => {
         resultContext = ctx
         ctx.provide('settings', {
@@ -412,8 +451,6 @@ describe('shared settings, appearance, and workspaces', () => {
       }),
     })
 
-    result.terminal.send('\x1b]11;#000000\x07')
-    await tick(); await tick()
     result.terminal.output = ''
     result.terminal.send('/theme light')
     result.terminal.send('\r')
@@ -510,7 +547,7 @@ describe('shared settings, appearance, and workspaces', () => {
       resultContext?.emit('settings/updated', uiAccent, { light, dark }, previous, 'update')
     })
     const result = await setup({
-      config: { theme: { color: true } },
+      config: { theme: { color: true, truecolor: true } },
       configureContext: composeFrontDoorServices((ctx) => {
         resultContext = ctx
         ctx.provide('settings', {
@@ -538,8 +575,6 @@ describe('shared settings, appearance, and workspaces', () => {
       }),
     })
 
-    result.terminal.send('\x1b]11;#ffffff\x07')
-    await tick(); await tick()
     result.terminal.send('/theme light cosmic-orange')
     result.terminal.send('\r')
     await tick(); await tick()
@@ -2033,22 +2068,25 @@ describe('goodbye message and /resume', () => {
 })
 
 describe('pi-tui chat lifecycle and transcript', () => {
-  it('shows the split zero-state welcome card until the first turn begins', async () => {
-    const result = await setup({ omitInitialLifecycle: true })
+  it('shows the split zero-state welcome dashboard until the first turn begins', async () => {
+    const result = await setup({ omitInitialLifecycle: true, config: { theme: { color: true } } })
     await tick()
     expect(result.terminal.output).toContain('Welcome back!')
     expect(result.terminal.output).toContain("What's new")
     expect(result.terminal.output).toContain('Recent sessions')
     expect(result.terminal.output).toContain('permissions:')
     expect(result.terminal.output).toContain('/skills')
-    expect(result.terminal.output).toContain('› │Describe a task')
+    expect(result.terminal.output).toContain('Describe a task')
+    expect(result.terminal.output).toContain('\x1b[2;39m╭─')
+    expect(result.terminal.output).not.toContain('\x1b[48;5;236m\x1b[2;39m╭─')
     expect(result.terminal.output).not.toContain('╭ Message ')
 
     result.terminal.output = ''
     result.session.append('turn/start', { turn: 1 })
     result.session.append('step/start', { turn: 1, step: 1 })
     await tick()
-    expect(result.terminal.output).toContain('DEEPSEEK HARNESS')
+    expect(result.terminal.output).toContain('DEEPSEEK')
+    expect(result.terminal.output).toContain('HARNESS')
     expect(result.terminal.output).not.toContain('Welcome back!')
     expect(result.terminal.output).not.toContain("What's new")
     expect(result.terminal.output).not.toContain('Recent sessions')
@@ -6630,7 +6668,7 @@ describe('TUI user-interaction dialogs', () => {
   })
 
   it('handles option wrapping, deselection errors, and returning from custom input', async () => {
-    const result = await setup({ config: { theme: { color: true } } })
+    const result = await setup({ config: { theme: { color: true, truecolor: true } } })
     const single = result.ctx.userQuestions.ask({
       questions: [{ id: 'single', question: 'Single options', options: [{ label: 'One' }, { label: 'Two' }] }],
     })
@@ -7666,30 +7704,34 @@ describe('terminal mounting', () => {
   })
 
   it('maps the default composer to the Web bubble tones and tints other theme cards', () => {
-    expect(composerBackground(true, 'dark', { r: 0, g: 0, b: 0 })(' prompt '))
+    expect(composerBackground(true, true, 'dark')(' prompt '))
       .toBe('\x1b[48;2;44;44;46m prompt \x1b[49m')
-    expect(composerBackground(true, 'light', { r: 255, g: 255, b: 255 })(' prompt '))
+    expect(composerBackground(true, true, 'light')(' prompt '))
       .toBe('\x1b[48;2;237;243;254m prompt \x1b[49m')
-    expect(composerBackground(true, 'light', { r: 255, g: 255, b: 255 }, 'cosmic-orange')(' prompt '))
+    expect(composerBackground(true, true, 'light', 'cosmic-orange')(' prompt '))
       .toBe('\x1b[48;2;246;231;222m prompt \x1b[49m')
-    expect(composerBackground(true, 'dark', { r: 0, g: 0, b: 0 }, 'cosmic-orange')(' prompt '))
+    expect(composerBackground(true, true, 'dark', 'cosmic-orange')(' prompt '))
       .toBe('\x1b[48;2;81;59;46m prompt \x1b[49m')
-    expect(composerBackground(false, 'dark', undefined)('prompt')).toBe('prompt')
+    expect(composerBackground(true, true, 'light', 'lavender')(' prompt '))
+      .toBe('\x1b[48;2;241;236;246m prompt \x1b[49m')
+    expect(composerBackground(true, true, 'dark', 'lavender')(' prompt '))
+      .toBe('\x1b[48;2;77;74;81m prompt \x1b[49m')
+    expect(composerBackground(true, false, 'light', 'lavender')(' prompt '))
+      .toBe('\x1b[48;5;255m prompt \x1b[49m')
+    expect(composerBackground(true, false, 'dark', 'lavender')(' prompt '))
+      .toBe('\x1b[48;5;239m prompt \x1b[49m')
+    expect(composerBackground(false, false, 'dark')('prompt')).toBe('prompt')
   })
 
-  it('shares the official bubble surface between the composer and submitted cards', async () => {
+  it('shares the official bubble surface without a terminal background response', async () => {
     const result = await setup({ config: { theme: { color: true } } })
-    result.terminal.output = ''
-    result.terminal.send('\x1b]11;#000000\x07')
-    await tick()
-    await tick()
-    expect(result.terminal.output).toContain('\x1b[48;2;44;44;46m')
+    expect(result.terminal.output).toContain('\x1b[48;5;236m')
 
     result.terminal.output = ''
     appendUser(result.session, 'same surface')
     await tick()
     expect(result.terminal.output).toContain('same surface')
-    expect(result.terminal.output).toContain('\x1b[48;2;44;44;46m')
+    expect(result.terminal.output).toContain('\x1b[48;5;236m')
     await dispose(result)
   })
 

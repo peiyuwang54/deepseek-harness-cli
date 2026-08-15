@@ -12,11 +12,16 @@ buffer
   style 0-86 dim
 3-4| <blank>
 5| "                                                                                                "
+  style 0-95 bg=ansi-236
 6| " › │Describe a task, @ a file, or / for commands                                                "
-  style 1-1 fg=bright-blue bold
-  style 2-2 dim
-  style 4-47 dim
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-95 bg=ansi-236
 7| "                                                                                                "
+  style 0-95 bg=ansi-236
 8| "  VIM NORMAL · i insert · h/j/k/l move · x delete"
   style 0-48 dim
 9| "                                                  ▸   deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"

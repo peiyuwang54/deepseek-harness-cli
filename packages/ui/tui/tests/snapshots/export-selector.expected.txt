@@ -9,17 +9,24 @@ buffer
   style 18-23 dim
 1| <blank>
 2| "                                                                                                "
+  style 0-95 bg=ansi-236
 3| " Export this **conversation**.                                                                  "
+  style 0-95 bg=ansi-236
 4| "                                                                                                "
+  style 0-95 bg=ansi-236
 5| <blank>
 6| "• The Markdown is ready.                                                                        "
   style 0-0 dim
 7-8| <blank>
 9| "                                                                                                "
+  style 0-95 bg=ansi-236
 10| " › Describe a task, @ a file, or / for commands                                                 "
-  style 1-1 fg=bright-blue bold
-  style 2-46 dim
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-46 bg=ansi-236 dim
+  style 47-95 bg=ansi-236
 11| "                                                                                                "
+  style 0-95 bg=ansi-236
 12| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
 13| "╭ Export conversation ─────────────────────────────────────────────────────╮"

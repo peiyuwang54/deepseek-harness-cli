@@ -10,6 +10,7 @@ import {
   isPermissive,
   type Manifest,
   manifestPatterns,
+  normalizeRepo,
   parsePyprojectRequirements,
   parseVendoredRows,
   render,
@@ -28,6 +29,17 @@ describe('THIRD_PARTY_NOTICES.md', () => {
     const generated = render()
     expect(generated).toContain('It depends on the third-party software listed below.')
     expect(readFileSync(resolve(root, 'THIRD_PARTY_NOTICES.md'), 'utf8'), 'stale notices — run `pnpm run gen-third-party-notices`').toBe(generated)
+  })
+})
+
+describe('normalizeRepo', () => {
+  it('converts Git transport spellings into browsable HTTPS URLs', () => {
+    expect(normalizeRepo('git@github.com:kaelzhang/node-ignore.git'))
+      .toBe('https://github.com/kaelzhang/node-ignore')
+    expect(normalizeRepo('ssh://git@github.com/owner/project.git'))
+      .toBe('https://github.com/owner/project')
+    expect(normalizeRepo('git+ssh://git@github.com/owner/project.git'))
+      .toBe('https://github.com/owner/project')
   })
 })
 

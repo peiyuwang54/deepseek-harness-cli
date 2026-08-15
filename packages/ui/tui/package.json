@@ -39,6 +39,7 @@
     "@deepseek-ai/schemastery": "workspace:^",
     "@earendil-works/pi-tui": "0.80.7",
     "diff": "^9.0.0",
+    "ignore": "^5.3.2",
     "saxes": "6.0.0"
   },
   "peerDependencies": {

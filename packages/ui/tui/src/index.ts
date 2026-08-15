@@ -558,6 +558,7 @@ export function createTuiChat(
     maxResults: resolved.fileSearchMaxResults,
     maxEntries: resolved.fileSearchMaxEntries,
     excludedDirectories: resolved.fileSearchExcludedDirectories,
+    respectIgnoreFiles: resolved.fileSearchRespectIgnoreFiles,
   })
   const skillAbort = new AbortController()
   const agentNavigationAbort = new AbortController()

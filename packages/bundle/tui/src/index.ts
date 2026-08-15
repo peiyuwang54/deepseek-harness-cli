@@ -67,6 +67,7 @@ export const Config: z<Config> = z.object({
   fileSearchMaxResults: z.number().step(1).min(1).default(20),
   fileSearchMaxEntries: z.number().step(1).min(1).default(10000),
   fileSearchExcludedDirectories: z.array(z.string()).default(['.git', 'node_modules']),
+  fileSearchRespectIgnoreFiles: z.boolean().default(true),
   showHardwareCursor: z.boolean().default(true),
   theme: z.object({
     color: z.boolean().default(true),

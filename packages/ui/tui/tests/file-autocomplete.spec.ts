@@ -38,6 +38,7 @@ function search(root: string, overrides: Partial<ConstructorParameters<typeof Wo
     maxResults: overrides.maxResults ?? 20,
     maxEntries: overrides.maxEntries ?? 10_000,
     excludedDirectories: overrides.excludedDirectories ?? ['.git', 'node_modules'],
+    respectIgnoreFiles: overrides.respectIgnoreFiles ?? true,
   })
   searches.push(instance)
   return instance
@@ -145,6 +146,91 @@ describe('WorkspaceFileSearch', () => {
     expect(await files.list('.hidden', signal)).toEqual([
       { path: '.hidden', kind: 'directory' },
       { path: '.hidden/secret.txt', kind: 'file' },
+    ])
+  })
+
+  it('applies repository, nested, generic, and negated ignore rules to direct and fuzzy results', async () => {
+    const root = await workspace()
+    await mkdir(join(root, '.git', 'info'), { recursive: true })
+    await mkdir(join(root, 'generated'), { recursive: true })
+    await writeFile(join(root, '.git', 'info', 'exclude'), 'excluded-by-repo.txt\n')
+    await writeFile(join(root, '.gitignore'), 'generated/\n*.log\n!keep.log\n')
+    await writeFile(join(root, '.ignore'), 'docs/private.txt\n')
+    await writeFile(join(root, 'src', '.gitignore'), 'generated.ts\n')
+    await writeFile(join(root, 'generated', 'output.ts'), 'generated')
+    await writeFile(join(root, 'drop.log'), 'drop')
+    await writeFile(join(root, 'keep.log'), 'keep')
+    await writeFile(join(root, 'excluded-by-repo.txt'), 'excluded')
+    await writeFile(join(root, 'docs', 'private.txt'), 'private')
+    await writeFile(join(root, 'src', 'generated.ts'), 'generated')
+    const files = search(root)
+    const signal = new AbortController().signal
+
+    expect(await files.list('', signal)).toEqual([
+      { path: 'docs', kind: 'directory' },
+      { path: 'src', kind: 'directory' },
+      { path: 'README.md', kind: 'file' },
+      { path: 'keep.log', kind: 'file' },
+    ])
+    expect(await files.list('src/', signal)).toEqual([
+      { path: 'src/terminal-view.ts', kind: 'file' },
+      { path: 'src/tui.spec.ts', kind: 'file' },
+    ])
+    expect(await files.list('generated/', signal)).toEqual([])
+    expect(await files.list('private', signal)).toEqual([])
+    expect(await files.list('generated', signal)).toEqual([])
+    expect(await files.list('keep.log', signal)).toEqual([
+      { path: 'keep.log', kind: 'file' },
+    ])
+  })
+
+  it('can expose ignored paths and reloads ignore files after invalidation', async () => {
+    const root = await workspace()
+    await mkdir(join(root, '.git'), { recursive: true })
+    await writeFile(join(root, '.gitignore'), 'fresh-file.ts\n')
+    await writeFile(join(root, 'fresh-file.ts'), 'fresh')
+    const signal = new AbortController().signal
+    const respected = search(root)
+    const unfiltered = search(root, { respectIgnoreFiles: false })
+
+    expect(await respected.list('fresh-file', signal)).toEqual([])
+    expect(await unfiltered.list('fresh-file', signal)).toEqual([
+      { path: 'fresh-file.ts', kind: 'file' },
+    ])
+    await writeFile(join(root, '.gitignore'), '')
+    expect(await respected.list('fresh-file', signal)).toEqual([])
+    respected.invalidate()
+    expect(await respected.list('fresh-file', signal)).toEqual([
+      { path: 'fresh-file.ts', kind: 'file' },
+    ])
+  })
+
+  it('inherits parent repository rules and follows worktree git-directory pointers', async () => {
+    const repository = await mkdtemp(join(tmpdir(), 'dsh-file-autocomplete-repository-'))
+    roots.push(repository)
+    const root = join(repository, 'packages', 'app')
+    const gitDirectory = await mkdtemp(join(tmpdir(), 'dsh-file-autocomplete-gitdir-'))
+    roots.push(gitDirectory)
+    await mkdir(join(root, 'src'), { recursive: true })
+    await mkdir(join(gitDirectory, 'info'), { recursive: true })
+    await writeFile(join(repository, '.git'), `gitdir: ${gitDirectory}\n`)
+    await writeFile(join(repository, '.gitignore'), 'packages/app/from-parent.ts\n')
+    await writeFile(join(gitDirectory, 'info', 'exclude'), 'packages/app/from-exclude.ts\n')
+    await writeFile(join(root, 'from-parent.ts'), 'parent')
+    await writeFile(join(root, 'from-exclude.ts'), 'exclude')
+    await writeFile(join(root, 'visible.ts'), 'visible')
+    const files = search(root)
+    const signal = new AbortController().signal
+
+    expect(await files.list('from-', signal)).toEqual([])
+    expect(await files.list('visible', signal)).toEqual([
+      { path: 'visible.ts', kind: 'file' },
+    ])
+
+    await writeFile(join(repository, '.git'), 'not-a-git-directory-pointer\n')
+    files.invalidate()
+    expect(await files.list('from-exclude', signal)).toEqual([
+      { path: 'from-exclude.ts', kind: 'file' },
     ])
   })
 

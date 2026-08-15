@@ -2856,6 +2856,8 @@ export interface TuiConfig {
   fileSearchMaxEntries?: number
   /** Directory basenames excluded from `@` traversal and completion. */
   fileSearchExcludedDirectories?: string[]
+  /** Respect project `.gitignore` and `.ignore` files during `@` completion. */
+  fileSearchRespectIgnoreFiles?: boolean
   /** Show a software-blinking caret while retaining pi-tui's IME cursor marker. */
   showHardwareCursor?: boolean
   /** Color and prompt-template settings. */

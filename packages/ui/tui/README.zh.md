@@ -30,7 +30,7 @@ Markdown 响应支持标题、强调、链接、嵌套列表与任务列表、�
 
 在模型输出、会话事件、工具 presenter、问题、配置或诊断到达 pi-tui 的 ANSI 感知 renderer 或终端标题前，TUI 会把换行之外的 C0 和 C1 控制字符渲染为可见 `\xNN` 文本。这些来源无法添加终端控制序列；终端渲染与样式仍由 TUI 和 pi-tui 持有。
 
-在 token 边界输入 `@` 会搜索会话工作目录下的文件和目录。没有路径的模糊查询使用可复用的有界工作区索引；包含 `/` 的查询直接列出该目录，选择文件夹后会保持补全开启以继续深入。含空白的路径会插入为 `@"path with spaces"`。选择文件只会插入其路径和一个尾随空格：TUI 不会读取文件、附加隐藏上下文，也不会把路径替换为引用对象。注册模型侧 `read` 工具后，TUI 会添加一条固定系统提示词指令，要求模型在需要显式路径内容时读取该路径。
+在 token 边界输入 `@` 会搜索会话工作目录下的文件和目录。没有路径的模糊查询使用可复用的有界工作区索引；包含 `/` 的查询直接列出该目录，选择文件夹后会保持补全开启以继续深入。搜索默认遵守仓库 `.git/info/exclude`、分层 `.gitignore` 与嵌套 `.ignore` 规则。含空白的路径会插入为 `@"path with spaces"`。选择文件只会插入其路径和一个尾随空格：TUI 不会读取文件、附加隐藏上下文，也不会把路径替换为引用对象。注册模型侧 `read` 工具后，TUI 会添加一条固定系统提示词指令，要求模型在需要显式路径内容时读取该路径。
 
 挂载可选的 `ctx.sessionReferenceResolver` 后，同一个 `@` 菜单还会提供仅含元数据的会话候选项，插入 `@[label](dsh-session:<payload>)`，并在分派前准备所选快照。会话引用保持结构化，因为模型没有类似文件系统的工具可在稍后检索会话快照。准备期间会禁止重复提交，并在失败时恢复编辑器输入。准备完成后，TUI 会注入解析后的上下文，并根据当前状态选择 `agent.steer()` 或 `agent.followup()`；不存在单独的 prompt-admission hook。
 
@@ -134,6 +134,7 @@ Reasoning 首次渲染时默认在 `Think` 标题下显示。提交的用户卡�
 | `fileSearchMaxResults` | `TuiConfig` | `20` | 一次 `@` 查询显示的最大文件和目录候选数 |
 | `fileSearchMaxEntries` | `TuiConfig` | `10000` | 无路径模糊查询使用的有界工作区索引最多保留的路径数 |
 | `fileSearchExcludedDirectories` | `TuiConfig` | `['.git', 'node_modules']` | 遍历和直接补全时忽略的目录 basename |
+| `fileSearchRespectIgnoreFiles` | `TuiConfig` | `true` | 应用仓库 `.git/info/exclude`、分层 `.gitignore` 与嵌套 `.ignore` 规则 |
 | `showHardwareCursor` | `TuiConfig` | `true` | 保留 pi-tui 的 IME marker，并显示获得焦点的软件闪烁光标 |
 | `theme.color` | `TuiConfig` | `true` | 应用内置 ANSI palette（参见[颜色](#color)） |
 | `theme.truecolor` | `TuiConfig` | 进程入口检测 `COLORTERM`；direct runtime 调用使用 `false` | 启用 24-bit 启动渐变与 DeepSeek 品牌色 |
@@ -282,4 +283,4 @@ Paths prefixed with @ are files explicitly referenced by the user. Use the read 
 - **有意不支持非 TTY 运行**：pipe 与自动化应使用随发行版交付的 `headless` profile 或其他服务器入口，而不能依赖内部回退。
 - **手动 `/skill:` 调用总会重新加载完整 skill 正文**：TUI 不会检测会话中是否已存在某项 skill，因此重复调用会再次追加其指令。
 - **文件发现只发现宿主工作区**：自动补全读取 TUI 进程的会话 `cwd`，所选文本随后由已配置 `read` 工具解释。挂载远程或虚拟文件系统的部署必须对齐这些 namespace，或提供其他补全接口。
-- **文件搜索使用显式目录排除项，而非 ignore 文件**：默认排除 `.git` 和 `node_modules`，部署还可以配置更多 basename，但不会解释 `.gitignore` 和 `.ignore`。目录 symlink 不会遍历。
+- **文件搜索不读取 Git 用户级全局排除项**：默认应用仓库 `.git/info/exclude`、分层 `.gitignore` 与嵌套 `.ignore` 规则；设置 `fileSearchRespectIgnoreFiles: false` 可关闭所有 ignore 文件解释。显式目录排除项始终生效，目录 symlink 不会遍历。

@@ -2854,6 +2854,8 @@ export interface TuiConfig {
   fileSearchMaxEntries?: number
   /** Directory basenames excluded from `@` traversal and completion. */
   fileSearchExcludedDirectories?: string[]
+  /** Respect project `.gitignore` and `.ignore` files during `@` completion. */
+  fileSearchRespectIgnoreFiles?: boolean
   /** Show a software-blinking caret while retaining pi-tui's IME cursor marker. */
   showHardwareCursor?: boolean
   /** Color and prompt-template settings. */
@@ -2879,7 +2881,7 @@ export interface TuiThemeConfig {
 }
 ```
 
-Source: [`packages/ui/tui/src/config.ts:141`](../packages/ui/tui/src/config.ts)
+Source: [`packages/ui/tui/src/config.ts:145`](../packages/ui/tui/src/config.ts)
 
 <a id="deepseek-aidsh-tui-app"></a>
 

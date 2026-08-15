@@ -66,6 +66,8 @@ export interface TuiConfig {
   fileSearchMaxEntries?: number
   /** Directory basenames excluded from `@` traversal and completion. */
   fileSearchExcludedDirectories?: string[]
+  /** Respect project `.gitignore` and `.ignore` files during `@` completion. */
+  fileSearchRespectIgnoreFiles?: boolean
   /** Show a software-blinking caret while retaining pi-tui's IME cursor marker. */
   showHardwareCursor?: boolean
   /** Color and prompt-template settings. */
@@ -92,6 +94,7 @@ const detailsDialogWidthSchema = z.number().step(1).min(20).default(72)
 const fileSearchMaxResultsSchema = z.number().step(1).min(1).default(DEFAULT_FILE_SEARCH_MAX_RESULTS)
 const fileSearchMaxEntriesSchema = z.number().step(1).min(1).default(DEFAULT_FILE_SEARCH_MAX_ENTRIES)
 const fileSearchExcludedDirectoriesSchema = z.array(z.string()).default([...DEFAULT_FILE_SEARCH_EXCLUDED_DIRECTORIES])
+const fileSearchRespectIgnoreFilesSchema = z.boolean().default(true)
 const showHardwareCursorSchema = z.boolean().default(true)
 const colorSchema = z.boolean().default(true)
 // No default: an unset value auto-detects truecolor from COLORTERM in `apply`.
@@ -129,6 +132,7 @@ const tuiConfigSchemaFields = {
   fileSearchMaxResults: fileSearchMaxResultsSchema,
   fileSearchMaxEntries: fileSearchMaxEntriesSchema,
   fileSearchExcludedDirectories: fileSearchExcludedDirectoriesSchema,
+  fileSearchRespectIgnoreFiles: fileSearchRespectIgnoreFilesSchema,
   showHardwareCursor: showHardwareCursorSchema,
   theme: TuiThemeConfigSchema,
   title: titleSchema,
@@ -171,6 +175,7 @@ export const Config: z<Config> = z.object({
   fileSearchMaxResults: tuiConfigSchemaFields.fileSearchMaxResults,
   fileSearchMaxEntries: tuiConfigSchemaFields.fileSearchMaxEntries,
   fileSearchExcludedDirectories: tuiConfigSchemaFields.fileSearchExcludedDirectories,
+  fileSearchRespectIgnoreFiles: tuiConfigSchemaFields.fileSearchRespectIgnoreFiles,
   showHardwareCursor: tuiConfigSchemaFields.showHardwareCursor,
   theme: tuiConfigSchemaFields.theme,
   title: tuiConfigSchemaFields.title,
@@ -206,6 +211,7 @@ export interface ResolvedTuiConfig {
   fileSearchMaxResults: number
   fileSearchMaxEntries: number
   fileSearchExcludedDirectories: string[]
+  fileSearchRespectIgnoreFiles: boolean
   showHardwareCursor: boolean
   theme: ResolvedTuiThemeConfig
   title: string
@@ -237,6 +243,7 @@ export function resolveTuiConfig(config: TuiConfig | undefined): ResolvedTuiConf
     fileSearchMaxResults: config?.fileSearchMaxResults ?? DEFAULT_FILE_SEARCH_MAX_RESULTS,
     fileSearchMaxEntries: config?.fileSearchMaxEntries ?? DEFAULT_FILE_SEARCH_MAX_ENTRIES,
     fileSearchExcludedDirectories: [...(config?.fileSearchExcludedDirectories ?? DEFAULT_FILE_SEARCH_EXCLUDED_DIRECTORIES)],
+    fileSearchRespectIgnoreFiles: config?.fileSearchRespectIgnoreFiles ?? true,
     showHardwareCursor: config?.showHardwareCursor ?? true,
     theme: {
       color: config?.theme?.color ?? true,

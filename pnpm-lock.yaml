@@ -8464,6 +8464,9 @@ importers:
       diff:
         specifier: ^9.0.0
         version: 9.0.0
+      ignore:
+        specifier: ^5.3.2
+        version: 5.3.2
       saxes:
         specifier: 6.0.0
         version: 6.0.0

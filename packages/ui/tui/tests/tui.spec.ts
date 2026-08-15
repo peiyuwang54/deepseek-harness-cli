@@ -276,6 +276,7 @@ describe('TUI config', () => {
       fileSearchMaxResults: 20,
       fileSearchMaxEntries: 10_000,
       fileSearchExcludedDirectories: ['.git', 'node_modules'],
+      fileSearchRespectIgnoreFiles: true,
       showHardwareCursor: true,
       theme: {
         color: true,
@@ -306,6 +307,7 @@ describe('TUI config', () => {
       fileSearchMaxResults: 7,
       fileSearchMaxEntries: 123,
       fileSearchExcludedDirectories: ['.git', 'generated'],
+      fileSearchRespectIgnoreFiles: false,
       showHardwareCursor: false,
       theme: { color: false, truecolor: true },
       title: 'DSH',
@@ -328,6 +330,7 @@ describe('TUI config', () => {
       fileSearchMaxResults: 7,
       fileSearchMaxEntries: 123,
       fileSearchExcludedDirectories: ['.git', 'generated'],
+      fileSearchRespectIgnoreFiles: false,
       showHardwareCursor: false,
       theme: {
         color: false,

@@ -6,8 +6,9 @@
  * @module @deepseek-ai/dsh-tui/chat/file-autocomplete
  */
 
-import { lstat, readdir } from 'node:fs/promises'
-import { isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { lstat, readFile, readdir } from 'node:fs/promises'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import ignore, { type Ignore } from 'ignore'
 
 /** Default maximum file and directory candidates rendered for one query. */
 export const DEFAULT_FILE_SEARCH_MAX_RESULTS = 20
@@ -24,6 +25,8 @@ export interface FileSearchConfig {
   maxEntries: number
   /** Directory basenames never traversed or offered. */
   excludedDirectories: readonly string[]
+  /** Apply project `.gitignore` and `.ignore` rules before offering candidates. */
+  respectIgnoreFiles: boolean
 }
 
 /** One path-only completion candidate inside the session cwd. */
@@ -54,6 +57,22 @@ interface RankedPath {
 interface IndexGeneration {
   controller: AbortController
   promise: Promise<IndexedPath[]>
+}
+
+interface IgnoreScope {
+  base: string
+  matcher: Ignore
+}
+
+interface RootIgnoreContext {
+  gitRoot: string | undefined
+  scopes: readonly IgnoreScope[]
+}
+
+interface SearchDirectory {
+  absolute: string
+  relative: string
+  scopes: readonly IgnoreScope[]
 }
 
 /**
@@ -174,7 +193,12 @@ export class WorkspaceFileSearch {
 
   private async scanWorkspace(signal: AbortSignal): Promise<IndexedPath[]> {
     const indexed: IndexedPath[] = []
-    const directories: { absolute: string; relative: string }[] = [{ absolute: this.root, relative: '' }]
+    const ignoreContext = await loadRootIgnoreContext(this.root, this.config.respectIgnoreFiles, signal)
+    const directories: SearchDirectory[] = [{
+      absolute: this.root,
+      relative: '',
+      scopes: ignoreContext.scopes,
+    }]
     for (let cursor = 0; cursor < directories.length && indexed.length < this.config.maxEntries; cursor += 1) {
       signal.throwIfAborted()
       const directory = directories[cursor]
@@ -186,11 +210,18 @@ export class WorkspaceFileSearch {
       for (const entry of entries) {
         signal.throwIfAborted()
         const path = directory.relative === '' ? entry.name : `${directory.relative}/${entry.name}`
+        const absolute = join(directory.absolute, entry.name)
         if (entry.isDirectory()) {
           if (this.excludedDirectories.has(entry.name)) continue
+          if (ignoredByScopes(absolute, true, directory.scopes)) continue
           indexed.push({ path, kind: 'directory' })
-          directories.push({ absolute: join(directory.absolute, entry.name), relative: path })
+          directories.push({
+            absolute,
+            relative: path,
+            scopes: await extendIgnoreScopes(directory.scopes, absolute, ignoreContext.gitRoot, signal),
+          })
         } else if (entry.isFile()) {
+          if (ignoredByScopes(absolute, false, directory.scopes)) continue
           indexed.push({ path, kind: 'file' })
         }
         if (indexed.length >= this.config.maxEntries) break
@@ -207,19 +238,174 @@ export class WorkspaceFileSearch {
     if (displayDirectory.split('/').some(segment => this.excludedDirectories.has(segment))) return []
     const absolute = await resolveDisplayDirectory(this.root, displayDirectory, signal)
     if (absolute === undefined) return []
+    const ignoreContext = await loadIgnoreContextForDirectory(
+      this.root,
+      absolute,
+      this.config.respectIgnoreFiles,
+      signal,
+    )
+    if (ignoreContext === undefined) return []
     const entries = await readDirectory(absolute, signal)
     const candidates: FileSearchCandidate[] = []
     for (const entry of entries) {
       if (entry.name.startsWith('.') && !fragment.startsWith('.')) continue
+      const entryAbsolute = join(absolute, entry.name)
       if (entry.isDirectory()) {
         if (this.excludedDirectories.has(entry.name)) continue
+        if (ignoredByScopes(entryAbsolute, true, ignoreContext.scopes)) continue
         candidates.push({ path: `${displayDirectory}${entry.name}`, kind: 'directory' })
       } else if (entry.isFile()) {
+        if (ignoredByScopes(entryAbsolute, false, ignoreContext.scopes)) continue
         candidates.push({ path: `${displayDirectory}${entry.name}`, kind: 'file' })
       }
     }
     return rankCandidates(candidates, fragment, this.config.maxResults)
   }
+}
+
+async function loadIgnoreContextForDirectory(
+  root: string,
+  target: string,
+  respectIgnoreFiles: boolean,
+  signal: AbortSignal,
+): Promise<RootIgnoreContext | undefined> {
+  const context = await loadRootIgnoreContext(root, respectIgnoreFiles, signal)
+  let scopes = context.scopes
+  for (const directory of descendantDirectories(root, target)) {
+    if (ignoredByScopes(directory, true, scopes)) return undefined
+    scopes = await extendIgnoreScopes(scopes, directory, context.gitRoot, signal)
+  }
+  return { gitRoot: context.gitRoot, scopes }
+}
+
+async function loadRootIgnoreContext(
+  root: string,
+  respectIgnoreFiles: boolean,
+  signal: AbortSignal,
+): Promise<RootIgnoreContext> {
+  if (!respectIgnoreFiles) return { gitRoot: undefined, scopes: [] }
+  const resolvedRoot = resolve(root)
+  const gitRoot = await findGitRoot(resolvedRoot, signal)
+  let scopes: readonly IgnoreScope[] = []
+  if (gitRoot !== undefined) {
+    const gitExclude = await loadGitExcludeScope(gitRoot, signal)
+    if (gitExclude !== undefined) scopes = [...scopes, gitExclude]
+    const parent = dirname(resolvedRoot)
+    if (isAtOrInside(gitRoot, parent)) {
+      for (const directory of inclusiveDirectories(gitRoot, parent)) {
+        scopes = await extendIgnoreScopes(scopes, directory, gitRoot, signal)
+      }
+    }
+  }
+  scopes = await extendIgnoreScopes(scopes, resolvedRoot, gitRoot, signal)
+  return { gitRoot, scopes }
+}
+
+async function extendIgnoreScopes(
+  scopes: readonly IgnoreScope[],
+  directory: string,
+  gitRoot: string | undefined,
+  signal: AbortSignal,
+): Promise<readonly IgnoreScope[]> {
+  const patterns: string[] = []
+  if (gitRoot !== undefined && isAtOrInside(gitRoot, directory)) {
+    const gitignore = await readIgnoreFile(join(directory, '.gitignore'), signal)
+    if (gitignore !== undefined) patterns.push(gitignore)
+  }
+  const genericIgnore = await readIgnoreFile(join(directory, '.ignore'), signal)
+  if (genericIgnore !== undefined) patterns.push(genericIgnore)
+  if (patterns.length === 0) return scopes
+  const matcher = ignore()
+  for (const pattern of patterns) matcher.add(pattern)
+  return [...scopes, { base: directory, matcher }]
+}
+
+async function loadGitExcludeScope(gitRoot: string, signal: AbortSignal): Promise<IgnoreScope | undefined> {
+  const dotGit = join(gitRoot, '.git')
+  let gitDirectory: string | undefined
+  try {
+    const status = await lstat(dotGit)
+    signal.throwIfAborted()
+    if (status.isFile()) {
+      const pointer = await readFile(dotGit, { encoding: 'utf8', signal })
+      const match = /^gitdir:\s*(.+)\s*$/imu.exec(pointer)
+      if (match?.[1] !== undefined) gitDirectory = resolve(gitRoot, match[1])
+    } else {
+      gitDirectory = dotGit
+    }
+  } catch (_error: unknown) {
+    /* v8 ignore next -- only a host race after `findGitRoot` can make this marker read fail after abort. */
+    signal.throwIfAborted()
+    // Missing or unreadable repository metadata only omits the optional
+    // repository-local exclude source; normal project ignore files still apply.
+  }
+  if (gitDirectory === undefined) return undefined
+  const patterns = await readIgnoreFile(join(gitDirectory, 'info', 'exclude'), signal)
+  if (patterns === undefined) return undefined
+  return { base: gitRoot, matcher: ignore().add(patterns) }
+}
+
+async function findGitRoot(start: string, signal: AbortSignal): Promise<string | undefined> {
+  let directory = start
+  while (true) {
+    signal.throwIfAborted()
+    try {
+      await lstat(join(directory, '.git'))
+      signal.throwIfAborted()
+      return directory
+    } catch (_error: unknown) {
+      signal.throwIfAborted()
+      // A missing or unreadable marker means this directory is not an
+      // observable repository root; continue with its parent.
+    }
+    const parent = dirname(directory)
+    if (parent === directory) return undefined
+    directory = parent
+  }
+}
+
+async function readIgnoreFile(path: string, signal: AbortSignal): Promise<string | undefined> {
+  try {
+    return await readFile(path, { encoding: 'utf8', signal })
+  } catch (_error: unknown) {
+    signal.throwIfAborted()
+    // Missing and unreadable ignore files contribute no rules; autocomplete
+    // remains advisory over every readable subtree.
+    return undefined
+  }
+}
+
+function ignoredByScopes(absolute: string, directory: boolean, scopes: readonly IgnoreScope[]): boolean {
+  let ignored = false
+  for (const scope of scopes) {
+    const scoped = relative(scope.base, absolute).split(sep).join('/')
+    const result = scope.matcher.test(directory ? `${scoped}/` : scoped)
+    if (result.ignored) ignored = true
+    else if (result.unignored) ignored = false
+  }
+  return ignored
+}
+
+function inclusiveDirectories(start: string, target: string): string[] {
+  const fromStart = relative(start, target)
+  if (fromStart === '') return [start]
+  const directories = [start]
+  let current = start
+  for (const segment of fromStart.split(sep)) {
+    current = join(current, segment)
+    directories.push(current)
+  }
+  return directories
+}
+
+function descendantDirectories(root: string, target: string): string[] {
+  const directories = inclusiveDirectories(resolve(root), resolve(target))
+  return directories.slice(1)
+}
+
+function isAtOrInside(base: string, target: string): boolean {
+  const fromBase = relative(base, target)
+  return fromBase === '' || (!fromBase.startsWith(`..${sep}`) && fromBase !== '..' && !isAbsolute(fromBase))
 }
 
 async function resolveDisplayDirectory(
@@ -256,9 +442,11 @@ async function readDirectory(absolute: string, signal: AbortSignal) {
     signal.throwIfAborted()
     return entries.sort((left, right) => compareText(left.name, right.name))
   } catch (_error: unknown) {
+    /* v8 ignore next -- resolution already observed a directory; this branch requires an abort during the immediate host listing race. */
     signal.throwIfAborted()
     // An unreadable/missing subtree contributes no candidates; other readable
     // branches remain useful and autocomplete is advisory.
+    /* v8 ignore next -- this branch requires the directory to disappear or become unreadable after successful resolution. */
     return []
   }
 }

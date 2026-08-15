@@ -904,11 +904,14 @@ describe('TUI terminal-state snapshots', () => {
     await mkdir(join(cwd, 'src'), { recursive: true })
     await writeFile(join(cwd, 'src', 'terminal-special-case.ts'), 'export const marker = true\n')
     await writeFile(join(cwd, 'src', 'terminal-state.ts'), 'export const state = true\n')
+    await writeFile(join(cwd, '.ignore'), 'src/terminal-state.ts\n')
     const harness = await setupSnapshot({ cwd, formatCwd: () => '/workspace/project' })
     try {
       harness.terminal.send('@tsc')
       await vi.waitFor(async () => {
-        expect(await harness.terminal.snapshot()).toContain('File · terminal-special-case.t')
+        const frame = await harness.terminal.snapshot()
+        expect(frame).toContain('File · terminal-special-case.t')
+        expect(frame).not.toContain('terminal-state')
       })
       await checkpoint('file-autocomplete', harness.terminal)
     } finally {

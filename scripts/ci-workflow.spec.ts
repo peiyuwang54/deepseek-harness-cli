@@ -525,6 +525,7 @@ describe('CLI release workflow', () => {
       && isRecord(step.with) && step.with.name === 'deepseek-harness-cli-npm-packages'
     ))
     const releaseStep = release.steps.find(step => isRecord(step) && step.name === 'Create or refresh the release with assets')
+    const npmIdentityStep = npmPublish.steps.find(step => isRecord(step) && step.name === 'Verify npm publisher identity')
     const npmStep = npmPublish.steps.find(step => isRecord(step) && step.name === 'Publish the main shim and per-platform packages')
     if (!isRecord(releaseStep) || typeof releaseStep.run !== 'string'
       || !isRecord(npmStep) || typeof npmStep.run !== 'string') {
@@ -532,6 +533,8 @@ describe('CLI release workflow', () => {
     }
     expect(npmArtifact).toMatchObject({ with: { path: 'dist-npm' } })
     expect(releaseStep.run).toContain('--repo "$GITHUB_REPOSITORY"')
+    expect(releaseStep.run).toContain('release_kind=(--prerelease)')
+    expect(npmIdentityStep).toMatchObject({ run: 'npm whoami' })
     expect(npmStep.run).toContain('test -f dist-npm/main/package.json')
     expect(npmStep.run).toContain('npm publish "./dist-npm/main"')
   })

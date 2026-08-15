@@ -293,10 +293,12 @@ jobs:
         run: |
           set -euo pipefail
           tag="deepseek-harness-cli-v$VERSION"
+          if [[ "$VERSION" == *-* ]]; then release_kind=(--prerelease); else release_kind=(--prerelease=false); fi
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$tag" "${release_kind[@]}" --repo "$GITHUB_REPOSITORY"
             gh release upload "$tag" dist-release/*.tar.gz dist-release/*.sha256 --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$tag" dist-release/*.tar.gz dist-release/*.sha256 --title "$tag" --generate-notes --repo "$GITHUB_REPOSITORY"
+            gh release create "$tag" dist-release/*.tar.gz dist-release/*.sha256 --title "$tag" --generate-notes "${release_kind[@]}" --repo "$GITHUB_REPOSITORY"
           fi
 
   npm-publish:
@@ -318,6 +320,11 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+
+      - name: Verify npm publisher identity
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm whoami
 
       - uses: actions/download-artifact@v4
         with:

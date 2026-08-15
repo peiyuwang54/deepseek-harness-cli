@@ -216,9 +216,15 @@ function provideLlmCatalog(ctx: Context): void {
   } as never)
 }
 
+type MutableMountAgent = { -readonly [Key in keyof Agent]: Agent[Key] }
+
 /** Register the minimal current Agent contract used by terminal-mount tests. */
-function registerMountAgent(ctx: Context, session: ReturnType<Context['sessions']['create']>, status: Agent['status']): Agent {
-  const agent: Agent = {
+function registerMountAgentLifecycle(
+  ctx: Context,
+  session: ReturnType<Context['sessions']['create']>,
+  status: Agent['status'],
+): { agent: MutableMountAgent; dispose: () => void } {
+  const agent: MutableMountAgent = {
     id: session.id,
     options: {},
     session,
@@ -233,8 +239,16 @@ function registerMountAgent(ctx: Context, session: ReturnType<Context['sessions'
     steer() {},
     inject() {},
   }
-  ctx.agents.register(agent)
-  return agent
+  return { agent, dispose: ctx.agents.register(agent) }
+}
+
+/** Register a mount-test Agent whose individual disposer is not needed. */
+function registerMountAgent(
+  ctx: Context,
+  session: ReturnType<Context['sessions']['create']>,
+  status: Agent['status'],
+): MutableMountAgent {
+  return registerMountAgentLifecycle(ctx, session, status).agent
 }
 
 describe('TUI config', () => {
@@ -5328,6 +5342,72 @@ describe('pi-tui chat lifecycle and transcript', () => {
   })
 })
 
+describe('agent navigation command', () => {
+  it('opens one shared picker for /agent and /subagents and queues the selected live child', async () => {
+    const rootId = SessionId('main-session')
+    const childId = SessionId('live-child')
+    const queueSwitch = vi.fn(() => undefined)
+    const listDescendants = vi.fn(() => Promise.resolve([{
+      kind: 'child' as const,
+      id: childId,
+      label: 'implementation worker',
+      mode: 'continuable' as const,
+      activity: 'running' as const,
+      hasChildren: false,
+      parentId: rootId,
+      depth: 1,
+    }]))
+    let ctxRef: Context | undefined
+    const result = await setup({
+      configureContext: async (ctx) => {
+        ctxRef = ctx
+        ctx.provide('tools', { get() { return undefined } } as never)
+        ctx.provide('subagents', { listDescendants } as never)
+      },
+      agentNavigation: {
+        rootSessionId: rootId,
+        currentSessionId: () => rootId,
+        queueSwitch,
+      },
+    })
+    const childSession = result.ctx.sessions.create(childId, {
+      meta: { parentSession: rootId, origin: 'subagent' },
+    })
+    registerMountAgent(result.ctx, childSession, 'idle')
+    expect(ctxRef).toBe(result.ctx)
+
+    result.terminal.send('/agent')
+    result.terminal.send('\r')
+    await vi.waitFor(() => { expect(result.terminal.output).toContain('implementation worker') })
+    expect(result.terminal.output).toContain('Subagents')
+    expect(result.terminal.output).toContain('Main [default]')
+    result.terminal.send('\x1b[B')
+    result.terminal.send('\r')
+    expect(queueSwitch).toHaveBeenCalledWith(childId)
+
+    result.terminal.send('/subagents')
+    result.terminal.send('\r')
+    await vi.waitFor(() => { expect(listDescendants).toHaveBeenCalledTimes(2) })
+    result.terminal.send('\x1b')
+
+    result.terminal.send('/subagents unexpected')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Usage: /subagents (no arguments)')
+    expect(listDescendants).toHaveBeenCalledWith(rootId, expect.any(AbortSignal))
+    await dispose(result)
+  })
+
+  it('reports missing navigation capabilities without inventing agent state', async () => {
+    const result = await setup()
+    result.terminal.send('/agent')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Agent navigation is unavailable')
+    await dispose(result)
+  })
+})
+
 describe('skill slash command', () => {
   const withSkills = async (ctx: Context): Promise<void> => {
     ctx.provide('tools', { get() { return undefined } } as never)
@@ -7553,6 +7633,74 @@ describe('terminal mounting', () => {
     mountTui(ctx, { theme: { color: false } }, { terminal, exit: vi.fn() })
     await tick()
     expect(terminal.started).toBe(1)
+    await ctx.fiber.dispose()
+  })
+
+  it('switches the mounted terminal between live root and descendant agents', async () => {
+    const ctx = new Context()
+    provideTokenMeter(ctx)
+    provideLlmCatalog(ctx)
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(CommandService)
+    await ctx.plugin(UserInteractionService)
+    await ctx.plugin(TuiPromptService)
+    ctx.provide('tools', { get: () => undefined } as never)
+    const rootId = SessionId('main')
+    const childId = SessionId('implementation-child')
+    const rootSession = ctx.sessions.create(rootId)
+    const childSession = ctx.sessions.create(childId, {
+      meta: { parentSession: rootId, origin: 'subagent' },
+    })
+    const rootAgent = registerMountAgent(ctx, rootSession, 'idle')
+    const childLifecycle = registerMountAgentLifecycle(ctx, childSession, 'idle')
+    ctx.provide('subagents', {
+      listDescendants: () => Promise.resolve([{
+        kind: 'child',
+        id: childId,
+        label: 'implementation worker',
+        mode: 'continuable',
+        activity: 'running',
+        hasChildren: false,
+        parentId: rootId,
+        depth: 1,
+      }]),
+    } as never)
+    const terminal = new FakeTerminal()
+    mountTui(ctx, { sessionId: rootId, theme: { color: false } }, { terminal, exit: vi.fn() })
+    await tick()
+
+    rootAgent.status = 'running'
+    terminal.send('/agent')
+    terminal.send('\r')
+    await vi.waitFor(() => { expect(terminal.output).toContain('implementation worker') })
+    terminal.send('\x1b[B')
+    terminal.send('\r')
+    await tick()
+    expect(terminal.started).toBe(1)
+    expect(terminal.output).toContain('Wait for or interrupt the current agent')
+
+    rootAgent.status = 'idle'
+    terminal.send('/subagents')
+    terminal.send('\r')
+    await vi.waitFor(() => {
+      expect(terminal.output.split('Subagents').length).toBeGreaterThan(2)
+    })
+    terminal.send('\x1b[B')
+    terminal.send('\r')
+    await vi.waitFor(() => { expect(terminal.started).toBe(2) })
+    terminal.send('/status')
+    terminal.send('\r')
+    await vi.waitFor(() => { expect(terminal.output).toContain(childId) })
+    expect(terminal.stopped).toBe(1)
+
+    childLifecycle.dispose()
+    await vi.waitFor(() => { expect(terminal.started).toBe(3) })
+    terminal.send('/status')
+    terminal.send('\r')
+    await vi.waitFor(() => {
+      expect(terminal.output.slice(terminal.output.lastIndexOf('Session status'))).toContain(rootId)
+    })
     await ctx.fiber.dispose()
   })
 

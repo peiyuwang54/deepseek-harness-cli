@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
-import { agentEvents } from '@deepseek-ai/dsh-agent'
+import { agentEvents, Inbox, type Agent } from '@deepseek-ai/dsh-agent'
 import * as CommandJobs from '@deepseek-ai/dsh-command-jobs'
 import DynamicCordisRunner from '@deepseek-ai/dsh-cordis-host-runner'
 import { compactCheckpointSource, CompactionId } from '@deepseek-ai/dsh-compaction'
@@ -96,6 +96,7 @@ const CHECKPOINTS = [
   'mcp-tools',
   'permissions-selector',
   'permissions-switching',
+  'agent-selector',
   'skills-selector',
   'keymap-selector',
   'vim-normal-mode',
@@ -253,6 +254,29 @@ async function configurePermissionPresets(ctx: Context): Promise<void> {
     },
     defaultPreset: 'workspace-write',
   })
+}
+
+/** Register an inert live child for picker-only terminal snapshots. */
+function registerSnapshotAgent(
+  ctx: Context,
+  session: ReturnType<Context['sessions']['create']>,
+): void {
+  const agent: Agent = {
+    id: session.id,
+    options: {},
+    session,
+    status: 'idle',
+    ctx,
+    inbox: new Inbox(session, { inserted() {}, discarded() {}, claimed() {} }),
+    cancel() {},
+    whenIdle: () => Promise.resolve(),
+    runMaintenance: task => task(new AbortController().signal),
+    send() {},
+    followup() {},
+    steer() {},
+    inject() {},
+  }
+  ctx.agents.register(agent)
 }
 
 async function configureSnapshotSkills(ctx: Context): Promise<void> {
@@ -1417,6 +1441,48 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('mcp-tools', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins the live root and descendant agent selector', async () => {
+    const rootId = SessionId('main-session')
+    const childId = SessionId('snapshot-agent-child')
+    let configuredContext: Context | undefined
+    const harness = await setupSnapshot({
+      configureContext: async (ctx) => {
+        configuredContext = ctx
+        ctx.provide('tools', { get() { return undefined } } as never)
+        ctx.provide('subagents', {
+          listDescendants: () => Promise.resolve([{
+            kind: 'child',
+            id: childId,
+            label: 'implementation worker',
+            mode: 'continuable',
+            activity: 'running',
+            hasChildren: false,
+            parentId: rootId,
+            depth: 1,
+          }]),
+        } as never)
+      },
+      beforeMount(session) {
+        if (configuredContext === undefined) throw new Error('snapshot context is not configured')
+        const childSession = configuredContext.sessions.create(childId, {
+          meta: { parentSession: session.id, origin: 'subagent' },
+        })
+        registerSnapshotAgent(configuredContext, childSession)
+      },
+      agentNavigation: {
+        rootSessionId: rootId,
+        currentSessionId: () => rootId,
+        queueSwitch: () => undefined,
+      },
+    }, { columns: 96, rows: 30 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/agent')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('agent-selector', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

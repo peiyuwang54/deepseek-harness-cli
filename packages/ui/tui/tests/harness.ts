@@ -74,6 +74,8 @@ export interface TuiHarnessOptions {
   }
   handoffResume?: TuiRuntime['handoffResume']
   handoffWorkspace?: TuiRuntime['handoffWorkspace']
+  /** Optional live-agent channel host used by `/agent` and `/subagents`. */
+  agentNavigation?: TuiRuntime['agentNavigation']
   /** Host-supplied exit line; absent exercises the no-message path. */
   goodbyeMessage?: TuiRuntime['goodbyeMessage']
   /** Set false to exercise the optional session-query degradation path. */
@@ -269,6 +271,7 @@ export async function createTuiTestHarness<TerminalType extends Terminal, Exit e
     ...(options.gitDiff === undefined ? {} : { gitDiff: options.gitDiff }),
     ...(options.handoffResume === undefined ? {} : { handoffResume: options.handoffResume }),
     ...(options.handoffWorkspace === undefined ? {} : { handoffWorkspace: options.handoffWorkspace }),
+    ...(options.agentNavigation === undefined ? {} : { agentNavigation: options.agentNavigation }),
     ...(options.goodbyeMessage === undefined ? {} : { goodbyeMessage: options.goodbyeMessage }),
     gitBranch: options.gitBranch ?? (() => 'tui-staging'),
   })

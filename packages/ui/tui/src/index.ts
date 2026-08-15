@@ -56,6 +56,9 @@ import { foldSessionTitle } from '@deepseek-ai/dsh-session-title'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type { SessionQueryEngine } from '@deepseek-ai/dsh-session-query'
 import type { SkillRegistry } from '@deepseek-ai/dsh-skill'
+// Optional service used by the live agent picker. The type import also
+// declaration-merges `ctx.subagents` onto Cordis Context.
+import type {} from '@deepseek-ai/dsh-subagent'
 // Type import declaration-merges the `userQuestions` service onto `Context`;
 // the ask-user-question queue is registered by ./chat/questions.
 import type {} from '@deepseek-ai/dsh-user-questions'
@@ -187,7 +190,7 @@ import {
 import { mcpCommandResult } from './chat/mcp-command.ts'
 import { gitDiff } from './chat/git-diff.ts'
 import { GoalTimingTracker, formatGoalFooterStatus, type GoalFooterState } from './chat/goal-status.ts'
-import type { TuiResumeHost, TuiRuntime } from './runtime.ts'
+import type { TuiAgentNavigation, TuiResumeHost, TuiRuntime } from './runtime.ts'
 import { WorkspaceFileSearch } from './chat/file-autocomplete.ts'
 import { createTuiTerminalMode, parseTuiMouseEvent } from './chat/terminal-mode.ts'
 import { TranscriptViewport } from './components/transcript-viewport.ts'
@@ -198,7 +201,7 @@ const REVIEW_CHANGES_PROMPT = 'Review the current workspace changes, including u
 
 export { TuiPromptService } from './prompt.ts'
 export { renderSkillInvocation } from './chat/skill-invocation.ts'
-export type { TuiResumeHost, TuiRuntime } from './runtime.ts'
+export type { TuiAgentNavigation, TuiResumeHost, TuiRuntime } from './runtime.ts'
 export {
   resolveTuiConfig,
   TuiConfigSchema,
@@ -489,6 +492,7 @@ export function createTuiChat(
     excludedDirectories: resolved.fileSearchExcludedDirectories,
   })
   const skillAbort = new AbortController()
+  const agentNavigationAbort = new AbortController()
   const tokens = sessionTokens(agent.session)
   const sessionStatistics = (): {
     stats: SessionStatsProjection | undefined
@@ -1918,6 +1922,84 @@ export function createTuiChat(
     return { kind: 'success' }
   }
 
+  const showAgentPicker = async (): Promise<void> => {
+    const navigation = runtime.agentNavigation
+    if (navigation === undefined) {
+      appendNotice('Agent navigation is unavailable in this TUI embedding.', 'warning')
+      return
+    }
+    const subagents = ctx.get('subagents')
+    if (subagents === undefined) {
+      appendNotice('Subagent navigation is not available in this agent preset.', 'warning')
+      return
+    }
+    const descendants = await subagents.listDescendants(
+      navigation.rootSessionId,
+      agentNavigationAbort.signal,
+    )
+    if (disposed) return
+    const currentSessionId = navigation.currentSessionId()
+    const rootAgent = ctx.agents.get(navigation.rootSessionId)
+    const choices: ActionDialogChoice[] = []
+    if (rootAgent !== undefined) {
+      choices.push({
+        value: rootAgent.id,
+        label: '● Main [default]',
+        description: [
+          rootAgent.status,
+          ...rootAgent.id === currentSessionId ? ['current'] : [],
+          rootAgent.id,
+        ].join(' · '),
+      })
+    }
+    let unavailable = 0
+    for (const entry of descendants) {
+      if (entry.kind !== 'child') {
+        unavailable += 1
+        continue
+      }
+      const child = ctx.agents.get(entry.id)
+      if (child === undefined) {
+        unavailable += 1
+        continue
+      }
+      const label = entry.label?.trim() || 'Agent'
+      choices.push({
+        value: child.id,
+        label: `${'  '.repeat(Math.max(0, entry.depth - 1))}● ${label}`,
+        description: [
+          entry.mode,
+          child.status,
+          ...child.id === currentSessionId ? ['current'] : [],
+          child.id,
+        ].join(' · '),
+      })
+    }
+    if (choices.length === 0) {
+      appendNotice('No live agent threads are available.', 'warning')
+      return
+    }
+    if (unavailable > 0) {
+      appendNotice(`${String(unavailable)} inactive or unreadable subagent ${unavailable === 1 ? 'thread is' : 'threads are'} omitted; use /resume for saved sessions.`)
+    }
+    openActionDialog('Subagents', choices, (value) => {
+      const selected = SessionId(value)
+      if (selected === navigation.currentSessionId()) return
+      const error = navigation.queueSwitch(selected)
+      if (error !== undefined) appendNotice(error, 'warning')
+    }, currentSessionId)
+  }
+
+  const runAgentCommand = (command: 'agent' | 'subagents', raw: string): CommandResult => {
+    if (raw.trim() !== '') return { kind: 'error', text: `Usage: /${command} (no arguments)` }
+    commandHubOperations = commandHubOperations.then(showAgentPicker).catch((error: unknown) => {
+      if (!disposed && !agentNavigationAbort.signal.aborted) {
+        appendNotice(`Could not read subagents: ${errorChain(error)}`, 'error')
+      }
+    })
+    return { kind: 'success' }
+  }
+
   const runIdeCommand = (raw: string): CommandResult => {
     const argument = raw.trim()
     if (argument !== '') {
@@ -2249,6 +2331,16 @@ export function createTuiChat(
       description: 'Browse and invoke user-invocable skills for this agent',
       input: { hint: '[name]' },
       handler: ({ rawInput }) => runSkillsCommand(rawInput),
+    })
+    commandCtx.commands.register({
+      name: 'agent',
+      description: 'Switch the active agent thread',
+      handler: ({ rawInput }) => runAgentCommand('agent', rawInput),
+    })
+    commandCtx.commands.register({
+      name: 'subagents',
+      description: 'Switch the active agent thread',
+      handler: ({ rawInput }) => runAgentCommand('subagents', rawInput),
     })
     commandCtx.commands.register({
       name: 'keymap',
@@ -2981,6 +3073,7 @@ export function createTuiChat(
 
   const detachListeners = (): void => {
     skillAbort.abort()
+    agentNavigationAbort.abort()
     fileSearch.dispose()
     removeInputListener()
     disposeCommandChanges()
@@ -3105,8 +3198,107 @@ export function mountTui(ctx: Context, config: Config, runtime: TuiRuntime): voi
     settled = true
     stopWaiting()
     ctx.effect(() => {
-      const controller = createTuiChat(ctx, config, runtime)
-      return () => controller.dispose()
+      let activeSessionId = sessionId
+      let controller: TuiController | undefined
+      let switchTimer: ReturnType<typeof setTimeout> | undefined
+      let switchOperation = Promise.resolve()
+      let switchPending = false
+      let closed = false
+
+      const belongsToRoot = (candidate: Agent): boolean => {
+        let current = candidate.session
+        const visited = new Set<SessionId>()
+        while (true) {
+          if (current.id === sessionId) return true
+          const parentId = current.header.parentSession
+          if (parentId === undefined || visited.has(parentId)) return false
+          visited.add(parentId)
+          const parent = ctx.sessions.get(parentId)
+          if (parent === undefined) return false
+          current = parent
+        }
+      }
+
+      const mountChannel = (targetSessionId: SessionId): TuiController => createTuiChat(
+        ctx,
+        Object.assign({}, config, { sessionId: targetSessionId }),
+        channelRuntime,
+      )
+
+      const performSwitch = async (targetSessionId: SessionId): Promise<void> => {
+        const previousSessionId = activeSessionId
+        const previousController = controller
+        controller = undefined
+        await previousController?.dispose()
+        if (closed) return
+        try {
+          controller = mountChannel(targetSessionId)
+          activeSessionId = targetSessionId
+        } catch (error: unknown) {
+          runtime.terminal.write(displayText(
+            `ui-tui: could not switch to agent "${targetSessionId}": ${errorChain(error)}\n`,
+          ))
+          if (ctx.agents.get(previousSessionId) === undefined) {
+            runtime.exit(1)
+            return
+          }
+          try {
+            controller = mountChannel(previousSessionId)
+          } catch (restoreError: unknown) {
+            runtime.terminal.write(displayText(
+              `ui-tui: could not restore agent "${previousSessionId}": ${errorChain(restoreError)}\n`,
+            ))
+            runtime.exit(1)
+          }
+        }
+      }
+
+      const scheduleSwitch = (targetSessionId: SessionId): void => {
+        switchPending = true
+        switchTimer = setTimeout(() => {
+          switchTimer = undefined
+          switchOperation = performSwitch(targetSessionId).finally(() => { switchPending = false })
+        }, 0)
+      }
+
+      const navigation: TuiAgentNavigation = {
+        rootSessionId: sessionId,
+        currentSessionId: () => activeSessionId,
+        queueSwitch(targetSessionId) {
+          if (closed) return 'Agent navigation is shutting down.'
+          if (switchPending) return 'Another agent switch is already in progress.'
+          if (targetSessionId === activeSessionId) return undefined
+          const current = ctx.agents.get(activeSessionId)
+          if (current === undefined) return `Agent "${activeSessionId}" is no longer running.`
+          if (current.status !== 'idle') {
+            return 'Wait for or interrupt the current agent before switching threads.'
+          }
+          const target = ctx.agents.get(targetSessionId)
+          if (target === undefined) return `Agent "${targetSessionId}" is no longer running.`
+          if (!belongsToRoot(target)) {
+            return `Agent "${targetSessionId}" is outside this session tree.`
+          }
+          scheduleSwitch(targetSessionId)
+          return undefined
+        },
+      }
+      const channelRuntime: TuiRuntime = { ...runtime, agentNavigation: navigation }
+      const disposeActiveAgent = ctx.on('agent/disposed', ({ agent: subject }) => {
+        if (closed || switchPending || subject.id !== activeSessionId || activeSessionId === sessionId) return
+        if (ctx.agents.get(sessionId) !== undefined) scheduleSwitch(sessionId)
+      })
+      controller = mountChannel(sessionId)
+      return async () => {
+        closed = true
+        disposeActiveAgent()
+        if (switchTimer !== undefined) {
+          clearTimeout(switchTimer)
+          switchTimer = undefined
+          switchPending = false
+        }
+        await switchOperation
+        await controller?.dispose()
+      }
     }, 'ui-tui')
   }
   const fail = (failedSessionId: SessionId, error: unknown): void => {

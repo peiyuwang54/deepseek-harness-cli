@@ -10,6 +10,25 @@ import type { Terminal } from '@earendil-works/pi-tui'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { GitDiffResult } from './chat/git-diff.ts'
 
+/** Host-owned navigation between live agents in one root session tree. */
+export interface TuiAgentNavigation {
+  /** Root session whose primary agent and descendants belong in the picker. */
+  readonly rootSessionId: SessionId
+
+  /**
+   * Return the agent whose terminal channel is currently mounted.
+   * @returns The live channel's session/agent id.
+   */
+  currentSessionId(): SessionId
+
+  /**
+   * Queue a channel switch after the current slash command settles.
+   * @param sessionId - Live root or descendant agent selected by the user.
+   * @returns An immediate validation error, or `undefined` when the switch was queued.
+   */
+  queueSwitch(sessionId: SessionId): string | undefined
+}
+
 /** Optional process-lifecycle owner for an atomic resume handoff. */
 export interface TuiResumeHost {
   /**
@@ -69,6 +88,8 @@ export interface TuiRuntime {
   handoffResume?: TuiResumeHost['handoff']
   /** Host-owned fresh-session handoff used by `/new`, `/clear`, and the workspace selector. */
   handoffWorkspace?: NonNullable<TuiResumeHost['start']>
+  /** Host-owned live-agent channel navigation used by `/agent` and `/subagents`. */
+  agentNavigation?: TuiAgentNavigation
   /**
    * Line the host wants printed once the terminal is released on exit, such as
    * the command that resumes this session. Absent prints nothing. The host owns

@@ -35,6 +35,7 @@
     { "path": "../../compaction/compaction" },
     { "path": "../../credentials/credentials" },
     { "path": "../../skill/skill" },
+    { "path": "../../subagent/subagent" },
     { "path": "../../subprocess/subprocess" },
     { "path": "../../workspace/workspace" },
     { "path": "../../runtime-diagnostics/invariants" }

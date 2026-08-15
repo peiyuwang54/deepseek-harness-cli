@@ -84,18 +84,40 @@ export type AccentId = typeof ACCENT_IDS[number]
 /** The shipped default accent, unchanged from the original DeepSeek-blue chrome. */
 export const DEFAULT_ACCENT: AccentId = 'deepseek'
 
-/** A named accent hue: display label, truecolor ink, and ANSI fallbacks. */
+/** Per-background accent selection; each scheme remembers its own hue. */
+export interface AccentSelection {
+  readonly light: AccentId
+  readonly dark: AccentId
+}
+
+/** The default selection: DeepSeek blue on both backgrounds. */
+export const DEFAULT_ACCENT_SELECTION: AccentSelection = { light: DEFAULT_ACCENT, dark: DEFAULT_ACCENT }
+
+/** Truecolor ink and banner gradient for one terminal background. */
+interface AccentInk {
+  /** 24-bit foreground ink for brand surfaces. */
+  readonly rgb: readonly [number, number, number]
+  /** Banner gradient stops; the first is the accent ink. */
+  readonly gradient: readonly (readonly [number, number, number])[]
+}
+
+/**
+ * A named accent hue with per-background ink. ANSI role codes stay
+ * theme-adaptive (terminals remap the 16-color set), while the truecolor ink
+ * needs one variant per background: a bright stop for dark terminals and a
+ * deep stop for light terminals.
+ */
 export interface AccentHue {
   readonly id: AccentId
   readonly label: string
-  /** 24-bit foreground ink for brand surfaces and the banner gradient. */
-  readonly rgb: readonly [number, number, number]
   /** ANSI open code for the theme-adaptive `accent` role. */
   readonly ansi: string
   /** ANSI open code for the `brand` role when truecolor is unavailable. */
   readonly brandAnsi: string
-  /** Banner gradient stops; the first is the accent ink. */
-  readonly gradient: readonly (readonly [number, number, number])[]
+  /** Truecolor ink and gradient for a dark terminal background. */
+  readonly dark: AccentInk
+  /** Truecolor ink and gradient for a light terminal background. */
+  readonly light: AccentInk
 }
 
 /** Narrow an unknown value to a shipped accent id. */
@@ -106,6 +128,11 @@ export function isAccentId(value: unknown): value is AccentId {
 /** Resolve one shipped accent hue, defaulting unknown ids to {@link DEFAULT_ACCENT}. */
 export function accentHue(id: AccentId): AccentHue {
   return ACCENT_HUES.find(hue => hue.id === id) ?? ACCENT_HUES[0] as AccentHue
+}
+
+/** Resolve one accent hue's ink for the given terminal background. */
+function accentInk(id: AccentId, scheme: TerminalColorScheme): AccentInk {
+  return accentHue(id)[scheme]
 }
 
 /** One role's SGR parameters and the reason it carries them. */
@@ -204,24 +231,41 @@ export function createPalette(enabled: boolean, scheme: TerminalColorScheme = 'd
 }
 
 /**
- * Build the composer background from the Web theme's exact user-bubble tokens:
- * `deepseek-50` in light mode and `neutral-bluish-850` in dark mode. The
- * surface is enabled after OSC 11 confirms that background color is supported.
+ * Build the composer and user-card background from the selected theme. The
+ * DeepSeek default keeps the Web user-bubble tokens; other accents tint that
+ * same surface so the card and interactive chrome change as one theme.
  * @param enabled - Whether ANSI color output is enabled.
  * @param scheme - Resolved terminal appearance.
  * @param background - Terminal default background reported through OSC 11.
+ * @param accent - Active accent hue for this appearance.
  * @returns Background wrapper that resets only the background color group.
  */
 export function composerBackground(
   enabled: boolean,
   scheme: TerminalColorScheme,
   background: RgbColor | undefined,
+  accent: AccentId = DEFAULT_ACCENT,
 ): (text: string) => string {
   if (!enabled || background === undefined) return text => text
-  const color = scheme === 'light'
-    ? { r: 237, g: 243, b: 254 }
-    : { r: 44, g: 44, b: 46 }
+  const color = accentSurface(accent, scheme)
   return text => `\x1b[48;2;${color.r};${color.g};${color.b}m${text}\x1b[49m`
+}
+
+/** Derive a quiet card fill from one accent while preserving the DeepSeek Web defaults. */
+function accentSurface(accent: AccentId, scheme: TerminalColorScheme): RgbColor {
+  if (accent === DEFAULT_ACCENT) {
+    return scheme === 'light'
+      ? { r: 237, g: 243, b: 254 }
+      : { r: 44, g: 44, b: 46 }
+  }
+  const [r, g, b] = accentInk(accent, scheme).rgb
+  const base = scheme === 'light' ? [255, 255, 255] as const : [44, 44, 46] as const
+  const amount = scheme === 'light' ? 0.14 : 0.18
+  return {
+    r: Math.round(base[0] + (r - base[0]) * amount),
+    g: Math.round(base[1] + (g - base[1]) * amount),
+    b: Math.round(base[2] + (b - base[2]) * amount),
+  }
 }
 
 /**
@@ -250,24 +294,54 @@ function lightenGradient(rgb: readonly [number, number, number]): readonly (read
   return [rgb, tint(rgb, 0.35), tint(rgb, 0.7)]
 }
 
-/** Shipped accent hues, ordered for the `/accent` selector. */
+/**
+ * Shipped accent hues. Each carries a dark-background ink (the Apple finish's
+ * bright tone) and a light-background ink (a deepened tone that stays legible
+ * on white), while the ANSI codes stay theme-adaptive.
+ */
 export const ACCENT_HUES: readonly AccentHue[] = [
-  { id: 'deepseek', label: 'DeepSeek', rgb: [77, 107, 254], ansi: '94', brandAnsi: '34', gradient: BRAND_GRADIENT },
-  { id: 'cosmic-orange', label: 'Cosmic Orange', rgb: [247, 126, 45], ansi: '91', brandAnsi: '31', gradient: lightenGradient([247, 126, 45]) },
-  { id: 'mist-blue', label: 'Mist Blue', rgb: [162, 185, 220], ansi: '96', brandAnsi: '36', gradient: lightenGradient([162, 185, 220]) },
-  { id: 'sage', label: 'Sage', rgb: [180, 194, 148], ansi: '92', brandAnsi: '32', gradient: lightenGradient([180, 194, 148]) },
-  { id: 'lavender', label: 'Lavender', rgb: [230, 213, 241], ansi: '95', brandAnsi: '35', gradient: lightenGradient([230, 213, 241]) },
-  { id: 'deep-blue', label: 'Deep Blue', rgb: [50, 55, 74], ansi: '34', brandAnsi: '34', gradient: lightenGradient([50, 55, 74]) },
+  {
+    id: 'deepseek', label: 'DeepSeek', ansi: '94', brandAnsi: '34',
+    dark: { rgb: [77, 107, 254], gradient: BRAND_GRADIENT },
+    light: { rgb: [61, 90, 214], gradient: lightenGradient([61, 90, 214]) },
+  },
+  {
+    id: 'cosmic-orange', label: 'Cosmic Orange', ansi: '91', brandAnsi: '31',
+    dark: { rgb: [247, 126, 45], gradient: lightenGradient([247, 126, 45]) },
+    light: { rgb: [190, 86, 20], gradient: lightenGradient([190, 86, 20]) },
+  },
+  {
+    id: 'mist-blue', label: 'Mist Blue', ansi: '96', brandAnsi: '36',
+    dark: { rgb: [162, 185, 220], gradient: lightenGradient([162, 185, 220]) },
+    light: { rgb: [96, 124, 168], gradient: lightenGradient([96, 124, 168]) },
+  },
+  {
+    id: 'sage', label: 'Sage', ansi: '92', brandAnsi: '32',
+    dark: { rgb: [180, 194, 148], gradient: lightenGradient([180, 194, 148]) },
+    light: { rgb: [110, 128, 80], gradient: lightenGradient([110, 128, 80]) },
+  },
+  {
+    id: 'lavender', label: 'Lavender', ansi: '95', brandAnsi: '35',
+    dark: { rgb: [230, 213, 241], gradient: lightenGradient([230, 213, 241]) },
+    light: { rgb: [152, 122, 190], gradient: lightenGradient([152, 122, 190]) },
+  },
+  {
+    id: 'deep-blue', label: 'Deep Blue', ansi: '34', brandAnsi: '34',
+    dark: { rgb: [120, 140, 200], gradient: lightenGradient([120, 140, 200]) },
+    light: { rgb: [40, 48, 90], gradient: lightenGradient([40, 48, 90]) },
+  },
 ]
 
 /**
- * Paint trusted static brand art with the active accent's exact ink.
+ * Paint trusted static brand art with the active accent's ink for the given
+ * terminal background.
  * @param text - Static brand text or raster cells.
  * @param accent - Active accent hue; defaults to the DeepSeek blue.
+ * @param scheme - Terminal background; selects the bright or deep ink.
  * @returns text wrapped in the accent's truecolor foreground and a foreground reset.
  */
-export function brandText(text: string, accent: AccentId = DEFAULT_ACCENT): string {
-  const [r, g, b] = accentHue(accent).rgb
+export function brandText(text: string, accent: AccentId = DEFAULT_ACCENT, scheme: TerminalColorScheme = 'dark'): string {
+  const [r, g, b] = accentInk(accent, scheme).rgb
   return `\x1b[38;2;${r};${g};${b}m${text}\x1b[39m`
 }
 
@@ -301,12 +375,13 @@ function brandColorAt(gradient: readonly (readonly [number, number, number])[], 
  *
  * @param text - Text to colorize; sampled once per character.
  * @param accent - Active accent hue; defaults to the DeepSeek blue.
+ * @param scheme - Terminal background; selects the bright or deep gradient.
  * @returns `text` wrapped in truecolor SGR foreground codes.
  */
-export function gradientText(text: string, accent: AccentId = DEFAULT_ACCENT): string {
+export function gradientText(text: string, accent: AccentId = DEFAULT_ACCENT, scheme: TerminalColorScheme = 'dark'): string {
   const glyphs = Array.from(text)
   const last = Math.max(1, glyphs.length - 1)
-  const gradient = accentHue(accent).gradient
+  const gradient = accentInk(accent, scheme).gradient
   let painted = ''
   for (let index = 0; index < glyphs.length; index += 1) {
     const [r, g, b] = brandColorAt(gradient, index / last)

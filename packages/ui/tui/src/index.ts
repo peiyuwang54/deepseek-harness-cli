@@ -85,7 +85,7 @@ import {
   renderPalette,
   selectTheme,
 } from './components/theme.ts'
-import type { AccentId } from './components/theme.ts'
+import type { AccentId, AccentSelection } from './components/theme.ts'
 import { contentText, parseArguments } from './components/content.ts'
 import {
   cacheHitRate,
@@ -380,13 +380,15 @@ export function createTuiChat(
   if (agent === undefined) throw new Error(`ui-tui: session "${sessionId}" is not running`)
   const resolved = resolveTuiConfig(config)
   let themePreference = readTuiThemePreference(ctx.get('settings'))
-  let accent = readTuiAccent(ctx.get('settings'))
+  let accent: AccentSelection = readTuiAccent(ctx.get('settings'))
   let locale = readTuiLocale(ctx.get('settings'))
   let terminalScheme: TerminalColorScheme = 'dark'
   let terminalBackground: RgbColor | undefined
   const initialScheme: TerminalColorScheme = themePreference === 'light' ? 'light' : 'dark'
-  const palette = createPalette(resolved.theme.color, initialScheme, accent)
-  let composerSurface = composerBackground(resolved.theme.color, initialScheme, terminalBackground)
+  let currentScheme: TerminalColorScheme = initialScheme
+  const currentAccent = (): AccentId => accent[currentScheme]
+  const palette = createPalette(resolved.theme.color, initialScheme, currentAccent())
+  let composerSurface = composerBackground(resolved.theme.color, initialScheme, terminalBackground, currentAccent())
   const mdTheme = markdownTheme(palette)
   // The software caret below provides deterministic blinking even when a
   // terminal profile ignores DECSCUSR. Keep pi-tui's hardware cursor enabled
@@ -585,7 +587,8 @@ export function createTuiChat(
     agent,
     palette,
     resolved.theme.color && resolved.theme.truecolor,
-    () => accent,
+    currentAccent,
+    () => currentScheme,
     () => ({
       expanded: isZeroState(),
       preset: currentPreset(),
@@ -809,7 +812,7 @@ export function createTuiChat(
   const extensionTheme: TuiTheme = Object.freeze({
     text: (value: string) => palette.text(value),
     brand: (value: string) => resolved.theme.color
-      ? resolved.theme.truecolor ? brandText(value, accent) : palette.brand(value)
+      ? resolved.theme.truecolor ? brandText(value, currentAccent(), currentScheme) : palette.brand(value)
       : value,
     dim: (value: string) => palette.dim(value),
     accent: (value: string) => palette.accent(value),
@@ -1498,15 +1501,15 @@ export function createTuiChat(
   const applyColorScheme = (scheme: TerminalColorScheme, force = false): void => {
     if (scheme === currentScheme && !force) return
     currentScheme = scheme
-    Object.assign(palette, createPalette(resolved.theme.color, scheme, accent))
-    composerSurface = composerBackground(resolved.theme.color, scheme, terminalBackground)
+    Object.assign(palette, createPalette(resolved.theme.color, scheme, currentAccent()))
+    composerSurface = composerBackground(resolved.theme.color, scheme, terminalBackground, currentAccent())
     Object.assign(mdTheme, markdownTheme(palette))
     // `setStatus` below re-derives `editor.borderColor` from the new palette.
     rebuildPreservingStreaming()
     setStatus(agent.status)
+    header.invalidate()
     requestRender()
   }
-  let currentScheme: TerminalColorScheme = initialScheme
 
   /** Apply a persistent preference, resolving `system` through the latest terminal report. */
   const applyThemePreference = (preference: TuiThemePreference): void => {
@@ -1514,11 +1517,12 @@ export function createTuiChat(
     applyColorScheme(preference === 'system' ? terminalScheme : preference)
   }
 
-  /** Rebuild the palette and banner for a newly selected accent hue. */
-  const applyAccent = (nextAccent: AccentId): void => {
-    if (nextAccent === accent) return
+  /** Rebuild the palette and banner for a newly committed accent selection. */
+  const applyAccent = (nextAccent: AccentSelection): void => {
+    if (nextAccent.light === accent.light && nextAccent.dark === accent.dark) return
     accent = nextAccent
-    Object.assign(palette, createPalette(resolved.theme.color, currentScheme, accent))
+    Object.assign(palette, createPalette(resolved.theme.color, currentScheme, currentAccent()))
+    composerSurface = composerBackground(resolved.theme.color, currentScheme, terminalBackground, currentAccent())
     Object.assign(mdTheme, markdownTheme(palette))
     rebuildPreservingStreaming()
     setStatus(agent.status)
@@ -2010,7 +2014,7 @@ export function createTuiChat(
   const showPalette = (): void => {
     chat.addChild(new Spacer(1))
     chat.addChild(new Text(
-      renderPalette(palette, currentScheme, resolved.theme.color, accent).join('\n'), 0, 0,
+      renderPalette(palette, currentScheme, resolved.theme.color, currentAccent()).join('\n'), 0, 0,
     ))
     requestRender()
   }
@@ -2350,19 +2354,10 @@ export function createTuiChat(
     })
     commandCtx.commands.register({
       name: 'theme',
-      description: 'Choose and persist the light, dark, or system appearance',
-      input: { hint: '[light|dark|system]' },
+      description: 'Choose and persist appearance and accent color',
+      input: { hint: '[light|dark|system] [accent [light|dark] [id]]' },
       handler: ({ rawInput }) => {
         settingsController.queueThemeCommand(rawInput)
-        return { kind: 'success' }
-      },
-    })
-    commandCtx.commands.register({
-      name: 'accent',
-      description: 'Choose and persist the accent color',
-      input: { hint: '[deepseek|cosmic-orange|mist-blue|sage|lavender|deep-blue]' },
-      handler: ({ rawInput }) => {
-        settingsController.queueAccentCommand(rawInput)
         return { kind: 'success' }
       },
     })

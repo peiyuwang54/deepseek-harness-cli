@@ -8,10 +8,11 @@
 
 import { spawn } from 'node:child_process'
 import { existsSync, statSync } from 'node:fs'
-import { chmod, copyFile, cp, lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
+import { chmod, copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve, sep } from 'node:path'
 
 import { OUT_DIR, PKG_SPEC, Target, type BuildCli, type ExeProduct } from './config.ts'
+import { copyPackageTree, materializePackageLinks } from './package-tree.ts'
 
 const root = resolve(import.meta.dirname, '..', '..')
 
@@ -49,7 +50,7 @@ function formatCommand(command: string, args: string[]): string {
  * Sequential build pipeline for one product. Subprocesses inherit stdio and
  * errors include the command; dry runs print commands and filesystem changes.
  */
-export class ExeBuild {
+class ExeBuild {
   /** The cleared deploy target and pkg input. */
   readonly staging: string
   private readonly outDir = resolve(root, OUT_DIR)
@@ -139,13 +140,7 @@ export class ExeBuild {
           `${this.product.label}: deployed dependency ${dependency} is absent from both ${destination} and ${source}.`,
         )
       }
-      await mkdir(dirname(destination), { recursive: true })
-      const nestedNodeModules = join(source, 'node_modules')
-      await cp(source, destination, {
-        recursive: true,
-        dereference: true,
-        filter: path => path !== nestedNodeModules && !path.startsWith(nestedNodeModules + sep),
-      })
+      await copyPackageTree(source, destination)
       restored.push(dependency)
     }
     const stillMissing = Object.keys(manifest.dependencies ?? {})
@@ -164,41 +159,7 @@ export class ExeBuild {
       console.log(`${this.product.label}: [dry-run] materialize staged package links`)
       return
     }
-    const nodeModules = join(this.staging, 'node_modules')
-    let remaining = await this.findSymlink(nodeModules)
-    while (remaining !== undefined) {
-      const segments = remaining.slice(nodeModules.length + 1).split(sep)
-      const binIndex = segments.lastIndexOf('.bin')
-      if (binIndex >= 0) {
-        await rm(join(nodeModules, ...segments.slice(0, binIndex + 1)), { recursive: true, force: true })
-        remaining = await this.findSymlink(nodeModules)
-        continue
-      }
-      const destination = remaining
-      const source = await realpath(destination)
-      const nestedNodeModules = join(source, 'node_modules')
-      await rm(destination, { recursive: true, force: true })
-      await cp(source, destination, {
-        recursive: true,
-        dereference: true,
-        filter: path => path !== nestedNodeModules && !path.startsWith(nestedNodeModules + sep),
-      })
-      remaining = await this.findSymlink(nodeModules)
-    }
-  }
-
-  /** Return the first symbolic link below a directory, if one exists. */
-  private async findSymlink(directory: string): Promise<string | undefined> {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const path = join(directory, entry.name)
-      const metadata = await lstat(path)
-      if (metadata.isSymbolicLink()) return path
-      if (metadata.isDirectory()) {
-        const nested = await this.findSymlink(path)
-        if (nested !== undefined) return nested
-      }
-    }
-    return undefined
+    await materializePackageLinks(join(this.staging, 'node_modules'))
   }
 
   /** Add the executable entry and pkg assets to the staged manifest. */
@@ -331,4 +292,24 @@ export class ExeBuild {
       })
     })
   }
+}
+
+/**
+ * Run the shared executable pipeline for one parsed product invocation.
+ * @param product - Product-specific deploy and artifact configuration.
+ * @param cli - Parsed build targets and switches.
+ * @returns Paths of every packed executable and sidecar.
+ */
+export async function buildExeProduct(product: ExeProduct, cli: BuildCli): Promise<string[]> {
+  const pipeline = new ExeBuild(product, cli)
+  console.log(`${product.label}: targets: ${cli.targets.map(target => target.spec).join(', ')}`)
+  console.log(`${product.label}: staging: ${pipeline.staging}`)
+  await pipeline.verifyClosure()
+  await pipeline.build()
+  await pipeline.deployStaging()
+  await pipeline.injectPkgConfig()
+  const products: string[] = []
+  for (const target of cli.targets) products.push(...await pipeline.pack(target))
+  pipeline.printProducts(products)
+  return products
 }

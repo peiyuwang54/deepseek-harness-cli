@@ -246,6 +246,12 @@ export async function runScenario(input: InputScript, opts: RunOptions): Promise
     await opts.prepareWorkspace?.(cwd)
     const env: NodeJS.ProcessEnv = {
       ...opts.env,
+      // Snapshot stderr belongs to the assembled application. Node patch
+      // releases may start warning about a built-in used by that application;
+      // suppress only ExperimentalWarning so product diagnostics remain visible.
+      NODE_OPTIONS: [opts.env?.NODE_OPTIONS ?? process.env.NODE_OPTIONS, '--disable-warning=ExperimentalWarning']
+        .filter((value): value is string => value !== undefined && value !== '')
+        .join(' '),
       DSH_SNAPSHOT: opts.mode,
       DSH_SNAPSHOT_FILE: opts.fixtureFile,
       DSH_SNAPSHOT_SESSIONS_ROOT: sessionsRoot,

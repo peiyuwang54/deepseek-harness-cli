@@ -23,6 +23,7 @@ function writeCompletePackage(directory: string): void {
   mkdirSync(join(directory, 'lib'), { recursive: true })
   writeFileSync(join(directory, 'node.exe'), 'not-a-real-node')
   writeFileSync(join(directory, 'dsh.cmd'), '@echo off\r\necho dsh 0.0.0-test\r\n')
+  writeFileSync(join(directory, 'deepseek.cmd'), '@echo off\r\necho deepseek 0.0.0-test\r\n')
   writeFileSync(join(directory, 'lib/bin.js'), 'console.log("ok")\n')
   writeFileSync(join(directory, 'dsh-install.json'), '{"name":"dsh"}\n')
   writeFileSync(join(directory, 'package.json'), '{"name":"@deepseek-ai/dsh","version":"0.0.0-test"}\n')
@@ -67,6 +68,7 @@ describe('scripts/install/install.ps1', () => {
     })
 
     expect(readFileSync(join(installDir, 'dsh.cmd'), 'utf8')).toContain('dsh 0.0.0-test')
+    expect(readFileSync(join(installDir, 'deepseek.cmd'), 'utf8')).toContain('deepseek 0.0.0-test')
     expect(readFileSync(join(installDir, 'dsh-install.json'), 'utf8')).toContain('"name":"dsh"')
   })
 })

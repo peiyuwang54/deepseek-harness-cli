@@ -2,12 +2,15 @@
 
 [English](README.md) | 中文
 
-`dsh` 是 DeepSeek Harness 中用于启动 profile 的命令；profile 由多个插件组合包 patch 层按顺序叠加而成，其上再应用用户自己的覆盖配置。Node 软件包还会把 `deepseek` 安装为同一入口的品牌别名；下方示例继续用 `dsh` 表示兼容写法。[`src/args.ts`](src/args.ts) 负责命令语法，[`src/bin.ts`](src/bin.ts) 只加载选中的运行器。无效命令、来自其他模式的选项、配置错误和启动失败都会以非零状态退出。
+没有指定 profile 时，`deepseek` 会打开随附的终端 profile。同一入口保留 `dsh` 兼容写法，用于组合按顺序叠加插件组合包 patch 层并应用用户覆盖配置的 profile。[`src/args.ts`](src/args.ts) 负责命令语法，[`src/bin.ts`](src/bin.ts) 只加载选中的运行器。无效应用参数、配置错误和启动失败都会以非零状态退出。
 
 ## 入口模式
 
 | 命令 | 用途 |
 |---|---|
+| `deepseek` | 打开交互式终端 UI。 |
+| `deepseek --full-auto` | 在工作区内不询问地运行，并拒绝更广访问。 |
+| `deepseek --yolo` | 关闭沙箱与审批提示。 |
 | `dsh --profile <name>` | 启动位于 `$DSH_HOME/profiles/<name>` 的指定 profile。 |
 | `dsh --profile headless "job"` | 运行一个全新的持久化会话，打印最终答案并退出。 |
 | `dsh tui` | `--profile tui` 的别名；打开交互式终端 UI。 |
@@ -53,7 +56,7 @@ npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-第一个命令运行 curl 安装器：它下载最新的 `deepseek-harness-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，并安装到 `$HOME/.deepseek-harness-cli/bin`（`sh -s -- --to <dir>` 可覆盖目录，`--version <ver>` 可固定版本）。npm 包是覆盖各平台可执行程序的 shim，并同时安装 `deepseek-harness-cli` 与 `deepseek`；Homebrew cask 由 `peiyuwang54/homebrew-dsh` tap 提供。完整契约与计划中的 minisign 签名升级见[安装器 README](install/README.md)。
+第一个命令运行 curl 安装器：它下载最新的 `deepseek-harness-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，并在 `$HOME/.deepseek-harness-cli/bin` 下同时安装 `deepseek` 和兼容名称 `deepseek-harness-cli`（`sh -s -- --to <dir>` 可覆盖目录，`--version <ver>` 可固定版本）。npm 与 Homebrew 渠道也会公开这两个名称。完整契约与计划中的 minisign 签名升级见[安装器 README](install/README.md)。
 
 升级只需重新运行同一命令——curl 安装器原地替换二进制、`npm update -g @peiyuwang54/deepseek-harness-cli` 拉取最新版本、`brew upgrade deepseek-harness-cli` 刷新 cask。
 
@@ -61,4 +64,4 @@ brew install peiyuwang54/dsh/deepseek-harness-cli
 
 生产运行需要已构建的包与前端产物。请在仓库根目录单独运行 `pnpm run build`，然后使用 `pnpm dsh <args...>` 运行 TypeScript 入口并转发所有参数；模块解析约定以[源码执行参考](reference/README.md#source-execution)为准。
 
-在 Windows 上，[`scripts/install/install.ps1`](../../scripts/install/install.ps1) 会把这份 CLI 的打包副本安装到 `%LOCALAPPDATA%\Programs\dsh`。用户不带参数时，该启动器会启动 `tui`；[`src/args.ts`](src/args.ts) 中的语法不变。
+在 Windows 上，[`scripts/install/install.ps1`](../../scripts/install/install.ps1) 会把带 `deepseek.cmd` 与 `dsh.cmd` 的 CLI 打包副本安装到 `%LOCALAPPDATA%\Programs\dsh`。两个启动器在没有参数时都会打开 TUI。

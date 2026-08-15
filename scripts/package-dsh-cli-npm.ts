@@ -12,6 +12,7 @@ import { chmod, copyFile, mkdir, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
+import { requireReleaseVersion } from './release-version.ts'
 
 const root = resolve(import.meta.dirname, '..')
 
@@ -162,11 +163,7 @@ async function main(): Promise<void> {
       platforms: { type: 'string', default: 'all' },
     },
   })
-  if (values.version === undefined) {
-    usage()
-    process.exit(1)
-  }
-  const version = values.version.replace(/^v/, '')
+  const version = requireReleaseVersion(values.version, usage)
 
   const targets = resolveTargets(values.platforms)
   const distDir = resolve(root, values.dir)

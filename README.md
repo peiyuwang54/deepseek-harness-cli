@@ -1,36 +1,69 @@
-# deepseek-harness-cli
+<p align="center"><strong>DeepSeek CLI</strong> is an open-source coding agent powered by DeepSeek that runs locally in your terminal.</p>
+
+<p align="center">
+  <img src=".github/deepseek-cli-splash.svg" alt="DeepSeek CLI terminal preview" width="80%" />
+</p>
 
 English | [中文](README.zh.md)
 
-deepseek-harness-cli is a lightweight, plugin-based coding agent that lives in your terminal. One single-file binary packages the interactive terminal UI, one-shot headless automation, and the Web UI on top of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
+---
 
-> This is an unofficial community fork. It is not maintained, sponsored, or endorsed by DeepSeek AI. The upstream project and the `@deepseek-ai` packages originate from DeepSeek AI; the distributed `deepseek-harness-cli` binary is this fork's build.
+**Note:** This is DeepSeek Harness CLI. We keep iterating in sync with the official [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), and we look forward to your forks and stars.
 
 <a id="run"></a>
 
-## Quick start
+## Quickstart
 
-```sh
-export DEEPSEEK_API_KEY="your-key"
+### Install
 
-deepseek-harness-cli tui
-deepseek-harness-cli --profile headless "inspect the repository and summarize the test failures"
-deepseek-harness-cli web
-```
-
-The directory you run the command from is the workspace. Profiles, credentials, and sessions live under `$DSH_HOME` (default `~/.dsh`). Never commit provider keys.
-
-## Install
-
-macOS (`arm64`, `x64`) and Linux (`arm64`, `x64`) — pick one channel:
+macOS or Linux:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
+```
+
+Windows currently installs from a source checkout:
+
+<a id="install-windows"></a>
+
+```powershell
+git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
+cd deepseek-harness-cli
+powershell -ExecutionPolicy Bypass -File .\scripts\install\install.ps1
+```
+
+Package managers are also supported:
+
+```sh
 npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-The curl|sh line verifies the tarball against the release's sha256 sidecar and installs to `$HOME/.deepseek-harness-cli/bin`; the npm line is a shim over the per-platform executable; the brew line serves the cask from the `peiyuwang54/homebrew-dsh` tap. Windows is not a distribution target; build from source or use [`scripts/install/install.ps1`](scripts/install/install.ps1).
+Set your API key, open a project directory, and run `deepseek`:
+
+```sh
+export DEEPSEEK_API_KEY="your-key"
+deepseek
+```
+
+PowerShell uses `$env:DEEPSEEK_API_KEY="your-key"`.
+
+### Permission modes
+
+```sh
+deepseek
+deepseek --full-auto
+deepseek --yolo
+```
+
+`--yolo` is dangerous. Use it only in an isolated environment. Use `/permissions` to change the current session safely.
+
+## What it includes
+
+- Code reading, editing, shell tools, web search, skills, MCP, and subagents.
+- Persistent sessions with resume, plan, goal, queued messages, and automatic context compaction.
+- A Codex-style terminal UI with themes and English, Chinese, Arabic, French, Russian, Spanish, Japanese, and Korean.
+- Plugin-based profiles for terminal, headless automation, and the Web UI.
 
 <a id="run-from-source"></a>
 
@@ -41,26 +74,21 @@ git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
 cd deepseek-harness-cli
 pnpm install --frozen-lockfile
 pnpm run build
-pnpm dsh tui
+pnpm dsh
 ```
 
-Requires Node.js `^22.19` or `>=24` and pnpm `11.7.0`. Once on `PATH`, `deepseek-harness-cli` takes the same commands as the source entry — `tui`, `--profile headless "task"`, and `web` — and still needs a provider credential before the first model request (`DEEPSEEK_API_KEY` by default).
+Source builds require Node.js `^22.19` or `>=24` and pnpm `11.7.0`.
 
-## Documentation
+## Docs
 
-- [CLI reference](apps/cli/reference/README.md)
-- [Terminal UI details](packages/ui/tui/README.md)
+- [CLI commands and profiles](apps/cli/reference/README.md)
+- [Terminal UI and slash commands](packages/ui/tui/README.md)
+- [Configuration reference](docs/config-catalog.md)
 - [Architecture](docs/architecture.md)
-- [Development guide](docs/development.md)
-- [Issues](https://github.com/peiyuwang54/deepseek-harness-cli/issues)
+- [Development](docs/development.md)
 
-## Security
-
-- New sessions default to `workspace-write` with approval prompts; writes are confined to the workspace, but file reads, network access, and process visibility are not a full sandbox.
-- `dsh tui --yolo` starts a session with the sandbox and approval prompts disabled — run it only in an isolated environment. There is no in-session `/yolo` command; use `/permissions` for deliberate live changes.
-- Credentials are process-visible plain files, not an OS keychain.
-- External plugins and MCP server commands are trusted executable code; review them before adding them to a profile.
+Report bugs in [GitHub Issues](https://github.com/peiyuwang54/deepseek-harness-cli/issues).
 
 ## License
 
-MIT for fork changes; the TUI source recovered from earlier upstream history keeps its BSD-3-Clause notice — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+This project is licensed under MIT. Restored TUI code retains its BSD-3-Clause notice; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

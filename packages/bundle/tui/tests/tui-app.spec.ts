@@ -33,8 +33,9 @@ async function tick(): Promise<void> {
 function bench(
   identity: TuiStartupValues['identity'],
   resumed: { agentPreset?: string; events?: readonly SessionEvent[] } = {},
-  fullAccess = false,
+  permissionMode: TuiStartupValues['permissionMode'] = 'default',
   fullAccessPreset: string | null = 'danger-full-access',
+  fullAutoPreset: string | null = 'full-auto',
 ) {
   const ctx = new Context()
   contexts.push(ctx)
@@ -76,7 +77,7 @@ function bench(
     return { agent: {}, dispose: async () => {} }
   })
   ctx.provide('appExit', code => void exits.push(code))
-  ctx.provide('tuiStartup', { identity, fullAccess })
+  ctx.provide('tuiStartup', { identity, permissionMode })
   ctx.provide('agentDefaultModel', {
     currentSelection: () => ({ provider: 'provider-a', model: 'model-a' }),
   } as never)
@@ -95,6 +96,7 @@ function bench(
   })
   ctx.provide('permissionPresets', {
     fullAccessPreset: fullAccessPreset ?? undefined,
+    fullAutoPreset: fullAutoPreset ?? undefined,
     set: setPermission,
   } as never)
   ctx.provide('agents', { create, resume } as never)
@@ -148,7 +150,7 @@ describe('tui runner', () => {
   })
 
   it('pins unrestricted permission before publishing a yolo session', async () => {
-    const test = bench({ id: SessionId('yolo-main'), resume: false }, {}, true)
+    const test = bench({ id: SessionId('yolo-main'), resume: false }, {}, 'yolo')
     apply(test.ctx, {})
     await tick()
     expect(test.setPermission).toHaveBeenCalledWith(expect.any(Session), 'danger-full-access')
@@ -162,13 +164,38 @@ describe('tui runner', () => {
   })
 
   it('fails before publication when yolo is unavailable', async () => {
-    const test = bench({ id: SessionId('safe-only'), resume: false }, {}, true, null)
+    const test = bench({ id: SessionId('safe-only'), resume: false }, {}, 'yolo', null)
     let stderr = ''
     internals.stderr = { write: (chunk) => { stderr += chunk; return true } }
     apply(test.ctx, {})
     await tick()
     expect(test.order).toEqual(['create'])
     expect(stderr).toContain('--yolo is unavailable')
+    expect(test.exits).toEqual([1])
+  })
+
+  it('pins workspace-only unattended permission before publishing a full-auto session', async () => {
+    const test = bench({ id: SessionId('full-auto-main'), resume: false }, {}, 'full-auto')
+    apply(test.ctx, {})
+    await tick()
+    expect(test.setPermission).toHaveBeenCalledWith(expect.any(Session), 'full-auto')
+    expect(test.order).toEqual([
+      'create',
+      'permission:full-auto',
+      'preset:standard',
+      'mount:full-auto-main',
+    ])
+    expect(test.exits).toEqual([])
+  })
+
+  it('fails before publication when full-auto is unavailable', async () => {
+    const test = bench({ id: SessionId('prompted-only'), resume: false }, {}, 'full-auto', 'danger-full-access', null)
+    let stderr = ''
+    internals.stderr = { write: (chunk) => { stderr += chunk; return true } }
+    apply(test.ctx, {})
+    await tick()
+    expect(test.order).toEqual(['create'])
+    expect(stderr).toContain('--full-auto is unavailable')
     expect(test.exits).toEqual([1])
   })
 
@@ -188,7 +215,7 @@ describe('tui runner', () => {
     contexts.push(ctx)
     ctx.provide('tuiStartup', {
       identity: { id: SessionId('main'), resume: false },
-      fullAccess: false,
+      permissionMode: 'default',
     })
     expect(() => { apply(ctx, {}) }).toThrow('must provide ctx.appExit')
   })

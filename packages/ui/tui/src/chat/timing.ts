@@ -13,7 +13,7 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session'
 export const STATUS_ANIMATION_INTERVAL_MS = 50
 
 /** The active phase of a running step, one bucket of accumulated wall time. */
-export type TimingBucket = 'ttft' | 'thinking' | 'responding' | 'tools'
+type TimingBucket = 'ttft' | 'thinking' | 'responding' | 'tools'
 
 /** Turn/step coordinates of one assistant step. */
 export type StepPosition = { turn: number; step: number }

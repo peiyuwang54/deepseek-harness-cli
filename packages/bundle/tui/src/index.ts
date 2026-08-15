@@ -110,7 +110,7 @@ async function startAgent(ctx: Context, startup: import('./startup.ts').TuiStart
   // A requested shutdown can dispose providers while Loader settlement is in flight.
   if (agents === undefined || defaultModel === undefined || presets === undefined || permissions === undefined) return
 
-  const { identity, fullAccess } = startup
+  const { identity, permissionMode } = startup
 
   const selection = defaultModel.currentSelection()
   let disposeBootstrapSelection: (() => void) | undefined
@@ -119,12 +119,18 @@ async function startAgent(ctx: Context, startup: import('./startup.ts').TuiStart
     disposeBootstrapSelection = installModelSelection(agentCtx, selected)
   }
   const installStartupPermission = (agentCtx: Context): void => {
-    if (!fullAccess) return
+    if (permissionMode === 'default') return
     const agent = agentCtx.agent
-    if (agent === undefined) throw new Error('tui-runner: unrestricted startup has no scoped Agent')
-    const target = permissions.fullAccessPreset
+    if (agent === undefined) throw new Error('tui-runner: permission shortcut has no scoped Agent')
+    const target = permissionMode === 'yolo'
+      ? permissions.fullAccessPreset
+      : permissions.fullAutoPreset
     if (target === undefined) {
-      throw new Error('tui-runner: --yolo is unavailable because this permission configuration has no unrestricted preset')
+      throw new Error(
+        permissionMode === 'yolo'
+          ? 'tui-runner: --yolo is unavailable because this permission configuration has no unrestricted preset'
+          : 'tui-runner: --full-auto is unavailable because this permission configuration has no workspace-only unattended preset',
+      )
     }
     permissions.set(agent.session, target)
   }

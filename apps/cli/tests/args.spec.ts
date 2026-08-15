@@ -22,6 +22,15 @@ afterEach(() => { vi.restoreAllMocks() })
 
 describe('parseDshArgs', () => {
   it('routes profile boots and the shipped aliases, handing the rest to the app', () => {
+    expect(parse([])).toEqual({ mode: 'profile', profile: 'tui', patches: [], args: [] })
+    expect(parse(['--full-auto']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--full-auto'] })
+    expect(parse(['--yolo']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--yolo'] })
+    expect(parse(['--dangerously-bypass-approvals-and-sandbox']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--dangerously-bypass-approvals-and-sandbox'] })
+    expect(parse(['--full-auto', '--help']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--full-auto', '--help'] })
     expect(parse(['--profile', 'tui'])).toEqual({ mode: 'profile', profile: 'tui', patches: [], args: [] })
     expect(parse(['--profile', 'tui', '--patch', 'a.yml', '--patch', 'b.yml']))
       .toEqual({ mode: 'profile', profile: 'tui', patches: ['a.yml', 'b.yml'], args: [] })
@@ -63,6 +72,8 @@ describe('parseDshArgs', () => {
   })
 
   it('routes profile and shipped-alias config dumps', () => {
+    expect(parse(['--dump-config']))
+      .toEqual({ mode: 'dump-config', profile: 'tui', defaultOnly: false, patches: [] })
     expect(parse(['--profile', 'web', '--dump-config']))
       .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: false, patches: [] })
     expect(parse(['--profile', 'web', '--dump-default-config']))
@@ -79,18 +90,23 @@ describe('parseDshArgs', () => {
       .toEqual({ mode: 'dump-config', profile: 'tui', defaultOnly: true, patches: [] })
   })
 
-  it('rejects missing profile, removed flags, and contradictory inputs', () => {
-    expect(exitCode([])).toBe(1)
-    expect(exitCode(['--config', 'c.yml'])).toBe(1) // removed
-    expect(exitCode(['-p', 'task'])).toBe(1) // removed
-    expect(exitCode(['run', 'task'])).toBe(1) // app-owned task replaced the launcher subcommand
+  it('hands unowned root arguments to the default terminal profile', () => {
+    expect(parse(['--config', 'c.yml']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--config', 'c.yml'] })
+    expect(parse(['-p', 'task']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['-p', 'task'] })
+    expect(parse(['run', 'task']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['run', 'task'] })
+    expect(parse(['--bogus']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--bogus'] })
+  })
+
+  it('rejects contradictory launcher inputs', () => {
     expect(exitCode(['--profile', ''])).toBe(1)
     expect(exitCode(['--profile', 'x', '--patch='])).toBe(1)
-    expect(exitCode(['--dump-config'])).toBe(1)
     expect(exitCode(['--profile', 'x', '--dump-config', '--dump-default-config'])).toBe(1)
     expect(exitCode(['--profile', 'x', '--dump-default-config', '--patch', 'p.yml'])).toBe(1)
     expect(exitCode(['--profile', 'x', '--dump-config', 'task'])).toBe(1)
-    expect(exitCode(['--bogus'])).toBe(1)
     expect(exitCode(['--profile', 'x', 'web'])).toBe(1)
     expect(exitCode(['web', '--dump-config', '--dump-default-config'])).toBe(1)
     expect(exitCode(['web', '--dump-default-config', '--patch', 'w.yml'])).toBe(1)
@@ -110,7 +126,7 @@ describe('parseDshArgs', () => {
     expect(exitCode(['--profile', 'x', 'plugin', 'add', 'y'])).toBe(1)
   })
 
-  it('keeps its own help for an invocation with no app to hand it to', () => {
+  it('keeps the launcher help discoverable at the bare front door', () => {
     expect(exitCode(['--help'])).toBe(0)
     expect(exitCode(['-h'])).toBe(0)
     expect(exitCode(['--version'])).toBe(0)

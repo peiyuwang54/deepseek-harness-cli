@@ -12,11 +12,11 @@ Windows users of this fork have no installer URL. The only distribution input is
 
 A Windows directory package is built from the checkout and installed beside other per-user programs.
 
-[`scripts/pack-windows-cli.ts`](../../../../scripts/pack-windows-cli.ts) runs `pnpm run build:lib`, then `pnpm --filter @deepseek-ai/dsh deploy --legacy --prod` into `dist-windows/dsh`, restores transitive workspace packages that legacy deploy omitted (including `@deepseek-ai/cosmokit`), copies the host `node.exe`, writes `dsh.cmd`, and zips the tree as `dist-windows/dsh-win32-<arch>.zip`. The packer must run on Windows so native addons and `node.exe` match the target. It does not build the Web frontend. A packed `node.exe lib/bin.js --version` must succeed before the tree is installed.
+[`scripts/pack-windows-cli.ts`](../../../../scripts/pack-windows-cli.ts) runs `pnpm run build:lib`, then `pnpm --filter @deepseek-ai/dsh deploy --legacy --prod` into `dist-windows/dsh`, restores transitive workspace packages that legacy deploy omitted (including `@deepseek-ai/cosmokit`), copies the host `node.exe`, writes `deepseek.cmd` and `dsh.cmd`, and zips the tree as `dist-windows/dsh-win32-<arch>.zip`. The packer must run on Windows so native addons and `node.exe` match the target. It does not build the Web frontend. A packed `node.exe lib/bin.js --version` must succeed before the tree is installed.
 
 [`scripts/install/install.ps1`](../../../../scripts/install/install.ps1) is the user-facing entry. It resolves the repository root from its own path, installs workspace dependencies when `node_modules` is missing, invokes the packer, copies the tree to `%LOCALAPPDATA%\Programs\dsh` through a staging directory with `robocopy` (so nested `node_modules` paths longer than MAX_PATH still copy), and appends that folder to the user PATH. It never downloads a remote payload. `DSH_INSTALL_DIR` overrides the destination.
 
-`dsh.cmd` boots the `tui` profile when the user passes no arguments and forwards every explicit argument to `lib/bin.js`. [`apps/cli/src/args.ts`](../../../../apps/cli/src/args.ts) still requires `--profile` or a shipped alias; `pnpm dsh` is unchanged.
+`deepseek.cmd` is the product spelling and `dsh.cmd` is its compatibility spelling. Both boot the `tui` profile when the user passes no arguments and forward every explicit argument to `lib/bin.js`, including the direct permission shortcuts.
 
 The [source-run decision](../simplification/2026-08-10-source-run-without-managed-installer.md) still owns checkout execution. This package does not create a managed `current` symlink, staging worktree, or source installer.
 
@@ -38,4 +38,4 @@ The [source-run decision](../simplification/2026-08-10-source-run-without-manage
 
 ## Consequences
 
-A Windows user can clone this repository, run `scripts/install/install.ps1`, and then invoke `dsh` from a new terminal. The installed copy is independent of the checkout. The package is large (it includes `node.exe` and the production closure), unsigned, and TUI/headless-oriented: `dsh web` is unsupported in this layout. A later public URL can host the same `install.ps1` plus zip without changing the packed tree.
+A Windows user can clone this repository, run `scripts/install/install.ps1`, and then invoke `deepseek` from a new terminal. The installed copy is independent of the checkout, and `dsh` remains available for profile commands. The package is large (it includes `node.exe` and the production closure), unsigned, and TUI/headless-oriented: `dsh web` is unsupported in this layout. A later public URL can host the same `install.ps1` plus zip without changing the packed tree.

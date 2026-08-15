@@ -190,6 +190,7 @@ function Test-PackageComplete {
     $required = @(
         "node.exe",
         "dsh.cmd",
+        "deepseek.cmd",
         "lib\bin.js",
         "dsh-install.json",
         "package.json"
@@ -308,11 +309,11 @@ if ($DryRun) {
 }
 
 if (-not $SkipVerify -and -not $DryRun) {
-    $launcher = Join-Path $InstallDir "dsh.cmd"
+    $launcher = Join-Path $InstallDir "deepseek.cmd"
     Write-Step "Verifying $launcher --version"
     & $launcher --version
     if ($LASTEXITCODE -ne 0) {
-        throw "install.ps1: installed dsh --version failed."
+        throw "install.ps1: installed deepseek --version failed."
     }
 }
 
@@ -337,13 +338,13 @@ if (-not $SkipPath) {
     }
 }
 
-Write-Step "Current session: dsh"
-Write-Step "New windows: open a new PowerShell window and run: dsh"
-Write-Host "dsh installed from this checkout into $InstallDir"
+Write-Step "Current session: deepseek"
+Write-Step "New windows: open a new PowerShell window and run: deepseek"
+Write-Host "DeepSeek CLI installed from this checkout into $InstallDir"
 if (-not $NonInteractive -and -not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
-    $choice = Read-Host "Start dsh now? [y/N]"
+    $choice = Read-Host "Start DeepSeek CLI now? [y/N]"
     if ($choice -match "^(?i:y(?:es)?)$" -and -not $DryRun) {
-        Write-Step "Launching dsh"
-        & (Join-Path $InstallDir "dsh.cmd")
+        Write-Step "Launching DeepSeek CLI"
+        & (Join-Path $InstallDir "deepseek.cmd")
     }
 }

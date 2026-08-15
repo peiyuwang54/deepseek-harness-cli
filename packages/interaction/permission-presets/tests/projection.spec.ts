@@ -50,7 +50,8 @@ describe('permissions projection unit', () => {
     const { ctx, session } = await harness()
     const value = ctx.sessionProjections.snapshot(session).values.permissions
     expect(value).toMatchObject({ currentValue: 'workspace-write' })
-    expect(value?.options.map(option => option.value)).toEqual(['workspace-write', 'danger-full-access'])
+    expect(value?.options.map(option => option.value)).toEqual(['workspace-write', 'full-auto', 'danger-full-access'])
+    expect(ctx.permissionPresets.fullAutoPreset).toBe('full-auto')
     expect(ctx.permissionPresets.fullAccessPreset).toBe('danger-full-access')
   })
 
@@ -110,7 +111,7 @@ describe('/permissions command', () => {
     const execution = await ctx.commands.execute(agent, '/permissions', new AbortController().signal)
     expect(execution?.result).toEqual({
       kind: 'success',
-      text: 'current preset workspace-write (available: workspace-write, danger-full-access)',
+      text: 'current preset workspace-write (available: workspace-write, full-auto, danger-full-access)',
     })
     expect(session.events.filter(event => event.type === 'permission/preset')).toHaveLength(1)
   })
@@ -126,7 +127,7 @@ describe('/permissions command', () => {
     // preset`, which the row's own title already says.
     expect(execution?.result).toEqual({
       kind: 'error',
-      text: 'unknown preset "yolo" (available: workspace-write, danger-full-access)',
+      text: 'unknown preset "yolo" (available: workspace-write, full-auto, danger-full-access)',
     })
     expect(session.events.filter(event =>
       event.type !== 'command/run' && event.type !== 'command/done')).toEqual(before)

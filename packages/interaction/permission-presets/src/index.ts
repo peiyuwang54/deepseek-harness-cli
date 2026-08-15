@@ -140,8 +140,9 @@ export interface PermissionSettings {
 export interface Config {
   /**
    * The preset table: name → knob bundle. Defaults to `workspace-write`
-   * (workspace-write + ask) and `danger-full-access` (danger-full-access +
-   * never). The name `custom` is reserved for the derived not-a-preset state.
+   * (workspace-write + ask), `full-auto` (workspace-write + never), and
+   * `danger-full-access` (danger-full-access + never). The name `custom` is
+   * reserved for the derived not-a-preset state.
    */
   presets?: Record<string, PresetSpec>
   /**
@@ -168,6 +169,10 @@ export class PermissionPresetService extends Service {
       'workspace-write': {
         sandbox: 'workspace-write', approval: 'ask',
         name: 'workspace-write', description: 'Write inside the workspace and permitted temporary directories; wider retries require approval.',
+      },
+      'full-auto': {
+        sandbox: 'workspace-write', approval: 'never',
+        name: 'full-auto', description: 'Run without prompts inside the workspace; wider actions are denied.',
       },
       'danger-full-access': {
         sandbox: 'danger-full-access', approval: 'never',
@@ -293,6 +298,18 @@ export class PermissionPresetService extends Service {
     return this.names.find((name) => {
       const preset = this.presets[name]
       return preset?.sandbox === 'danger-full-access' && preset.approval === 'never'
+    })
+  }
+
+  /**
+   * Resolve the configured preset that runs unattended while retaining the
+   * workspace confinement boundary.
+   * @returns the matching preset name, or undefined when this deployment offers none.
+   */
+  get fullAutoPreset(): string | undefined {
+    return this.names.find((name) => {
+      const preset = this.presets[name]
+      return preset?.sandbox === 'workspace-write' && preset.approval === 'never'
     })
   }
 

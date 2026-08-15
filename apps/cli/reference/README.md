@@ -14,7 +14,7 @@ The `web`, `tui`, and `headless` profiles auto-initialize from shipped templates
 
 ### App arguments
 
-The launcher's flags come first and end at the first token it does not recognize; everything from there on is handed to the booted profile verbatim through `ctx.cmdlineArgs`, where any injected app plugin may parse it ([`dsh-cmdline`](../../../packages/boot/cmdline/README.md)). `dsh --profile web --port 8080` therefore reaches the web app's `--port`, `dsh --profile web --help` prints that app's help and boots nothing, and `dsh --help` (no profile to hand it to) prints the launcher's own. `-V`/`--version` prints the launcher's version when it appears before the app-argument boundary.
+The launcher's flags come first and end at the first token it does not recognize; everything from there on is handed to the booted profile verbatim through `ctx.cmdlineArgs`, where any injected app plugin may parse it ([`dsh-cmdline`](../../../packages/boot/cmdline/README.md)). With no explicit profile, the launcher selects `tui`, so bare `deepseek` opens the terminal and `deepseek --full-auto` reaches its startup provider. `dsh --profile web --port 8080` reaches the web app's `--port`, while bare `dsh --help` remains the launcher's own help. `-V`/`--version` prints the launcher's version when it appears before the app-argument boundary.
 
 A composition mounts once. An ordinary plugin injects `cmdlineArgs`, parses this app's arguments, and provides what it resolved as a service; each row configured from flags injects that service, and Loader waits for it before evaluating the row's config (`port: !!js ctx.webStartup.port ?? 3080`). A flag therefore beats the value written beside it. This precedence requires the row to retain that expression; a user patch that replaces the whole `config` with literals removes the runtime read. Help and rejected arguments request exit — nonzero for a rejection, 0 for help — without activating rows that depend on the provider's service. A live `cordis.patch.yml` edit re-evaluates expressions against services that are still up, so it cannot reset a served port.
 
@@ -25,7 +25,7 @@ The shipped apps own these command lines:
 | Profile | Arguments |
 |---|---|
 | `web` | `--host`, `--port`, repeatable `--trusted-host` |
-| `tui` | `--resume <session>` |
+| `tui` | `--resume <session>`, `--full-auto`, `--yolo`, `--dangerously-bypass-approvals-and-sandbox` |
 | `headless` | the task text, as the positional argument |
 
 A one-shot task (`dsh --profile headless "run the tests"`) creates one fresh persisted Agent through the core registry, submits the task, waits for quiescence, and flushes the Session before deriving the last non-empty assistant text and final `turn/end` reason from its durable interval. It prints the text on stdout and exits 0 for `completed`, else 1. An invocation with no task is a usage error from that app. The shipped headless profile mounts no ApiProxy, Host, HTTP server, Web runtime, or browser client; a successful run writes nothing to stderr and opens no listening port.
@@ -51,14 +51,16 @@ dsh --profile tui
 
 Git-hosted plugins that ship sources build during install through their `prepare` script, which pnpm ≥10 blocks until the consumer allows it: the first `add` fails with pnpm's `allowBuilds` hint (and a dsh pointer at the profile's `pnpm-workspace.yaml`); copy the printed key there and re-run. Installing a built tarball or a local checkout needs no allowance.
 
-## Terminal alias
+## Terminal front door
 
-`dsh tui` is the shipped alias for `--profile tui`. Its ordinary startup provider owns `--resume <session>` and app help. Help is available without a TTY; a successful run requires interactive stdin and stdout and fails before the terminal runner activates when either side is a pipe. After Loader settlement, the runner creates a fresh persisted root Agent or resumes the requested identity through `ctx.agents`, installs the default model selection during unpublished setup, and mounts the process TUI onto that root. The profile mounts no Host, HTTP server, Web runtime, or browser client.
+Bare `deepseek` selects the shipped `tui` profile; `dsh tui` remains the compatibility spelling. Its startup provider owns `--resume <session>`, `--full-auto`, `--yolo`, the official long unrestricted alias, and app help. `--full-auto` selects workspace confinement with approval prompts disabled; wider actions are denied. Both unrestricted spellings disable confinement and approval prompts. Help is available without a TTY; a successful run requires interactive stdin and stdout and fails before the terminal runner activates when either side is a pipe. After Loader settlement, the runner creates a fresh persisted root Agent or resumes the requested identity through `ctx.agents`, pins any requested permission preset during unpublished setup, installs the default model selection, and mounts the process TUI onto that root. The profile mounts no Host, HTTP server, Web runtime, or browser client.
 
 ```sh
-dsh tui
-dsh tui --resume <session>
-dsh tui --yolo
+deepseek
+deepseek --resume <session>
+deepseek --full-auto
+deepseek --yolo
+deepseek --dangerously-bypass-approvals-and-sandbox
 dsh tui --patch ./extra.cordis.yml
 dsh tui --dump-default-config
 dsh tui --help
@@ -81,7 +83,7 @@ Process shutdown gives the plugin tree up to five seconds to dispose. The first 
 
 All modes treat the invoking directory as the default workspace root, load applicable `AGENTS.md` or `CLAUDE.md` instructions with a 65,536-byte render budget, and use an in-memory SQLite session content index. Every profile boot watches valid edits of both `cordis.patch.yml` layers (profile and home) and reapplies them transactionally; a one-shot surface exits through its bounded shutdown, which disposes the watchers.
 
-New sessions default to the `workspace-write` permission preset. Bash and filesystem mutations are restricted to the session workspace and platform temporary roots; reads, network access, and process visibility are not confined. `dsh tui --yolo` explicitly pins the new or resumed terminal session to the configured full-access/no-approval preset before publication; no session-level `/yolo` command is registered. `DSH_PERMISSION_MODE` changes the process fallback. Stored General-settings permissions affect later Web sessions, not an already-open one.
+New sessions default to the `workspace-write` permission preset. Bash and filesystem mutations are restricted to the session workspace and platform temporary roots; reads, network access, and process visibility are not confined. `deepseek --full-auto` pins `workspace-write` + `never`; `deepseek --yolo` and its long alias pin the configured full-access/no-approval preset before publication. No session-level startup shortcut is registered; use `/permissions` for live changes. `DSH_PERMISSION_MODE` changes the process fallback. Stored General-settings permissions affect later Web sessions, not an already-open one.
 
 `DSH_TOOLS_MODE` selects `native`, `code`, or `both` for the process; another value fails at boot. The shipped `minimal` agent preset keeps that deployment presentation, fixes the complete system prompt to `You are a helpful software engineer assistant.`, and composes only persistent `bash` plus `str_replace_editor`. Select 极简模式 when creating a Web session; every other prompt section and model-facing plugin remains absent from that agent while the shared browser, workspace, persistence, sandbox, and permission host stays in place.
 

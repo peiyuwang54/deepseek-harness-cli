@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-通过 `ctx.permissionPresets`（[`PermissionPresetService`](src/index.ts)）提供面向用户的权限预设。每个配置名称都会将 `sandbox/mode` 与 `approval/policy` 组成一组；默认项为 `workspace-write`（`workspace-write` + `ask`）和 `danger-full-access`（`danger-full-access` + `never`）。UI 适配器可以将该表作为单个选择器公开，而沙箱执行与审批仍分别消费各自的调节项。
+通过 `ctx.permissionPresets`（[`PermissionPresetService`](src/index.ts)）提供面向用户的权限预设。每个配置名称都会将 `sandbox/mode` 与 `approval/policy` 组成一组；默认项为 `workspace-write`（`workspace-write` + `ask`）、`full-auto`（`workspace-write` + `never`）和 `danger-full-access`（`danger-full-access` + `never`）。UI 适配器可以将该表作为单个选择器公开，而沙箱执行与审批仍分别消费各自的调节项。
 
 `set(session, name)` 会先在仅写日志的 `permissionPresets/preset` 事件中记录已变更的选择，再仅对实际值发生变化的调节项调用 setter。选择事件先于调节项事件，并在多个预设共享同一组取值时保留用户意图；净变化为零的选择不会追加任何内容。`current(events)` 优先返回仍与当前调节项匹配的已记录选择，其次返回表中第一个匹配项，否则返回 `custom`。客户端可以把 `custom` 显示为当前值，但不能选择它。
 
@@ -10,7 +10,7 @@
 
 该服务要求存在具有约束能力的 `ctx.shell` 执行器和 `ctx.approval`。表中名为 `custom` 的条目会在加载时抛出异常。当组合默认值与任何 preset 都不匹配时，插件要求显式配置 `defaultPreset`；独立构造的零事件会话仍可能推导出 `custom`。详见[沙箱切换设计](../../../.agents/notes/implemented/feature/2026-07-06-sandbox.md)。
 
-两个可选子功能在同一服务之上提供产品界面：`permissions` 会话投影单元（`src/types.ts` 声明该 key；单元以组合默认值为基础折叠三个全量值可调参数事件，并生成选择器视图，其中包含表内选项和仅作当前值的 `custom`）与命令条目。`/permissions` 报告或选择一个具名 preset。服务还会为提供显式高风险启动参数的 launcher 标识已配置的全访问／不审批 preset；它不会注册会话级 `/yolo` 命令。每个子功能仅在其注册表（`ctx.sessionProjections` / `ctx.commands`）被组合时激活。
+两个可选子功能在同一服务之上提供产品界面：`permissions` 会话投影单元（`src/types.ts` 声明该 key；单元以组合默认值为基础折叠三个全量值可调参数事件，并生成选择器视图，其中包含表内选项和仅作当前值的 `custom`）与命令条目。`/permissions` 报告或选择一个具名 preset。服务会同时标识供 `--full-auto` 使用的工作区受限／不审批 preset，以及供 `--yolo` 使用的全访问／不审批 preset；它不会注册会话级快捷命令。每个子功能仅在其注册表（`ctx.sessionProjections` / `ctx.commands`）被组合时激活。
 
 ## 模型体验
 

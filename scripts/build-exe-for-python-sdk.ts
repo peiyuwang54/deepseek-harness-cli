@@ -10,7 +10,7 @@ import { chmod, copyFile, mkdir } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 
 import { BuildCli, type ExeProduct } from './exe-build/config.ts'
-import { ExeBuild } from './exe-build/pipeline.ts'
+import { buildExeProduct } from './exe-build/pipeline.ts'
 
 const root = resolve(import.meta.dirname, '..')
 
@@ -60,16 +60,7 @@ async function syncToPythonRuntime(products: readonly string[], dryRun: boolean)
 
 async function main(): Promise<void> {
   const cli = BuildCli.parse(process.argv.slice(2), SDK_PRODUCT)
-  const pipeline = new ExeBuild(SDK_PRODUCT, cli)
-  console.log(`${LABEL}: targets: ${cli.targets.map(target => target.spec).join(', ')}`)
-  console.log(`${LABEL}: staging: ${pipeline.staging}`)
-  await pipeline.verifyClosure()
-  await pipeline.build()
-  await pipeline.deployStaging()
-  await pipeline.injectPkgConfig()
-  const products: string[] = []
-  for (const target of cli.targets) products.push(...await pipeline.pack(target))
-  pipeline.printProducts(products)
+  const products = await buildExeProduct(SDK_PRODUCT, cli)
   await syncToPythonRuntime(products, cli.dryRun)
 }
 

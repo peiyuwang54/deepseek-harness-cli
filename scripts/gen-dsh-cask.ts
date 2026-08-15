@@ -11,6 +11,7 @@ import { existsSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
+import { requireReleaseVersion } from './release-version.ts'
 
 const root = resolve(import.meta.dirname, '..')
 const REPO = 'peiyuwang54/deepseek-harness-cli'
@@ -58,6 +59,7 @@ export function generateCask(version: string, shas: PlatformShas): string {
     end
   end
 
+  binary "bin/deepseek-harness-cli", target: "deepseek"
   binary "bin/deepseek-harness-cli"
 
   livecheck do
@@ -89,28 +91,18 @@ export async function readPlatformShas(dir: string): Promise<PlatformShas> {
   return shas
 }
 
-function usage(): void {
-  console.log(`Usage: pnpm exec tsx scripts/gen-dsh-cask.ts --version <ver> [flags]
-
-  --version <ver>  release version, e.g. 0.1.0-rc.5 (required)
-  --dir <dir>      directory holding the dsh-<target>.sha256 sidecars (default: dist-exe)
-  --out <file>     write the cask to a file instead of stdout`)
-}
+const CLI_OPTIONS = {
+  version: { type: 'string' },
+  dir: { type: 'string', default: 'dist-exe' },
+  out: { type: 'string' },
+} as const
 
 async function main(): Promise<void> {
   const { values } = parseArgs({
     args: process.argv.slice(2),
-    options: {
-      version: { type: 'string' },
-      dir: { type: 'string', default: 'dist-exe' },
-      out: { type: 'string' },
-    },
+    options: CLI_OPTIONS,
   })
-  if (values.version === undefined) {
-    usage()
-    process.exit(1)
-  }
-  const version = values.version.replace(/^v/, '')
+  const version = requireReleaseVersion(values.version, usage)
   const shas = await readPlatformShas(resolve(root, values.dir))
   const cask = generateCask(version, shas)
   if (values.out !== undefined) {
@@ -120,6 +112,14 @@ async function main(): Promise<void> {
     return
   }
   process.stdout.write(cask)
+}
+
+function usage(): void {
+  console.log(`Usage: pnpm exec tsx scripts/gen-dsh-cask.ts --version <ver> [flags]
+
+  --version <ver>  release version, e.g. 0.1.0-rc.5 (required)
+  --dir <dir>      directory holding the dsh-<target>.sha256 sidecars (default: dist-exe)
+  --out <file>     write the cask to a file instead of stdout`)
 }
 
 // Only run the CLI when executed directly; importing for tests must not exit.

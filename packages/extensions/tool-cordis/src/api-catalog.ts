@@ -1994,8 +1994,8 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [],
       },
       {
-        signature: 'readonly fullAccess: boolean',
-        description: 'Whether startup must pin the session to unrestricted execution before publication.',
+        signature: 'readonly permissionMode: \'default\' | \'full-auto\' | \'yolo\'',
+        description: 'Permission shortcut to pin before Agent publication.',
         parameters: [],
       },
     ],

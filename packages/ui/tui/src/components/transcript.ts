@@ -16,6 +16,7 @@ import {
   wrapTextWithAnsi,
   type Component,
   type MarkdownTheme,
+  type TerminalColorScheme,
 } from '@earendil-works/pi-tui'
 import { diffLines as compareLines } from 'diff'
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -205,6 +206,7 @@ export class HeaderComponent implements Component {
     private readonly palette: Palette,
     private readonly gradient: boolean,
     private readonly accent: () => AccentId,
+    private readonly scheme: () => TerminalColorScheme,
     private readonly dashboard?: () => WelcomeDashboardState,
     private readonly terminalRows?: () => number,
     private readonly locale: () => TuiLocale = () => 'en',
@@ -229,7 +231,7 @@ export class HeaderComponent implements Component {
   private renderCompact(width: number): string[] {
     const usable = Math.max(1, width - 2)
     const name = this.gradient
-      ? this.palette.bold(gradientText('DEEPSEEK', this.accent()))
+      ? this.palette.bold(gradientText('DEEPSEEK', this.accent(), this.scheme()))
       : this.palette.bold(this.palette.accent('DEEPSEEK'))
     const title = `${name} ${this.palette.bold('HARNESS')} ${this.palette.dim(`v${displayVersion}`)}`
     const lines = [title]
@@ -246,7 +248,7 @@ export class HeaderComponent implements Component {
     const rows = this.terminalRows?.() ?? 36
     const spacious = contentWidth >= 80 && rows >= 28
     const product = this.gradient
-      ? this.palette.bold(gradientText('DeepSeek', this.accent()))
+      ? this.palette.bold(gradientText('DeepSeek', this.accent(), this.scheme()))
       : this.palette.bold(this.palette.accent('DeepSeek'))
     const lines: string[] = []
     if (spacious) {

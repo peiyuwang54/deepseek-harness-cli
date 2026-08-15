@@ -8,7 +8,7 @@
 
 import type { ExeProduct } from './exe-build/config.ts'
 import { BuildCli } from './exe-build/config.ts'
-import { ExeBuild } from './exe-build/pipeline.ts'
+import { buildExeProduct } from './exe-build/pipeline.ts'
 
 /** Short product name used in CLI and log prefixes. */
 const LABEL = 'build-dsh-cli-exe'
@@ -31,16 +31,7 @@ const CLI_PRODUCT: ExeProduct = {
 
 async function main(): Promise<void> {
   const cli = BuildCli.parse(process.argv.slice(2), CLI_PRODUCT)
-  const pipeline = new ExeBuild(CLI_PRODUCT, cli)
-  console.log(`${LABEL}: targets: ${cli.targets.map(target => target.spec).join(', ')}`)
-  console.log(`${LABEL}: staging: ${pipeline.staging}`)
-  await pipeline.verifyClosure()
-  await pipeline.build()
-  await pipeline.deployStaging()
-  await pipeline.injectPkgConfig()
-  const products: string[] = []
-  for (const target of cli.targets) products.push(...await pipeline.pack(target))
-  pipeline.printProducts(products)
+  await buildExeProduct(CLI_PRODUCT, cli)
 }
 
 await main()

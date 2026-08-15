@@ -204,6 +204,11 @@
             approval: ask
             name: Approve for me
             description: Read and edit in the workspace; only wider actions require approval.
+          full-auto:
+            sandbox: workspace-write
+            approval: never
+            name: Full auto
+            description: Run without prompts inside the workspace; wider actions are denied.
           danger-full-access:
             sandbox: danger-full-access
             approval: never

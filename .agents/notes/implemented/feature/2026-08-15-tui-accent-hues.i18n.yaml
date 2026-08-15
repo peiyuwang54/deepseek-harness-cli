@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-15-tui-accent-hues.md
-2026-08-15-tui-accent-hues.md: ab73a1a6fd7bd8b83572432db5fd55df4db47f91
-2026-08-15-tui-accent-hues.zh.md: dcc609bb496c66e99b9c35c69d5c556acf1fd37e
+2026-08-15-tui-accent-hues.md: 4398f1125bf255251d291bddf15fa1d24cf68ac9
+2026-08-15-tui-accent-hues.zh.md: ab3e90b0c5675d8c6b62c76a5ff5cd3801eda6f8

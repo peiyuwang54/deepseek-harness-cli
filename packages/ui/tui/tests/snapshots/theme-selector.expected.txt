@@ -6,24 +6,55 @@ buffer
 0| " DEEPSEEK HA"
   style 1-8 fg=bright-blue bold
   style 10-11 bold
-1-20| <blank>
-21| "                                                                                            "
-22| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
+1-10| <blank>
+11| "                                                                                            "
+12| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
   style 1-1 fg=bright-blue bold
   style 2-41 dim
-23| "                                                                                            "
-24| "  Enter 发送 · Shift+Enter 换行 · / 命令"
+13| "                                                                                            "
+14| "  Enter 发送 · Shift+Enter 换行 · / 命令"
   style 0-39 dim
-25| "╭ 外观 ────────────────────────────────────────────────────────────────────╮"
+15| "╭ Theme ───────────────────────────────────────────────────────────────────╮"
   style 0-75 fg=bright-blue
-26| "│   Light                                                                  │"
+16| "│ → DeepSeek                        System default                         │"
+  style 0-0 fg=bright-blue
+  style 2-49 fg=bright-blue inverse
+  style 75-75 fg=bright-blue
+17| "│   Light · DeepSeek                                                       │"
   style 0-0 fg=bright-blue
   style 75-75 fg=bright-blue
-27| "│ → Dark                            current                                │"
+18| "│   Light · Cosmic Orange                                                  │"
   style 0-0 fg=bright-blue
-  style 2-42 fg=bright-blue inverse
   style 75-75 fg=bright-blue
-28| "│   System                                                                 │"
+19| "│   Light · Mist Blue                                                      │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+20| "│   Light · Sage                                                           │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+21| "│   Light · Lavender                                                       │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+22| "│   Light · Deep Blue                                                      │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+23| "│   Dark · DeepSeek                 当前                                   │"
+  style 0-0 fg=bright-blue
+  style 19-39 dim
+  style 75-75 fg=bright-blue
+24| "│   Dark · Cosmic Orange                                                   │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+25| "│   Dark · Mist Blue                                                       │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+26| "│   Dark · Sage                                                            │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+27| "│   Dark · Lavender                                                        │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+28| "│   Dark · Deep Blue                                                       │"
   style 0-0 fg=bright-blue
   style 75-75 fg=bright-blue
 29| "│ ↑/↓ 移动 • Enter 选择 • Esc 关闭                                         │"

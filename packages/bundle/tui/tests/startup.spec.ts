@@ -56,15 +56,15 @@ describe('tui command-line provider', () => {
   it('mints one main identity and publishes the matching resume line', () => {
     internals.randomUUID = () => 'fixed-id'
     const { ctx, observed, startup } = parse([])
-    expect(startup).toEqual({ identity: { id: 'main-session-fixed-id', resume: false }, fullAccess: false })
+    expect(startup).toEqual({ identity: { id: 'main-session-fixed-id', resume: false }, permissionMode: 'default' })
     expect(ctx.get('mainSessionId')).toEqual(startup?.identity)
-    expect(ctx.get('tuiGoodbyeMessage')).toBe('To resume this session: dsh tui --resume=main-session-fixed-id')
+    expect(ctx.get('tuiGoodbyeMessage')).toBe('To resume this session: deepseek --resume=main-session-fixed-id')
     expect(observed).toEqual({ exits: [], output: '' })
   })
 
   it('preserves an explicitly resumed persisted identity', () => {
     const { ctx, observed, startup } = parse(['--resume', 'persisted-session'])
-    expect(startup).toEqual({ identity: { id: 'persisted-session', resume: true }, fullAccess: false })
+    expect(startup).toEqual({ identity: { id: 'persisted-session', resume: true }, permissionMode: 'default' })
     expect(ctx.get('mainSessionId')).toEqual(startup?.identity)
     expect(observed).toEqual({ exits: [], output: '' })
   })
@@ -73,18 +73,39 @@ describe('tui command-line provider', () => {
     const { observed, startup } = parse(['--yolo'])
     expect(startup).toMatchObject({
       identity: { resume: false },
-      fullAccess: true,
+      permissionMode: 'yolo',
     })
     expect(observed).toEqual({ exits: [], output: '' })
+  })
+
+  it('accepts the official long alias for unrestricted startup', () => {
+    const { observed, startup } = parse(['--dangerously-bypass-approvals-and-sandbox'])
+    expect(startup).toMatchObject({ permissionMode: 'yolo' })
+    expect(observed).toEqual({ exits: [], output: '' })
+  })
+
+  it('publishes workspace-confined unattended startup intent for full-auto', () => {
+    const { observed, startup } = parse(['--full-auto'])
+    expect(startup).toMatchObject({ permissionMode: 'full-auto' })
+    expect(observed).toEqual({ exits: [], output: '' })
+  })
+
+  it('rejects conflicting permission shortcuts', () => {
+    const { observed, startup } = parse(['--full-auto', '--yolo'])
+    expect(startup).toBeUndefined()
+    expect(observed.exits).toEqual([1])
+    expect(observed.output).toContain('mutually exclusive')
   })
 
   it('prints help without requiring a TTY and leaves the runner pending', () => {
     const { observed, startup } = parse(['--help'], false)
     expect(startup).toBeUndefined()
     expect(observed.exits).toEqual([0])
-    expect(observed.output).toContain('Usage: dsh tui')
+    expect(observed.output).toContain('Usage: deepseek')
     expect(observed.output).toContain('--resume <session>')
+    expect(observed.output).toContain('--full-auto')
     expect(observed.output).toContain('--yolo')
+    expect(observed.output).toContain('--dangerously-bypass-approvals-and-sandbox')
   })
 
   it('fails fast on a successful non-interactive launch', () => {

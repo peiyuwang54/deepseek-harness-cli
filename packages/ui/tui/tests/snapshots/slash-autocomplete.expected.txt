@@ -16,17 +16,17 @@ viewport
 5| "                                                                                                "
 6| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-7| "→ accent        [deepseek|cosmic-orange|mist-blue|sage|lavender|deep-blue] — Choose and persis"
-  style 0-93 fg=bright-blue
-8| "  approve       Allow an active request or one retry of the latest rejected request"
-  style 9-82 dim
-9| "  clear         Clear the terminal and start a new chat"
+7| "→ approve       Allow an active request or one retry of the latest rejected request"
+  style 0-82 fg=bright-blue
+8| "  clear         Clear the terminal and start a new chat"
   style 7-54 dim
-10| "  copy          Copy the latest assistant response to the terminal clipboard"
+9| "  copy          Copy the latest assistant response to the terminal clipboard"
   style 6-75 dim
-11| "  details       [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility"
+10| "  details       [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility"
   style 9-93 dim
-12| "  (1/32)"
+11| "  diff          Show the Git diff, including untracked files"
+  style 6-59 dim
+12| "  (1/31)"
   style 0-7 dim
 13| "                                                  ▸   deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
   style 50-51 dim

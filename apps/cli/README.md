@@ -2,12 +2,15 @@
 
 English | [中文](README.zh.md)
 
-The `dsh` command is the product launcher for profiles: ordered stacks of plugin-bundle patch layers under the user's own overrides. The Node package installs `deepseek` as a branded alias of the same entry; examples below retain `dsh` as the compatibility spelling. [`src/args.ts`](src/args.ts) owns the command grammar, and [`src/bin.ts`](src/bin.ts) loads only the selected runner. Invalid commands, options from another mode, configuration errors, and boot failures exit nonzero.
+`deepseek` opens the shipped terminal profile when no explicit profile is named. The same entry remains available as `dsh` for profile composition: ordered stacks of plugin-bundle patch layers under the user's own overrides. [`src/args.ts`](src/args.ts) owns the command grammar, and [`src/bin.ts`](src/bin.ts) loads only the selected runner. Invalid app arguments, configuration errors, and boot failures exit nonzero.
 
 ## Entry modes
 
 | Command | Purpose |
 |---|---|
+| `deepseek` | Open the interactive terminal UI. |
+| `deepseek --full-auto` | Run without prompts inside the workspace; deny wider access. |
+| `deepseek --yolo` | Run without a sandbox or approval prompts. |
 | `dsh --profile <name>` | Boot the named profile under `$DSH_HOME/profiles/<name>`. |
 | `dsh --profile headless "job"` | Run one fresh persisted session, print the final answer, and exit. |
 | `dsh tui` | Alias of `--profile tui`; open the interactive terminal UI. |
@@ -53,7 +56,7 @@ npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-The first command runs the curl installer, which downloads the newest `deepseek-harness-cli-v*` release, verifies the tarball against the release's sha256 sidecar, and installs to `$HOME/.deepseek-harness-cli/bin` (`sh -s -- --to <dir>` overrides the directory, `--version <ver>` pins a version). The npm package is a shim over the per-platform executable and installs both `deepseek-harness-cli` and `deepseek`; the Homebrew cask is served from the `peiyuwang54/homebrew-dsh` tap. See [the installer README](install/README.md) for the full contract and the planned minisign signature upgrade.
+The first command runs the curl installer, which downloads the newest `deepseek-harness-cli-v*` release, verifies the tarball against the release's sha256 sidecar, and installs both `deepseek` and the compatibility name `deepseek-harness-cli` under `$HOME/.deepseek-harness-cli/bin` (`sh -s -- --to <dir>` overrides the directory, `--version <ver>` pins a version). The npm and Homebrew channels expose the same two names. See [the installer README](install/README.md) for the full contract and the planned minisign signature upgrade.
 
 Upgrading re-runs the same command — the curl installer replaces the binaries in place, `npm update -g @peiyuwang54/deepseek-harness-cli` pulls the newest version, and `brew upgrade deepseek-harness-cli` refreshes the cask.
 
@@ -61,4 +64,4 @@ Upgrading re-runs the same command — the curl installer replaces the binaries 
 
 Production runs require built package and frontend artifacts. From the repository root, run `pnpm run build` separately, then use `pnpm dsh <args...>` to run the TypeScript entry and forward every argument; the [source-execution reference](reference/README.md#source-execution) owns the module-resolution contract.
 
-On Windows, [`scripts/install/install.ps1`](../../scripts/install/install.ps1) installs a packed copy of this CLI into `%LOCALAPPDATA%\Programs\dsh`. That launcher boots `tui` when the user passes no arguments; the grammar in [`src/args.ts`](src/args.ts) is unchanged.
+On Windows, [`scripts/install/install.ps1`](../../scripts/install/install.ps1) installs a packed copy with `deepseek.cmd` and `dsh.cmd` into `%LOCALAPPDATA%\Programs\dsh`. Both launchers open the TUI when the user passes no arguments.

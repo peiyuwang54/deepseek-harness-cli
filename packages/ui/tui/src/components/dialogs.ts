@@ -546,52 +546,6 @@ export interface PermissionDialogChoice {
   readonly description?: string
 }
 
-/** Keyboard permission-preset selector rendered as a bordered overlay. */
-export class PermissionDialog implements Component {
-  private readonly list: SelectList
-
-  constructor(
-    choices: readonly PermissionDialogChoice[],
-    currentValue: string,
-    private readonly palette: Palette,
-    done: (value: string) => void,
-    private readonly cancel: () => void,
-  ) {
-    const items: SelectItem[] = choices.map(choice => ({
-      value: choice.value,
-      label: choice.label,
-      description: [
-        ...choice.value === currentValue ? ['current'] : [],
-        ...choice.description === undefined ? [] : [choice.description],
-      ].join(' · '),
-    }))
-    this.list = new SelectList(items, items.length, dialogSelectTheme(palette))
-    const selected = items.findIndex(item => item.value === currentValue)
-    if (selected >= 0) this.list.setSelectedIndex(selected)
-    this.list.onSelect = (item) => { done(item.value) }
-    this.list.onCancel = cancel
-  }
-
-  invalidate(): void {
-    this.list.invalidate()
-  }
-
-  handleInput(data: string): void {
-    if (matchesKey(data, Key.escape) || matchesKey(data, Key.ctrl('c'))) this.cancel()
-    else this.list.handleInput(data)
-    this.invalidate()
-  }
-
-  render(width: number): string[] {
-    const innerWidth = Math.max(1, width - 4)
-    return renderDialog('Update Permissions', [
-      ...this.list.render(innerWidth),
-      '',
-      this.palette.dim('↑/↓ move • Enter confirm • Esc close'),
-    ], width, this.palette)
-  }
-}
-
 /** One row rendered by the reusable command action selector. */
 export interface ActionDialogChoice {
   /** Stable value returned on selection. */
@@ -614,6 +568,8 @@ export class ActionDialog implements Component {
     done: (value: string) => void,
     private readonly cancel: () => void,
     initialValue?: string,
+    private readonly instructions = '↑/↓ move • Enter select • Esc close',
+    private readonly separateInstructions = true,
   ) {
     const items: SelectItem[] = choices.map(choice => ({
       value: choice.value,
@@ -645,9 +601,38 @@ export class ActionDialog implements Component {
     const innerWidth = Math.max(1, width - 4)
     return renderDialog(this.title, [
       ...this.list.render(innerWidth),
-      '',
-      this.palette.dim('↑/↓ move • Enter select • Esc close'),
+      ...this.separateInstructions ? [''] : [],
+      this.palette.dim(this.instructions),
     ], width, this.palette)
+  }
+}
+
+/** Keyboard permission-preset selector rendered as a bordered overlay. */
+export class PermissionDialog extends ActionDialog {
+  constructor(
+    choices: readonly PermissionDialogChoice[],
+    currentValue: string,
+    palette: Palette,
+    done: (value: string) => void,
+    cancel: () => void,
+  ) {
+    super(
+      'Update Permissions',
+      choices.map(choice => ({
+        value: choice.value,
+        label: choice.label,
+        description: [
+          ...choice.value === currentValue ? ['current'] : [],
+          ...choice.description === undefined ? [] : [choice.description],
+        ].join(' · '),
+      })),
+      choices.length,
+      palette,
+      done,
+      cancel,
+      currentValue,
+      '↑/↓ move • Enter confirm • Esc close',
+    )
   }
 }
 

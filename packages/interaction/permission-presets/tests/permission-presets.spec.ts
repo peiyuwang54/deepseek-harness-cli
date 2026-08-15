@@ -80,8 +80,11 @@ describe('effectivePermissionPreset', () => {
 describe('PermissionPresetService', () => {
   it('advertises the preset table in declaration order and resolves bundles', async () => {
     const ctx = await mounted()
-    expect(ctx.permissionPresets.names).toEqual(['workspace-write', 'danger-full-access'])
+    expect(ctx.permissionPresets.names).toEqual(['workspace-write', 'full-auto', 'danger-full-access'])
+    expect(ctx.permissionPresets.resolve('full-auto')).toMatchObject({ sandbox: 'workspace-write', approval: 'never' })
     expect(ctx.permissionPresets.resolve('danger-full-access')).toMatchObject({ sandbox: 'danger-full-access', approval: 'never' })
+    expect(ctx.permissionPresets.fullAutoPreset).toBe('full-auto')
+    expect(ctx.permissionPresets.fullAccessPreset).toBe('danger-full-access')
     expect(() => ctx.permissionPresets.resolve('plan')).toThrow(/unknown preset "plan"/)
   })
 
@@ -106,7 +109,13 @@ describe('PermissionPresetService', () => {
   it('composition defaults outside the table still derive custom when an explicit new-session default is configured', async () => {
     const ctx = await mounted({
       approvalDefault: 'never',
-      config: { defaultPreset: 'workspace-write' },
+      config: {
+        defaultPreset: 'workspace-write',
+        presets: {
+          'workspace-write': { sandbox: 'workspace-write', approval: 'ask' },
+          'danger-full-access': { sandbox: 'danger-full-access', approval: 'never' },
+        },
+      },
     })
     const session = freshSession('sess-defaults-custom')
     expect(ctx.permissionPresets.current(session.events)).toBe(CUSTOM_PRESET)
@@ -178,9 +187,9 @@ describe('PermissionPresetService', () => {
       .rejects.toThrow(/reserved for the derived not-a-preset state/)
   })
 
-  it('requires an explicit default when composition defaults match no preset', async () => {
-    await expect(mounted({ approvalDefault: 'never' }))
-      .rejects.toThrow(/configure defaultPreset explicitly/)
+  it('derives full-auto when composition defaults disable approval prompts', async () => {
+    const ctx = await mounted({ approvalDefault: 'never' })
+    expect(ctx.permissionPresets.current(freshSession('full-auto-default').events)).toBe('full-auto')
   })
 
   it('reads a schema-less approval stand-in as the ask default', async () => {

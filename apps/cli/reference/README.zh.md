@@ -14,7 +14,7 @@
 
 ### 应用参数
 
-启动器自身的 flag 必须写在最前面，并在遇到第一个无法识别的 token 时结束；从该 token 开始的所有内容都会通过 `ctx.cmdlineArgs` 原样交给已启动的 profile，注入该 profile 的任意应用插件都可以解析这些内容（[`dsh-cmdline`](../../../packages/boot/cmdline/README.md)）。因此，`dsh --profile web --port 8080` 会将 `--port` 交给 web 应用；`dsh --profile web --help` 只打印该应用的帮助信息，不启动应用；`dsh --help` 没有可供交付参数的 profile，因此会打印启动器自身的帮助信息。`-V`/`--version` 位于应用参数边界之前时，会打印启动器的版本。
+启动器自身的 flag 必须写在最前面，并在遇到第一个无法识别的 token 时结束；从该 token 开始的所有内容都会通过 `ctx.cmdlineArgs` 原样交给已启动的 profile，注入该 profile 的任意应用插件都可以解析这些内容（[`dsh-cmdline`](../../../packages/boot/cmdline/README.md)）。没有显式 profile 时，启动器会选择 `tui`，因此裸 `deepseek` 会打开终端，`deepseek --full-auto` 会抵达其启动提供方。`dsh --profile web --port 8080` 会将 `--port` 交给 web 应用，而裸 `dsh --help` 仍打印启动器自身的帮助。`-V`/`--version` 位于应用参数边界之前时，会打印启动器的版本。
 
 每套组合只会挂载一次。普通插件注入 `cmdlineArgs`，解析所属应用的参数，并将解析结果作为服务提供。每个从 flag 取值的配置行都会注入该服务；Loader 会等到服务激活后，再对该行的配置求值（`port: !!js ctx.webStartup.port ?? 3080`），因此 flag 的优先级高于配置行中写明的值。要维持这一优先级，配置行必须保留该表达式；如果用户 patch 用字面量替换整个 `config`，也会随之移除运行时读取。帮助参数和被拒绝的参数都会请求退出：参数被拒绝时以非零状态退出，显示帮助时以 0 退出；依赖该提供方服务的配置行不会激活。在线编辑 `cordis.patch.yml` 时，系统会根据仍在运行的服务重新计算表达式，因此不会重置当前正在使用的端口。
 
@@ -25,7 +25,7 @@
 | Profile | 参数 |
 |---|---|
 | `web` | `--host`、`--port`、可重复的 `--trusted-host` |
-| `tui` | `--resume <session>` |
+| `tui` | `--resume <session>`、`--full-auto`、`--yolo`、`--dangerously-bypass-approvals-and-sandbox` |
 | `headless` | 任务文本，作为位置参数 |
 
 一次性任务（`dsh --profile headless "run the tests"`）通过核心注册表创建一个全新的持久化 Agent（智能体），提交任务、等待完全停稳并对会话执行 flush，再从其持久化事件区间中推导最后一个非空 assistant 文本与最终 `turn/end` 原因。它在 stdout 打印文本，并在原因为 `completed` 时以 0 退出，否则以 1 退出。没有任务的调用是该应用的用法错误。随附 headless profile 不挂载 ApiProxy、Host、HTTP 服务器、Web 运行时或浏览器客户端；成功运行不会向 stderr 写入任何内容，也不会打开监听端口。
@@ -51,14 +51,16 @@ dsh --profile tui
 
 随源码发布的 Git 托管插件会在安装期间通过 `prepare` 脚本构建，而 pnpm ≥10 默认会阻止该脚本，直到使用方明确允许。首次运行 `add` 会失败，并显示 pnpm 的 `allowBuilds` 提示；dsh 还会提示应修改该 profile 的 `pnpm-workspace.yaml`。将输出的键复制到该文件后，重新运行命令即可。安装已经构建好的 tarball 或本地 checkout 时，无需加入 `allowBuilds`。
 
-## 终端别名
+## 终端入口
 
-`dsh tui` 是 `--profile tui` 的随附别名。它的普通 startup 提供方持有 `--resume <session>` 与应用帮助。帮助信息不要求 TTY；成功运行则要求 stdin 与 stdout 均为交互式终端，任一侧为管道时都会在终端 runner 激活前失败。Loader 结算后，runner 通过 `ctx.agents` 创建新的持久化根 Agent 或恢复指定身份，在未发布的 setup 阶段安装默认模型选择，再把进程 TUI 挂载到该根 Agent。此 profile 不挂载 Host、HTTP server、Web runtime 或浏览器 client。
+裸 `deepseek` 会选择随附的 `tui` profile，`dsh tui` 保留为兼容写法。Startup 提供方持有 `--resume <session>`、`--full-auto`、`--yolo`、官方长形式无限制别名与应用帮助。`--full-auto` 会关闭审批提示但保留工作区限制，越界操作会被拒绝；两种无限制写法会同时关闭限制与审批提示。帮助信息不要求 TTY；成功运行则要求 stdin 与 stdout 均为交互式终端，任一侧为管道时都会在终端 runner 激活前失败。Loader 结算后，runner 通过 `ctx.agents` 创建新的持久化根 Agent 或恢复指定身份，在未发布的 setup 阶段固定请求的权限 preset 并安装默认模型选择，再把进程 TUI 挂载到该根 Agent。此 profile 不挂载 Host、HTTP server、Web runtime 或浏览器 client。
 
 ```sh
-dsh tui
-dsh tui --resume <session>
-dsh tui --yolo
+deepseek
+deepseek --resume <session>
+deepseek --full-auto
+deepseek --yolo
+deepseek --dangerously-bypass-approvals-and-sandbox
 dsh tui --patch ./extra.cordis.yml
 dsh tui --dump-default-config
 dsh tui --help
@@ -81,7 +83,7 @@ dsh web --help
 
 所有模式都将运行命令时所在的目录作为默认 workspace 根目录，以 65,536 字节渲染预算加载适用的 `AGENTS.md` 或 `CLAUDE.md` 指令，并使用内存 SQLite 会话内容索引。每次启动 profile 时，系统都会监视 profile 与 home 两个 `cordis.patch.yml` 配置层的有效变更，并以事务方式重新应用；一次性运行模式通过有界关闭流程退出，该流程会先 dispose 监视器。
 
-新会话默认使用 `workspace-write` 权限预设。Bash 和文件系统修改仅限于会话 workspace 与平台临时根目录；读取、网络访问和进程可见性不受限制。`dsh tui --yolo` 会在发布前把新建或恢复的终端会话显式固定为配置的 full-access／no-approval 预设；会话内不会注册 `/yolo` 命令。`DSH_PERMISSION_MODE` 更改进程后备值。General settings 中存储的权限影响后续 Web 会话，不改变已打开的会话。
+新会话默认使用 `workspace-write` 权限预设。Bash 和文件系统修改仅限于会话 workspace 与平台临时根目录；读取、网络访问和进程可见性不受限制。`deepseek --full-auto` 会固定 `workspace-write` + `never`；`deepseek --yolo` 及其长别名会在发布前固定配置的 full-access／no-approval preset。会话内不会注册启动快捷命令，运行中请用 `/permissions` 切换。`DSH_PERMISSION_MODE` 更改进程后备值。General settings 中存储的权限影响后续 Web 会话，不改变已打开的会话。
 
 `DSH_TOOLS_MODE` 为进程选择 `native`、`code` 或 `both`；其他值会导致启动失败。随附的 `minimal` agent preset 会保留该部署的呈现方式，将完整系统提示词固定为 `You are a helpful software engineer assistant.`，并且仅组合持久 `bash` 和 `str_replace_editor`。创建 Web 会话时请选择极简模式；该 agent 不包含任何其他提示词段落或面向模型的插件，而共享的浏览器、workspace、持久化、沙箱与权限宿主保持不变。
 

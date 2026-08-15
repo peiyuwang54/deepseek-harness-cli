@@ -5,23 +5,19 @@ cursor hidden column=76 viewportRow=30 bufferRow=30
 buffer
 0| " DEE"
   style 1-3 fg=bright-blue bold
-1-16| <blank>
-17| "                                                                                            "
-18| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
+1-17| <blank>
+18| "                                                                                            "
+19| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
   style 1-1 fg=bright-blue bold
   style 2-41 dim
-19| "                                                                                            "
-20| "  Enter 发送 · Shift+Enter 换行 · / 命令"
+20| "                                                                                            "
+21| "  Enter 发送 · Shift+Enter 换行 · / 命令"
   style 0-39 dim
-21| "╭ 设置 ────────────────────────────────────────────────────────────────────╮"
+22| "╭ 设置 ────────────────────────────────────────────────────────────────────╮"
   style 0-75 fg=bright-blue
-22| "│ → 外观                            dark                                   │"
+23| "│ → Theme                           dark · DeepSeek / DeepSeek             │"
   style 0-0 fg=bright-blue
-  style 2-39 fg=bright-blue inverse
-  style 75-75 fg=bright-blue
-23| "│   Accent                          DeepSeek                               │"
-  style 0-0 fg=bright-blue
-  style 10-43 dim
+  style 2-61 fg=bright-blue inverse
   style 75-75 fg=bright-blue
 24| "│   语言                            中文                                   │"
   style 0-0 fg=bright-blue

@@ -484,31 +484,50 @@ describe('shared settings, appearance, and workspaces', () => {
     await dispose(result)
   })
 
-  it('persists /accent through the TUI ui-accent field and repaints the accent chrome', async () => {
+  it('persists a unified /theme choice and repaints the chrome and chat cards together', async () => {
+    const uiTheme = settingsNamespace('ui-theme')
     const uiAccent = settingsNamespace('ui-accent')
-    let accent = 'deepseek'
+    let preference = 'system'
+    let light = 'deepseek'
+    let dark = 'deepseek'
     let resultContext: Context | undefined
     const mutate = vi.fn(async (
       namespace: string,
       ops: ReadonlyArray<{ op: string; path: readonly string[]; value?: unknown }>,
     ) => {
       const operation = ops[0]
-      if (namespace !== uiAccent || operation?.op !== 'set') return
-      const previous = { accent }
-      accent = String(operation.value)
-      resultContext?.emit('settings/updated', uiAccent, { accent }, previous, 'update')
+      if (operation?.op !== 'set') return
+      if (namespace === uiTheme && operation.path.join('.') === 'preference') {
+        const previous = { preference }
+        preference = String(operation.value)
+        resultContext?.emit('settings/updated', uiTheme, { preference }, previous, 'update')
+        return
+      }
+      if (namespace !== uiAccent) return
+      const previous = { light, dark }
+      if (operation.path.join('.') === 'light') light = String(operation.value)
+      if (operation.path.join('.') === 'dark') dark = String(operation.value)
+      resultContext?.emit('settings/updated', uiAccent, { light, dark }, previous, 'update')
     })
     const result = await setup({
       config: { theme: { color: true } },
       configureContext: composeFrontDoorServices((ctx) => {
         resultContext = ctx
         ctx.provide('settings', {
-          get: (namespace: string) => namespace === uiAccent ? { accent } : undefined,
+          get: (namespace: string) => namespace === uiTheme
+            ? { preference }
+            : namespace === uiAccent ? { light, dark } : undefined,
           mutate,
           describe: () => [{
+            ns: uiTheme,
+            schema: { type: 'object' },
+            value: { preference },
+            revision: 0,
+            applies: 'live',
+          }, {
             ns: uiAccent,
             schema: { type: 'object' },
-            value: { accent },
+            value: { light, dark },
             revision: 0,
             applies: 'live',
           }],
@@ -519,15 +538,19 @@ describe('shared settings, appearance, and workspaces', () => {
       }),
     })
 
-    result.terminal.send('/accent cosmic-orange')
+    result.terminal.send('\x1b]11;#ffffff\x07')
+    await tick(); await tick()
+    result.terminal.send('/theme light cosmic-orange')
     result.terminal.send('\r')
     await tick(); await tick()
-    expect(mutate).toHaveBeenCalledWith(uiAccent, [{ op: 'set', path: ['accent'], value: 'cosmic-orange' }])
-    expect(result.terminal.output).toContain('Accent: Cosmic Orange')
+    expect(mutate).toHaveBeenCalledWith(uiTheme, [{ op: 'set', path: ['preference'], value: 'light' }])
+    expect(mutate).toHaveBeenCalledWith(uiAccent, [{ op: 'set', path: ['light'], value: 'cosmic-orange' }])
+    expect(result.terminal.output).toContain('Theme: Light · Cosmic Orange.')
+    expect(result.terminal.output).toContain('\x1b[48;2;246;231;222m')
 
     // The accent chrome repaints from the DeepSeek bright blue to bright red.
     expect(resultContext).toBeDefined()
-    resultContext?.emit('settings/updated', uiAccent, { accent: 'deepseek' }, { accent: 'cosmic-orange' }, 'update')
+    resultContext?.emit('settings/updated', uiAccent, { light: 'deepseek', dark: 'deepseek' }, { light: 'cosmic-orange', dark: 'deepseek' }, 'update')
     await tick()
     expect(result.terminal.output).toContain('\x1b[94m')
     await dispose(result)
@@ -7610,22 +7633,26 @@ describe('terminal mounting', () => {
     expect(brandText('mark')).toBe('\x1b[38;2;77;107;254mmark\x1b[39m')
   })
 
-  it('switches the accent role and banner gradient per accent hue', () => {
+  it('switches the accent role and banner gradient per accent hue and background', () => {
     // Default keeps the original DeepSeek-blue chrome unchanged.
     expect(paletteSpec('dark').colors.accent.open).toBe('94')
-    expect(brandText('x', 'deepseek')).toBe('\x1b[38;2;77;107;254mx\x1b[39m')
+    expect(brandText('x', 'deepseek', 'dark')).toBe('\x1b[38;2;77;107;254mx\x1b[39m')
     // A non-default accent changes both the ANSI fallback and the truecolor ink.
     expect(paletteSpec('dark', 'cosmic-orange').colors.accent.open).toBe('91')
     expect(paletteSpec('dark', 'cosmic-orange').colors.brand.open).toBe('31')
-    expect(brandText('x', 'cosmic-orange')).toBe('\x1b[38;2;247;126;45mx\x1b[39m')
+    expect(brandText('x', 'cosmic-orange', 'dark')).toBe('\x1b[38;2;247;126;45mx\x1b[39m')
     expect(paletteSpec('dark', 'sage').colors.accent.open).toBe('92')
     expect(paletteSpec('light', 'lavender').colors.accent.open).toBe('95')
+    // Truecolor ink splits per background: bright for dark, deep for light.
+    expect(brandText('x', 'cosmic-orange', 'light')).toBe('\x1b[38;2;190;86;20mx\x1b[39m')
     // The gradient paints the accent ink first; unknown ids fall back to DeepSeek.
-    expect(gradientText('ab', 'cosmic-orange')).toContain('\x1b[38;2;247;126;45m')
+    expect(gradientText('ab', 'cosmic-orange', 'dark')).toContain('\x1b[38;2;247;126;45m')
     expect(paletteSpec('dark', 'not-an-accent' as never).colors.accent.open).toBe('94')
     for (const hue of ACCENT_HUES) {
       expect(paletteSpec('dark', hue.id).colors.accent.open).toBe(hue.ansi)
       expect(paletteSpec('dark', hue.id).colors.brand.open).toBe(hue.brandAnsi)
+      expect(brandText('x', hue.id, 'dark')).toBe(`\x1b[38;2;${hue.dark.rgb.join(';')}mx\x1b[39m`)
+      expect(brandText('x', hue.id, 'light')).toBe(`\x1b[38;2;${hue.light.rgb.join(';')}mx\x1b[39m`)
     }
   })
 
@@ -7638,11 +7665,15 @@ describe('terminal mounting', () => {
     }
   })
 
-  it('maps the composer to the exact Web user-bubble tones', () => {
+  it('maps the default composer to the Web bubble tones and tints other theme cards', () => {
     expect(composerBackground(true, 'dark', { r: 0, g: 0, b: 0 })(' prompt '))
       .toBe('\x1b[48;2;44;44;46m prompt \x1b[49m')
     expect(composerBackground(true, 'light', { r: 255, g: 255, b: 255 })(' prompt '))
       .toBe('\x1b[48;2;237;243;254m prompt \x1b[49m')
+    expect(composerBackground(true, 'light', { r: 255, g: 255, b: 255 }, 'cosmic-orange')(' prompt '))
+      .toBe('\x1b[48;2;246;231;222m prompt \x1b[49m')
+    expect(composerBackground(true, 'dark', { r: 0, g: 0, b: 0 }, 'cosmic-orange')(' prompt '))
+      .toBe('\x1b[48;2;81;59;46m prompt \x1b[49m')
     expect(composerBackground(false, 'dark', undefined)('prompt')).toBe('prompt')
   })
 

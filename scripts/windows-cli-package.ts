@@ -18,6 +18,8 @@ export const WINDOWS_CLI_PACKAGE_DIRNAME = 'dsh'
 export const WINDOWS_CLI_MANIFEST_NAME = 'dsh-install.json'
 /** cmd.exe launcher that adds `tui` when the user passes no arguments. */
 export const WINDOWS_CLI_LAUNCHER_NAME = 'dsh.cmd'
+/** Branded cmd.exe launcher installed beside the compatibility spelling. */
+export const WINDOWS_CLI_BRANDED_LAUNCHER_NAME = 'deepseek.cmd'
 /** Copied host Node binary. */
 export const WINDOWS_CLI_NODE_NAME = 'node.exe'
 /** Default profile the bare `dsh` command boots. */
@@ -31,6 +33,7 @@ export const WINDOWS_CLI_BUILD_SCRIPT = 'build:lib'
 export const WINDOWS_CLI_REQUIRED_RELATIVE_PATHS = [
   WINDOWS_CLI_NODE_NAME,
   WINDOWS_CLI_LAUNCHER_NAME,
+  WINDOWS_CLI_BRANDED_LAUNCHER_NAME,
   WINDOWS_CLI_ENTRY,
   WINDOWS_CLI_MANIFEST_NAME,
   'package.json',

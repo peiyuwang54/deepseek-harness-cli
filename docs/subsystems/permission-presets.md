@@ -29,8 +29,9 @@ interface PresetSpec {
 interface Config {
   /**
    * The preset table: name → knob bundle. Defaults to `workspace-write`
-   * (workspace-write + ask) and `danger-full-access` (danger-full-access +
-   * never). The name `custom` is reserved for the derived not-a-preset state.
+   * (workspace-write + ask), `full-auto` (workspace-write + never), and
+   * `danger-full-access` (danger-full-access + never). The name `custom` is
+   * reserved for the derived not-a-preset state.
    */
   presets?: Record<string, PresetSpec>
   /**
@@ -127,5 +128,5 @@ set(session: Session, name: string): void
 
 Types: [Session](session.md) · [SessionEvent](session.md)
 
-Source: [`packages/interaction/permission-presets/src/index.ts:159`](../../packages/interaction/permission-presets/src/index.ts)
+Source: [`packages/interaction/permission-presets/src/index.ts:160`](../../packages/interaction/permission-presets/src/index.ts)
 <!-- END GENERATED cordis-surface -->

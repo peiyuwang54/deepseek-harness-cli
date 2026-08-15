@@ -169,8 +169,8 @@ class InstallerTestCase(unittest.TestCase):
         env["HOME"] = str(self.tmp / "home")
         env["DEEPSEEK_HARNESS_CLI_INSTALL_DIR"] = str(self.tmp / "install")
         env["SHELL"] = "/bin/zsh"
-        env["PATH"] = str(self.fake_bin) + os.pathsep + env["PATH"]
         if use_fake_uname:
+            env["PATH"] = str(self.fake_bin) + os.pathsep + env["PATH"]
             env["DSH_FAKE_OS"] = {"macos": "Darwin", "linux": "Linux"}[os_name]
             env["DSH_FAKE_ARCH"] = {"arm64": "arm64", "x64": "x86_64"}[arch]
         if extra_env:
@@ -188,10 +188,13 @@ class InstallerTestCase(unittest.TestCase):
     # --- shared assertions --------------------------------------------------
     def assert_installed(self, os_name: str, install_dir: Path) -> None:
         binary = install_dir / "bin" / "deepseek-harness-cli"
+        branded_binary = install_dir / "bin" / "deepseek"
         self.assertTrue(binary.exists(), f"{binary} not installed")
         self.assertTrue(os.access(binary, os.X_OK), f"{binary} not executable")
+        self.assertTrue(branded_binary.exists(), f"{branded_binary} not installed")
+        self.assertTrue(os.access(branded_binary, os.X_OK), f"{branded_binary} not executable")
         self.assertEqual(
-            subprocess.run([str(binary), "--version"], capture_output=True, text=True).stdout.strip(),
+            subprocess.run([str(branded_binary), "--version"], capture_output=True, text=True).stdout.strip(),
             f"fake-dsh {VERSION}",
         )
         if os_name == "macos":

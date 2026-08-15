@@ -1,36 +1,69 @@
-# deepseek-harness-cli
+<p align="center"><strong>DeepSeek CLI</strong> 是由 DeepSeek 驱动、在本地终端运行的开源编码代理。</p>
+
+<p align="center">
+  <img src=".github/deepseek-cli-splash.svg" alt="DeepSeek CLI 终端预览" width="80%" />
+</p>
 
 [English](README.md) | 中文
 
-deepseek-harness-cli 是一个轻量、基于插件机制的终端编码代理。单个单文件二进制即在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 之上集成了交互式终端 UI、一次性 headless 自动化与 Web UI。
+---
 
-> 这是一个非官方的社区 fork，不由 DeepSeek AI 维护、赞助或背书。上游项目与 `@deepseek-ai` 系列包源自 DeepSeek AI；对外分发的 `deepseek-harness-cli` 二进制是本 fork 的构建产物。
+**说明：** 这是 DeepSeek Harness CLI。我们会与官方 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 同步迭代，期待你的 fork 和 star。
 
 <a id="run"></a>
 
 ## 快速开始
 
-```sh
-export DEEPSEEK_API_KEY="your-key"
+### 安装
 
-deepseek-harness-cli tui
-deepseek-harness-cli --profile headless "inspect the repository and summarize the test failures"
-deepseek-harness-cli web
-```
-
-运行命令时所在的目录即为工作区。配置文件、凭据与会话存放在 `$DSH_HOME`（默认 `~/.dsh`）。切勿提交密钥。
-
-## 安装
-
-macOS（`arm64`、`x64`）与 Linux（`arm64`、`x64`）——任选一种方式：
+macOS 或 Linux：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
+```
+
+Windows 目前从源码 checkout 安装：
+
+<a id="install-windows"></a>
+
+```powershell
+git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
+cd deepseek-harness-cli
+powershell -ExecutionPolicy Bypass -File .\scripts\install\install.ps1
+```
+
+也可以使用包管理器：
+
+```sh
 npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-curl|sh 一行会用同一 release 的 sha256 sidecar 校验 tarball，并安装到 `$HOME/.deepseek-harness-cli/bin`；npm 一行是覆盖各平台可执行文件的 shim；brew 一行从 `peiyuwang54/homebrew-dsh` tap 提供 cask。Windows 不是分发目标；请从源码构建，或使用 [`scripts/install/install.ps1`](scripts/install/install.ps1)。
+设置 API Key，进入项目目录，然后运行 `deepseek`：
+
+```sh
+export DEEPSEEK_API_KEY="your-key"
+deepseek
+```
+
+PowerShell 请使用 `$env:DEEPSEEK_API_KEY="your-key"`。
+
+### 权限模式
+
+```sh
+deepseek
+deepseek --full-auto
+deepseek --yolo
+```
+
+`--yolo` 风险很高，只能在隔离环境中使用。运行中请用 `/permissions` 安全切换当前会话。
+
+## 核心能力
+
+- 代码读取、编辑、Shell、Web 搜索、Skills、MCP 与子代理。
+- 持久会话、恢复、Plan、Goal、消息排队与上下文自动压缩。
+- Codex 风格终端 UI，支持主题，以及中文、英语、阿拉伯语、法语、俄语、西班牙语、日语和韩语。
+- 基于插件的终端、Headless 自动化与 Web UI profile。
 
 <a id="run-from-source"></a>
 
@@ -41,26 +74,21 @@ git clone https://github.com/peiyuwang54/deepseek-harness-cli.git
 cd deepseek-harness-cli
 pnpm install --frozen-lockfile
 pnpm run build
-pnpm dsh tui
+pnpm dsh
 ```
 
-需要 Node.js `^22.19` 或 `>=24`，以及 pnpm `11.7.0`。一旦进入 `PATH`，`deepseek-harness-cli` 与源码入口接受相同的命令——`tui`、`--profile headless "task"`、`web`——并且在第一次模型请求前仍然需要一份 provider 凭据（默认 `DEEPSEEK_API_KEY`）。
+源码构建需要 Node.js `^22.19` 或 `>=24`，以及 pnpm `11.7.0`。
 
 ## 文档
 
-- [CLI 参考](apps/cli/reference/README.md)
-- [终端 UI 详情](packages/ui/tui/README.md)
+- [CLI 命令与 profile](apps/cli/reference/README.md)
+- [终端 UI 与斜杠命令](packages/ui/tui/README.md)
+- [配置参考](docs/config-catalog.md)
 - [架构](docs/architecture.md)
-- [开发指南](docs/development.md)
-- [Issues](https://github.com/peiyuwang54/deepseek-harness-cli/issues)
+- [开发](docs/development.md)
 
-## 安全
-
-- 新会话默认 `workspace-write` 并带审批提示；写入被限制在工作区内，但文件读取、网络访问与进程可见性并非完整沙箱。
-- `dsh tui --yolo` 会以关闭沙箱和审批提示的方式启动会话——只能在隔离环境中使用。会话内不提供 `/yolo`；如需主动切换当前会话，请使用 `/permissions`。
-- 凭据是进程可见的明文文件，不是操作系统钥匙串。
-- 外部插件与 MCP 服务器命令是可执行的受信代码；加入 profile 前请先审查。
+请在 [GitHub Issues](https://github.com/peiyuwang54/deepseek-harness-cli/issues) 报告问题。
 
 ## 许可证
 
-fork 改动采用 MIT；从早期上游历史中恢复的 TUI 源码保留其 BSD-3-Clause 声明——详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+本项目采用 MIT 协议。恢复的 TUI 代码保留 BSD-3-Clause 声明；详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

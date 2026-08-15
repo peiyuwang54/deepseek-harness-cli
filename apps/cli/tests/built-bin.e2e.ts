@@ -150,6 +150,13 @@ workspace_environment_rebased = (
     and probes[-1][2] == b"workspace-b"
 )
 
+if os.WIFEXITED(status):
+    wrapper_exit_code = os.WEXITSTATUS(status)
+elif os.WIFSIGNALED(status):
+    wrapper_exit_code = -os.WTERMSIG(status)
+else:
+    wrapper_exit_code = status
+
 summary = {
     "outputBase64": base64.b64encode(output).decode(),
     "probeActivated": probe_marker in output,
@@ -161,7 +168,7 @@ summary = {
     "workspaceEnvironmentRebased": workspace_environment_rebased,
     "distinctSessionIds": len(set(probe[1] for probe in probes)),
     "timedOut": timed_out,
-    "wrapperExitCode": os.waitstatus_to_exitcode(status),
+    "wrapperExitCode": wrapper_exit_code,
     "wrapper": wrapper,
 }
 sys.stdout.write(json.dumps(summary))
@@ -562,11 +569,11 @@ function startStartupProfile(fixture: StartupFixture, args: readonly string[]) {
 }
 
 describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', () => {
-  it('requires --profile, advertises shipped aliases, and rejects removed commands', async () => {
+  it('defaults to the terminal, advertises shipped aliases, and rejects removed commands', async () => {
     const bare = await runBuiltBin()
     expect(bare.code).toBe(1)
     expect(bare.stdout).toBe('')
-    expect(bare.stderr).toContain('--profile <name> is required')
+    expect(bare.stderr).toContain('requires interactive stdin and stdout TTYs')
     const help = await runBuiltBin(['--help'])
     expect(help.code).toBe(0)
     expect(help.stdout).toContain('dsh --profile web')
@@ -624,9 +631,18 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       })
       expect(tuiHelp.code).toBe(0)
       expect(tuiHelp.stderr).toBe('')
-      expect(tuiHelp.stdout).toContain('Usage: dsh tui')
+      expect(tuiHelp.stdout).toContain('Usage: deepseek')
       expect(tuiHelp.stdout).toContain('--resume <session>')
+      expect(tuiHelp.stdout).toContain('--full-auto')
       expect(tuiHelp.stdout).toContain('--yolo')
+
+      const directPermissionHelp = await runBuiltBin(['--full-auto', '--help'], {
+        DSH_HOME: home,
+        DSH_TELEMETRY_DISABLED: '1',
+      })
+      expect(directPermissionHelp.code).toBe(0)
+      expect(directPermissionHelp.stderr).toBe('')
+      expect(directPermissionHelp.stdout).toContain('Usage: deepseek')
 
       const pipedTui = await runBuiltBin(['tui'], {
         DSH_HOME: home,
@@ -654,19 +670,15 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
     expect(result.sentCtrlD, result.output).toBe(true)
     expect(result.rawModeObserved, result.output).toBe(true)
     expect(result.output).toContain('dsh-test: tuiPrompt active')
-    expect(result.output).toContain('To resume this session: dsh tui --resume=main-session-')
-    const alternateScreenEntered = result.output.indexOf('\x1b[?1049h')
-    const mouseEnabled = result.output.indexOf('\x1b[?1000h')
+    expect(result.output).toContain('To resume this session: deepseek --resume=main-session-')
     const firstSynchronizedFrame = result.output.indexOf('\x1b[?2026h')
-    const mouseDisabled = result.output.lastIndexOf('\x1b[?1000l')
-    const alternateScreenLeft = result.output.lastIndexOf('\x1b[?1049l')
     const wrapperReport = result.output.lastIndexOf('dsh-test: tui wrapper ')
-    expect(alternateScreenEntered, result.output).toBeGreaterThanOrEqual(0)
-    expect(mouseEnabled, result.output).toBeGreaterThan(alternateScreenEntered)
-    expect(firstSynchronizedFrame, result.output).toBeGreaterThan(mouseEnabled)
-    expect(mouseDisabled, result.output).toBeGreaterThan(firstSynchronizedFrame)
-    expect(alternateScreenLeft, result.output).toBeGreaterThan(mouseDisabled)
-    expect(wrapperReport, result.output).toBeGreaterThan(alternateScreenLeft)
+    expect(firstSynchronizedFrame, result.output).toBeGreaterThanOrEqual(0)
+    expect(wrapperReport, result.output).toBeGreaterThan(firstSynchronizedFrame)
+    expect(result.output).not.toContain('\x1b[?1049h')
+    expect(result.output).not.toContain('\x1b[?1049l')
+    expect(result.output).not.toContain('\x1b[?1000h')
+    expect(result.output).not.toContain('\x1b[?1000l')
     expect(result.output).not.toMatch(/ERR_MODULE_NOT_FOUND|failed to import|failed to start/ui)
   }, 60_000)
 
@@ -695,8 +707,9 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
     expect(result.workspaceEnvironmentRebased, result.output).toBe(true)
     expect(result.distinctSessionIds, result.output).toBe(2)
     expect(result.sentCtrlD, result.output).toBe(true)
-    expect(result.output.match(/\x1b\[\?1049h/gu)?.length, result.output).toBeGreaterThanOrEqual(2)
-    expect(result.output.match(/\x1b\[\?1049l/gu)?.length, result.output).toBeGreaterThanOrEqual(2)
+    expect(result.output).not.toContain('\x1b[?1049h')
+    expect(result.output).not.toContain('\x1b[?1049l')
+    expect(result.output.match(/\x1b\[\?2026h/gu)?.length ?? 0, result.output).toBeGreaterThanOrEqual(2)
     expect(result.output).not.toMatch(/ERR_MODULE_NOT_FOUND|failed to import|failed to start/ui)
   }, 60_000)
 

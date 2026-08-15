@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-User-facing permission presets through `ctx.permissionPresets` ([`PermissionPresetService`](src/index.ts)). Each configured name bundles `sandbox/mode` with `approval/policy`; the defaults are `workspace-write` (`workspace-write` + `ask`) and `danger-full-access` (`danger-full-access` + `never`). UI adapters may expose the table as one selector, while sandbox execution and approval continue to consume their own knobs.
+User-facing permission presets through `ctx.permissionPresets` ([`PermissionPresetService`](src/index.ts)). Each configured name bundles `sandbox/mode` with `approval/policy`; the defaults are `workspace-write` (`workspace-write` + `ask`), `full-auto` (`workspace-write` + `never`), and `danger-full-access` (`danger-full-access` + `never`). UI adapters may expose the table as one selector, while sandbox execution and approval continue to consume their own knobs.
 
 `set(session, name)` records a changed selection in a log-only `permissionPresets/preset` event, then calls each knob's setter only when its effective value changes. The selection event precedes the knob events and preserves user intent when presets share a bundle; a net-zero selection appends nothing. `current(events)` prefers a still-matching recorded selection, then the first matching table entry, and otherwise returns `custom`. Clients may display `custom` as the current value, but cannot select it.
 
@@ -10,7 +10,7 @@ The service owns the `permissionPresets` Settings namespace. Its `defaultPreset`
 
 The service requires a confining `ctx.shell` executor and `ctx.approval`. A table entry named `custom` throws at load. When composition defaults match no preset, the plugin requires an explicit `defaultPreset`; an independently constructed zero-event session may still derive `custom`. See the [sandbox switching design](../../../.agents/notes/implemented/feature/2026-07-06-sandbox.md).
 
-Two optional children ship the product surfaces over the same service: a `permissions` session-projection unit (`src/types.ts` declares the key; the unit folds the three whole-value knob events and views the select — table options plus a current-only `custom` — over the composition defaults) and command entries. `/permissions` reports or selects a named preset. The service also identifies the configured full-access/no-approval preset for launchers that offer an explicit high-risk startup flag; it does not register a session-level `/yolo` command. Each child activates only when its registry (`ctx.sessionProjections` / `ctx.commands`) is composed.
+Two optional children ship the product surfaces over the same service: a `permissions` session-projection unit (`src/types.ts` declares the key; the unit folds the three whole-value knob events and views the select — table options plus a current-only `custom` — over the composition defaults) and command entries. `/permissions` reports or selects a named preset. The service identifies both the workspace-confined/no-approval preset used by `--full-auto` and the full-access/no-approval preset used by `--yolo`; it does not register session-level shortcut commands. Each child activates only when its registry (`ctx.sessionProjections` / `ctx.commands`) is composed.
 
 ## Model Experience
 

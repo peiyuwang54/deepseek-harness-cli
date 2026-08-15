@@ -5,23 +5,23 @@
  */
 
 import {
-  Key,
-  SelectList,
-  matchesKey,
-  truncateToWidth,
-  visibleWidth,
-  type Component,
-  type SelectItem,
-} from '@earendil-works/pi-tui'
-import {
   settingsNamespace,
   type SettingsDescriptor,
   type SettingsProvider,
 } from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import type { Context } from '@deepseek-ai/cordis'
-import { dialogSelectTheme } from '../components/theme.ts'
-import { ACCENT_HUES, ACCENT_IDS, DEFAULT_ACCENT, accentHue, isAccentId, type AccentId } from '../components/theme.ts'
+import { ActionDialog, type ActionDialogChoice } from '../components/dialogs.ts'
+import {
+  ACCENT_HUES,
+  ACCENT_IDS,
+  DEFAULT_ACCENT,
+  DEFAULT_ACCENT_SELECTION,
+  accentHue,
+  isAccentId,
+  type AccentId,
+  type AccentSelection,
+} from '../components/theme.ts'
 import { displayText } from '../components/text.ts'
 import type { TuiOverlaySession } from '../extension/types.ts'
 import type { ChannelNotice, ChatChannelDeps } from './channel.ts'
@@ -49,8 +49,9 @@ const TUI_THEME_SETTINGS_NAMESPACE = settingsNamespace('ui-theme')
 const TUI_ACCENT_SETTINGS_NAMESPACE = settingsNamespace('ui-accent')
 
 /** Durable accent section schema; also the wire envelope validation against it. */
-export const AccentSettingsSchema: z<{ accent: AccentId }> = z.object({
-  accent: z.union([...ACCENT_IDS]).default(DEFAULT_ACCENT),
+const AccentSettingsSchema: z<AccentSelection> = z.object({
+  light: z.union([...ACCENT_IDS]).default(DEFAULT_ACCENT),
+  dark: z.union([...ACCENT_IDS]).default(DEFAULT_ACCENT),
 })
 
 /**
@@ -70,16 +71,19 @@ function isTuiThemePreference(value: unknown): value is TuiThemePreference {
 }
 
 /**
- * Read the persistent accent hue, falling back to the DeepSeek default when the
- * settings service or namespace is not composed.
+ * Read the persisted per-background accent selection, falling back to the
+ * DeepSeek default when the settings service or namespace is not composed.
  * @param settings - optional settings provider.
- * @returns the persisted accent id or its product default.
+ * @returns the persisted light/dark accent ids or the product default.
  */
-export function readTuiAccent(settings: SettingsProvider | undefined): AccentId {
+export function readTuiAccent(settings: SettingsProvider | undefined): AccentSelection {
   const section = settings?.get(TUI_ACCENT_SETTINGS_NAMESPACE)
-  if (typeof section !== 'object' || section === null) return DEFAULT_ACCENT
-  const value = (section as { accent?: unknown }).accent
-  return isAccentId(value) ? value : DEFAULT_ACCENT
+  if (typeof section !== 'object' || section === null) return DEFAULT_ACCENT_SELECTION
+  const value = section as { light?: unknown; dark?: unknown }
+  return {
+    light: isAccentId(value.light) ? value.light : DEFAULT_ACCENT,
+    dark: isAccentId(value.dark) ? value.dark : DEFAULT_ACCENT,
+  }
 }
 
 /**
@@ -96,67 +100,14 @@ export function readTuiThemePreference(settings: SettingsProvider | undefined): 
 }
 
 /** One keyboard-selectable Settings hub row. */
-interface SettingsHubItem extends SelectItem {
-  value: string
-}
-
-/** Compact bordered selector shared by Settings and Appearance. */
-class SettingsSelectDialog implements Component {
-  private readonly list: SelectList
-
-  constructor(
-    private readonly title: string,
-    items: readonly SettingsHubItem[],
-    maxVisible: number,
-    private readonly palette: ChatChannelDeps['palette'],
-    done: (value: string) => void,
-    private readonly cancel: () => void,
-    initialValue?: string,
-    private readonly instructions = '↑/↓ move • Enter select • Esc close',
-  ) {
-    this.list = new SelectList([...items], maxVisible, dialogSelectTheme(palette))
-    const selected = initialValue === undefined ? -1 : items.findIndex(item => item.value === initialValue)
-    if (selected >= 0) this.list.setSelectedIndex(selected)
-    this.list.onSelect = (item) => { done(item.value) }
-    this.list.onCancel = cancel
-  }
-
-  invalidate(): void {
-    this.list.invalidate()
-  }
-
-  handleInput(data: string): void {
-    if (matchesKey(data, Key.escape) || matchesKey(data, Key.ctrl('c'))) this.cancel()
-    else this.list.handleInput(data)
-    this.invalidate()
-  }
-
-  render(width: number): string[] {
-    const cardWidth = Math.max(20, width)
-    const innerWidth = Math.max(1, cardWidth - 4)
-    const label = ` ${displayText(this.title)} `
-    const body = [
-      ...this.list.render(innerWidth),
-      this.palette.dim(this.instructions),
-    ]
-    const lines = [
-      this.palette.accent(`╭${label}${'─'.repeat(Math.max(0, cardWidth - visibleWidth(label) - 2))}╮`),
-      ...body.map((line) => {
-        const clipped = truncateToWidth(line, innerWidth, '')
-        return `${this.palette.accent('│')} ${clipped}${' '.repeat(Math.max(0, innerWidth - visibleWidth(clipped)))} ${this.palette.accent('│')}`
-      }),
-      this.palette.accent(`╰${'─'.repeat(Math.max(0, cardWidth - 2))}╯`),
-    ]
-    return lines
-  }
-}
+type SettingsHubItem = ActionDialogChoice
 
 /** Controller dependencies owned by one terminal channel. */
 export interface SettingsControllerDeps extends ChatChannelDeps, ChannelNotice {
   /** Apply a committed preference to the terminal palette. */
   applyTheme(preference: TuiThemePreference): void
-  /** Rebuild the palette and banner for a committed accent hue. */
-  applyAccent(accent: AccentId): void
+  /** Rebuild the palette and banner for a committed per-background accent selection. */
+  applyAccent(accent: AccentSelection): void
   /** Refresh terminal chrome after the shared locale changes. */
   applyLocale(locale: TuiLocale): void
 }
@@ -169,8 +120,6 @@ export interface SettingsController {
   locale(): TuiLocale
   /** Queue `/theme`; empty input opens the selector. */
   queueThemeCommand(raw: string): void
-  /** Queue `/accent`; empty input opens the selector. */
-  queueAccentCommand(raw: string): void
   /** Queue `/language`; empty input opens the selector. */
   queueLanguageCommand(raw: string): void
   /** Queue `/settings`; empty input opens the metadata hub. */
@@ -200,7 +149,6 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
   let locale = readTuiLocale(ctx.get('settings'))
   let settingsOverlay: TuiOverlaySession | undefined
   let themeOverlay: TuiOverlaySession | undefined
-  let accentOverlay: TuiOverlaySession | undefined
   let languageOverlay: TuiOverlaySession | undefined
   let operations = Promise.resolve()
 
@@ -219,36 +167,56 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       : `Settings document: ${displayText(path)}\nEdit it with your terminal editor; valid changes reload automatically.`)
   }
 
-  const commitTheme = async (preference: TuiThemePreference): Promise<void> => {
+  const commitTheme = async (preference: TuiThemePreference, announce = true): Promise<boolean> => {
     const provider = settings()
     if (provider?.get(TUI_THEME_SETTINGS_NAMESPACE) === undefined) {
       deps.appendNotice('Appearance settings are unavailable: the ui-theme namespace is not registered.', 'warning')
-      return
+      return false
     }
     await provider.mutate(TUI_THEME_SETTINGS_NAMESPACE, [{
       op: 'set',
       path: ['preference'],
       value: preference,
     }])
-    if (!deps.isDisposed()) deps.appendNotice(`Theme preference: ${preference}.`)
+    if (themePreference !== preference) {
+      themePreference = preference
+      deps.applyTheme(preference)
+    }
+    if (announce && !deps.isDisposed()) deps.appendNotice(`Theme preference: ${preference}.`)
+    return true
   }
 
-  const commitAccent = async (nextAccent: AccentId): Promise<void> => {
+  const commitAccent = async (scheme: 'light' | 'dark', nextAccent: AccentId, announce = true): Promise<boolean> => {
     const provider = settings()
     if (provider?.get(TUI_ACCENT_SETTINGS_NAMESPACE) === undefined) {
       deps.appendNotice('Accent settings are unavailable: the ui-accent namespace is not registered.', 'warning')
-      return
+      return false
     }
     await provider.mutate(TUI_ACCENT_SETTINGS_NAMESPACE, [{
       op: 'set',
-      path: ['accent'],
+      path: [scheme],
       value: nextAccent,
     }])
-    if (accent !== nextAccent) {
-      accent = nextAccent
-      deps.applyAccent(nextAccent)
+    if (accent[scheme] !== nextAccent) {
+      accent = { ...accent, [scheme]: nextAccent }
+      deps.applyAccent(accent)
     }
-    if (!deps.isDisposed()) deps.appendNotice(`Accent: ${accentHue(nextAccent).label}.`)
+    if (announce && !deps.isDisposed()) deps.appendNotice(`${scheme === 'light' ? 'Light' : 'Dark'} accent: ${accentHue(nextAccent).label}.`)
+    return true
+  }
+
+  const commitThemePreset = async (
+    preference: TuiThemePreference,
+    nextAccent: AccentId,
+  ): Promise<boolean> => {
+    if (!await commitTheme(preference, false)) return false
+    if (preference !== 'system') return commitAccent(preference, nextAccent, false)
+    if (!await commitAccent('light', nextAccent, false)) return false
+    return commitAccent('dark', nextAccent, false)
+  }
+
+  const resetDeepSeekTheme = async (): Promise<boolean> => {
+    return commitThemePreset('system', DEFAULT_ACCENT)
   }
 
   const commitLocale = async (nextLocale: TuiLocale): Promise<void> => {
@@ -272,28 +240,53 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
   const showTheme = (): void => {
     const copy = tuiCopy(locale)
     void themeOverlay?.close()
-    const items: SettingsHubItem[] = TUI_THEME_PREFERENCES.map(preference => ({
-      value: preference,
-      label: preference.charAt(0).toUpperCase() + preference.slice(1),
-      ...preference === themePreference ? { description: 'current' } : {},
+    const lightHues = ACCENT_HUES.map(hue => ({
+      value: `light:${hue.id}`,
+      label: `Light · ${hue.label}`,
+      ...themePreference === 'light' && accent.light === hue.id ? { description: copy.current } : {},
     }))
+    const darkHues = ACCENT_HUES.map(hue => ({
+      value: `dark:${hue.id}`,
+      label: `Dark · ${hue.label}`,
+      ...themePreference === 'dark' && accent.dark === hue.id ? { description: copy.current } : {},
+    }))
+    const items: SettingsHubItem[] = [
+      {
+        value: '@deepseek',
+        label: 'DeepSeek',
+        ...themePreference === 'system' && accent.light === DEFAULT_ACCENT && accent.dark === DEFAULT_ACCENT
+          ? { description: copy.current }
+          : { description: 'System default' },
+      },
+      ...lightHues,
+      ...darkHues,
+    ]
     const session = overlayManager.open({
-      create: () => new SettingsSelectDialog(
-        copy.appearance,
+      create: () => new ActionDialog(
+        'Theme',
         items,
         items.length,
         palette,
         (value) => {
           void session.close()
-          if (isTuiThemePreference(value)) {
-            operations = operations.then(() => commitTheme(value)).catch((error: unknown) => {
-              if (!deps.isDisposed()) deps.appendNotice(`Theme update failed: ${String(error)}`, 'error')
-            })
-          }
+          operations = operations.then(async () => {
+            if (value === '@deepseek') {
+              if (!await resetDeepSeekTheme()) return
+              if (!deps.isDisposed()) deps.appendNotice('Theme: DeepSeek.')
+              return
+            }
+            const [scheme, id] = value.split(':', 2) as [string, string | undefined]
+            if ((scheme !== 'light' && scheme !== 'dark') || !isAccentId(id)) return
+            if (!await commitThemePreset(scheme, id)) return
+            if (!deps.isDisposed()) deps.appendNotice(`Theme: ${scheme === 'light' ? 'Light' : 'Dark'} · ${accentHue(id).label}.`)
+          }).catch((error: unknown) => {
+            if (!deps.isDisposed()) deps.appendNotice(`Theme update failed: ${String(error)}`, 'error')
+          })
         },
         () => { void session.close() },
-        themePreference,
+        undefined,
         copy.moveSelectClose,
+        false,
       ),
       options: {
         width: resolved.modelDialogWidth,
@@ -309,45 +302,6 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     deps.requestRender()
   }
 
-  const showAccent = (): void => {
-    void accentOverlay?.close()
-    const items: SettingsHubItem[] = ACCENT_HUES.map(hue => ({
-      value: hue.id,
-      label: hue.label,
-      ...hue.id === accent ? { description: 'current' } : {},
-    }))
-    const session = overlayManager.open({
-      create: () => new SettingsSelectDialog(
-        'Accent',
-        items,
-        items.length,
-        palette,
-        (value) => {
-          void session.close()
-          if (isAccentId(value)) {
-            operations = operations.then(() => commitAccent(value)).catch((error: unknown) => {
-              if (!deps.isDisposed()) deps.appendNotice(`Accent update failed: ${String(error)}`, 'error')
-            })
-          }
-        },
-        () => { void session.close() },
-        accent,
-        '↑/↓ move • Enter select • Esc close',
-      ),
-      options: {
-        width: resolved.modelDialogWidth,
-        maxHeight: resolved.modelDialogMaxHeight,
-        anchor: 'center',
-        margin: 1,
-      },
-    }, 'composer')
-    accentOverlay = session
-    void session.closed.then(() => {
-      if (accentOverlay === session) accentOverlay = undefined
-    })
-    deps.requestRender()
-  }
-
   const showLanguage = (): void => {
     const copy = tuiCopy(locale)
     void languageOverlay?.close()
@@ -357,7 +311,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       ...locale === option.id ? { description: copy.current } : {},
     }))
     const session = overlayManager.open({
-      create: () => new SettingsSelectDialog(
+      create: () => new ActionDialog(
         copy.language,
         items,
         items.length,
@@ -373,6 +327,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
         () => { void session.close() },
         locale,
         copy.moveSelectClose,
+        false,
       ),
       options: {
         width: resolved.modelDialogWidth,
@@ -397,8 +352,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     }
     const descriptors = provider.describe({ redactSecrets: true })
     const items: SettingsHubItem[] = [
-      { value: '@appearance', label: copy.appearance, description: themePreference },
-      { value: '@accent', label: 'Accent', description: accentHue(accent).label },
+      { value: '@theme', label: 'Theme', description: `${themePreference} · ${accentHue(accent.light).label} / ${accentHue(accent.dark).label}` },
       { value: '@language', label: copy.language, description: tuiLocaleLabel(locale) },
       {
         value: '@document',
@@ -415,15 +369,14 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     ]
     void settingsOverlay?.close()
     const session = overlayManager.open({
-      create: () => new SettingsSelectDialog(
+      create: () => new ActionDialog(
         copy.settings,
         items,
         resolved.maxModelOptions,
         palette,
         (value) => {
           void session.close()
-          if (value === '@appearance') showTheme()
-          else if (value === '@accent') showAccent()
+          if (value === '@theme') showTheme()
           else if (value === '@language') showLanguage()
           else if (value === '@document') {
             operations = operations.then(showDocument).catch((error: unknown) => {
@@ -439,6 +392,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
         () => { void session.close() },
         undefined,
         copy.moveSelectClose,
+        false,
       ),
       options: {
         width: resolved.modelDialogWidth,
@@ -460,24 +414,23 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       showTheme()
       return
     }
-    if (!isTuiThemePreference(argument)) {
-      deps.appendNotice('Usage: /theme [light|dark|system]', 'warning')
+    if (isTuiThemePreference(argument)) {
+      await commitTheme(argument)
       return
     }
-    await commitTheme(argument)
-  }
-
-  const accentCommand = async (raw: string): Promise<void> => {
-    const argument = raw.trim()
-    if (argument === '') {
-      showAccent()
+    const parts = argument.split(/\s+/u)
+    if (parts[0] === 'deepseek' && parts.length === 1) {
+      if (!await resetDeepSeekTheme()) return
+      if (!deps.isDisposed()) deps.appendNotice('Theme: DeepSeek.')
       return
     }
-    if (!isAccentId(argument)) {
-      deps.appendNotice(`Usage: /accent [${ACCENT_HUES.map(hue => hue.id).join('|')}]`, 'warning')
+    const [preference, id] = parts
+    if (isTuiThemePreference(preference) && id !== undefined && isAccentId(id) && parts.length === 2) {
+      if (!await commitThemePreset(preference, id)) return
+      if (!deps.isDisposed()) deps.appendNotice(`Theme: ${preference.charAt(0).toUpperCase() + preference.slice(1)} · ${accentHue(id).label}.`)
       return
     }
-    await commitAccent(argument)
+    deps.appendNotice(`Usage: /theme [deepseek|light|dark|system] [${ACCENT_HUES.map(item => item.id).join('|')}]`, 'warning')
   }
 
   const languageCommand = async (raw: string): Promise<void> => {
@@ -524,10 +477,12 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       return
     }
     if (namespace === TUI_ACCENT_SETTINGS_NAMESPACE) {
-      const value = (next as { accent?: unknown }).accent
-      if (!isAccentId(value) || value === accent) return
-      accent = value
-      deps.applyAccent(value)
+      const value = next as { light?: unknown; dark?: unknown }
+      const light = isAccentId(value.light) ? value.light : accent.light
+      const dark = isAccentId(value.dark) ? value.dark : accent.dark
+      if (light === accent.light && dark === accent.dark) return
+      accent = { light, dark }
+      deps.applyAccent(accent)
       return
     }
     if (namespace !== TUI_THEME_SETTINGS_NAMESPACE) return
@@ -545,11 +500,6 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
         if (!deps.isDisposed()) deps.appendNotice(`Theme command failed: ${String(error)}`, 'error')
       })
     },
-    queueAccentCommand(raw): void {
-      operations = operations.then(() => accentCommand(raw)).catch((error: unknown) => {
-        if (!deps.isDisposed()) deps.appendNotice(`Accent command failed: ${String(error)}`, 'error')
-      })
-    },
     queueLanguageCommand(raw): void {
       operations = operations.then(() => languageCommand(raw)).catch((error: unknown) => {
         if (!deps.isDisposed()) deps.appendNotice(`Language command failed: ${String(error)}`, 'error')
@@ -563,7 +513,6 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     clearOverlays(): void {
       settingsOverlay = undefined
       themeOverlay = undefined
-      accentOverlay = undefined
       languageOverlay = undefined
     },
     detach(): void {

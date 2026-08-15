@@ -63,6 +63,9 @@ const collect = (value: string, previous: string[] = []): string[] => [...previo
 /** The launcher's own help text; each app prints its own. */
 const HELP_EXAMPLES = `
 Examples:
+  deepseek                                      open a fresh interactive terminal session
+  deepseek --full-auto                          run autonomously inside the workspace
+  deepseek --yolo                               run unrestricted without approval prompts
   dsh --profile web                          boot the web profile (same as: dsh web)
   dsh tui                                    open a fresh interactive terminal session
   dsh tui --resume <session>                 resume a persisted terminal session
@@ -119,7 +122,7 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
   program
     .name('dsh')
     .version(version, '-V, --version', 'output the version number')
-    .description('dsh: boot a DeepSeek Harness profile — an ordered stack of plugin-bundle patch layers under your own overrides.')
+    .description('dsh: open the DeepSeek CLI or boot an explicit Harness profile — an ordered stack of plugin-bundle patch layers under your own overrides.')
     .addHelpText('after', HELP_EXAMPLES)
     .exitOverride()
     // The launcher's flags come first and end at the first token it does not
@@ -135,11 +138,13 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
     .option('--dump-config', 'print the composed profile tree and exit')
     .option('--dump-default-config', 'print the profile tree without its user layer or --patch overlays and exit')
     .action((args: string[], options: BootOptions & { profile?: string }) => {
-      // With the app owning -h, the launcher's own help is what a bare
-      // `dsh -h` (no profile to hand it to) must print.
+      // The product front door defaults to the shipped terminal. Keep bare
+      // launcher help discoverable; every other unowned argument reaches the
+      // terminal app, including its permission shortcuts.
       if (options.profile === undefined) {
-        if (args.some(argument => argument === '-h' || argument === '--help')) program.help()
-        program.error('error: --profile <name> is required')
+        if (args.length === 1 && (args[0] === '-h' || args[0] === '--help')) program.help()
+        resolved = resolveBoot(program, 'tui', options, args)
+        return
       }
       const profile = options.profile
       if (profile === '') program.error('error: --profile needs a name')

@@ -1304,8 +1304,9 @@ Requires: `shell` · `approval` · `sessions`
 export interface Config {
   /**
    * The preset table: name → knob bundle. Defaults to `workspace-write`
-   * (workspace-write + ask) and `danger-full-access` (danger-full-access +
-   * never). The name `custom` is reserved for the derived not-a-preset state.
+   * (workspace-write + ask), `full-auto` (workspace-write + never), and
+   * `danger-full-access` (danger-full-access + never). The name `custom` is
+   * reserved for the derived not-a-preset state.
    */
   presets?: Record<string, PresetSpec>
   /**

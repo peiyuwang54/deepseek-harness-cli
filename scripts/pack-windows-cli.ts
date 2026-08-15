@@ -7,14 +7,15 @@
 
 import { spawn } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { copyFile, cp, lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
-import { dirname, join, resolve, sep } from 'node:path'
+import { copyFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   assertSafePackageDestination,
   packWindowsCliUsage,
   parsePackWindowsCliArgs,
   WINDOWS_CLI_BUILD_SCRIPT,
+  WINDOWS_CLI_BRANDED_LAUNCHER_NAME,
   WINDOWS_CLI_DEPLOY_FILTER,
   WINDOWS_CLI_DIST_DIR,
   WINDOWS_CLI_ENTRY,
@@ -28,6 +29,7 @@ import {
   windowsCliZipName,
   type PackWindowsCliArgs,
 } from './windows-cli-package.ts'
+import { copyPackageTree, materializePackageLinks } from './exe-build/package-tree.ts'
 
 const root = resolve(import.meta.dirname, '..')
 const DEPLOY_ONLY_DOCS = ['README.md', 'README.zh.md', 'README.i18n.yaml']
@@ -135,13 +137,7 @@ export class WindowsCliPack {
         if (existsSync(destination)) continue
         const source = this.findHoistSource(dependency)
         if (source === undefined) continue
-        await mkdir(dirname(destination), { recursive: true })
-        const nestedNodeModules = join(source, 'node_modules')
-        await cp(source, destination, {
-          recursive: true,
-          dereference: true,
-          filter: path => path !== nestedNodeModules && !path.startsWith(nestedNodeModules + sep),
-        })
+        await copyPackageTree(source, destination)
         restored.push(dependency)
         progress = true
       }
@@ -232,55 +228,19 @@ export class WindowsCliPack {
       console.log('pack-windows-cli: [dry-run] materialize staged package links')
       return
     }
-    const nodeModules = join(this.packageDir, 'node_modules')
-    let remaining = await this.findSymlink(nodeModules)
-    while (remaining !== undefined) {
-      const segments = remaining.slice(nodeModules.length + 1).split(sep)
-      const binIndex = segments.lastIndexOf('.bin')
-      if (binIndex >= 0) {
-        await rm(join(nodeModules, ...segments.slice(0, binIndex + 1)), { recursive: true, force: true })
-        remaining = await this.findSymlink(nodeModules)
-        continue
-      }
-      const destination = remaining
-      const source = await realpath(destination)
-      const nestedNodeModules = join(source, 'node_modules')
-      await rm(destination, { recursive: true, force: true })
-      await cp(source, destination, {
-        recursive: true,
-        dereference: true,
-        filter: path => path !== nestedNodeModules && !path.startsWith(nestedNodeModules + sep),
-      })
-      remaining = await this.findSymlink(nodeModules)
-    }
+    await materializePackageLinks(join(this.packageDir, 'node_modules'))
   }
 
-  /**
-   * @param directory - a directory to walk.
-   * @returns the first symbolic link below it, if one exists.
-   */
-  private async findSymlink(directory: string): Promise<string | undefined> {
-    if (!existsSync(directory)) return undefined
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const path = join(directory, entry.name)
-      const metadata = await lstat(path)
-      if (metadata.isSymbolicLink()) return path
-      if (metadata.isDirectory()) {
-        const nested = await this.findSymlink(path)
-        if (nested !== undefined) return nested
-      }
-    }
-    return undefined
-  }
-
-  /** Copy the host Node binary, write `dsh.cmd`, and record the install manifest. */
+  /** Copy Node, write the compatibility and branded launchers, and record the manifest. */
   async writeRuntimeFiles(): Promise<void> {
     const nodeDestination = join(this.packageDir, WINDOWS_CLI_NODE_NAME)
     const launcherDestination = join(this.packageDir, WINDOWS_CLI_LAUNCHER_NAME)
+    const brandedLauncherDestination = join(this.packageDir, WINDOWS_CLI_BRANDED_LAUNCHER_NAME)
     const manifestDestination = join(this.packageDir, WINDOWS_CLI_MANIFEST_NAME)
     if (this.cli.dryRun) {
       console.log(`pack-windows-cli: [dry-run] cp ${process.execPath} ${nodeDestination}`)
       console.log(`pack-windows-cli: [dry-run] write ${launcherDestination}`)
+      console.log(`pack-windows-cli: [dry-run] write ${brandedLauncherDestination}`)
       console.log(`pack-windows-cli: [dry-run] write ${manifestDestination}`)
       return
     }
@@ -289,6 +249,7 @@ export class WindowsCliPack {
     }
     await copyFile(process.execPath, nodeDestination)
     await writeFile(launcherDestination, windowsCliLauncherScript())
+    await writeFile(brandedLauncherDestination, windowsCliLauncherScript())
     const version = await this.readCliVersion()
     const manifest = windowsCliInstallManifest({
       version,

@@ -2,10 +2,7 @@
 
 English | [中文](README.zh.md)
 
-The `install.sh` script downloads the single-file `deepseek-harness-cli`
-executable from the `deepseek-harness-cli-v*` GitHub Releases of this fork and
-installs it under `$HOME/.deepseek-harness-cli/bin`, then adds that directory to
-your shell `PATH`.
+The `install.sh` script downloads the single-file `deepseek-harness-cli` executable from this fork's `deepseek-harness-cli-v*` GitHub Releases, installs it as both `deepseek` and `deepseek-harness-cli` under `$HOME/.deepseek-harness-cli/bin`, then adds that directory to your shell `PATH`.
 
 Supported targets: macOS (`arm64`, `x64`) and Linux (`arm64`, `x64`). The script
 runs on plain POSIX `sh`; it needs only `curl`, `tar`, and a sha256 tool
@@ -17,8 +14,7 @@ runs on plain POSIX `sh`; it needs only `curl`, `tar`, and a sha256 tool
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
 ```
 
-After it finishes, restart your shell (or run the `export PATH=…` line it prints)
-so the `deepseek-harness-cli` binary is on your `PATH`.
+After it finishes, restart your shell (or run the printed `export PATH=…` line), then run `deepseek`.
 
 ### Options
 

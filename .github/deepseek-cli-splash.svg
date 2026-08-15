@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title description">
+  <title id="title">DeepSeek CLI preview</title>
+  <desc id="description">A placeholder preview for the DeepSeek CLI terminal screenshot.</desc>
+  <defs>
+    <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fbff"/>
+      <stop offset="1" stop-color="#eaf3ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#285caa" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="720" rx="32" fill="#e5f0ff"/>
+  <rect x="64" y="48" width="1152" height="624" rx="24" fill="url(#surface)" stroke="#b8d4f5" stroke-width="2" filter="url(#shadow)"/>
+  <circle cx="102" cy="88" r="8" fill="#7aa8dd"/>
+  <circle cx="130" cy="88" r="8" fill="#91b9e7"/>
+  <circle cx="158" cy="88" r="8" fill="#a9c9ec"/>
+  <text x="640" y="96" text-anchor="middle" fill="#43698f" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18">DeepSeek CLI</text>
+  <text x="112" y="174" fill="#195eb5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="28" font-weight="700">DEEPSEEK CLI</text>
+  <text x="112" y="224" fill="#2e4f70" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="21">• Ready to explore your codebase.</text>
+  <rect x="112" y="274" width="1056" height="112" rx="16" fill="#dcecff" stroke="#b4d2f4"/>
+  <text x="142" y="327" fill="#173b60" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="21">› Describe a task, @ a file, or / for commands</text>
+  <text x="142" y="360" fill="#6986a3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">Enter send · Shift+Enter newline · / commands</text>
+  <text x="112" y="452" fill="#195eb5" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20">• Working (24s · esc to interrupt)</text>
+  <line x1="112" y1="520" x2="1168" y2="520" stroke="#c7dcf3"/>
+  <text x="112" y="566" fill="#42698f" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="17">deepseek-v4-pro   high   3% context</text>
+  <text x="112" y="606" fill="#6986a3" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">8 turns · 11 steps | LLM 1m6s | TTFT 2.7s · 90 tok/s</text>
+</svg>

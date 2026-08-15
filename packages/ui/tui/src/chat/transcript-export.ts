@@ -27,7 +27,7 @@ function unknownContentLabel(block: ContentBlock): string {
   return `[${typeof rawType === 'string' ? rawType : 'content'}]`
 }
 
-function userContent(blocks: readonly ContentBlock[]): string {
+function joinedContent(blocks: readonly ContentBlock[], separator: '\n' | '\n\n'): string {
   const parts: string[] = []
   for (const block of blocks) {
     switch (block.type) {
@@ -42,39 +42,22 @@ function userContent(blocks: readonly ContentBlock[]): string {
         parts.push(`${block.name}(${block.arguments})`)
         break
       case 'tool-result':
-        parts.push(activityContent(block.content))
+        parts.push(joinedContent(block.content, '\n'))
         break
       default:
         parts.push(unknownContentLabel(block))
         break
     }
   }
-  return parts.join('\n\n')
+  return parts.join(separator)
+}
+
+function userContent(blocks: readonly ContentBlock[]): string {
+  return joinedContent(blocks, '\n\n')
 }
 
 function activityContent(blocks: readonly ContentBlock[]): string {
-  const parts: string[] = []
-  for (const block of blocks) {
-    switch (block.type) {
-      case 'text':
-      case 'reasoning':
-        if (block.text.trim() !== '') parts.push(block.text)
-        break
-      case 'image':
-        parts.push(imageLabel(block))
-        break
-      case 'tool-call':
-        parts.push(`${block.name}(${block.arguments})`)
-        break
-      case 'tool-result':
-        parts.push(activityContent(block.content))
-        break
-      default:
-        parts.push(unknownContentLabel(block))
-        break
-    }
-  }
-  return parts.join('\n')
+  return joinedContent(blocks, '\n')
 }
 
 function appendAssistantSections(
@@ -221,12 +204,11 @@ export function renderMarkdownTranscript(
         const name = calls.get(callId)
         if (name === undefined) break
         const result = event.data.message.content
-          .filter(block => block.type === 'tool-result')
           .map(block => activityContent(block.content))
           .filter(text => text.trim() !== '')
           .join('\n')
         const failed = event.data.error !== undefined
-          || event.data.message.content.some(block => block.type === 'tool-result' && block.isError === true)
+          || event.data.message.content.some(block => block.isError === true)
         sections.push({
           heading: 'Activity',
           body: [`${name} result${failed ? ' (error)' : ''}`, result].filter(Boolean).join('\n'),

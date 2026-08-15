@@ -1,7 +1,7 @@
 /**
- * The terminal app's command-line provider. It parses `--resume`/`--yolo`, rejects a
- * non-interactive launch before the renderer can claim the terminal, and
- * publishes the immutable identity consumed by the TUI runner.
+ * The terminal app's command-line provider. It parses resume and permission
+ * shortcuts, rejects a non-interactive launch before the renderer can claim
+ * the terminal, and publishes the immutable facts consumed by the TUI runner.
  * @module @deepseek-ai/dsh-tui-app/startup
  */
 
@@ -29,8 +29,8 @@ export const TUI_STARTUP_SERVICE = 'tuiStartup'
 export interface TuiStartupValues {
   /** Fresh or persisted identity the root TUI Agent owns. */
   readonly identity: MainSessionIdentity
-  /** Whether startup must pin the session to unrestricted execution before publication. */
-  readonly fullAccess: boolean
+  /** Permission shortcut to pin before Agent publication. */
+  readonly permissionMode: 'default' | 'full-auto' | 'yolo'
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -55,6 +55,8 @@ export const internals: {
 interface TuiOptions {
   resume?: string
   yolo?: boolean
+  dangerouslyBypassApprovalsAndSandbox?: boolean
+  fullAuto?: boolean
 }
 
 /**
@@ -63,16 +65,19 @@ interface TuiOptions {
  */
 function tuiCommand(): Command {
   return new Command()
-    .name('dsh tui')
+    .name('deepseek')
     .description('Open the interactive DeepSeek Harness terminal UI.')
     .helpOption('-h, --help', 'show this help')
     .option('--resume <session>', 'resume an existing persisted session')
+    .option('--full-auto', 'run without prompts inside the workspace; deny wider access')
     .option('--yolo', 'DANGEROUS: start with full file access and no approval prompts')
+    .option('--dangerously-bypass-approvals-and-sandbox', 'alias of --yolo')
     .addHelpText('after', `
 Examples:
-  dsh tui                              start a fresh session
-  dsh tui --resume <session>           resume a persisted session
-  dsh tui --yolo                       start unrestricted without approval prompts
+  deepseek                              start a fresh session
+  deepseek --resume <session>           resume a persisted session
+  deepseek --full-auto                  run autonomously inside the workspace
+  deepseek --yolo                       start unrestricted without approval prompts
 `)
 }
 
@@ -85,12 +90,16 @@ Examples:
 export function apply(ctx: Context): void {
   const program = tuiCommand()
   program.action(() => {
-    const { resume, yolo } = program.opts<TuiOptions>()
+    const { resume, yolo, dangerouslyBypassApprovalsAndSandbox, fullAuto } = program.opts<TuiOptions>()
     if (resume !== undefined && resume.trim() === '') {
       program.error('error: --resume needs a non-empty session id')
     }
+    const unrestricted = yolo === true || dangerouslyBypassApprovalsAndSandbox === true
+    if (unrestricted && fullAuto === true) {
+      program.error('error: --full-auto and --yolo are mutually exclusive')
+    }
     if (internals.stdin.isTTY !== true || internals.stdout.isTTY !== true) {
-      program.error('error: dsh tui requires interactive stdin and stdout TTYs; use --profile headless for pipes and automation')
+      program.error('error: deepseek requires interactive stdin and stdout TTYs; use --profile headless for pipes and automation')
     }
     const identity: MainSessionIdentity = resume === undefined
       ? { id: SessionId(`main-session-${internals.randomUUID()}`), resume: false }
@@ -98,10 +107,10 @@ export function apply(ctx: Context): void {
     // These launcher facts are also consumed by the renderer for its exit line
     // and by terminal-local extensions that need the main identity.
     ctx.provide(MAIN_SESSION_ID_KEY, identity)
-    ctx.provide(TUI_GOODBYE_MESSAGE_KEY, `To resume this session: dsh tui --resume=${identity.id}`)
+    ctx.provide(TUI_GOODBYE_MESSAGE_KEY, `To resume this session: deepseek --resume=${identity.id}`)
     ctx.provide(TUI_STARTUP_SERVICE, {
       identity,
-      fullAccess: yolo === true,
+      permissionMode: unrestricted ? 'yolo' : fullAuto === true ? 'full-auto' : 'default',
     } satisfies TuiStartupValues)
   })
   parseCmdline(ctx, program)

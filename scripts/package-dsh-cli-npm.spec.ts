@@ -129,7 +129,8 @@ describe.skipIf(!HOST_EXE_PRESENT)('packaging e2e', () => {
     runIn(packed, 'npm', ['pack', mainDir, '--pack-destination', packed, '--silent'])
     const tarballs = readdirSync(packed).filter(name => name.endsWith('.tgz'))
     const platformTgz = tarballs.find(name => name.includes(`-${host!.os}-${host!.cpu}.tgz`))
-    const mainTgz = tarballs.find(name => name.includes(`${PACKAGE_NAME.replace('@peiyuwang54/', 'peiyuwang54-')}-${version}.tgz`))
+    const packedMainName = PACKAGE_NAME.replace(/^@/, '').replace('/', '-')
+    const mainTgz = tarballs.find(name => name.includes(`${packedMainName}-${version}.tgz`))
     expect(platformTgz).toBeDefined()
     expect(mainTgz).toBeDefined()
 

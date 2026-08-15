@@ -41,7 +41,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install\install.ps1
 也可以使用包管理器：
 
 ```sh
-npm install -g @peiyuwang54/deepseek-harness-cli
+npm install -g @peiyu_wang/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 

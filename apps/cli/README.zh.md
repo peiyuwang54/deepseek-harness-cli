@@ -52,13 +52,13 @@ profile 目录包含一个 `package.json`，其中记录树外插件依赖，以
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
-npm install -g @peiyuwang54/deepseek-harness-cli
+npm install -g @peiyu_wang/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
 第一个命令运行 curl 安装器：它下载最新的 `deepseek-harness-cli-v*` 发布版本，用该发布版本的 sha256 伴随文件校验 tarball，并在 `$HOME/.deepseek-harness-cli/bin` 下同时安装 `deepseek` 和兼容名称 `deepseek-harness-cli`（`sh -s -- --to <dir>` 可覆盖目录，`--version <ver>` 可固定版本）。npm 与 Homebrew 渠道也会公开这两个名称。完整契约与计划中的 minisign 签名升级见[安装器 README](install/README.md)。
 
-升级只需重新运行同一命令——curl 安装器原地替换二进制、`npm update -g @peiyuwang54/deepseek-harness-cli` 拉取最新版本、`brew upgrade deepseek-harness-cli` 刷新 cask。
+升级只需重新运行同一命令——curl 安装器原地替换二进制、`npm update -g @peiyu_wang/deepseek-harness-cli` 拉取最新版本、`brew upgrade deepseek-harness-cli` 刷新 cask。
 
 ## 开发
 

@@ -12,7 +12,7 @@ Status: implemented
 
 `win-x64` 是一等的 `deepseek-harness-cli` 可执行目标。它在 `windows-2025` 上构建（原生 addon 不做交叉编译），与四个 Unix tarball 一同发布，并由 PowerShell 下载脚本安装。
 
-[`scripts/exe-build/config.ts`](../../../../scripts/exe-build/config.ts) 接受 pkg 标签 `win`。`Target.host()` 把 `win32` 映射为 `win`。`productFileName()` 写出 `deepseek-harness-cli-win-x64.exe`，使 Linux 与 Windows 宿主对 `--output` 一致。[`scripts/package-dsh-cli-npm.ts`](../../../../scripts/package-dsh-cli-npm.ts) 增加 `@peiyuwang54/deepseek-harness-cli-win-x64`，npm `os` 为 `['win32']`，并复制 `bin/deepseek-harness-cli.exe`。[`scripts/dsh-npm-shim.js`](../../../../scripts/dsh-npm-shim.js) 在 `win32` 上解析该文件名。
+[`scripts/exe-build/config.ts`](../../../../scripts/exe-build/config.ts) 接受 pkg 标签 `win`。`Target.host()` 把 `win32` 映射为 `win`。`productFileName()` 写出 `deepseek-harness-cli-win-x64.exe`，使 Linux 与 Windows 宿主对 `--output` 一致。[`scripts/package-dsh-cli-npm.ts`](../../../../scripts/package-dsh-cli-npm.ts) 增加 `@peiyu_wang/deepseek-harness-cli-win-x64`，npm `os` 为 `['win32']`，并复制 `bin/deepseek-harness-cli.exe`。[`scripts/dsh-npm-shim.js`](../../../../scripts/dsh-npm-shim.js) 在 `win32` 上解析该文件名。
 
 发布 tarball 名称保持 `<cpu>-<os>`，以便与 [`apps/cli/install/install.sh`](../../../../apps/cli/install/install.sh) 一致：`deepseek-harness-cli-x64-win.tar.gz`。[`scripts/gen-dsh-cask.ts`](../../../../scripts/gen-dsh-cask.ts) 读取同样的 `cpu-os` sidecar；Homebrew 仍只覆盖 macOS 与 Linux。
 
@@ -36,4 +36,4 @@ win-arm64 未发布。Authenticode 签名未发布。
 
 ## 影响
 
-一旦存在 `deepseek-harness-cli-v*` release，Windows x64 用户可以用 `irm …/install.ps1 | iex` 或 `npm install -g @peiyuwang54/deepseek-harness-cli` 安装。每次 CLI 发布都会占用一台 Windows 托管 runner。该二进制未经签名。Homebrew 不会获得 Windows bottle。
+一旦存在 `deepseek-harness-cli-v*` release，Windows x64 用户可以用 `irm …/install.ps1 | iex` 或 `npm install -g @peiyu_wang/deepseek-harness-cli` 安装。每次 CLI 发布都会占用一台 Windows 托管 runner。该二进制未经签名。Homebrew 不会获得 Windows bottle。

@@ -12,7 +12,7 @@ This fork's users are on Windows. The [directory package](2026-08-15-windows-cli
 
 `win-x64` is a first-class `deepseek-harness-cli` executable target. It is built on `windows-2025` (native addons are not cross-compiled), published beside the four Unix tarballs, and installed by a PowerShell download script.
 
-[`scripts/exe-build/config.ts`](../../../../scripts/exe-build/config.ts) accepts the pkg tag `win`. `Target.host()` maps `win32` to `win`. `productFileName()` writes `deepseek-harness-cli-win-x64.exe` so Linux and Windows hosts agree on `--output`. [`scripts/package-dsh-cli-npm.ts`](../../../../scripts/package-dsh-cli-npm.ts) adds `@peiyuwang54/deepseek-harness-cli-win-x64` with npm `os: ['win32']` and copies `bin/deepseek-harness-cli.exe`. [`scripts/dsh-npm-shim.js`](../../../../scripts/dsh-npm-shim.js) resolves that basename on `win32`.
+[`scripts/exe-build/config.ts`](../../../../scripts/exe-build/config.ts) accepts the pkg tag `win`. `Target.host()` maps `win32` to `win`. `productFileName()` writes `deepseek-harness-cli-win-x64.exe` so Linux and Windows hosts agree on `--output`. [`scripts/package-dsh-cli-npm.ts`](../../../../scripts/package-dsh-cli-npm.ts) adds `@peiyu_wang/deepseek-harness-cli-win-x64` with npm `os: ['win32']` and copies `bin/deepseek-harness-cli.exe`. [`scripts/dsh-npm-shim.js`](../../../../scripts/dsh-npm-shim.js) resolves that basename on `win32`.
 
 Release tarball names stay `<cpu>-<os>` so they match [`apps/cli/install/install.sh`](../../../../apps/cli/install/install.sh): `deepseek-harness-cli-x64-win.tar.gz`. [`scripts/gen-dsh-cask.ts`](../../../../scripts/gen-dsh-cask.ts) reads the same `cpu-os` sidecars; Homebrew still covers only macOS and Linux.
 
@@ -36,4 +36,4 @@ win-arm64 is unpublished. Authenticode signing is unpublished.
 
 ## Consequences
 
-Windows x64 users can install with `irm …/install.ps1 | iex` or `npm install -g @peiyuwang54/deepseek-harness-cli` once a `deepseek-harness-cli-v*` release exists. Every CLI release now spends a Windows hosted runner. The binary is unsigned. Homebrew does not gain a Windows bottle.
+Windows x64 users can install with `irm …/install.ps1 | iex` or `npm install -g @peiyu_wang/deepseek-harness-cli` once a `deepseek-harness-cli-v*` release exists. Every CLI release now spends a Windows hosted runner. The binary is unsigned. Homebrew does not gain a Windows bottle.

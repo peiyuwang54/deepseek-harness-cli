@@ -1,5 +1,5 @@
 # Build and distribute the deepseek-harness-cli single-file executable across three
-# channels: GitHub Releases (curl|sh and install.ps1), npm (@peiyuwang54/deepseek-harness-cli), and a
+# channels: GitHub Releases (curl|sh and install.ps1), npm (@peiyu_wang/deepseek-harness-cli), and a
 # Homebrew cask pushed to peiyuwang54/homebrew-dsh. Runs on every deepseek-harness-cli-v*
 # tag push or from a manual dispatch; a manual dispatch is also the only way to
 # release without pushing a tag first. The build/package/release jobs are

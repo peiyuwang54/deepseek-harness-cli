@@ -1,7 +1,7 @@
 /**
  * Lay out the npm distribution of the deepseek-harness-cli: one main shim package at
- * `@peiyuwang54/deepseek-harness-cli@<ver>` and one per-platform package at
- * `@peiyuwang54/deepseek-harness-cli@<ver>-<os>-<cpu>`. The per-platform packages carry the
+ * `@peiyu_wang/deepseek-harness-cli@<ver>` and one per-platform package at
+ * `@peiyu_wang/deepseek-harness-cli@<ver>-<os>-<cpu>`. The per-platform packages carry the
  * single-file exe under `bin/` (plus the macOS spawn-helper) and are selected by
  * npm through `os`/`cpu` plus optionalDependencies aliases — the same contract
  * OpenAI Codex uses. The layout is importable so tests can package the host
@@ -16,13 +16,13 @@ import { requireReleaseVersion } from './release-version.ts'
 
 const root = resolve(import.meta.dirname, '..')
 
-export const PACKAGE_NAME = '@peiyuwang54/deepseek-harness-cli'
+export const PACKAGE_NAME = '@peiyu_wang/deepseek-harness-cli'
 export const REPOSITORY = 'git+https://github.com/peiyuwang54/deepseek-harness-cli.git'
 
 export interface PlatformTarget {
   readonly os: 'macos' | 'linux' | 'win'
   readonly cpu: 'arm64' | 'x64'
-  /** optionalDependencies alias key and shim package name, e.g. @peiyuwang54/deepseek-harness-cli-macos-arm64. */
+  /** optionalDependencies alias key and shim package name, e.g. @peiyu_wang/deepseek-harness-cli-macos-arm64. */
   readonly name: string
 }
 

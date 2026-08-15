@@ -25,7 +25,7 @@ if (!os || !cpu || (os === 'win' && cpu !== 'x64')) {
   process.exit(1)
 }
 
-const packageName = `@peiyuwang54/deepseek-harness-cli-${os}-${cpu}`
+const packageName = `@peiyu_wang/deepseek-harness-cli-${os}-${cpu}`
 const exeName = os === 'win' ? 'deepseek-harness-cli.exe' : 'deepseek-harness-cli'
 let executable
 try {
@@ -33,7 +33,7 @@ try {
 } catch {
   console.error(
     `deepseek-harness-cli: the ${packageName} package is not installed. ` +
-      'Reinstall with: npm install -g @peiyuwang54/deepseek-harness-cli',
+      'Reinstall with: npm install -g @peiyu_wang/deepseek-harness-cli',
   )
   process.exit(1)
 }

@@ -52,13 +52,13 @@ The [CLI behavior reference](reference/README.md) owns exact layer precedence, f
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
-npm install -g @peiyuwang54/deepseek-harness-cli
+npm install -g @peiyu_wang/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
 The first command runs the curl installer, which downloads the newest `deepseek-harness-cli-v*` release, verifies the tarball against the release's sha256 sidecar, and installs both `deepseek` and the compatibility name `deepseek-harness-cli` under `$HOME/.deepseek-harness-cli/bin` (`sh -s -- --to <dir>` overrides the directory, `--version <ver>` pins a version). The npm and Homebrew channels expose the same two names. See [the installer README](install/README.md) for the full contract and the planned minisign signature upgrade.
 
-Upgrading re-runs the same command — the curl installer replaces the binaries in place, `npm update -g @peiyuwang54/deepseek-harness-cli` pulls the newest version, and `brew upgrade deepseek-harness-cli` refreshes the cask.
+Upgrading re-runs the same command — the curl installer replaces the binaries in place, `npm update -g @peiyu_wang/deepseek-harness-cli` pulls the newest version, and `brew upgrade deepseek-harness-cli` refreshes the cask.
 
 ## Development
 

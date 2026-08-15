@@ -11,16 +11,14 @@ buffer
   style 1-21 dim
 2| " main-session"
   style 1-12 dim
-3-20| <blank>
-21| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-91 dim
-22| "│ dsh > 描述任务，@ 添加文件，或输入 / 查看命令                                            │"
-  style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-46 dim
-  style 91-91 dim
-23| "╰────────────────────────────────────────────────── Enter 发送 · Shift+Enter 换行 · / 命令 ╯"
-  style 0-91 dim
+3-19| <blank>
+20| "                                                                                            "
+21| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
+  style 1-1 fg=bright-magenta bold
+  style 2-41 dim
+22| "                                                                                            "
+23| "  Enter 发送 · Shift+Enter 换行 · / 命令"
+  style 0-39 dim
 24| "╭ Select workspace ────────────────────────────────────────────────────────╮"
   style 0-75 fg=bright-magenta
 25| "│ >                                                                        │"

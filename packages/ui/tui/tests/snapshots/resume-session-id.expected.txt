@@ -1,7 +1,7 @@
 terminal 92x32 buffer=normal length=32 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=8 viewportRow=8 bufferRow=8
+cursor visible column=3 viewportRow=8 bufferRow=8
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -15,21 +15,19 @@ buffer
 4| "Session is resumable, but this host cannot hand it off in place.                            "
   style 0-63 fg=yellow
 5-6| <blank>
-7| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-91 dim
-8| "│ dsh > │Describe a task, @ a file, or / for commands                                      │"
-  style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-7 dim
-  style 9-52 dim
-  style 91-91 dim
-9| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
-  style 0-91 dim
-10| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+7| "                                                                                            "
+8| " › │Describe a task, @ a file, or / for commands                                            "
+  style 1-1 fg=bright-magenta bold
+  style 2-2 dim
+  style 4-47 dim
+9| "                                                                                            "
+10| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+11| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 40-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-11-31| <blank>
+12-31| <blank>

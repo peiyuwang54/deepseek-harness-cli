@@ -1,7 +1,7 @@
 terminal 96x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=8 viewportRow=24 bufferRow=24
+cursor visible column=3 viewportRow=24 bufferRow=24
 buffer
 0| "  ╭─ DeepSeek Harness CLI v0.1.0 ────────────────────────────────────────────────────────────╮"
   style 2-3 dim
@@ -101,21 +101,19 @@ buffer
 20| "preset danger-full-access                                                                       "
   style 0-24 dim
 21-22| <blank>
-23| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-95 dim
-24| "│ dsh > │Describe a task, @ a file, or / for commands                                          │"
-  style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-7 dim
-  style 9-52 dim
-  style 95-95 dim
-25| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
-  style 0-95 dim
-26| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+23| "                                                                                                "
+24| " › │Describe a task, @ a file, or / for commands                                                "
+  style 1-1 fg=bright-magenta bold
+  style 2-2 dim
+  style 4-47 dim
+25| "                                                                                                "
+26| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+27| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 44-49 dim
   style 52-76 dim
   style 79-83 dim
   style 86-95 dim
-27-35| <blank>
+28-35| <blank>

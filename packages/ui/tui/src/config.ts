@@ -72,7 +72,7 @@ export interface TuiConfig {
   title?: string
 }
 
-const showReasoningSchema = z.boolean().default(false)
+const showReasoningSchema = z.boolean().default(true)
 const fullscreenSchema = z.boolean().default(true)
 const mouseSchema = z.boolean().default(true)
 const maxToolOutputLinesSchema = z.number().step(1).min(1).default(6)
@@ -94,8 +94,8 @@ const colorSchema = z.boolean().default(true)
 // No default: an unset value auto-detects truecolor from COLORTERM in `apply`.
 const truecolorSchema = z.boolean()
 const DEFAULT_LEFT_PROMPT = '${cwd}${git/worktree}'
-const DEFAULT_RIGHT_PROMPT = '${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}'
-const DEFAULT_INPUT_PROMPT = '${symbol} ${indicator}'
+const DEFAULT_RIGHT_PROMPT = '${goal}${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}'
+const DEFAULT_INPUT_PROMPT = '${indicator}'
 const DEFAULT_INPUT_PLACEHOLDER = 'Describe a task, @ a file, or / for commands'
 const TuiThemeConfigSchema: z<TuiThemeConfig> = z.object({
   color: colorSchema,
@@ -218,7 +218,7 @@ export function resolveTuiConfig(config: TuiConfig | undefined): ResolvedTuiConf
   return {
     fullscreen: config?.fullscreen ?? true,
     mouse: config?.mouse ?? true,
-    showReasoning: config?.showReasoning ?? false,
+    showReasoning: config?.showReasoning ?? true,
     maxToolOutputLines: config?.maxToolOutputLines ?? 6,
     maxDiffEditLength: config?.maxDiffEditLength ?? 1000,
     maxQuestionOptions: config?.maxQuestionOptions ?? 8,

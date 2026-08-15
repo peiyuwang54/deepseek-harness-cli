@@ -1,7 +1,7 @@
-terminal 44x18 buffer=normal length=27 base=9 viewport=9
+terminal 44x18 buffer=normal length=28 base=10 viewport=10
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=8 viewportRow=15 bufferRow=24
+cursor visible column=3 viewportRow=14 bufferRow=24
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -12,46 +12,42 @@ buffer
 2| " main-session"
   style 1-12 dim
 3| <blank>
-4| "You                                         "
-  style 0-2 fg=bright-magenta bold underline
-5| "Old prompt with a long line that exercises  "
-6| "wrapping and stays visible after compaction."
-7| <blank>
-8| "Assistant                                   "
-  style 0-8 fg=bright-magenta bold underline
-9| <blank>
-10| "● Tool / bash / Run the coverage gate"
+4| "                                            "
+5| " › Old prompt with a long line that         "
+  style 1-1 fg=blue bold
+6| " exercises wrapping and stays visible after "
+7| " compaction.                                "
+8| "                                            "
+9-10| <blank>
+11| "● Tool / bash / Run the coverage gate"
   style 0-36 fg=green
-11| "$ pnpm run test:coverage                    "
+12| "$ pnpm run test:coverage                    "
   style 0-23 dim
-12| "/workspace/project                          "
+13| "/workspace/project                          "
   style 0-17 dim
-13| "packages/ui/tui 100%                        "
+14| "packages/ui/tui 100%                        "
   style 0-19 dim
-14| "… +1 lines (Ctrl+O to expand)               "
+15| "… +1 lines (Ctrl+O to expand)               "
   style 0-28 dim
-15| "1 test skipped                              "
+16| "1 test skipped                              "
   style 0-13 dim
-16| "coverage complete                           "
+17| "coverage complete                           "
   style 0-16 dim
-17| "[exit 0]                                    "
+18| "[exit 0]                                    "
   style 0-7 dim
-18| "Model wait 0.0s                             "
-  style 0-14 dim
 19| <blank>
 20| "… earlier context was compacted …           "
   style 0-32 dim
 21-22| <blank>
-23| "╭ Message ─────────────────────────────────╮"
+23| "                                            "
+24| " › │Describe a task, @ a file, or / for com "
+  style 1-1 fg=bright-magenta bold
+  style 2-2 dim
+  style 4-42 dim
+25| "                                            "
+26| "  Enter send · Shift+Enter newline · / comma"
   style 0-43 dim
-24| "│ dsh > │Describe a task, @ a file, or / fo│"
-  style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-7 dim
-  style 9-43 dim
-25| "╰ Enter send · Shift+Enter newline · / comm╯"
-  style 0-42 dim
-26| "▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0%"
+27| "▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0%"
   style 0-5 dim
   style 8-32 dim
   style 35-39 dim

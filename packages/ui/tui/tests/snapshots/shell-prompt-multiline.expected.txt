@@ -1,7 +1,7 @@
 terminal 44x18 buffer=normal length=18 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=39 viewportRow=11 bufferRow=11
+cursor visible column=34 viewportRow=11 bufferRow=11
 viewport
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -12,33 +12,21 @@ viewport
 2| " main-session"
   style 1-12 dim
 3-4| <blank>
-5| "╭ Message ─────────────────────────────────╮"
+5| "                                            "
+6| "   ↑ 1 more                                 "
+  style 1-10 dim
+7| " enough detail to wrap across multiple      "
+8| " full-width continuation rows without       "
+9| " leaving a prompt-sized gap at the right    "
+10| " edge.                                      "
+11| "   Then suggest a simpler version.          "
+  style 34-34 inverse
+12| "                                            "
+13| "  Enter send · Shift+Enter newline · / comma"
   style 0-43 dim
-6| "│       ↑ 1 more                           │"
-  style 0-0 dim
-  style 2-15 dim
-  style 43-43 dim
-7| "│ enough detail to wrap across multiple    │"
-  style 0-0 dim
-  style 43-43 dim
-8| "│ full-width continuation rows without     │"
-  style 0-0 dim
-  style 43-43 dim
-9| "│ leaving a prompt-sized gap at the right  │"
-  style 0-0 dim
-  style 43-43 dim
-10| "│ edge.                                    │"
-  style 0-0 dim
-  style 43-43 dim
-11| "│       Then suggest a simpler version.    │"
-  style 0-0 dim
-  style 39-39 inverse
-  style 43-43 dim
-12| "╰ Enter send · Shift+Enter newline · / comm╯"
-  style 0-42 dim
-13| "▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0%"
+14| "▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0%"
   style 0-5 dim
   style 8-32 dim
   style 35-39 dim
   style 42-43 dim
-14-17| <blank>
+15-17| <blank>

@@ -1,7 +1,7 @@
 terminal 96x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=8 viewportRow=16 bufferRow=16
+cursor visible column=3 viewportRow=14 bufferRow=14
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -11,35 +11,28 @@ buffer
   style 1-21 dim
 2| " main-session"
   style 1-12 dim
-3| <blank>
-4| "Assistant                                                                                       "
-  style 0-8 fg=bright-magenta bold underline
-5| <blank>
-6| "○ Tool / run_code"
+3-4| <blank>
+5| "○ Tool / run_code"
   style 0-16 fg=yellow
-7| "Echo two markers and combine them                                                               "
-8| "const first = await tools.bash({ command: 'echo CODE_ONE' })                                    "
-9| "const second = await tools.bash({ command: 'echo CODE_TWO' })                                   "
-10| "console.log(first, second)                                                                      "
-11| "return `${first}+${second}`                                                                     "
-12| "Model wait 0.0s                                                                                 "
-  style 0-14 dim
-13-14| <blank>
-15| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-95 dim
-16| "│ dsh > │Describe a task, @ a file, or / for commands                                          │"
-  style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-7 dim
-  style 9-52 dim
-  style 95-95 dim
-17| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
-  style 0-95 dim
-18| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+6| "Echo two markers and combine them                                                               "
+7| "const first = await tools.bash({ command: 'echo CODE_ONE' })                                    "
+8| "const second = await tools.bash({ command: 'echo CODE_TWO' })                                   "
+9| "console.log(first, second)                                                                      "
+10| "return `${first}+${second}`                                                                     "
+11-12| <blank>
+13| "                                                                                                "
+14| " › │Describe a task, @ a file, or / for commands                                                "
+  style 1-1 fg=bright-magenta bold
+  style 2-2 dim
+  style 4-47 dim
+15| "                                                                                                "
+16| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+17| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 44-49 dim
   style 52-76 dim
   style 79-83 dim
   style 86-95 dim
-19-35| <blank>
+18-35| <blank>

@@ -1,7 +1,7 @@
 terminal 100x40 buffer=normal length=40 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=8 viewportRow=18 bufferRow=18
+cursor visible column=3 viewportRow=17 bufferRow=17
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -12,34 +12,30 @@ buffer
 2| " main-session"
   style 1-12 dim
 3| <blank>
-4| "You                                                                                                 "
-  style 0-2 fg=bright-magenta bold underline
-5| "Inspect the renderer.                                                                               "
-6| <blank>
-7| "Assistant                                                                                           "
-  style 0-8 fg=bright-magenta bold underline
-8| "Running the check now.                                                                              "
-9| "Model wait 0.0s                                                                                     "
-  style 0-14 dim
-10| "Model wait 0.0s · Completed 2026-07-30 18:00:00                                                     "
-  style 0-46 dim
-11| <blank>
-12| "Reasoning blocks hidden.                                                                            "
-  style 0-23 dim
-13| <blank>
-14| "Tool cards hidden.                                                                                  "
-  style 0-17 dim
-15-16| <blank>
-17| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-99 dim
-18| "│ dsh > │Describe a task, @ a file, or / for commands                                              │"
+4| "                                                                                                    "
+5| " › Inspect the renderer.                                                                            "
+  style 1-1 fg=blue bold
+6| "                                                                                                    "
+7| <blank>
+8| "• Running the check now.                                                                            "
   style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-7 dim
-  style 9-52 dim
-  style 99-99 dim
-19| "╰─────────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
-  style 0-99 dim
+9| "Model wait 0.0s · Completed 2026-07-30 18:00:00                                                     "
+  style 0-46 dim
+10| <blank>
+11| "Reasoning blocks hidden.                                                                            "
+  style 0-23 dim
+12| <blank>
+13| "Tool cards hidden.                                                                                  "
+  style 0-17 dim
+14-15| <blank>
+16| "                                                                                                    "
+17| " › │Describe a task, @ a file, or / for commands                                                    "
+  style 1-1 fg=bright-magenta bold
+  style 2-2 dim
+  style 4-47 dim
+18| "                                                                                                    "
+19| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
 20| "/workspace/project (tui-staging)                ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim

@@ -1,7 +1,7 @@
 terminal 96x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=8 viewportRow=8 bufferRow=8
+cursor visible column=3 viewportRow=8 bufferRow=8
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -15,21 +15,19 @@ buffer
 4| "Vim keymap enabled in Insert mode. Press Esc for Normal mode; i returns to Insert mode.         "
   style 0-86 dim
 5-6| <blank>
-7| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-95 dim
-8| "│ dsh > │Describe a task, @ a file, or / for commands                                          │"
-  style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-7 dim
-  style 9-52 dim
-  style 95-95 dim
-9| "╰───────────────────────────────────────────── VIM NORMAL · i insert · h/j/k/l move · x delete ╯"
-  style 0-95 dim
-10| "/workspace/project (tui-staging)              ▸ idle  deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
+7| "                                                                                                "
+8| " › │Describe a task, @ a file, or / for commands                                                "
+  style 1-1 fg=bright-magenta bold
+  style 2-2 dim
+  style 4-47 dim
+9| "                                                                                                "
+10| "  VIM NORMAL · i insert · h/j/k/l move · x delete"
+  style 0-48 dim
+11| "/workspace/project (tui-staging)              ▸ idle  deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 46-51 dim
   style 54-76 dim
   style 79-83 dim
   style 86-95 dim
-11-35| <blank>
+12-35| <blank>

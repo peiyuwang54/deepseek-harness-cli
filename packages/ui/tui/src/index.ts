@@ -18,6 +18,7 @@ import {
   visibleWidth,
   type Component,
   type EditorTheme,
+  type RgbColor,
   type SlashCommand,
   type TerminalColorScheme,
 } from '@earendil-works/pi-tui'
@@ -75,7 +76,14 @@ import type {
   TuiTheme,
 } from './extension/types.ts'
 import { displayInlineText, displayText } from './components/text.ts'
-import { brandText, createPalette, markdownTheme, renderPalette, selectTheme } from './components/theme.ts'
+import {
+  brandText,
+  createPalette,
+  markdownTheme,
+  renderPalette,
+  selectTheme,
+  userMessageBackground,
+} from './components/theme.ts'
 import { contentText, parseArguments } from './components/content.ts'
 import {
   cacheHitRate,
@@ -85,17 +93,11 @@ import {
 } from './chat/tokens.ts'
 import { formatSessionStatsLine, SessionStatsLineComponent } from './chat/stats.ts'
 import {
-  fadeGlyph,
   formatQueuedStatus,
   formatStatusDuration,
-  openStepPhase,
   openTurn,
-  pulseLevel,
-  runningPhaseGlyph,
   STATUS_ANIMATION_INTERVAL_MS,
-  STATUS_FADE_MS,
   StepTimingTracker,
-  TIMING_BUCKET_GLYPHS,
   type StepPosition,
 } from './chat/timing.ts'
 import {
@@ -106,6 +108,7 @@ import {
   ContextCardComponent,
   type ToolCardVisibility,
   HeaderComponent,
+  LiveTurnStatusComponent,
   StreamingAssistantComponent,
   ToolCardComponent,
   TodoComponent,
@@ -167,6 +170,7 @@ import {
 import { readTuiLocale, tuiCopy, type TuiLocale } from './chat/language.ts'
 import { latestVisibleAssistantText, osc52ClipboardSequence } from './chat/clipboard.ts'
 import { mcpCommandResult } from './chat/mcp-command.ts'
+import { GoalTimingTracker, formatGoalFooterStatus, type GoalFooterState } from './chat/goal-status.ts'
 import type { TuiResumeHost, TuiRuntime } from './runtime.ts'
 import { WorkspaceFileSearch } from './chat/file-autocomplete.ts'
 import { createTuiTerminalMode, parseTuiMouseEvent } from './chat/terminal-mode.ts'
@@ -309,18 +313,8 @@ const COMPACTION_MARKER = '… earlier context was compacted …'
 interface RunningStatus {
   turn: number | undefined
   timer: ReturnType<typeof setInterval>
-  /** Render clock when the turn began; origin of the glyph fade-in. */
-  startedAt: number
-  /** The most recently rendered phase glyph, handed to the fade-out. */
-  lastGlyph: string
-}
-
-/** A running glyph fading out after its turn ended, before the caret returns. */
-interface FadingStatus {
-  glyph: string
-  /** Render clock when the turn ended; origin of the glyph fade-out. */
-  endedAt: number
-  timer: ReturnType<typeof setInterval>
+  /** Durable turn start used by the Web-aligned running clock. */
+  turnStartedAt: number
 }
 
 /** Width/height adapter for a modal component rendered inside the base TUI flow. */
@@ -377,8 +371,10 @@ export function createTuiChat(
   let themePreference = readTuiThemePreference(ctx.get('settings'))
   let locale = readTuiLocale(ctx.get('settings'))
   let terminalScheme: TerminalColorScheme = 'dark'
+  let terminalBackground: RgbColor | undefined
   const initialScheme: TerminalColorScheme = themePreference === 'light' ? 'light' : 'dark'
   const palette = createPalette(resolved.theme.color, initialScheme)
+  let userMessageSurface = userMessageBackground(resolved.theme.color, initialScheme, terminalBackground)
   const mdTheme = markdownTheme(palette)
   // The software caret below provides deterministic blinking even when a
   // terminal profile ignores DECSCUSR. Keep pi-tui's hardware cursor enabled
@@ -397,7 +393,7 @@ export function createTuiChat(
     borderColor: palette.dim,
     selectList: selectTheme(palette),
   } satisfies EditorTheme, {
-    paddingX: 1,
+    paddingX: 0,
     autocompletePlacement: 'external',
     frame: 'none',
     prompt: {
@@ -407,6 +403,7 @@ export function createTuiChat(
   })
   editor.cursorEnabled = resolved.showHardwareCursor
   editor.cursorVisible = resolved.showHardwareCursor
+  editor.surface = value => userMessageSurface(value)
   editor.hintPrefix = initialInputPrompt
   const inputPlaceholder = (): string => resolved.theme.inputPlaceholder === 'Describe a task, @ a file, or / for commands'
     ? tuiCopy(locale).inputPlaceholder
@@ -442,12 +439,12 @@ export function createTuiChat(
   // One shared accumulator serves every step's timing footer; per-footer
   // replay of the whole log is quadratic on a long resumed session.
   const stepTimingTracker = new StepTimingTracker()
+  const goalTimingTracker = new GoalTimingTracker()
   // Assistant step components in model order per turn, for hidden-mode folding:
-  // with tool cards hidden, a turn keeps one Assistant header and later steps
-  // render as headerless continuations (see applyTurnFolding).
+  // with tool cards hidden, a turn keeps one leading bullet and later steps
+  // render as indented continuations (see applyTurnFolding).
   const assistantSteps = new Map<number, StreamingAssistantComponent[]>()
   let runningStatus: RunningStatus | undefined
-  let fadingStatus: FadingStatus | undefined
   /**
    * Live standalone compaction observed by this process. Never derive this
    * state from history: a resumed log may contain a stale orphaned start.
@@ -521,6 +518,25 @@ export function createTuiChat(
   // oxlint-disable-next-line prefer-const -- skill-browser callbacks run only after dispatch is assigned.
   let invokeSkill!: (name: string, instructions: string) => void
   const now = (): number => runtime.now?.() ?? Date.now()
+  const liveStatusSpacer = new Spacer(1)
+  const liveTurnStatus = new LiveTurnStatusComponent(
+    () => runningStatus?.turnStartedAt,
+    now,
+    () => locale,
+    palette,
+  )
+  const removeLiveTurnStatus = (): void => {
+    for (const child of [liveStatusSpacer, liveTurnStatus]) {
+      const index = chat.children.indexOf(child)
+      if (index >= 0) chat.children.splice(index, 1)
+    }
+  }
+  const trailLiveTurnStatus = (): void => {
+    if (runningStatus === undefined) return
+    removeLiveTurnStatus()
+    chat.addChild(liveStatusSpacer)
+    chat.addChild(liveTurnStatus)
+  }
   const agentStatus = (): AgentStatus => agent.status
   const isDisposed = (): boolean => disposed
   const sessionQuery = (): SessionQueryEngine | undefined => {
@@ -569,6 +585,18 @@ export function createTuiChat(
   )
   const formattedCwd = displayText(runtime.formatCwd?.(agent.session.header.cwd) ?? formatCwd(agent.session.header.cwd))
   const branch = runtime.gitBranch?.(cwd) ?? gitBranch(cwd)
+  const readGoalFooterState = (): GoalFooterState | undefined => {
+    const restored = foldGoal(agent.session.events)
+    if (restored.goal === undefined) return undefined
+    const live = ctx.get('goals')?.get(agent)
+    return {
+      id: restored.goal.id,
+      phase: restored.goal.phase,
+      activation: live?.id === restored.goal.id ? live.activation : 'disarmed',
+      elapsedMs: 0,
+    }
+  }
+  let goalFooterState = readGoalFooterState()
   const promptValues: TuiPromptValueHandle[] = [
     ctx.tuiPrompt.register('cwd', palette.bold(palette.accent(formattedCwd))),
     ctx.tuiPrompt.register('git/worktree', branch === undefined ? undefined : palette.dim(` (${displayText(branch)})`)),
@@ -580,17 +608,19 @@ export function createTuiChat(
     ctx.tuiPrompt.register('details'),
     ctx.tuiPrompt.register('context'),
     ctx.tuiPrompt.register('queued'),
+    ctx.tuiPrompt.register('goal'),
     ctx.tuiPrompt.register('symbol', palette.bold(palette.accent('dsh'))),
-    ctx.tuiPrompt.register('indicator', palette.dim('> ')),
+    ctx.tuiPrompt.register('indicator', `${palette.bold(palette.accent('›'))} `),
   ]
   const [
     cwdValue, gitValue, tokenValue, statusValue, presetValue, modelValue,
-    permissionValue, detailsValue, contextValue, queuedValue, symbolValue, indicatorValue,
+    permissionValue, detailsValue, contextValue, queuedValue, goalValue, symbolValue, indicatorValue,
   ] = promptValues
   /* v8 ignore next -- the fixed built-in registration list always supplies each handle. */
   if (cwdValue === undefined || gitValue === undefined || tokenValue === undefined || statusValue === undefined
     || presetValue === undefined || modelValue === undefined || permissionValue === undefined || detailsValue === undefined
-    || contextValue === undefined || queuedValue === undefined || symbolValue === undefined || indicatorValue === undefined) {
+    || contextValue === undefined || queuedValue === undefined || goalValue === undefined
+    || symbolValue === undefined || indicatorValue === undefined) {
     throw new Error('TUI prompt built-ins failed to initialize')
   }
   const updatePromptValues = (): void => {
@@ -600,7 +630,7 @@ export function createTuiChat(
     const rate = cacheHitRate(tokens)
     const usage = `↑${formatTokens(tokens.input)} ↓${formatTokens(tokens.output)}`
     const modelLabel = displayText(target.current === undefined ? 'model unset' : compactTargetLabel(target.current))
-    statusValue.set(palette.dim(agent.status))
+    statusValue.set(runningStatus === undefined ? palette.dim(agent.status) : undefined)
     presetValue.set(`  ${palette.dim(displayInlineText(currentPreset()))}`)
     modelValue.set(`  ${palette.dim(`${modelLabel} [alt+m]`)}`)
     permissionValue.set(`  ${palette.dim(displayInlineText(currentPermission()))}`)
@@ -613,44 +643,18 @@ export function createTuiChat(
     )}`)
     const queued = runningStatus === undefined ? undefined : formatQueuedStatus(pendingSteering.size)
     queuedValue.set(queued === undefined ? undefined : palette.dim(queued))
+    const goalStatus = formatGoalFooterStatus(goalFooterState === undefined
+      ? undefined
+      : {
+        ...goalFooterState,
+        elapsedMs: goalTimingTracker.elapsedAt(agent.session.events, goalFooterState.id, renderTime),
+      })
+    goalValue.set(goalStatus === undefined ? undefined : `${palette.accent(goalStatus)}  `)
     symbolValue.set(palette.bold(palette.accent('dsh')))
     compactionStatusLine.setText(compacting === undefined
       ? ''
       : palette.dim(`Context being compacted ${formatStatusDuration(renderTime - compacting.startedAt)}`))
-    // `${indicator}` owns the caret column and its trailing gap before the
-    // cursor. The active status glyph replaces the `>` caret in place — same
-    // width every frame — fading in when work starts, throbbing while it runs,
-    // and fading out after it ends before the plain `>` returns. Only the gray
-    // brightness changes, so the cursor never shifts.
-    const statusGlyph = runningPhaseGlyph(
-      agent.session.events,
-      runningStatus !== undefined,
-      compacting !== undefined,
-    )
-    // Remember the live phase glyph so the fade-out shows it, not the ttft
-    // fallback the derivation returns once the closing turn's step has ended.
-    if (runningStatus !== undefined && statusGlyph !== undefined) runningStatus.lastGlyph = statusGlyph
-    // The fade envelope gates appear/disappear; the active throb breathes the
-    // glyph throughout the operation. Truecolor opacity is envelope × throb; the
-    // non-truecolor fallback keys visibility off the envelope alone, so the
-    // throb never blinks it. `envelope` clamps to [0, 1].
-    const activeSince = runningStatus?.startedAt ?? compacting?.startedAt
-    const envelope = activeSince !== undefined && statusGlyph !== undefined
-      ? { glyph: statusGlyph, level: Math.min(1, (renderTime - activeSince) / STATUS_FADE_MS) }
-      : fadingStatus !== undefined
-        ? { glyph: fadingStatus.glyph, level: Math.max(0, 1 - (renderTime - fadingStatus.endedAt) / STATUS_FADE_MS) }
-        : undefined
-    const caret = envelope === undefined
-      ? palette.dim('>')
-      : fadeGlyph(
-        envelope.glyph,
-        palette,
-        resolved.theme.color,
-        resolved.theme.color && resolved.theme.truecolor,
-        envelope.level * pulseLevel(renderTime),
-        envelope.level >= 0.5,
-      )
-    indicatorValue.set(`${caret}${palette.dim(' ')}`)
+    indicatorValue.set(`${palette.bold(palette.accent('›'))}${palette.dim(' ')}`)
   }
   const promptContext = new PromptContextComponent(
     parseTuiPromptTemplate(displayInlineText(resolved.theme.leftPrompt)),
@@ -773,6 +777,7 @@ export function createTuiChat(
     const color = kind === 'error' ? palette.error : kind === 'warning' ? palette.warning : palette.dim
     chat.addChild(new Spacer(1))
     chat.addChild(new Text(color(displayText(message)), 0, 0))
+    trailLiveTurnStatus()
     requestRender()
   }
 
@@ -856,19 +861,17 @@ export function createTuiChat(
 
   const renderStatus = (): void => {
     streaming?.invalidate()
+    liveTurnStatus.invalidate()
     requestRender()
   }
 
-  /** Stop the turn-phase running and fade-out timers and drop both states. */
+  /** Stop the live-turn refresh timer and remove its transient conversation row. */
   const clearTurnStatus = (): void => {
     if (runningStatus !== undefined) {
       clearInterval(runningStatus.timer)
       runningStatus = undefined
     }
-    if (fadingStatus !== undefined) {
-      clearInterval(fadingStatus.timer)
-      fadingStatus = undefined
-    }
+    removeLiveTurnStatus()
     runtime.terminal.setProgress(compacting !== undefined)
   }
 
@@ -881,49 +884,27 @@ export function createTuiChat(
     clearTurnStatus()
   }
 
-  /**
-   * Hand the last active glyph to a fade-out that re-renders until it settles
-   * on the `>` caret, then stops its own timer. A hard clear (teardown) skips
-   * this via {@link clearStatus}.
-   */
-  const beginFadeOut = (glyph: string): void => {
-    clearTurnStatus()
-    const fading: FadingStatus = {
-      glyph,
-      endedAt: now(),
-      timer: setInterval(() => {
-        if (now() - fading.endedAt >= STATUS_FADE_MS) clearTurnStatus()
-        renderStatus()
-      }, STATUS_ANIMATION_INTERVAL_MS),
-    }
-    fadingStatus = fading
-  }
-
   const setStatus = (status: AgentStatus): void => {
     const priorTurn = runningStatus?.turn
-    const fadeOutGlyph = status !== 'running' ? runningStatus?.lastGlyph : undefined
-    if (status === 'running') clearTurnStatus()
-    else if (fadeOutGlyph !== undefined) beginFadeOut(fadeOutGlyph)
-    else clearTurnStatus()
+    clearTurnStatus()
     editor.borderColor = status === 'running' ? text => palette.accent(text) : text => palette.dim(text)
     editor.hint = palette.dim(displayInlineText(inputPlaceholder()))
     refreshEditorFooter()
     if (status === 'running') {
       const turn = priorTurn ?? openTurn(agent.session.events)
+      const startedAt = now()
       const running: RunningStatus = {
         turn,
-        startedAt: now(),
-        // Seed with the current phase (ttft before the first step opens) so the
-        // fade-out always has a glyph, even for a turn that ends before a render.
-        lastGlyph: TIMING_BUCKET_GLYPHS[openStepPhase(agent.session.events) ?? 'ttft'],
-        // Refresh every tick so the fading prompt phase glyph animates even
-        // before the first token, when no streaming component exists yet.
+        turnStartedAt: agent.session.events.findLast(event =>
+          event.type === 'turn/start' && event.data.turn === turn)?.time ?? startedAt,
+        // Refresh the animated conversation status before the first token too.
         timer: setInterval(renderStatus, STATUS_ANIMATION_INTERVAL_MS),
       }
       runningStatus = running
+      trailLiveTurnStatus()
       runtime.terminal.setProgress(true)
       // Initial replay suppresses an orphaned idle `step/start`. If that same
-      // Agent becomes live, restore the pre-token Assistant/timing row now.
+      // Agent becomes live, restore the pre-token response/timing row now.
       attachStreaming()
     }
     requestRender()
@@ -952,9 +933,9 @@ export function createTuiChat(
 
   /**
    * Re-derive hidden-mode folding for one turn: the first step with a visible
-   * body owns the turn's single Assistant header, every other step renders as a
-   * headerless continuation (empty ones render nothing). Any other visibility
-   * restores the per-step headers.
+   * body owns the turn's single leading bullet, every other step renders as an
+   * indented continuation (empty ones render nothing). Any other visibility
+   * restores the per-step bullets.
    */
   const applyTurnFolding = (turn: number): void => {
     const steps = assistantSteps.get(turn)
@@ -1029,16 +1010,13 @@ export function createTuiChat(
       position,
       () => agent.session.events,
       stepTimingTracker,
-      now,
       showReasoning,
       palette,
       mdTheme,
     )
     registerAssistantStep(streaming)
-    // Keep the historical wait/timing row visible before the first token. A
-    // claimed user/context message can arrive after durable `step/start`; the
-    // helper below moves this still-empty row behind that input so transcript
-    // reading order remains input -> response without dropping live timing.
+    // A claimed user/context message can arrive after durable `step/start`;
+    // keep the live step in model order behind that input.
     // An idle imported log may end with an orphaned open step; do not present
     // that stale boundary as active work until the Agent is actually running.
     if (agent.status === 'running') {
@@ -1112,7 +1090,7 @@ export function createTuiChat(
         const text = displayText(contentText(event.data.content).trim())
         if (text) {
           chat.addChild(new Spacer(1))
-          chat.addChild(new UserMessageComponent(text, palette, mdTheme))
+          chat.addChild(new UserMessageComponent(text, palette, value => userMessageSurface(value)))
           if (options.addHistory) editor.addToHistory(text)
         }
         trailPendingStreaming()
@@ -1312,6 +1290,7 @@ export function createTuiChat(
     // component deliberately preserves streamed blocks, but its cached timing
     // otherwise reflects the instant of the last chunk before this rebuild.
     preserved?.component.invalidate()
+    trailLiveTurnStatus()
     requestRender()
   }
 
@@ -1466,10 +1445,11 @@ export function createTuiChat(
   }
 
   /** Swap the palette and all derived themes for the resolved terminal color scheme. */
-  const applyColorScheme = (scheme: TerminalColorScheme): void => {
-    if (scheme === currentScheme) return
+  const applyColorScheme = (scheme: TerminalColorScheme, force = false): void => {
+    if (scheme === currentScheme && !force) return
     currentScheme = scheme
     Object.assign(palette, createPalette(resolved.theme.color, scheme))
+    userMessageSurface = userMessageBackground(resolved.theme.color, scheme, terminalBackground)
     Object.assign(mdTheme, markdownTheme(palette))
     // `setStatus` below re-derives `editor.borderColor` from the new palette.
     rebuildPreservingStreaming()
@@ -1533,6 +1513,11 @@ export function createTuiChat(
   // so we keep the dark-optimised palette. Swallow a query-write failure for the
   // same reason.
   ui.queryTerminalColorScheme({ timeoutMs: 2000 }).catch(() => {})
+  void ui.queryTerminalBackgroundColor({ timeoutMs: 2000 }).then((background) => {
+    if (background === undefined || disposed) return
+    terminalBackground = background
+    applyColorScheme(currentScheme, true)
+  }).catch(() => {})
 
   const setToolsVisibility = (next: ToolCardVisibility, announce = true): void => {
     toolsVisibility = next
@@ -1541,7 +1526,7 @@ export function createTuiChat(
     // they never hide: the hidden phase reads as their collapsed preview.
     for (const card of contextCards) card.setExpanded(toolsVisibility === 'expanded')
     // Hidden mode folds each turn's steps into one assistant message; other
-    // modes restore the per-step Assistant headers.
+    // modes restore the per-step response bullets.
     for (const turn of assistantSteps.keys()) applyTurnFolding(turn)
     if (announce) {
       appendNotice(toolsVisibility === 'hidden' ? 'Tool cards hidden.' : `Tool and context cards ${toolsVisibility}.`)
@@ -2665,9 +2650,16 @@ export function createTuiChat(
 
   const disposeSessionEvents = ctx.on('session/event', (session, event) => {
     if (session !== agent.session) return
+    if (event.type === 'goal/change'
+      || (event.type === 'user/message' && event.data.source.kind === 'goal')) {
+      goalFooterState = readGoalFooterState()
+    }
     if (event.type === 'tool/result') fileSearch.invalidate()
     recordEventUsage(tokens, event)
-    if (event.type === 'turn/start' && runningStatus !== undefined) runningStatus.turn = event.data.turn
+    if (event.type === 'turn/start' && runningStatus !== undefined) {
+      runningStatus.turn = event.data.turn
+      runningStatus.turnStartedAt = event.time
+    }
     // Track live standalone compaction state.
     if (event.type === 'compaction/start' && event.data.turn === null) {
       if (compacting === undefined) {
@@ -2682,15 +2674,12 @@ export function createTuiChat(
       return
     }
     if (event.type === 'compaction/end' && event.data.turn === null && compacting !== undefined) {
-      const fadeOutGlyph = runningPhaseGlyph(agent.session.events, false, true)
       clearInterval(compacting.timer)
       compacting = undefined
       if (event.data.error !== undefined) {
         appendNotice(`Compaction failed: ${event.data.error}`, 'warning')
       }
-      // A concurrently running turn owns the indicator. Keep its timer and
-      // progress bit instead of letting the compaction fade clear that state.
-      if (runningStatus === undefined && fadeOutGlyph !== undefined) beginFadeOut(fadeOutGlyph)
+      runtime.terminal.setProgress(runningStatus !== undefined)
       requestRender()
       return
     }
@@ -2702,6 +2691,12 @@ export function createTuiChat(
       return
     }
     renderEvent(event, { addHistory: false, renderChunks: true })
+    trailLiveTurnStatus()
+    requestRender()
+  })
+  const disposeGoalChanges = ctx.on('goal/changed', ({ agent: subject }) => {
+    if (subject !== agent) return
+    goalFooterState = readGoalFooterState()
     requestRender()
   })
   const settlePendingSteering = (id: MessageId): void => {
@@ -2753,6 +2748,7 @@ export function createTuiChat(
     for (const value of promptValues) value.dispose()
     stopBannerReveal()
     disposeSessionEvents()
+    disposeGoalChanges()
     disposeDequeued()
     disposeDiscarded()
     disposeStatus()

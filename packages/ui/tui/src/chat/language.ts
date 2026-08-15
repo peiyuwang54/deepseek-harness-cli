@@ -34,6 +34,8 @@ export interface TuiCopy {
   readonly inputPlaceholder: string
   readonly editorIdleFooter: string
   readonly editorRunningFooter: string
+  readonly deepDiving: string
+  readonly interruptHint: string
   readonly settings: string
   readonly appearance: string
   readonly language: string
@@ -65,6 +67,8 @@ const COPY: Readonly<Record<TuiLocale, TuiCopy>> = {
     inputPlaceholder: 'Describe a task, @ a file, or / for commands',
     editorIdleFooter: 'Enter send · Shift+Enter newline · / commands',
     editorRunningFooter: 'Enter steer · Esc cancel · Shift+Enter newline',
+    deepDiving: 'Deep diving',
+    interruptHint: 'esc to interrupt',
     settings: 'Settings',
     appearance: 'Appearance',
     language: 'Language',
@@ -94,6 +98,8 @@ const COPY: Readonly<Record<TuiLocale, TuiCopy>> = {
     inputPlaceholder: '描述任务，@ 添加文件，或输入 / 查看命令',
     editorIdleFooter: 'Enter 发送 · Shift+Enter 换行 · / 命令',
     editorRunningFooter: 'Enter 引导 · Esc 取消 · Shift+Enter 换行',
+    deepDiving: '正在深度求索',
+    interruptHint: 'Esc 中断',
     settings: '设置',
     appearance: '外观',
     language: '语言',
@@ -119,4 +125,26 @@ export function readTuiLocale(settings: SettingsProvider | undefined): TuiLocale
 /** Resolve terminal shell copy for a selected shared locale. */
 export function tuiCopy(locale: TuiLocale): TuiCopy {
   return COPY[locale]
+}
+
+/**
+ * Format the Web label as Codex's live, interruptible turn row.
+ * @param elapsedMs - Time since the durable `turn/start` event.
+ * @param locale - Active shared Web/TUI locale.
+ * @returns Running label and optional elapsed clock.
+ */
+export function formatDeepDivingStatus(elapsedMs: number, locale: TuiLocale): string {
+  const copy = tuiCopy(locale)
+  const total = Math.max(0, Math.floor(elapsedMs / 1000))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor(total % 3600 / 60)
+  const seconds = total % 60
+  const duration = locale === 'zh'
+    ? hours > 0
+      ? `${hours}时${String(minutes).padStart(2, '0')}分${String(seconds).padStart(2, '0')}秒`
+      : minutes > 0 ? `${minutes}分${String(seconds).padStart(2, '0')}秒` : `${seconds}秒`
+    : hours > 0
+      ? `${hours}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`
+      : minutes > 0 ? `${minutes}m ${String(seconds).padStart(2, '0')}s` : `${seconds}s`
+  return `${copy.deepDiving} (${duration} • ${copy.interruptHint})`
 }

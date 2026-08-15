@@ -1,7 +1,7 @@
 terminal 96x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=8 viewportRow=10 bufferRow=10
+cursor visible column=3 viewportRow=12 bufferRow=12
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -12,29 +12,32 @@ buffer
 2| " main-session"
   style 1-12 dim
 3| <blank>
-4| "Assistant                                                                                       "
-  style 0-8 fg=bright-magenta bold underline
-5| "The result is ready.                                                                            "
-6| "Model wait 1.0s · Thinking 2.0s · Response 3.0s · Completed 2026-07-21 14:32:12                 "
-  style 0-78 dim
-7-8| <blank>
-9| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-95 dim
-10| "│ dsh > │Describe a task, @ a file, or / for commands                                          │"
+4| "• Think                                                                                         "
   style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-7 dim
-  style 9-52 dim
-  style 95-95 dim
-11| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
-  style 0-95 dim
-12| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 2-6 dim italic
+5| "                                                                                                "
+6| "  Checking the result.                                                                          "
+  style 2-21 dim italic
+7| "• The result is ready.                                                                          "
+  style 0-0 dim
+8| "Model wait 1.0s · Thinking 2.0s · Response 3.0s · Completed 2026-07-21 14:32:12                 "
+  style 0-78 dim
+9-10| <blank>
+11| "                                                                                                "
+12| " › │Describe a task, @ a file, or / for commands                                                "
+  style 1-1 fg=bright-magenta bold
+  style 2-2 dim
+  style 4-47 dim
+13| "                                                                                                "
+14| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+15| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 44-49 dim
   style 52-76 dim
   style 79-83 dim
   style 86-95 dim
-13| "                                        1 turn · 1 step"
+16| "                                        1 turn · 1 step"
   style 40-54 dim
-14-35| <blank>
+17-35| <blank>

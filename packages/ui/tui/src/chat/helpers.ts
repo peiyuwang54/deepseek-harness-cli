@@ -34,26 +34,25 @@ function hideRenderedEditorCursor(line: string): string {
   return `${before}${after.replace(/^\x1b\[7m([^\x1b]*)\x1b\[0m/u, '$1')}`
 }
 
-/** Editor with a full terminal frame and a placeholder that never becomes editable content. */
+/** Minimal Codex-style composer with a placeholder that never becomes editable content. */
 export class HintEditor extends Editor {
   /** Placeholder shown in the empty input row; `undefined` hides it. */
   hint: string | undefined
   /** Prompt text rendered before the placeholder, matching the live prompt width. */
   hintPrefix = ''
-  /** Short label embedded in the top frame. */
-  frameTitle = 'Message'
-  /** Current keyboard guidance embedded in the bottom frame. */
+  /** Current keyboard guidance shown below the input row. */
   frameFooter = 'Enter send · Shift+Enter newline'
-  /** Whether the full frame is visible; modal prompts temporarily reclaim its two rows. */
+  /** Whether keyboard guidance is visible; modal prompts temporarily reclaim its rows. */
   frameVisible = true
+  /** Low-contrast surface shared with submitted user-message records. */
+  surface: (text: string) => string = text => text
   /** Whether the focused editor renders a caret at all. */
   cursorEnabled = true
   /** Current software cursor phase; the chat lifecycle toggles it while this editor owns focus. */
   cursorVisible = true
 
   override render(width: number): string[] {
-    const framed = this.frameVisible && width >= 4
-    const contentWidth = framed ? width - 2 : width
+    const contentWidth = Math.max(1, width - 2)
     const lines = super.render(contentWidth)
     if (this.focused && (!this.cursorEnabled || !this.cursorVisible)) {
       for (let index = 0; index < lines.length; index += 1) {
@@ -81,22 +80,21 @@ export class HintEditor extends Editor {
         lines[0] = `${padding}${this.hintPrefix}${cursor}${placeholder}${' '.repeat(Math.max(0, contentWidth - used))}`
       }
     }
-    if (!framed) return lines
-
-    const title = truncateToWidth(` ${this.frameTitle} `, Math.max(0, width - 2), '')
-    const footer = truncateToWidth(` ${this.frameFooter} `, Math.max(0, width - 2), '')
-    const top = this.borderColor(`╭${title}${'─'.repeat(Math.max(0, width - visibleWidth(title) - 2))}╮`)
-    const bottomFill = Math.max(0, width - visibleWidth(footer) - 2)
-    const bottom = this.borderColor(`╰${'─'.repeat(bottomFill)}${footer}╯`)
-    const body = lines.map((line) => {
-      const clipped = truncateToWidth(line, contentWidth, '')
-      return `${this.borderColor('│')}${clipped}${' '.repeat(Math.max(0, contentWidth - visibleWidth(clipped)))}${this.borderColor('│')}`
-    })
-    return [top, ...body, bottom]
+    if (!this.frameVisible) return lines
+    const surfaced = [
+      this.surface(' '.repeat(width)),
+      ...lines.map((line) => {
+        const clipped = truncateToWidth(line, contentWidth, '')
+        return this.surface(` ${clipped}${' '.repeat(Math.max(0, contentWidth - visibleWidth(clipped)))} `)
+      }),
+      this.surface(' '.repeat(width)),
+    ]
+    const footer = truncateToWidth(`  ${this.frameFooter}`, width, '')
+    return [...surfaced, this.borderColor(footer)]
   }
 }
 
-/** Editor-owned autocomplete projection mounted directly below the input frame. */
+/** Editor-owned autocomplete projection mounted directly below the composer. */
 export class EditorAutocompletePanel implements Component {
   constructor(private readonly editor: HintEditor) {}
 

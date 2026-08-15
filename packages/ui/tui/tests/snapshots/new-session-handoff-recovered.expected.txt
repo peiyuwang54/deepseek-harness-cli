@@ -1,7 +1,7 @@
 terminal 92x32 buffer=alternate length=32 base=0 viewport=0
 lifecycle started=3 stopped=2 progress=inactive
 title "DSH snapshot"
-cursor visible column=8 viewportRow=29 bufferRow=29
+cursor visible column=3 viewportRow=28 bufferRow=28
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -17,17 +17,15 @@ buffer
 5| <blank>
 6| "New session failed: snapshot host retained process                                          "
   style 0-49 fg=red
-7-27| <blank>
-28| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-91 dim
-29| "│ dsh > │描述任务，@ 添加文件，或输入 / 查看命令                                           │"
-  style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-7 dim
-  style 9-47 dim
-  style 91-91 dim
-30| "╰────────────────────────────────────────────────── Enter 发送 · Shift+Enter 换行 · / 命令 ╯"
-  style 0-91 dim
+7-26| <blank>
+27| "                                                                                            "
+28| " › │描述任务，@ 添加文件，或输入 / 查看命令                                                 "
+  style 1-1 fg=bright-magenta bold
+  style 2-2 dim
+  style 4-42 dim
+29| "                                                                                            "
+30| "  Enter 发送 · Shift+Enter 换行 · / 命令"
+  style 0-39 dim
 31| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim

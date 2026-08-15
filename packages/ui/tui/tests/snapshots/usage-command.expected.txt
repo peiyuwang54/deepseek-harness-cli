@@ -1,7 +1,7 @@
 terminal 120x30 buffer=normal length=30 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=8 viewportRow=13 bufferRow=13
+cursor visible column=3 viewportRow=12 bufferRow=12
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -12,27 +12,24 @@ buffer
 2| " main-session"
   style 1-12 dim
 3| <blank>
-4| "Assistant                                                                                                               "
-  style 0-8 fg=bright-magenta bold underline
-5| "The metrics are ready.                                                                                                  "
-6| "Model wait 1.2s · Response 0.3s · Completed 2026-07-21 20:00:01                                                         "
-  style 0-62 dim
-7| <blank>
-8| "Session usage                                                                                                           "
-  style 0-119 dim
-9| "1 turn · 1 step | LLM 1.6s | TTFT avg 1.2s · 83 tok/s | Cache hit 0% | Input 7.7K tok · Output 32 tok                   "
-  style 0-100 dim
-10-11| <blank>
-12| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-119 dim
-13| "│ dsh > │Describe a task, @ a file, or / for commands                                                                  │"
+4| "• The metrics are ready.                                                                                                "
   style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-7 dim
-  style 9-52 dim
-  style 119-119 dim
-14| "╰─────────────────────────────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+5| "Model wait 1.2s · Response 0.3s · Completed 2026-07-21 20:00:01                                                         "
+  style 0-62 dim
+6| <blank>
+7| "Session usage                                                                                                           "
   style 0-119 dim
+8| "1 turn · 1 step | LLM 1.6s | TTFT avg 1.2s · 83 tok/s | Cache hit 0% | Input 7.7K tok · Output 32 tok                   "
+  style 0-100 dim
+9-10| <blank>
+11| "                                                                                                                        "
+12| " › │Describe a task, @ a file, or / for commands                                                                        "
+  style 1-1 fg=bright-magenta bold
+  style 2-2 dim
+  style 4-47 dim
+13| "                                                                                                                        "
+14| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
 15| "/workspace/project (tui-staging)                       ▸ idle  deepseek-v4-flash [alt+m]  ↑7.7k ↓32 cache 0%  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim

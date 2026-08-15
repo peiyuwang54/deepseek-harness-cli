@@ -46,6 +46,7 @@ import {
 import { WorkspaceFileSearch } from '../src/chat/file-autocomplete.ts'
 import { osc52ClipboardSequence } from '../src/chat/clipboard.ts'
 import { CURSOR_BLINK_INTERVAL_MS } from '../src/chat/helpers.ts'
+import { formatDeepDivingStatus } from '../src/chat/language.ts'
 import { ResumePicker } from '../src/components/dialogs.ts'
 import {
   ATTRIBUTE_ROLES,
@@ -54,6 +55,7 @@ import {
   createPalette,
   highlightMarkdownCode,
   paletteSpec,
+  userMessageBackground,
 } from '../src/components/theme.ts'
 import {
   appendAssistant,
@@ -148,9 +150,9 @@ async function tick(): Promise<void> {
 }
 
 function promptWidth(output: string): number {
-  const row = output.split('\n').find(line => line.includes('dsh'))
+  const row = output.split('\n').find(line => line.includes('Describe a task'))
   if (row === undefined) throw new Error('prompt row not rendered')
-  return visibleWidth(row.slice(row.indexOf('dsh'), row.indexOf('dsh') + 6))
+  return visibleWidth(row.slice(0, row.indexOf('Describe a task')))
 }
 
 async function setup(options: TuiHarnessOptions = {}) {
@@ -237,7 +239,7 @@ describe('TUI config', () => {
     expect(resolveTuiConfig(undefined)).toEqual({
       fullscreen: true,
       mouse: true,
-      showReasoning: false,
+      showReasoning: true,
       maxToolOutputLines: 6,
       maxDiffEditLength: 1000,
       maxQuestionOptions: 8,
@@ -257,8 +259,8 @@ describe('TUI config', () => {
         color: true,
         truecolor: false,
         leftPrompt: '${cwd}${git/worktree}',
-        rightPrompt: '${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}',
-        inputPrompt: '${symbol} ${indicator}',
+        rightPrompt: '${goal}${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}',
+        inputPrompt: '${indicator}',
         inputPlaceholder: 'Describe a task, @ a file, or / for commands',
       },
       title: 'DeepSeek Harness',
@@ -307,8 +309,8 @@ describe('TUI config', () => {
         color: false,
         truecolor: true,
         leftPrompt: '${cwd}${git/worktree}',
-        rightPrompt: '${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}',
-        inputPrompt: '${symbol} ${indicator}',
+        rightPrompt: '${goal}${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}',
+        inputPrompt: '${indicator}',
         inputPlaceholder: 'Describe a task, @ a file, or / for commands',
       },
       title: 'DSH',
@@ -323,20 +325,20 @@ describe('software input cursor', () => {
     try {
       const call = intervalSpy.mock.calls.find(([, delay]) => delay === CURSOR_BLINK_INTERVAL_MS)
       expect(call).toBeDefined()
-      expect(result.terminal.output).toContain('dsh > │Describe a task')
+      expect(result.terminal.output).toContain('› │Describe a task')
 
       result.terminal.output = ''
       const blink = call?.[0]
       if (typeof blink !== 'function') throw new Error('cursor blink callback was not installed')
       blink()
       await tick()
-      expect(result.terminal.output).toContain('dsh >  Describe a task')
-      expect(result.terminal.output).not.toContain('dsh > │Describe a task')
+      expect(result.terminal.output).toContain('›  Describe a task')
+      expect(result.terminal.output).not.toContain('› │Describe a task')
 
       result.terminal.output = ''
       blink()
       await tick()
-      expect(result.terminal.output).toContain('dsh > │Describe a task')
+      expect(result.terminal.output).toContain('› │Describe a task')
     } finally {
       intervalSpy.mockRestore()
       await dispose(result)
@@ -349,8 +351,8 @@ describe('software input cursor', () => {
     try {
       const call = intervalSpy.mock.calls.find(([, delay]) => delay === CURSOR_BLINK_INTERVAL_MS)
       expect(call).toBeUndefined()
-      expect(result.terminal.output).toContain('dsh > Describe a task')
-      expect(result.terminal.output).not.toContain('dsh > │Describe a task')
+      expect(result.terminal.output).toContain('› Describe a task')
+      expect(result.terminal.output).not.toContain('› │Describe a task')
     } finally {
       intervalSpy.mockRestore()
       await dispose(result)
@@ -1949,7 +1951,8 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('Recent sessions')
     expect(result.terminal.output).toContain('permissions:')
     expect(result.terminal.output).toContain('/skills')
-    expect(result.terminal.output).toContain('╭ Message ')
+    expect(result.terminal.output).toContain('› │Describe a task')
+    expect(result.terminal.output).not.toContain('╭ Message ')
 
     result.terminal.output = ''
     result.session.append('turn/start', { turn: 1 })
@@ -1985,6 +1988,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     })
     expect(result.terminal.output).toContain('Goal restored (active) with automatic continuation disarmed')
     expect(result.terminal.output).toContain('/goal resume')
+    expect(result.terminal.output).toContain('Goal paused (/goal resume)')
     await dispose(result)
   })
 
@@ -2025,6 +2029,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     const result = await setup({
       contextWindow: 100,
       contextTokens: 42,
+      config: { showReasoning: false },
       // Short cwd: the footer clips its right (context/tools) segment first,
       // and the default worktree path would swallow it at 88 columns.
       cwd: '/opt',
@@ -2050,13 +2055,15 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('DEEPSEEK')
     expect(result.terminal.output).toContain('Coding agent ready.')
     expect(result.terminal.output).toContain('restored prompt')
+    expect(result.terminal.output).toContain('› restored prompt')
+    expect(result.terminal.output).not.toContain('You')
     expect(result.terminal.output).not.toContain('restored thought')
     expect(result.terminal.output).toContain('restored answer')
     expect(result.terminal.output).toContain('write tests')
     expect(result.terminal.output).toContain('/opt (tui-staging)')
     expect(result.terminal.output).toContain('↑1.3k ↓42')
     expect(result.terminal.output).toContain('deepseek-v4-flash [alt+m]')
-    expect(result.terminal.output).toContain('dsh > ')
+    expect(result.terminal.output).toContain('› │Describe a task')
     expect(result.terminal.output).not.toContain('main-session  deepseek-v4-flash')
     // Context resolution is async (resolveModelContext); settle before reading.
     await tick()
@@ -2412,8 +2419,10 @@ describe('pi-tui chat lifecycle and transcript', () => {
     // Pin a cwd free of the substring under test; the prompt context renders the path.
     const result = await setup({ status: 'running', cwd: '/workspace' })
     // Running with nothing queued: the badge is absent and the editor keeps its hint.
-    expect(result.terminal.output).toContain('Assistant')
-    expect(result.terminal.output).toContain('Model wait 0.0s')
+    expect(result.terminal.output).not.toContain('Assistant')
+    expect(result.terminal.output).toContain('Deep diving (')
+    expect(result.terminal.output).toContain('esc to interrupt')
+    expect(result.terminal.output).not.toContain('Model wait 0.0s')
     expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
     expect(result.terminal.output).toContain('Enter steer · Esc cancel')
     expect(result.terminal.output).toContain('│')
@@ -2508,6 +2517,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.agent.status = 'running'
     result.terminal.output = ''
     agentEvents(result.ctx, result.agent).emit('agent/status', { status: 'running' })
+    result.terminal.resize(result.terminal.columns + 1)
     await tick()
     expect(result.terminal.output).toContain('│')
     expect(result.terminal.output).not.toContain('queued')
@@ -2620,7 +2630,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.session.append('step/end', { turn: 1, step: 1 })
     await tick()
     expect(result.terminal.output).toContain('Completed ')
-    expect(result.terminal.output).toContain('Assistant')
+    expect(result.terminal.output).not.toContain('Assistant')
     expect(result.terminal.output).toContain('Model wait 0.0s · Completed')
     await dispose(result)
   })
@@ -2643,7 +2653,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
       result.terminal.output = ''
       agentEvents(result.ctx, result.agent).emit('agent/status', { status: 'running' })
       await tick()
-      expect(result.terminal.output).not.toContain('Model wait')
+      expect(result.terminal.output).toContain('Deep diving (0s • esc to interrupt)')
       expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
       expect(result.terminal.output).toContain('│')
       expect(result.terminal.output).not.toContain('Response 1s')
@@ -2654,8 +2664,8 @@ describe('pi-tui chat lifecycle and transcript', () => {
       result.terminal.output = ''
       result.session.append('assistant/chunk', { turn: 2, step: 1, chunk: { type: 'text-delta', index: 0, text: 'next' } })
       await tick()
-      expect(result.terminal.output).toContain('Model wait 1.0s')
-      expect(result.terminal.output).not.toContain('Model wait 3.0s')
+      expect(result.terminal.output).toContain('Deep diving (1s • esc to interrupt)')
+      expect(result.terminal.output).not.toContain('Deep diving (3s')
     } finally {
       if (result !== undefined) await dispose(result)
       nowSpy.mockRestore()
@@ -2664,54 +2674,26 @@ describe('pi-tui chat lifecycle and transcript', () => {
 
   it('starts a running status before lifecycle events arrive', async () => {
     const result = await setup({ status: 'running', omitInitialLifecycle: true })
-    expect(result.terminal.output).not.toContain('Model wait')
+    expect(result.terminal.output).toContain('Deep diving (0s • esc to interrupt)')
     await dispose(result)
   })
 
-  it('replaces the prompt caret with a phase-specific status glyph while running', async () => {
-    // Hold the clock past the fade-in so the glyph is at full opacity; with
-    // color off the settled glyph renders as its bare character.
-    let clock = 0
-    const result = await setup({ status: 'running', now: () => clock })
-    clock = 1_000
-
-    // A space separates `dsh` from the caret slot: the prompt reads
-    // `dsh <glyph> ` with the same visible width as the idle `dsh > `, so the
-    // cursor never shifts. Assert both the glyph slot and that constant width
-    // (color is off in this harness, so output carries no ANSI to strip).
-    // Each phase swaps only the glyph character in the same slot at equal width.
-    const phaseGlyph: [() => void, string][] = [
-      [() => result.session.append('assistant/chunk', { turn: 1, step: 1, chunk: { type: 'reasoning-delta', index: 0, text: 'weighing' } }), 'dsh ✻ '],
-      [() => result.session.append('assistant/chunk', { turn: 1, step: 1, chunk: { type: 'text-delta', index: 1, text: 'answer' } }), 'dsh ● '],
-      [() => result.session.append('tool/call', { turn: 1, step: 1, callId: 'c1' as never, name: 'bash', arguments: '{}' }), 'dsh ⚙ '],
+  it('keeps the composer prefix stable while work moves through model phases', async () => {
+    const result = await setup({ status: 'running', now: () => 1_000 })
+    const width = promptWidth(result.terminal.output)
+    const drive = [
+      () => result.session.append('assistant/chunk', { turn: 1, step: 1, chunk: { type: 'reasoning-delta', index: 0, text: 'weighing' } }),
+      () => result.session.append('assistant/chunk', { turn: 1, step: 1, chunk: { type: 'text-delta', index: 1, text: 'answer' } }),
+      () => result.session.append('tool/call', { turn: 1, step: 1, callId: 'c1' as never, name: 'bash', arguments: '{}' }),
     ]
-    let runningWidth: number | undefined
-    for (const [drive, expected] of phaseGlyph) {
+    for (const advance of drive) {
       result.terminal.output = ''
-      drive()
+      advance()
       await tick()
-      expect(result.terminal.output).toContain(expected)
-      runningWidth ??= promptWidth(result.terminal.output)
-      expect(promptWidth(result.terminal.output)).toBe(runningWidth)
+      expect(result.terminal.output).toContain('› │Describe')
+      expect(result.terminal.output).not.toMatch(/[◍✻●⚙⊙] │Describe/u)
+      expect(promptWidth(result.terminal.output)).toBe(width)
     }
-
-    // Idle begins a fade-out; once it settles (clock past the fade window) the
-    // plain `>` caret returns at the same width — no horizontal shift. The
-    // fade-out timer emits intermediate frames, so read the terminal's final
-    // rendered prompt row rather than the accumulated stream.
-    result.agent.status = 'idle'
-    agentEvents(result.ctx, result.agent).emit('agent/status', { status: 'idle' })
-    clock = 2_000
-    await new Promise(resolve => setTimeout(resolve, 150))
-    await tick()
-    const promptRow = (): string => {
-      const rows = result.terminal.output.split(/\r?\n|\x1b\[[0-9;]*[A-Za-z]/u).filter(r => r.includes('dsh'))
-      return rows.at(-1) ?? ''
-    }
-    expect(promptRow()).toContain('dsh > ')
-    expect(promptRow()).not.toMatch(/dsh(?:\x1b\[[0-9;]*m| )*[◍✻●⚙⊙]/u)
-    expect(promptWidth(result.terminal.output)).toBe(runningWidth)
-
     await dispose(result)
   })
 
@@ -2725,7 +2707,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.terminal.output = ''
     await new Promise(resolve => setTimeout(resolve, 75))
 
-    expect(result.terminal.output).toContain('dsh ⊙ ')
+    expect(result.terminal.output).toContain('› │Describe')
     expect(result.terminal.output).toContain('Context being compacted 1.0s')
     expect(promptWidth(result.terminal.output)).toBe(idleWidth)
     expect(result.terminal.progress.at(-1)).toBe(true)
@@ -2743,13 +2725,13 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.session.append('compaction/start', { compactionId: LIVE_COMPACTION_ID, turn: 1 })
     await tick()
 
-    expect(result.terminal.output).toContain('dsh > ')
-    expect(result.terminal.output).not.toContain('dsh ⊙ ')
+    expect(result.terminal.output).toContain('› │Describe')
+    expect(result.terminal.output).not.toContain('⊙ │Describe')
     expect(result.terminal.progress.at(-1)).toBe(false)
     await dispose(result)
   })
 
-  it('fades a closed standalone compaction back to the plain caret', async () => {
+  it('closes standalone compaction without changing the composer prefix', async () => {
     let clock = 0
     const result = await setup({ omitInitialLifecycle: true, now: () => clock })
     clock = 1_000
@@ -2764,8 +2746,8 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.terminal.resize(result.terminal.columns + 1)
     await tick()
 
-    expect(result.terminal.output).toContain('dsh > ')
-    expect(result.terminal.output).not.toMatch(/dsh [◍✻●⚙⊙]/u)
+    expect(result.terminal.output).toContain('› │Describe')
+    expect(result.terminal.output).not.toMatch(/[◍✻●⚙⊙] │Describe/u)
     expect(result.terminal.output).not.toContain('Context being compacted')
     expect(result.terminal.progress.at(-1)).toBe(false)
     await dispose(result)
@@ -2795,12 +2777,12 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.terminal.resize(result.terminal.columns + 1)
     await tick()
 
-    expect(result.terminal.output).toContain('dsh ⊙ ')
+    expect(result.terminal.output).toContain('› │Describe')
     expect(result.terminal.progress.at(-1)).toBe(true)
     await dispose(result)
   })
 
-  it('keeps a running turn phase glyph ahead of standalone compaction', async () => {
+  it('keeps the live-turn row and composer stable during standalone compaction', async () => {
     let clock = 0
     const result = await setup({ status: 'running', now: () => clock })
     clock = 1_000
@@ -2808,16 +2790,16 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.session.append('compaction/start', { compactionId: LIVE_COMPACTION_ID, turn: null })
     await tick()
 
-    expect(result.terminal.output).toContain('dsh ◍ ')
-    expect(result.terminal.output).not.toContain('dsh ⊙ ')
+    expect(result.terminal.output).toContain('› │Describe')
+    expect(result.terminal.output).toContain('Deep diving (')
     result.session.append('compaction/end', { compactionId: LIVE_COMPACTION_ID, turn: null })
     await tick()
     result.terminal.output = ''
     result.terminal.resize(result.terminal.columns + 1)
     await tick()
 
-    expect(result.terminal.output).toContain('dsh ◍ ')
-    expect(result.terminal.output).not.toContain('dsh ⊙ ')
+    expect(result.terminal.output).toContain('› │Describe')
+    expect(result.terminal.output).toContain('Deep diving (')
     expect(result.terminal.progress.at(-1)).toBe(true)
     await dispose(result)
   })
@@ -2838,7 +2820,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
       await tick()
 
       expect(intervalSpy).toHaveBeenCalledOnce()
-      expect(result.terminal.output).toContain('dsh ⊙ ')
+      expect(result.terminal.output).toContain('› │Describe')
       expect(result.terminal.progress.at(-1)).toBe(true)
 
       result.session.append('compaction/end', { compactionId: LIVE_COMPACTION_ID, turn: null })
@@ -2864,8 +2846,8 @@ describe('pi-tui chat lifecycle and transcript', () => {
       },
     })
 
-    expect(result.terminal.output).toContain('dsh > ')
-    expect(result.terminal.output).not.toContain('dsh ⊙ ')
+    expect(result.terminal.output).toContain('› │Describe')
+    expect(result.terminal.output).not.toContain('⊙ │Describe')
     expect(result.terminal.output).not.toContain('Context being compacted')
     expect(result.terminal.progress.at(-1)).toBe(false)
     await dispose(result)
@@ -2895,114 +2877,23 @@ describe('pi-tui chat lifecycle and transcript', () => {
     }
   })
 
-  // Extract the running glyph's interpolated gray channel from a rendered frame.
-  const glyphGray = (frame: string): number => {
-    const m = /\x1b\[38;2;(\d+);(\d+);(\d+)m●/u.exec(frame)
-    if (m === null) throw new Error('frame did not paint a truecolor glyph')
-    const [r, g, b] = [Number(m[1]), Number(m[2]), Number(m[3])]
-    // Pure gray: equal channels, never the blue-dominant accent.
-    expect(r).toBe(g)
-    expect(g).toBe(b)
-    return r
-  }
-
-  it('throbs the running glyph in dim gray, breathing between trough and full without blanking, never accent', async () => {
-    let clock = 0
-    let chunkIndex = 0
-    const result = await setup({ status: 'running', config: { theme: { color: true, truecolor: true } }, now: () => clock })
-    // A fresh chunk index each frame changes the streamed line, forcing the
-    // diffing terminal to repaint the prompt row and re-emit the glyph slot.
-    const frameAt = async (t: number): Promise<string> => {
-      clock = t
-      chunkIndex += 1
-      result.terminal.output = ''
-      result.session.append('assistant/chunk', { turn: 1, step: 1, chunk: { type: 'text-delta', index: chunkIndex, text: '.' } })
-      await tick()
-      return result.terminal.output
-    }
-
-    // The pulse breathes between the dimmest trough gray and the settled peak
-    // and back, never blanking. At phase 0 (t=1400, pulse level 0, past fade-in)
-    // the glyph still paints the trough gray, so the breath dims but never
-    // disappears — a symmetric bold→dim→bold throb.
-    const trough = await frameAt(1_400)
-    expect(trough).toMatch(/●/u)
-    expect(glyphGray(trough)).toBe(43)
-    // Half a period later (t=2100, pulse peak) it paints the brightest gray.
-    const peak = await frameAt(2_100)
-    expect(glyphGray(peak)).toBe(136)
-    // A frame partway up the swell paints a gray strictly between trough and
-    // full, and the glyph is never the accent color.
-    const rising = await frameAt(1_680)
-    const grey = glyphGray(rising)
-    expect(grey).toBeGreaterThan(43)
-    expect(grey).toBeLessThan(136)
-    expect(rising).not.toMatch(/\x1b\[94m●/u)
-
-    await dispose(result)
-  })
-
-  it('fades the running glyph out to the plain caret after the turn ends', async () => {
-    let clock = 0
-    const result = await setup({ status: 'running', config: { theme: { color: true, truecolor: true } }, now: () => clock })
-    clock = 1_000
-    result.session.append('assistant/chunk', { turn: 1, step: 1, chunk: { type: 'text-delta', index: 0, text: '.' } })
-    await tick()
-
-    // End the turn: the last glyph fades out over 300 ms rather than vanishing.
+  it('keeps the branded composer prefix stable when a truecolor turn starts and stops', async () => {
+    const result = await setup({ status: 'running', config: { theme: { color: true, truecolor: true } } })
+    expect(result.terminal.output).toContain('›')
+    expect(result.terminal.output).not.toMatch(/[◍✻●⚙⊙] │Describe/u)
     result.agent.status = 'idle'
+    result.terminal.output = ''
     agentEvents(result.ctx, result.agent).emit('agent/status', { status: 'idle' })
     await tick()
-    // Just after the end the glyph still paints a gray, not `>`.
-    expect(result.terminal.output).toMatch(/\x1b\[38;2;\d+;\d+;\d+m●/u)
-    expect(result.terminal.output).not.toContain('dsh \x1b[90m>')
-
-    // While the clock stays within the fade window the timer keeps ticking
-    // without clearing the fade (the not-yet-elapsed branch): the last frame is
-    // still the fading glyph, and the plain caret has not returned.
-    result.terminal.output = ''
-    await new Promise(resolve => setTimeout(resolve, 120))
-    const lastPromptRow = result.terminal.output.split(/\x1b\[[0-9;]*[A-Za-z]/u).filter(r => r.includes('dsh')).at(-1) ?? ''
-    expect(lastPromptRow).not.toContain('dsh \x1b[90m>')
-
-    // Past the fade window the fade timer clears and the plain caret returns.
-    clock = 2_000
-    result.terminal.output = ''
-    await new Promise(resolve => setTimeout(resolve, 120))
-    await tick()
-    expect(result.terminal.output).not.toMatch(/dsh(?:\x1b\[[0-9;]*m| )*●/u)
-    expect(result.terminal.output).toContain('>')
-
-    await dispose(result)
-  })
-
-  it('appears past the fade midpoint and disappears without truecolor, still dim not accent', async () => {
-    let clock = 0
-    const result = await setup({ status: 'running', config: { theme: { color: true } }, now: () => clock })
-    const frameAt = async (t: number): Promise<string> => {
-      clock = t
-      result.terminal.output = ''
-      result.session.append('assistant/chunk', { turn: 1, step: 1, chunk: { type: 'text-delta', index: 0, text: '.' } })
-      await tick()
-      return result.terminal.output
-    }
-
-    // Without truecolor there is no per-frame gray: below the fade midpoint the
-    // glyph slot is blank; past it the glyph shows in the palette dim role,
-    // never the accent (ANSI 95).
-    const early = await frameAt(60)
-    expect(early).not.toMatch(/dsh(?:\x1b\[[0-9;]*m| )*●/u)
-    const shown = await frameAt(300)
-    expect(shown).toMatch(/\x1b\[2;39m●/u)
-    expect(shown).not.toMatch(/\x1b\[95m●/u)
-
+    expect(result.terminal.output).toContain('›')
+    expect(result.terminal.output).not.toMatch(/[◍✻●⚙⊙] │Describe/u)
     await dispose(result)
   })
 
   it('shows the plain prompt caret while idle', async () => {
     const result = await setup({ now: () => 0 })
-    expect(result.terminal.output).toContain('dsh > ')
-    expect(result.terminal.output).not.toMatch(/dsh [◍✻●⚙⊙]/u)
+    expect(result.terminal.output).toContain('› │Describe')
+    expect(result.terminal.output).not.toMatch(/[◍✻●⚙⊙] │Describe/u)
     await dispose(result)
   })
 
@@ -3066,7 +2957,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
       now += 1_000
       refresh()
       await tick()
-      expect(result.terminal.output).toContain('Model wait 1.0s')
+      expect(result.terminal.output).toContain('Deep diving (1s • esc to interrupt)')
     } finally {
       if (result !== undefined) await dispose(result)
       intervals.mockRestore()
@@ -3082,7 +2973,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.terminal.output = ''
     result.session.append('assistant/chunk', { turn: 1, step: 1, chunk: { type: 'text-delta', index: 0, text: 'hi' } })
     await tick()
-    expect(result.terminal.output).toContain('Model wait 1m35.0s')
+    expect(result.terminal.output).toContain('Deep diving (1m 35s • esc to interrupt)')
     nowSpy.mockRestore()
     await dispose(result)
   })
@@ -3131,7 +3022,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.terminal.send('\x1b[?997;2n')
     await tick()
     await tick()
-    expect(result.terminal.output).toContain('Model wait 1.0s · Response 4.0s')
+    expect(result.terminal.output).toContain('Deep diving (5s • esc to interrupt)')
 
     nowSpy.mockRestore()
     await dispose(result)
@@ -3177,7 +3068,8 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('[future-block]')
     expect(result.terminal.output).toContain('[content]')
     expect(result.terminal.output).toContain('\x1b[36mconst answer = 42\x1b[39m')
-    expect(result.terminal.output).not.toContain('```')
+    // User input is a literal Codex-style record, while the assistant fence is rendered.
+    expect(result.terminal.output).toContain('```ts')
     expect(result.terminal.output).toContain('↑2.0m ↓1.5m')
     await dispose(result)
   })
@@ -3382,7 +3274,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await tick()
 
     expect(result.terminal.output).toContain('untitled')
-    expect(result.terminal.output).toContain('unset (effort unset; reasoning blocks hidden)')
+    expect(result.terminal.output).toContain('unset (effort unset; reasoning blocks shown)')
     // The /status invocation's command/run lands directly on the empty log — no turn wraps it.
     expect(result.terminal.output).toContain('idle · 1 event · 0 turns · 0 steps · 0 tool calls')
     expect(result.terminal.output).toContain('n/a (0 read + 0 write)')
@@ -3419,8 +3311,9 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('Tool and context cards expanded.')
     expect(result.terminal.output).toContain('Reasoning blocks hidden.')
 
+    const shownOutput = result.terminal.output.length
     await run('/details reasoning on')
-    expect(result.terminal.output).toContain('Reasoning blocks shown.')
+    expect(result.terminal.output.slice(shownOutput)).toContain('Reasoning blocks shown.')
 
     // Bare `reasoning` toggles: shown -> hidden.
     const toggleOutput = result.terminal.output.length
@@ -3470,7 +3363,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.terminal.send('\x1b[B')
     result.terminal.send('\t')
     await tick()
-    expect(result.terminal.output).toContain('Reasoning blocks shown.')
+    expect(result.terminal.output).toContain('Reasoning blocks hidden.')
 
     // Enter closes without further changes.
     const entered = result.terminal.output.length
@@ -3481,7 +3374,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     // Esc and Ctrl+C also close; the reopened dialog shows the live values.
     const reopened = await open()
     expect(result.terminal.output.slice(reopened)).toContain('collapsed')
-    expect(result.terminal.output.slice(reopened)).toContain('shown')
+    expect(result.terminal.output.slice(reopened)).toContain('hidden')
     result.terminal.send('\x1b')
     await tick()
     const ctrlCOutput = await open()
@@ -4159,7 +4052,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
 
     const terminal = new HeadlessTerminal(52, 24)
     const mouse = await createTuiTestHarness(terminal, vi.fn(), {
-      config: { fullscreen: true, mouse: true },
+      config: { fullscreen: true, mouse: true, showReasoning: false },
       agentOptions: { provider: 'alpha', model: '模型一' },
       catalog: {
         providers: [{ id: 'alpha', name: 'Alpha' }],
@@ -4186,7 +4079,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
   it('keeps injected context and reasoning folded until the prompt details target is clicked', async () => {
     const terminal = new HeadlessTerminal(96, 28)
     const result = await createTuiTestHarness(terminal, vi.fn(), {
-      config: { fullscreen: true, mouse: true },
+      config: { fullscreen: true, mouse: true, showReasoning: false },
       beforeMount(session) {
         session.append('user/message', createUserMessage({
           content: [{ type: 'text', text: '<system-reminder>\nprivate context line\n</system-reminder>' }],
@@ -4485,7 +4378,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.terminal.send('/status')
     result.terminal.send('\r')
     await tick()
-    expect(result.terminal.output).toContain('beta/b1 (effort max; reasoning blocks hidden)')
+    expect(result.terminal.output).toContain('beta/b1 (effort max; reasoning blocks shown)')
 
     const assembly = await result.ctx.systemPrompt.assemble(assembleContextFor(result.agent))
     expect(assembly.variables).toMatchObject({ provider: 'beta', model: 'b1' })
@@ -6218,8 +6111,8 @@ describe('tool cards and surface replay', () => {
     .slice(terminal.output.lastIndexOf('\x1b[2J'))
     .replaceAll(/\x1b\[[0-9;]*[A-Za-z]|\x1b\][^\x07]*\x07|\r/g, '')
 
-  const countAssistantHeaders = (frame: string): number => frame.split('\n')
-    .filter(row => row.trim() === 'Assistant').length
+  const countAssistantBullets = (frame: string): number => frame.split('\n')
+    .filter(row => row.trimStart().startsWith('• ')).length
 
   /** One turn with text -> tool call/result -> text across two steps. */
   const appendTwoStepTurn = (session: Awaited<ReturnType<typeof setup>>['session']): void => {
@@ -6239,15 +6132,15 @@ describe('tool cards and surface replay', () => {
     session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
   }
 
-  it('folds a turn to one Assistant header in hidden mode and restores headers on cycle', async () => {
+  it('folds a turn to one response bullet in hidden mode and restores bullets on cycle', async () => {
     const result = await setup({ tools })
     appendTwoStepTurn(result.session)
     await tick()
 
-    // Collapsed (default): each step keeps its own header.
+    // Collapsed (default): each step keeps its own response bullet.
     result.terminal.send('\x0c')
     await tick()
-    expect(countAssistantHeaders(lastFrame(result.terminal))).toBe(2)
+    expect(countAssistantBullets(lastFrame(result.terminal))).toBe(2)
 
     // collapsed -> expanded -> hidden.
     result.terminal.send('\x0f')
@@ -6256,23 +6149,23 @@ describe('tool cards and surface replay', () => {
     result.terminal.send('\x0c')
     await tick()
     const hidden = lastFrame(result.terminal)
-    expect(countAssistantHeaders(hidden)).toBe(1)
+    expect(countAssistantBullets(hidden)).toBe(1)
     expect(hidden).toContain('first step text')
     expect(hidden).toContain('second step text')
     expect(hidden).not.toContain('Tool / bash')
-    // The fold keeps model order: header text precedes the continuation.
+    // The fold keeps model order: the leading response precedes its continuation.
     expect(hidden.indexOf('first step text')).toBeLessThan(hidden.indexOf('second step text'))
 
-    // hidden -> collapsed restores per-step headers.
+    // hidden -> collapsed restores per-step bullets.
     result.terminal.send('\x0f')
     await tick()
     result.terminal.send('\x0c')
     await tick()
-    expect(countAssistantHeaders(lastFrame(result.terminal))).toBe(2)
+    expect(countAssistantBullets(lastFrame(result.terminal))).toBe(2)
     await dispose(result)
   })
 
-  it('gives the hidden-mode header to the first step with a visible body and keeps turns separate', async () => {
+  it('gives the hidden-mode bullet to the first step with a visible body and keeps turns separate', async () => {
     const result = await setup({ tools })
     // Turn 1, step 1 is tool-only; step 2 carries the turn's text.
     appendUser(result.session, 'tool-only first step')
@@ -6289,7 +6182,7 @@ describe('tool cards and surface replay', () => {
     appendAssistant(result.session, [{ type: 'text', text: 'late turn-one text' }], undefined, { turn: 1, step: 2 })
     result.session.append('step/end', { turn: 1, step: 2 })
     result.session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
-    // Turn 2 keeps its own header.
+    // Turn 2 keeps its own response bullet.
     result.session.append('turn/start', { turn: 2 })
     appendUser(result.session, 'next turn')
     result.session.append('step/start', { turn: 2, step: 1 })
@@ -6304,14 +6197,13 @@ describe('tool cards and surface replay', () => {
     result.terminal.send('\x0c')
     await tick()
     const hidden = lastFrame(result.terminal)
-    // One header per turn: the tool-only step neither renders a blank segment
-    // nor consumes turn one's header, which the late text step owns.
-    expect(countAssistantHeaders(hidden)).toBe(2)
+    // One bullet per turn: the tool-only step neither renders a blank segment
+    // nor consumes turn one's bullet, which the late text step owns.
+    expect(countAssistantBullets(hidden)).toBe(2)
     expect(hidden).toContain('late turn-one text')
     expect(hidden).toContain('turn-two text')
     const rows = hidden.split('\n').map(row => row.trim())
-    const turnOneHeader = rows.indexOf('Assistant')
-    expect(rows[turnOneHeader + 1]).toBe('late turn-one text')
+    expect(rows).toContain('• late turn-one text')
     await dispose(result)
   })
 
@@ -6328,7 +6220,7 @@ describe('tool cards and surface replay', () => {
     result.terminal.send('\x0c')
     await tick()
     const hidden = lastFrame(result.terminal)
-    expect(countAssistantHeaders(hidden)).toBe(1)
+    expect(countAssistantBullets(hidden)).toBe(1)
     expect(hidden).toContain('live first')
     expect(hidden).toContain('live second')
 
@@ -6336,7 +6228,7 @@ describe('tool cards and surface replay', () => {
     result.terminal.resize(89)
     await tick()
     const rebuilt = lastFrame(result.terminal)
-    expect(countAssistantHeaders(rebuilt)).toBe(1)
+    expect(countAssistantBullets(rebuilt)).toBe(1)
     expect(rebuilt).toContain('live second')
     await dispose(result)
   })
@@ -7462,6 +7354,36 @@ describe('terminal mounting', () => {
     expect(brandText('mark')).toBe('\x1b[38;2;77;107;254mmark\x1b[39m')
   })
 
+  it('maps detected terminal backgrounds to the Web user-bubble tone', () => {
+    expect(userMessageBackground(true, 'dark', { r: 0, g: 0, b: 0 })(' prompt '))
+      .toBe('\x1b[48;2;20;20;20m prompt \x1b[49m')
+    expect(userMessageBackground(true, 'light', { r: 255, g: 255, b: 255 })(' prompt '))
+      .toBe('\x1b[48;2;241;243;255m prompt \x1b[49m')
+    expect(userMessageBackground(true, 'dark', undefined)('prompt')).toBe('prompt')
+  })
+
+  it('shares the detected Web bubble surface between the composer and submitted prompts', async () => {
+    const result = await setup({ config: { theme: { color: true } } })
+    result.terminal.output = ''
+    result.terminal.send('\x1b]11;#000000\x07')
+    await tick()
+    await tick()
+    expect(result.terminal.output).toContain('\x1b[48;2;20;20;20m')
+
+    result.terminal.output = ''
+    appendUser(result.session, 'same surface')
+    await tick()
+    expect(result.terminal.output).toContain('same surface')
+    expect(result.terminal.output).toContain('\x1b[48;2;20;20;20m')
+    await dispose(result)
+  })
+
+  it('matches the Web label and Codex live-turn clock and interrupt hint', () => {
+    expect(formatDeepDivingStatus(14_999, 'en')).toBe('Deep diving (14s • esc to interrupt)')
+    expect(formatDeepDivingStatus(125_000, 'en')).toBe('Deep diving (2m 05s • esc to interrupt)')
+    expect(formatDeepDivingStatus(125_000, 'zh')).toBe('正在深度求索 (2分05秒 • Esc 中断)')
+  })
+
   it('uses semantic palette roles for diff and patch fences', () => {
     const palette = createPalette(true)
     const source = [
@@ -7661,8 +7583,9 @@ describe('banner sweep reveal', () => {
     expect(result.terminal.output).toContain('DEEPSEEK')
     expect(result.terminal.output).toContain('HARNESS')
     expect(result.terminal.output).toContain('main-session')
-    // The input frame is independent of the compact, borderless banner.
-    expect(result.terminal.output).toContain('╭ Message ')
+    // The minimal composer is independent of the compact banner.
+    expect(result.terminal.output).toContain('› │Describe a task')
+    expect(result.terminal.output).not.toContain('╭ Message ')
     // A mid-sweep frame rendered a clipped title: `DEEPSEEK` with no `HARNESS`
     // on the same line.
     const clipped = result.terminal.output
@@ -7677,7 +7600,8 @@ describe('banner sweep reveal', () => {
     await tick()
     expect(result.terminal.output).toContain('Coding agent ready.')
     expect(result.terminal.output).toContain('DEEPSEEK')
-    expect(result.terminal.output).toContain('╭ Message ')
+    expect(result.terminal.output).toContain('› │Describe a task')
+    expect(result.terminal.output).not.toContain('╭ Message ')
     // No reveal frames: the banner is drawn whole from the first render, so no
     // clipped-title frame ever appears.
     const clipped = result.terminal.output

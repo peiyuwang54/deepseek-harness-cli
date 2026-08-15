@@ -1,7 +1,7 @@
 terminal 80x24 buffer=normal length=25 base=1 viewport=1
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=8 viewportRow=21 bufferRow=22
+cursor visible column=3 viewportRow=20 bufferRow=21
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -12,14 +12,12 @@ buffer
 2| " main-session"
   style 1-12 dim
 3| <blank>
-4| "You                                                                             "
-  style 0-2 fg=bright-magenta bold underline
-5| "Old prompt with a long line that exercises wrapping and stays visible after     "
-6| "compaction.                                                                     "
-7| <blank>
-8| "Assistant                                                                       "
-  style 0-8 fg=bright-magenta bold underline
-9| <blank>
+4| "                                                                                "
+5| " › Old prompt with a long line that exercises wrapping and stays visible after  "
+  style 1-1 fg=blue bold
+6| " compaction.                                                                    "
+7| "                                                                                "
+8-9| <blank>
 10| "● Tool / bash / Run the coverage gate"
   style 0-36 fg=green
 11| "$ pnpm run test:coverage                                                        "
@@ -36,19 +34,15 @@ buffer
   style 0-16 dim
 17| "[exit 0]                                                                        "
   style 0-7 dim
-18| "Model wait 0.0s                                                                 "
-  style 0-14 dim
-19-20| <blank>
-21| "╭ Message ─────────────────────────────────────────────────────────────────────╮"
-  style 0-79 dim
-22| "│ dsh > │Describe a task, @ a file, or / for commands                          │"
-  style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-7 dim
-  style 9-52 dim
-  style 79-79 dim
-23| "╰─────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
-  style 0-79 dim
+18-19| <blank>
+20| "                                                                                "
+21| " › │Describe a task, @ a file, or / for commands                                "
+  style 1-1 fg=bright-magenta bold
+  style 2-2 dim
+  style 4-47 dim
+22| "                                                                                "
+23| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
 24| "/workspace/project (tui-st  ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-25 dim

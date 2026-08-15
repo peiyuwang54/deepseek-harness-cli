@@ -38,7 +38,7 @@ import {
   type StepPosition,
   type StepTimingTracker,
 } from '../chat/timing.ts'
-import { tuiCopy, type TuiLocale } from '../chat/language.ts'
+import { formatDeepDivingStatus, tuiCopy, type TuiLocale } from '../chat/language.ts'
 
 const packageMetadata = createRequire(import.meta.url)('@deepseek-ai/dsh-tui/package.json') as { version: string }
 const packageVersion = packageMetadata.version
@@ -124,15 +124,6 @@ function renderDiff(
     }
   }
   return { lines, added, removed, approximate: false }
-}
-
-/**
- * A message's bold, underlined role header in the role color. The underline
- * bands each role without a background fill or per-line prefix, so it reads on
- * any theme and a body drag-select copies the message text verbatim.
- */
-function messageHeader(label: string, color: (text: string) => string, palette: Palette): string {
-  return palette.bold(palette.underline(color(displayText(label))))
 }
 
 /** One detached session row shown on the zero-state welcome dashboard. */
@@ -343,26 +334,79 @@ export class HeaderComponent implements Component {
 }
 
 /**
- * A user or steering prompt in the transcript. An underlined accent role header
- * plus blank-line spacing separate it from surrounding blocks; body lines carry
- * no prefix or indent, so a terminal drag-select copies the prompt verbatim.
+ * A submitted prompt rendered as the Codex `›` input record. The detected
+ * terminal background receives the same low-contrast surface role as the Web
+ * user bubble; terminals without an OSC 11 report retain the prefix and
+ * spacing without assuming a background color.
  */
-export class UserMessageComponent extends Container {
-  constructor(text: string, palette: Palette, mdTheme: MarkdownTheme, label = 'You') {
-    super()
-    this.addChild(new Text(messageHeader(label, palette.accent, palette), 0, 0))
-    this.addChild(new Markdown(displayText(text), 0, 0, mdTheme, { color: value => palette.text(value) }, {
-      preserveOrderedListMarkers: true,
-      preserveBackslashEscapes: true,
-    }))
+export class UserMessageComponent extends Text {
+  constructor(text: string, palette: Palette, background: (text: string) => string) {
+    super(`${palette.bold(palette.brand('›'))} ${displayText(text)}`, 1, 1, background)
+  }
+}
+
+const LIVE_STATUS_FRAMES = ['✦', '✧', '·', '✧'] as const
+
+/** Transient animated turn state kept at the tail of the live conversation. */
+export class LiveTurnStatusComponent implements Component {
+  /**
+   * @param startedAt - Durable start time of the active turn.
+   * @param now - Current render clock.
+   * @param locale - Active terminal locale.
+   * @param palette - Semantic terminal palette.
+   */
+  constructor(
+    private readonly startedAt: () => number | undefined,
+    private readonly now: () => number,
+    private readonly locale: () => TuiLocale,
+    private readonly palette: Palette,
+  ) {}
+
+  invalidate(): void {}
+
+  render(width: number): string[] {
+    const renderTime = this.now()
+    const startedAt = this.startedAt() ?? renderTime
+    const frame = LIVE_STATUS_FRAMES[Math.floor(renderTime / 160) % LIVE_STATUS_FRAMES.length] as string
+    const status = formatDeepDivingStatus(renderTime - startedAt, this.locale())
+    return [truncateToWidth(`${this.palette.accent(frame)} ${this.palette.text(status)}`, Math.max(1, width), '…')]
+  }
+}
+
+/**
+ * Markdown body with the Codex-style first-line bullet and aligned continuation
+ * indent used for assistant output.
+ */
+class AssistantMarkdownComponent implements Component {
+  private readonly markdown: Markdown
+
+  constructor(
+    source: string,
+    private readonly firstPrefix: string,
+    private readonly continuationPrefix: string,
+    mdTheme: MarkdownTheme,
+    style: ConstructorParameters<typeof Markdown>[4],
+  ) {
+    this.markdown = new Markdown(source, 0, 0, mdTheme, style)
+  }
+
+  invalidate(): void {
+    this.markdown.invalidate()
+  }
+
+  render(width: number): string[] {
+    const prefixWidth = Math.max(visibleWidth(this.firstPrefix), visibleWidth(this.continuationPrefix))
+    return this.markdown.render(Math.max(1, width - prefixWidth)).map((line, index) =>
+      `${index === 0 ? this.firstPrefix : this.continuationPrefix}${line}`)
   }
 }
 
 /**
  * Children of a settled assistant message: optional reasoning block then the
- * response text. A folded continuation (a later step of a turn while tool cards
- * are hidden) drops the `Assistant` header and renders nothing when it has no
- * visible body, so tool-only steps leave no blank segment behind.
+ * response text. Ordinary output uses a dim bullet instead of a repeated role
+ * heading. A folded continuation (a later step of a turn while tool cards are
+ * hidden) keeps the two-cell indent without starting another bullet and renders
+ * nothing when it has no visible body.
  */
 function assistantMessageChildren(
   content: readonly ContentBlock[],
@@ -376,16 +420,29 @@ function assistantMessageChildren(
   const showsReasoning = reasoning !== '' && showReasoning
   if (foldedContinuation && !showsReasoning && text === '') return []
   const children: Component[] = [new Spacer(1)]
-  if (!foldedContinuation) {
-    children.push(new Text(messageHeader('Assistant', palette.accent, palette), 0, 0))
-  }
+  const bulletPrefix = `${palette.dim('•')} `
+  const firstPrefix = foldedContinuation ? '  ' : bulletPrefix
+  const continuationPrefix = '  '
   if (showsReasoning) {
     children.push(
-      new Text(palette.italic(palette.dim('Reasoning')), 0, 0),
-      new Markdown(reasoning, 0, 0, mdTheme, { color: value => palette.dim(value), italic: true }),
+      new AssistantMarkdownComponent(
+        `Think\n\n${reasoning}`,
+        firstPrefix,
+        continuationPrefix,
+        mdTheme,
+        { color: value => palette.dim(value), italic: true },
+      ),
     )
   }
-  if (text) children.push(new Markdown(text, 0, 0, mdTheme, { color: value => palette.text(value) }))
+  if (text) {
+    children.push(new AssistantMarkdownComponent(
+      text,
+      showsReasoning && !foldedContinuation ? bulletPrefix : firstPrefix,
+      continuationPrefix,
+      mdTheme,
+      { color: value => palette.text(value) },
+    ))
+  }
   return children
 }
 
@@ -401,7 +458,6 @@ class StepTimingComponent extends Container {
     private readonly position: StepPosition,
     private readonly events: () => readonly SessionEvent[],
     private readonly tracker: StepTimingTracker,
-    private readonly now: () => number,
     private readonly palette: Palette,
   ) {
     super()
@@ -420,11 +476,10 @@ class StepTimingComponent extends Container {
 
   private rebuild(): void {
     this.clear()
-    const totals = this.tracker.totalsAt(this.events(), this.position, this.completionTime ?? this.now())
+    if (this.completionTime === undefined) return
+    const totals = this.tracker.totalsAt(this.events(), this.position, this.completionTime)
     const timing = formatTimingTotals(totals, true)
-    const header = this.completionTime === undefined
-      ? timing
-      : `${timing} · Completed ${formatCompletionTime(this.completionTime)}`
+    const header = `${timing} · Completed ${formatCompletionTime(this.completionTime)}`
     this.addChild(new Text(this.palette.dim(header), 0, 0))
   }
 }
@@ -451,13 +506,12 @@ export class StreamingAssistantComponent extends Container {
     readonly position: StepPosition,
     events: () => readonly SessionEvent[],
     tracker: StepTimingTracker,
-    now: () => number,
     private showReasoning: boolean,
     private readonly palette: Palette,
     private readonly mdTheme: MarkdownTheme,
   ) {
     super()
-    this.timing = new StepTimingComponent(position, events, tracker, now, palette)
+    this.timing = new StepTimingComponent(position, events, tracker, palette)
     this.rebuild()
   }
 
@@ -521,7 +575,7 @@ export class StreamingAssistantComponent extends Container {
   }
 
   /**
-   * Mark this step as a folded continuation of its turn: no `Assistant` header,
+   * Mark this step as a folded continuation of its turn: no new leading bullet,
    * and no output at all while the step has no visible body. Used while tool
    * cards are hidden so a turn reads as one assistant message.
    * @param folded - Whether to render as a headerless continuation.
@@ -534,7 +588,7 @@ export class StreamingAssistantComponent extends Container {
 
   /**
    * Whether the step currently renders visible reasoning or text.
-   * @returns `true` when a header-owning render would show a body.
+   * @returns `true` when a bullet-owning render would show a body.
    */
   hasVisibleBody(): boolean {
     const content = this.presentedContent()

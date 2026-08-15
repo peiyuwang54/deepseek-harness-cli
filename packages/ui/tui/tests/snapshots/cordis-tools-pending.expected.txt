@@ -1,7 +1,7 @@
 terminal 96x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=8 viewportRow=22 bufferRow=22
+cursor visible column=3 viewportRow=20 bufferRow=20
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -11,43 +11,36 @@ buffer
   style 1-21 dim
 2| " main-session"
   style 1-12 dim
-3| <blank>
-4| "Assistant                                                                                       "
-  style 0-8 fg=bright-magenta bold underline
-5| <blank>
-6| "○ Tool / cordis_inspect_list"
+3-4| <blank>
+5| "○ Tool / cordis_inspect_list"
   style 0-27 fg=yellow
-7| "List Cordis Inspect Providers                                                                   "
-8| <blank>
-9| "○ Tool / cordis_define"
+6| "List Cordis Inspect Providers                                                                   "
+7| <blank>
+8| "○ Tool / cordis_define"
   style 0-21 fg=yellow
-10| "Register Cordis Plugin \"snapshot-marker\" for new snap-*: Expose a snapshot-only marker service. "
-11| "{                                                                                               "
-12| "  \"host\": \"return { name: 'snapshot-marker', apply(ctx) { ctx.provide('snapshotMarker', { ready:"
-13| "true }) } }\"                                                                                    "
-14| "}                                                                                               "
-15| <blank>
-16| "○ Tool / cordis_stop"
+9| "Register Cordis Plugin \"snapshot-marker\" for new snap-*: Expose a snapshot-only marker service. "
+10| "{                                                                                               "
+11| "  \"host\": \"return { name: 'snapshot-marker', apply(ctx) { ctx.provide('snapshotMarker', { ready:"
+12| "true }) } }\"                                                                                    "
+13| "}                                                                                               "
+14| <blank>
+15| "○ Tool / cordis_stop"
   style 0-19 fg=yellow
-17| "Stop Cordis Plugin snap-1                                                                       "
-18| "Model wait 0.0s                                                                                 "
-  style 0-14 dim
-19-20| <blank>
-21| "╭ Message ─────────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-95 dim
-22| "│ dsh > │Describe a task, @ a file, or / for commands                                          │"
-  style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-7 dim
-  style 9-52 dim
-  style 95-95 dim
-23| "╰─────────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
-  style 0-95 dim
-24| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+16| "Stop Cordis Plugin snap-1                                                                       "
+17-18| <blank>
+19| "                                                                                                "
+20| " › │Describe a task, @ a file, or / for commands                                                "
+  style 1-1 fg=bright-magenta bold
+  style 2-2 dim
+  style 4-47 dim
+21| "                                                                                                "
+22| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+23| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 44-49 dim
   style 52-76 dim
   style 79-83 dim
   style 86-95 dim
-25-35| <blank>
+24-35| <blank>

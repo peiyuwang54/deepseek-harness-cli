@@ -1,7 +1,7 @@
 terminal 92x32 buffer=normal length=33 base=1 viewport=1
 lifecycle started=1 stopped=0 progress=inactive
 title "Inspect session diagnostics — DSH snapshot"
-cursor visible column=8 viewportRow=28 bufferRow=29
+cursor visible column=3 viewportRow=27 bufferRow=28
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -12,89 +12,85 @@ buffer
 2| " main-session"
   style 1-12 dim
 3| <blank>
-4| "You                                                                                         "
-  style 0-2 fg=bright-magenta bold underline
-5| "inspect this session                                                                        "
-6| <blank>
-7| "Assistant                                                                                   "
-  style 0-8 fg=bright-magenta bold underline
-8| "Session inspected.                                                                          "
-9| "Model wait 0.0s                                                                             "
-  style 0-14 dim
-10| <blank>
-11| "╭─ Session status ─────────────────────────────────────────────────────────────────────────╮"
+4| "                                                                                            "
+5| " › inspect this session                                                                     "
+  style 1-1 fg=blue bold
+6| "                                                                                            "
+7| <blank>
+8| "• Session inspected.                                                                        "
+  style 0-0 dim
+9| <blank>
+10| "╭─ Session status ────────────────────────────────────────────────────────────────────────╮"
   style 0-2 dim
   style 3-16 fg=bright-magenta bold
-  style 17-91 dim
-12| "│  Session:    main-session                                                                │"
+  style 17-90 dim
+11| "│  Session:    main-session                                                               │"
   style 0-0 dim
   style 3-12 dim
-  style 91-91 dim
-13| "│  Title:      Inspect session diagnostics                                                 │"
+  style 90-90 dim
+12| "│  Title:      Inspect session diagnostics                                                │"
   style 0-0 dim
   style 3-12 dim
-  style 91-91 dim
-14| "│  Directory:  /workspace/project                                                          │"
+  style 90-90 dim
+13| "│  Directory:  /workspace/project                                                         │"
   style 0-0 dim
   style 3-12 dim
-  style 91-91 dim
-15| "│  Model:      deepseek-official/deepseek-v4-pro (effort default; reasoning blocks hidden) │"
+  style 90-90 dim
+14| "│  Model:      deepseek-official/deepseek-v4-pro (effort default; reasoning blocks shown) │"
   style 0-0 dim
   style 3-12 dim
-  style 49-89 dim
-  style 91-91 dim
-16| "│                                                                                          │"
+  style 49-88 dim
+  style 90-90 dim
+15| "│                                                                                         │"
   style 0-0 dim
-  style 91-91 dim
-17| "│  Agent:      idle · 8 events · 1 turn · 1 step · 1 tool call                             │"
-  style 0-0 dim
-  style 3-12 dim
-  style 91-91 dim
-18| "│                                                                                          │"
-  style 0-0 dim
-  style 91-91 dim
-19| "│  Tokens:     1,250 input + 340 output                                                    │"
+  style 90-90 dim
+16| "│  Agent:      idle · 8 events · 1 turn · 1 step · 1 tool call                            │"
   style 0-0 dim
   style 3-12 dim
-  style 91-91 dim
-20| "│  KV cache:   [███████████░░░░░] 67% hit (3,000 read + 250 write)                         │"
+  style 90-90 dim
+17| "│                                                                                         │"
+  style 0-0 dim
+  style 90-90 dim
+18| "│  Tokens:     1,250 input + 340 output                                                   │"
+  style 0-0 dim
+  style 3-12 dim
+  style 90-90 dim
+19| "│  KV cache:   [███████████░░░░░] 67% hit (3,000 read + 250 write)                        │"
   style 0-0 dim
   style 3-12 dim
   style 15-15 dim
   style 16-26 fg=bright-magenta
   style 27-32 dim
-  style 91-91 dim
-21| "│  Context:    [█████░░░░░░░░░░░] 33% used (42,000 / 128,000)                              │"
+  style 90-90 dim
+20| "│  Context:    [█████░░░░░░░░░░░] 33% used (42,000 / 128,000)                             │"
   style 0-0 dim
   style 3-12 dim
   style 15-15 dim
   style 16-20 fg=bright-magenta
   style 21-32 dim
-  style 91-91 dim
-22| "│                                                                                          │"
+  style 90-90 dim
+21| "│                                                                                         │"
   style 0-0 dim
-  style 91-91 dim
-23| "│  Created:    2026-07-22 09:10:11 UTC                                                     │"
-  style 0-0 dim
-  style 3-12 dim
-  style 91-91 dim
-24| "│  Active:     2026-07-22 09:10:11 UTC                                                     │"
+  style 90-90 dim
+22| "│  Created:    2026-07-22 09:10:11 UTC                                                    │"
   style 0-0 dim
   style 3-12 dim
-  style 91-91 dim
-25| "╰──────────────────────────────────────────────────────────────────────────────────────────╯"
-  style 0-91 dim
-26-27| <blank>
-28| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
-  style 0-91 dim
-29| "│ dsh > │Describe a task, @ a file, or / for commands                                      │"
+  style 90-90 dim
+23| "│  Active:     2026-07-22 09:10:11 UTC                                                    │"
   style 0-0 dim
-  style 2-4 fg=bright-magenta bold
-  style 6-7 dim
-  style 9-52 dim
-  style 91-91 dim
-30| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
-  style 0-91 dim
+  style 3-12 dim
+  style 90-90 dim
+24| "╰─────────────────────────────────────────────────────────────────────────────────────────╯"
+  style 0-90 dim
+25-26| <blank>
+27| "                                                                                            "
+28| " › │Describe a task, @ a file, or / for commands                                            "
+  style 1-1 fg=bright-magenta bold
+  style 2-2 dim
+  style 4-47 dim
+29| "                                                                                            "
+30| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
 31| "/workspace/project (tui-  ▸ idle  deepseek-v4-pro [alt+m]  ↑1.3k ↓340 cache 67%  33% context"
   style 0-17 fg=bright-magenta bold
   style 18-23 dim

@@ -17,6 +17,7 @@ import {
   type ContentBlock,
 } from '@deepseek-ai/dsh-llm'
 import { RetryId } from '@deepseek-ai/dsh-llm-retry'
+import GoalService from '@deepseek-ai/dsh-goal'
 import type { JobOutcome } from '@deepseek-ai/dsh-jobs'
 import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
 import PermissionPresetService from '@deepseek-ai/dsh-permission-presets'
@@ -86,6 +87,9 @@ const CHECKPOINTS = [
   'model-selector-filtered',
   'model-switching',
   'model-reasoning-off',
+  'goal-status-active',
+  'goal-status-paused',
+  'goal-status-complete',
   'mcp-tools',
   'permissions-selector',
   'permissions-switching',
@@ -260,6 +264,12 @@ async function configureSnapshotSkills(ctx: Context): Promise<void> {
     source: 'runtime',
     content: 'Review the document.',
   })
+}
+
+async function configureGoalStatus(ctx: Context): Promise<void> {
+  await ctx.plugin(SystemPrompt)
+  await ctx.plugin(ToolRegistry)
+  await ctx.plugin(GoalService, { defaultMaxGoalRounds: 8 })
 }
 
 interface ToolCallFixture {
@@ -723,7 +733,7 @@ describe('TUI terminal-state snapshots', () => {
     await disposeSnapshot(harness)
   })
 
-  it('pins the fresh-session welcome dashboard with recent sessions and framed input', async () => {
+  it('pins the fresh-session welcome dashboard with the minimal composer', async () => {
     const recent = [
       { version: 0, id: SessionId('recent-refactor'), createdAt: Date.parse('2026-08-13T09:30:00Z'), cwd: '/workspace/project' },
       { version: 0, id: SessionId('recent-tests'), createdAt: Date.parse('2026-08-12T14:00:00Z'), cwd: '/workspace/other' },
@@ -753,8 +763,8 @@ describe('TUI terminal-state snapshots', () => {
     expect(frame).toContain('DeepSeek Harness CLI v0.1.0')
     expect(frame).toContain('cursor visible')
     const shortcutRow = Number(/^([0-9]+)\| .*Enter sends/mu.exec(frame)?.[1])
-    const composerRow = Number(/^([0-9]+)\| "╭ Message/mu.exec(frame)?.[1])
-    expect(composerRow - shortcutRow).toBe(3)
+    const composerRow = Number(/^([0-9]+)\| " › /mu.exec(frame)?.[1])
+    expect(composerRow - shortcutRow).toBe(4)
     await checkpoint('welcome-dashboard', harness.terminal)
     await disposeSnapshot(harness)
   })
@@ -907,7 +917,7 @@ describe('TUI terminal-state snapshots', () => {
       harness.session.append('step/end', { turn: 1, step: 2 })
       harness.session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
     })
-    // collapsed -> expanded -> hidden: one Assistant header, no tool card.
+    // collapsed -> expanded -> hidden: one response bullet, no tool card.
     await renderAfter(harness, () => { harness.terminal.send('\x0f') })
     await renderAfter(harness, () => { harness.terminal.send('\x0f') })
     await checkpoint('tool-cards-hidden-folded', harness.terminal, { includeScrollback: true })
@@ -1243,6 +1253,43 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('model-reasoning-off', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins live Goal status transitions in the right footer', async () => {
+    const harness = await setupSnapshot({
+      configureContext: configureGoalStatus,
+    }, { columns: 112, rows: 32 })
+    let goal!: ReturnType<typeof harness.ctx.goals.create>
+    await renderAfter(harness, () => {
+      goal = harness.ctx.goals.create(harness.agent, {
+        objective: 'Finish the CLI command parity work',
+        maxGoalRounds: 8,
+      })
+    })
+    expect(harness.ctx.tuiPrompt.get('goal')).toContain('Pursuing goal (0s)')
+    await checkpoint('goal-status-active', harness.terminal, { includeScrollback: true })
+
+    await renderAfter(harness, () => {
+      goal = harness.ctx.goals.pause(harness.agent, { id: goal.id, revision: goal.revision })
+    })
+    expect(harness.ctx.tuiPrompt.get('goal')).toContain('Goal paused')
+    await checkpoint('goal-status-paused', harness.terminal, { includeScrollback: true })
+
+    await renderAfter(harness, () => {
+      goal = harness.ctx.goals.resume(harness.agent, { id: goal.id, revision: goal.revision })
+      goal = harness.ctx.goals.complete(harness.agent, { id: goal.id, revision: goal.revision })
+    })
+    expect(harness.ctx.tuiPrompt.get('goal')).toContain('Goal achieved (0s)')
+    await checkpoint('goal-status-complete', harness.terminal, { includeScrollback: true })
+
+    await renderAfter(harness, () => {
+      harness.ctx.goals.clear(harness.agent, { id: goal.id, revision: goal.revision })
+    })
+    const cleared = await harness.terminal.snapshot()
+    expect(cleared).not.toContain('Goal achieved')
+    expect(cleared).not.toContain('Goal paused')
+    expect(cleared).not.toContain('Pursuing goal')
     await disposeSnapshot(harness)
   })
 

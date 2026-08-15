@@ -8,7 +8,6 @@
     "icacls",
     "musl-gcc",
     "python3",
-    "powershell.exe",
     "sandbox-exec",
     "tar",
     "taskkill",

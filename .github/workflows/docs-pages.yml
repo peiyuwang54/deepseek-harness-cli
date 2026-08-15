@@ -29,6 +29,7 @@ env:
 
 jobs:
   build:
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

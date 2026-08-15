@@ -190,7 +190,12 @@ import {
 import { mcpCommandResult } from './chat/mcp-command.ts'
 import { gitDiff } from './chat/git-diff.ts'
 import { GoalTimingTracker, formatGoalFooterStatus, type GoalFooterState } from './chat/goal-status.ts'
-import type { TuiAgentNavigation, TuiResumeHost, TuiRuntime } from './runtime.ts'
+import type {
+  TuiAgentNavigation,
+  TuiConfigDiagnostics,
+  TuiResumeHost,
+  TuiRuntime,
+} from './runtime.ts'
 import { WorkspaceFileSearch } from './chat/file-autocomplete.ts'
 import { createTuiTerminalMode, parseTuiMouseEvent } from './chat/terminal-mode.ts'
 import { TranscriptViewport } from './components/transcript-viewport.ts'
@@ -201,7 +206,14 @@ const REVIEW_CHANGES_PROMPT = 'Review the current workspace changes, including u
 
 export { TuiPromptService } from './prompt.ts'
 export { renderSkillInvocation } from './chat/skill-invocation.ts'
-export type { TuiAgentNavigation, TuiResumeHost, TuiRuntime } from './runtime.ts'
+export type {
+  TuiAgentNavigation,
+  TuiConfigDiagnostics,
+  TuiConfigLayerDiagnostic,
+  TuiConfigLayerKind,
+  TuiResumeHost,
+  TuiRuntime,
+} from './runtime.ts'
 export {
   resolveTuiConfig,
   TuiConfigSchema,
@@ -248,6 +260,8 @@ declare module '@deepseek-ai/cordis' {
     tuiGoodbyeMessage: string | undefined
     /** Skill the launcher wants auto-invoked as the fresh session's first turn; absent leaves it to the user. */
     tuiInitialSkill: string | undefined
+    /** Launcher-owned, value-free configuration source report for `/debug-config`. */
+    tuiConfigDiagnostics: TuiConfigDiagnostics | undefined
   }
 }
 
@@ -291,6 +305,9 @@ export const TUI_GOODBYE_MESSAGE_KEY = 'tuiGoodbyeMessage'
  * resuming. Absent leaves the first turn to the user.
  */
 export const INITIAL_SKILL_KEY = 'tuiInitialSkill'
+
+/** Context key for launcher-composed, non-secret profile source diagnostics. */
+export const TUI_CONFIG_DIAGNOSTICS_KEY = 'tuiConfigDiagnostics'
 
 /**
  * Optional terminal-local interaction service provided by one mounted TUI.
@@ -2102,6 +2119,35 @@ export function createTuiChat(
     }
   }
 
+  const runDebugConfigCommand = (raw: string): CommandResult => {
+    if (raw.trim() !== '') return { kind: 'error', text: 'Usage: /debug-config (no arguments)' }
+    const diagnostics = ctx.get(TUI_CONFIG_DIAGNOSTICS_KEY)
+    if (diagnostics === undefined) {
+      return {
+        kind: 'error',
+        text: 'Configuration source diagnostics are unavailable in this TUI embedding.',
+      }
+    }
+    const sources = diagnostics.layers.length === 0
+      ? ['  No launcher-owned layers were reported.']
+      : diagnostics.layers.map((layer, index) =>
+        `  ${index + 1}. ${layer.kind} · ${layer.label}${layer.path === undefined ? '' : `\n     ${layer.path}`}`)
+    return {
+      kind: 'success',
+      text: [
+        'Configuration sources',
+        '',
+        `Profile: ${diagnostics.profile}`,
+        `Loader root: ${diagnostics.rootConfig}`,
+        '',
+        'Lowest to highest precedence:',
+        ...sources,
+        '',
+        `Full composed tree: deepseek --profile ${diagnostics.profile} --dump-config`,
+      ].join('\n'),
+    }
+  }
+
   const runCopyCommand = (): CommandResult => {
     const text = latestVisibleAssistantText(agent.session.events)
     if (text === undefined) return { kind: 'error', text: 'No assistant response is available to copy.' }
@@ -2554,6 +2600,11 @@ export function createTuiChat(
       name: 'archive',
       description: 'Archive this session and exit',
       handler: ({ rawInput }) => runArchiveCommand(rawInput),
+    })
+    commandCtx.commands.register({
+      name: 'debug-config',
+      description: 'Show active profile configuration sources',
+      handler: ({ rawInput }) => runDebugConfigCommand(rawInput),
     })
     commandCtx.commands.register({
       name: 'language',

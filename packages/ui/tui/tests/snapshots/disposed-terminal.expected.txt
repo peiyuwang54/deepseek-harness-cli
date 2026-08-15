@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=70 base=38 viewport=38
+terminal 92x32 buffer=normal length=71 base=39 viewport=39
 lifecycle started=1 stopped=1 progress=inactive
 title "DSH snapshot"
-cursor visible column=0 viewportRow=31 bufferRow=69
+cursor visible column=0 viewportRow=31 bufferRow=70
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-blue bold
@@ -33,111 +33,113 @@ buffer
   style 0-67 dim
 14| "/credentials [status|set|unset] — Inspect or update the DeepSeek API key                    "
   style 0-71 dim
-15| "/details [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility and "
-  style 0-91 dim
-16| "reasoning display                                                                           "
-  style 0-16 dim
-17| "/diff — Show the Git diff, including untracked files                                        "
-  style 0-51 dim
-18| "/exit — Exit after the active turn reaches idle                                             "
-  style 0-46 dim
-19| "/experimental [fast|vim|reload|reasoning] — Open the terminal experimental-feature launcher "
-  style 0-90 dim
-20| "/export [path] — Export the complete conversation as Markdown                               "
-  style 0-60 dim
-21| "/fast [on|off|status] — Toggle a real advertised low-latency model route                    "
-  style 0-71 dim
-22| "/fork — Fork this chat into a new session and switch to it                                  "
-  style 0-57 dim
-23| "/help — Show keyboard shortcuts and commands                                                "
-  style 0-43 dim
-24| "/ide [path] — Inspect terminal IDE context or insert a workspace file reference             "
-  style 0-78 dim
-25| "/init — Create an AGENTS.md repository guide                                                "
-  style 0-43 dim
-26| "/keymap [default|vim] — Choose the default or Vim terminal editing keymap                   "
-  style 0-72 dim
-27| "/language [en|zh|ar|fr|ru|es|ja|ko] — Choose and persist the terminal interface language    "
-  style 0-87 dim
-28| "/mcp [verbose] — List MCP tools visible to this session                                     "
-  style 0-54 dim
-29| "/mention [path] — Insert a workspace file reference into the composer                       "
-  style 0-68 dim
-30| "/model [[provider/]model|off|high|max] — Show or switch this session's model                "
-  style 0-75 dim
-31| "/new — Start a new chat in the current workspace                                            "
-  style 0-47 dim
-32| "/palette — Show every color and attribute role this terminal renders                        "
-  style 0-67 dim
-33| "/quit — Exit after the active turn reaches idle                                             "
-  style 0-46 dim
-34| "/raw [on|off|status] — Toggle copy-friendly plain transcript rendering                      "
-  style 0-69 dim
-35| "/reload — EXPERIMENTAL (dev): re-read loader config files and apply the diff (idle only)    "
-  style 0-87 dim
-36| "/rename <title> — Rename this session and pin its title                                     "
-  style 0-54 dim
-37| "/resume [session] — Resume a saved chat                                                     "
-  style 0-38 dim
-38| "/review [instructions] — Review the current workspace changes                               "
-  style 0-60 dim
-39| "/settings [list|document] — Show shared settings namespaces and the settings document       "
-  style 0-84 dim
-40| "/skills [name] — Browse and invoke user-invocable skills for this agent                     "
-  style 0-70 dim
-41| "/status — Show session status and token usage                                               "
-  style 0-44 dim
-42| "/subagents — Switch the active agent thread                                                 "
-  style 0-42 dim
-43| "/theme [light|dark|system] [accent [light|dark] [id]] — Choose and persist appearance and   "
-  style 0-91 dim
-44| "accent color                                                                                "
-  style 0-11 dim
-45| "/usage — Show this session's model timing and token usage                                   "
+15| "/debug-config — Show active profile configuration sources                                   "
   style 0-56 dim
-46| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
-  style 0-73 dim
-47| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
-  style 0-81 dim
-48| "/skill:<name> [instructions] — load a skill into the conversation                           "
-  style 0-64 dim
-49| <blank>
-50| "provider stream failed after partial output                                                 "
-  style 0-42 fg=red
-51| <blank>
-52| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
+16| "/details [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility and "
+  style 0-91 dim
+17| "reasoning display                                                                           "
+  style 0-16 dim
+18| "/diff — Show the Git diff, including untracked files                                        "
+  style 0-51 dim
+19| "/exit — Exit after the active turn reaches idle                                             "
   style 0-46 dim
-53| <blank>
-54| "The previous process ended during this turn.                                                "
+20| "/experimental [fast|vim|reload|reasoning] — Open the terminal experimental-feature launcher "
+  style 0-90 dim
+21| "/export [path] — Export the complete conversation as Markdown                               "
+  style 0-60 dim
+22| "/fast [on|off|status] — Toggle a real advertised low-latency model route                    "
+  style 0-71 dim
+23| "/fork — Fork this chat into a new session and switch to it                                  "
+  style 0-57 dim
+24| "/help — Show keyboard shortcuts and commands                                                "
+  style 0-43 dim
+25| "/ide [path] — Inspect terminal IDE context or insert a workspace file reference             "
+  style 0-78 dim
+26| "/init — Create an AGENTS.md repository guide                                                "
+  style 0-43 dim
+27| "/keymap [default|vim] — Choose the default or Vim terminal editing keymap                   "
+  style 0-72 dim
+28| "/language [en|zh|ar|fr|ru|es|ja|ko] — Choose and persist the terminal interface language    "
+  style 0-87 dim
+29| "/mcp [verbose] — List MCP tools visible to this session                                     "
+  style 0-54 dim
+30| "/mention [path] — Insert a workspace file reference into the composer                       "
+  style 0-68 dim
+31| "/model [[provider/]model|off|high|max] — Show or switch this session's model                "
+  style 0-75 dim
+32| "/new — Start a new chat in the current workspace                                            "
+  style 0-47 dim
+33| "/palette — Show every color and attribute role this terminal renders                        "
+  style 0-67 dim
+34| "/quit — Exit after the active turn reaches idle                                             "
+  style 0-46 dim
+35| "/raw [on|off|status] — Toggle copy-friendly plain transcript rendering                      "
+  style 0-69 dim
+36| "/reload — EXPERIMENTAL (dev): re-read loader config files and apply the diff (idle only)    "
+  style 0-87 dim
+37| "/rename <title> — Rename this session and pin its title                                     "
+  style 0-54 dim
+38| "/resume [session] — Resume a saved chat                                                     "
+  style 0-38 dim
+39| "/review [instructions] — Review the current workspace changes                               "
+  style 0-60 dim
+40| "/settings [list|document] — Show shared settings namespaces and the settings document       "
+  style 0-84 dim
+41| "/skills [name] — Browse and invoke user-invocable skills for this agent                     "
+  style 0-70 dim
+42| "/status — Show session status and token usage                                               "
+  style 0-44 dim
+43| "/subagents — Switch the active agent thread                                                 "
+  style 0-42 dim
+44| "/theme [light|dark|system] [accent [light|dark] [id]] — Choose and persist appearance and   "
+  style 0-91 dim
+45| "accent color                                                                                "
+  style 0-11 dim
+46| "/usage — Show this session's model timing and token usage                                   "
+  style 0-56 dim
+47| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
+  style 0-73 dim
+48| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
+  style 0-81 dim
+49| "/skill:<name> [instructions] — load a skill into the conversation                           "
+  style 0-64 dim
+50| <blank>
+51| "provider stream failed after partial output                                                 "
+  style 0-42 fg=red
+52| <blank>
+53| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
+  style 0-46 dim
+54| <blank>
+55| "The previous process ended during this turn.                                                "
   style 0-43 fg=yellow
-55| <blank>
-56| "Turn stopped: the agent was disposed.                                                       "
+56| <blank>
+57| "Turn stopped: the agent was disposed.                                                       "
   style 0-36 fg=yellow
-57| <blank>
-58| "Turn ended: plugin-policy.                                                                  "
+58| <blank>
+59| "Turn ended: plugin-policy.                                                                  "
   style 0-25 fg=yellow
-59| <blank>
-60| "Unknown command: /unknown-advanced-command                                                  "
+60| <blank>
+61| "Unknown command: /unknown-advanced-command                                                  "
   style 0-41 fg=yellow
-61-62| <blank>
-63| "                                                                                            "
+62-63| <blank>
+64| "                                                                                            "
   style 0-91 bg=ansi-236
-64| " › │Describe a task, @ a file, or / for commands                                            "
+65| " › │Describe a task, @ a file, or / for commands                                            "
   style 0-0 bg=ansi-236
   style 1-1 fg=bright-blue bg=ansi-236 bold
   style 2-2 bg=ansi-236 dim
   style 3-3 bg=ansi-236
   style 4-47 bg=ansi-236 dim
   style 48-91 bg=ansi-236
-65| "                                                                                            "
+66| "                                                                                            "
   style 0-91 bg=ansi-236
-66| "  Enter send · Shift+Enter newline · / commands"
+67| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-67| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+68| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 44-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-68| "                                      1 turn · 1 step"
+69| "                                      1 turn · 1 step"
   style 38-52 dim
-69| <blank>
+70| <blank>

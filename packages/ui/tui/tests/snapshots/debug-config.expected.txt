@@ -1,0 +1,70 @@
+terminal 96x34 buffer=normal length=34 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor visible column=3 viewportRow=25 bufferRow=25
+buffer
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1| <blank>
+2| "Configuration sources                                                                           "
+  style 0-95 dim
+3| "                                                                                                "
+  style 0-95 dim
+4| "Profile: tui                                                                                    "
+  style 0-95 dim
+5| "Loader root: /home/deepseek/.dsh/profiles/tui/cordis.yml                                        "
+  style 0-95 dim
+6| "                                                                                                "
+  style 0-95 dim
+7| "Lowest to highest precedence:                                                                   "
+  style 0-95 dim
+8| "  1. bundle · @deepseek-ai/dsh-base                                                             "
+  style 0-95 dim
+9| "     /opt/deepseek/bundles/base/cordis.patch.yml                                                "
+  style 0-95 dim
+10| "  2. bundle · @deepseek-ai/dsh-tui-app                                                          "
+  style 0-95 dim
+11| "     /opt/deepseek/bundles/tui/cordis.patch.yml                                                 "
+  style 0-95 dim
+12| "  3. profile · profile tui                                                                      "
+  style 0-95 dim
+13| "     /home/deepseek/.dsh/profiles/tui/cordis.patch.yml                                          "
+  style 0-95 dim
+14| "  4. home · home override                                                                       "
+  style 0-95 dim
+15| "     /home/deepseek/.dsh/cordis.patch.yml                                                       "
+  style 0-95 dim
+16| "  5. overlay · command-line overlay                                                             "
+  style 0-95 dim
+17| "     /workspace/project/local.patch.yml                                                         "
+  style 0-95 dim
+18| "  6. runtime · shipped agent-preset root                                                        "
+  style 0-95 dim
+19| "  7. environment · DSH_TELEMETRY_DISABLED                                                       "
+  style 0-95 dim
+20| "                                                                                                "
+  style 0-95 dim
+21| "Full composed tree: deepseek --profile tui --dump-config                                        "
+  style 0-55 dim
+22-23| <blank>
+24| "                                                                                                "
+  style 0-95 bg=ansi-236
+25| " › │Describe a task, @ a file, or / for commands                                                "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-95 bg=ansi-236
+26| "                                                                                                "
+  style 0-95 bg=ansi-236
+27| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+28| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 48-49 dim
+  style 52-76 dim
+  style 79-83 dim
+  style 86-95 dim
+29-33| <blank>

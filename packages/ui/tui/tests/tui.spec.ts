@@ -389,6 +389,47 @@ describe('shared settings, appearance, and workspaces', () => {
     install(ctx)
   }
 
+  it('shows launcher-owned configuration sources without accepting config values', async () => {
+    const result = await setup({
+      configureContext: composeFrontDoorServices((ctx) => {
+        ctx.provide('tuiConfigDiagnostics', {
+          profile: 'tui',
+          rootConfig: '/home/test/.dsh/profiles/tui/cordis.yml',
+          layers: [
+            { kind: 'bundle', label: '@deepseek-ai/dsh-base', path: '/app/base/cordis.patch.yml' },
+            { kind: 'profile', label: 'profile tui', path: '/home/test/.dsh/profiles/tui/cordis.patch.yml' },
+            { kind: 'home', label: 'home override', path: '/home/test/.dsh/cordis.patch.yml' },
+            { kind: 'overlay', label: 'command-line overlay', path: '/workspace/local.patch.yml' },
+            { kind: 'runtime', label: 'shipped agent-preset root' },
+            { kind: 'environment', label: 'DSH_TELEMETRY_DISABLED' },
+          ],
+        })
+      }),
+    })
+
+    result.terminal.send('/debug-config')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Configuration sources')
+    expect(result.terminal.output).toContain('Profile: tui')
+    expect(result.terminal.output).toContain('1. bundle · @deepseek-ai/dsh-base')
+    expect(result.terminal.output).toContain('6. environment · DSH_TELEMETRY_DISABLED')
+    expect(result.terminal.output).toContain('deepseek --profile tui --dump-config')
+
+    result.terminal.send('/debug-config values')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Usage: /debug-config (no arguments)')
+    await dispose(result)
+
+    const embedded = await setup()
+    embedded.terminal.send('/debug-config')
+    embedded.terminal.send('\r')
+    await tick()
+    expect(embedded.terminal.output).toContain('Configuration source diagnostics are unavailable')
+    await dispose(embedded)
+  })
+
   it('onboards a missing DeepSeek key through masked input without logging it', async () => {
     let configured = false
     const set = vi.fn(async (_ref: string, _value: string) => { configured = true })

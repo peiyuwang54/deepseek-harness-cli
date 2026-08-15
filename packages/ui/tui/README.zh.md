@@ -48,6 +48,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/archive` 仅在主 Agent 空闲时可用。它会打开确认卡片，刷新 Session，将其 id 加入持久化 workspace 归档集合，并且只在归档写入成功后退出。归档会让 Session 从活动 workspace 列表中隐藏，但保留完整日志。自定义 embedding 未提供 `ctx.workspaceRegistry`、存储失败或确认期间开始了新轮次时，当前 TUI 会保持打开。持久化服务没有删除 API，因此不提供 Session 删除命令。
 
+`/debug-config` 按从低到高的优先级报告当前 profile、Loader 根文件与启动器持有的配置来源层。它只列出路径与环境开关名称，绝不显示配置值；需要完整且不启动应用的组合树时，请运行输出中的 `deepseek --profile <name> --dump-config`。未提供启动器来源信息的自定义 embedding 会明确报告该诊断不可用。
+
 `/init` 会安排一个普通用户轮次：先检查仓库，仅当当前目录不存在 `AGENTS.md` 时才创建简洁且基于事实的版本。`/review [instructions]` 会安排一次不修改文件的审查，覆盖 workspace 中已跟踪与未跟踪的改动，并按问题严重程度输出。两条命令都要求 agent 处于 idle，其提示词会走普通的持久 user-message 路径，不会绕过 agent loop。
 
 共享的 [`dsh-command-jobs`](../../jobs/command-jobs/README.md) 插件会贡献 `/ps`、`/stop` 与别名 `/clean`。`/ps` 在不消费输出的前提下列出本会话中处于运行或停止中状态的通用后台任务；`/stop` 与 `/clean` 请求取消全部运行中任务，并保持已经处于停止中状态的任务不变。

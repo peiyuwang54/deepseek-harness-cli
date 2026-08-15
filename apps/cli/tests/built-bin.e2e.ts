@@ -214,13 +214,14 @@ async function runBuiltTuiPty(options: { workspaceHandoff?: boolean } = {}): Pro
     const probe = join(root, 'tui-prompt-probe.mjs')
     writeFileSync(probe, [
       "export const name = 'tui-prompt-probe'",
-      "export const inject = ['tuiPrompt', 'tuiStartup']",
+      "export const inject = ['tuiPrompt', 'tuiStartup', 'tuiConfigDiagnostics']",
       'export function apply(ctx) {',
       "  const value = ctx.tuiPrompt.register('test/probe', 'active')",
       "  if (ctx.tuiPrompt.get('test/probe') !== 'active') throw new Error('tuiPrompt probe could not read its registration')",
       '  const unsubscribe = ctx.tuiPrompt.subscribe(() => {})',
       '  unsubscribe()',
       "  process.stdout.write(`dsh-test: tuiPrompt active cwd=${process.cwd()} session=${ctx.tuiStartup.identity.id} env=${process.env.TUI_PTY_WORKSPACE_SENTINEL ?? ''}\\n`)",
+      '  process.stdout.write(`dsh-test: tuiConfigDiagnostics profile=${ctx.tuiConfigDiagnostics.profile} layers=${ctx.tuiConfigDiagnostics.layers.length}\\n`)',
       '  ctx.effect(() => () => { value.dispose() })',
       '}',
       '',
@@ -230,7 +231,7 @@ async function runBuiltTuiPty(options: { workspaceHandoff?: boolean } = {}): Pro
       '- insert:',
       '    - id: tui-prompt-probe',
       `      name: ${JSON.stringify(pathToFileURL(probe).href)}`,
-      '      inject: [tuiPrompt, tuiStartup]',
+      '      inject: [tuiPrompt, tuiStartup, tuiConfigDiagnostics]',
       '',
     ].join('\n'))
 
@@ -670,6 +671,7 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
     expect(result.sentCtrlD, result.output).toBe(true)
     expect(result.rawModeObserved, result.output).toBe(true)
     expect(result.output).toContain('dsh-test: tuiPrompt active')
+    expect(result.output).toMatch(/dsh-test: tuiConfigDiagnostics profile=tui layers=[1-9][0-9]*/u)
     expect(result.output).toContain('To resume this session: deepseek --resume=main-session-')
     const firstSynchronizedFrame = result.output.indexOf('\x1b[?2026h')
     const wrapperReport = result.output.lastIndexOf('dsh-test: tui wrapper ')

@@ -98,6 +98,7 @@ const CHECKPOINTS = [
   'permissions-switching',
   'agent-selector',
   'archive-confirmation',
+  'debug-config',
   'skills-selector',
   'keymap-selector',
   'vim-normal-mode',
@@ -1503,6 +1504,34 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('archive-confirmation', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins value-free launcher configuration diagnostics', async () => {
+    const harness = await setupSnapshot({
+      configureContext: async (ctx) => {
+        await ctx.plugin(SystemPrompt)
+        await ctx.plugin(ToolRegistry)
+        ctx.provide('tuiConfigDiagnostics', {
+          profile: 'tui',
+          rootConfig: '/home/deepseek/.dsh/profiles/tui/cordis.yml',
+          layers: [
+            { kind: 'bundle', label: '@deepseek-ai/dsh-base', path: '/opt/deepseek/bundles/base/cordis.patch.yml' },
+            { kind: 'bundle', label: '@deepseek-ai/dsh-tui-app', path: '/opt/deepseek/bundles/tui/cordis.patch.yml' },
+            { kind: 'profile', label: 'profile tui', path: '/home/deepseek/.dsh/profiles/tui/cordis.patch.yml' },
+            { kind: 'home', label: 'home override', path: '/home/deepseek/.dsh/cordis.patch.yml' },
+            { kind: 'overlay', label: 'command-line overlay', path: '/workspace/project/local.patch.yml' },
+            { kind: 'runtime', label: 'shipped agent-preset root' },
+            { kind: 'environment', label: 'DSH_TELEMETRY_DISABLED' },
+          ],
+        })
+      },
+    }, { columns: 96, rows: 34 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/debug-config')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('debug-config', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

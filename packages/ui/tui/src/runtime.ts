@@ -10,6 +10,29 @@ import type { Terminal } from '@earendil-works/pi-tui'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { GitDiffResult } from './chat/git-diff.ts'
 
+/** Source category for one launcher-composed configuration layer. */
+export type TuiConfigLayerKind = 'bundle' | 'profile' | 'home' | 'overlay' | 'runtime' | 'environment'
+
+/** One source layer applied to the running profile. */
+export interface TuiConfigLayerDiagnostic {
+  /** Category used by the terminal diagnostic. */
+  readonly kind: TuiConfigLayerKind
+  /** Human-readable source name, such as a bundle package or environment switch. */
+  readonly label: string
+  /** Absolute source path when the layer came from a file. */
+  readonly path?: string
+}
+
+/** Launcher-owned profile provenance exposed to the non-secret `/debug-config` view. */
+export interface TuiConfigDiagnostics {
+  /** Active profile name. */
+  readonly profile: string
+  /** Absolute Loader root file anchoring the composition. */
+  readonly rootConfig: string
+  /** Applied source layers in precedence order. */
+  readonly layers: readonly TuiConfigLayerDiagnostic[]
+}
+
 /** Host-owned navigation between live agents in one root session tree. */
 export interface TuiAgentNavigation {
   /** Root session whose primary agent and descendants belong in the picker. */

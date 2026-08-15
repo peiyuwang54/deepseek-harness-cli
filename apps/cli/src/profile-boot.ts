@@ -11,7 +11,7 @@
  * @module @deepseek-ai/dsh/profile-boot
  */
 
-import { writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { FiberState, type Context } from '@deepseek-ai/cordis'
@@ -39,7 +39,11 @@ const SHIPPED_PRESET_ROOT = fileURLToPath(new URL('../config/agent-presets/', im
 
 import { DSH_LAUNCH_ENVIRONMENT_KEY, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 import { provideCmdline } from '@deepseek-ai/dsh-cmdline'
-import type {} from '@deepseek-ai/dsh-tui'
+import {
+  TUI_CONFIG_DIAGNOSTICS_KEY,
+  type TuiConfigDiagnostics,
+  type TuiConfigLayerDiagnostic,
+} from '@deepseek-ai/dsh-tui'
 import { createProcessShutdown, type ProcessShutdown } from './process-shutdown.ts'
 import { createTuiProcessHandoff } from './tui-handoff.ts'
 
@@ -142,6 +146,10 @@ interface ComposedProfile {
    * launcher's own row checks.
    */
   rows: ReadonlyMap<string, EntryOptions>
+  /** Whether the launcher appended its shipped agent-preset root. */
+  presetRootInjected: boolean
+  /** Whether `DSH_TELEMETRY_DISABLED` appended the hard-disable patch. */
+  telemetryDisabled: boolean
 }
 
 /** The full patch stack of one composed profile, in application order. */
@@ -182,7 +190,8 @@ function composeProfile(
   // sits beside this app's own config, in both the source and built layouts.
   // The writable root the roster appends is `dsh-agent-presets`' own, so a
   // launcher that never reaches this patch still finds a person's presets.
-  if (rows.has('agent-presets')) {
+  const presetRootInjected = rows.has('agent-presets')
+  if (presetRootInjected) {
     composedOverlays.push({
       id: 'agent-presets',
       config: {
@@ -193,7 +202,55 @@ function composeProfile(
   }
   const telemetryPatch = resolveTelemetryPatch(process.env.DSH_TELEMETRY_DISABLED, rows.has(TELEMETRY_ROW_ID))
   if (telemetryPatch !== undefined) composedOverlays.push(telemetryPatch)
-  return { profile, bundlePatches, homePatches, overlays: composedOverlays, rows }
+  return {
+    profile,
+    bundlePatches,
+    homePatches,
+    overlays: composedOverlays,
+    rows,
+    presetRootInjected,
+    telemetryDisabled: telemetryPatch !== undefined,
+  }
+}
+
+/** Build the value-free configuration provenance shown by the terminal diagnostic. */
+function configDiagnostics(
+  composed: ComposedProfile,
+  rootConfig: string,
+  patchFiles: readonly string[],
+): TuiConfigDiagnostics {
+  const homePatchFile = homePatchPath()
+  const layers: TuiConfigLayerDiagnostic[] = [
+    ...composed.profile.layers.map(layer => ({
+      kind: 'bundle' as const,
+      label: layer.packageName,
+      path: layer.patchPath,
+    })),
+    {
+      kind: 'profile',
+      label: `profile ${composed.profile.name}`,
+      path: composed.profile.patchPath,
+    },
+    ...existsSync(homePatchFile)
+      ? [{ kind: 'home' as const, label: 'home override', path: homePatchFile }]
+      : [],
+    ...patchFiles.map(file => ({
+      kind: 'overlay' as const,
+      label: 'command-line overlay',
+      path: resolve(file),
+    })),
+    ...composed.presetRootInjected
+      ? [{ kind: 'runtime' as const, label: 'shipped agent-preset root' }]
+      : [],
+    ...composed.telemetryDisabled
+      ? [{ kind: 'environment' as const, label: 'DSH_TELEMETRY_DISABLED' }]
+      : [],
+  ]
+  return {
+    profile: composed.profile.name,
+    rootConfig,
+    layers,
+  }
 }
 
 /** Options for {@link runProfile}. */
@@ -271,6 +328,7 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
   })
 
   const rootConfig = join(composed.profile.dir, PROFILE_ROOT_FILENAME)
+  const diagnostics = configDiagnostics(composed, rootConfig, options.patchFiles)
   // Recomposition for the live user layers: bundle layers below, overlays
   // above, so a user edit can never displace them. Parsed app arguments are
   // not in here at all — they live in app-provided services that survive a
@@ -296,6 +354,7 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     // Before any config-tree entry mounts, so plugins resolve all launch-time
     // environment values from the same immutable provenance snapshot.
     hostCtx.provide(DSH_LAUNCH_ENVIRONMENT_KEY, options.environment)
+    hostCtx.provide(TUI_CONFIG_DIAGNOSTICS_KEY, diagnostics)
     // The command line and bounded exit request are launcher facts available
     // to every app plugin that injects the argument snapshot.
     provideCmdline(hostCtx, {

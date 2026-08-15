@@ -138,6 +138,7 @@ export const SERVICE_WALK_EXEMPTIONS: Record<string, string> = {
   mainSessionId: 'not a service: launcher-provided exact session identity — packages/ui/tui/README.md owns this launcher contract',
   dshHomePath: 'not a service: boot-provided root accessor function (typeof dshHomePath | undefined) for Loader !!js config expressions — packages/boot/app-boot/README.md owns the boot contract',
   launchEnvironment: 'not a service: launcher-provided root accessor value (LaunchEnvironmentSnapshot | undefined) — packages/util/launch-environment/README.md owns this launcher contract',
+  tuiConfigDiagnostics: 'not a service: launcher-provided value-free configuration provenance — packages/ui/tui/README.md owns this launcher contract',
   tuiGoodbyeMessage: 'not a service: launcher-provided printable exit hint — packages/ui/tui/README.md owns this launcher contract',
   tuiInitialSkill: 'not a service: launcher-provided fresh-session skill seed — packages/ui/tui/README.md owns this launcher contract',
   tuiResumeHost: 'not a service: optional host-owned process handoff callback — packages/ui/tui/README.md owns this launcher contract',

@@ -48,7 +48,7 @@ The [CLI behavior reference](reference/README.md) owns exact layer precedence, f
 
 ## Install
 
-`dsh` ships as a single-file executable for macOS (`arm64`, `x64`), Linux (`arm64`, `x64`), and Windows (`x64`). Install it with any one of these:
+`dsh` ships as a single-file executable for macOS (`arm64`, `x64`) and Linux (`arm64`, `x64`). Install it with any one of these:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
@@ -56,16 +56,12 @@ npm install -g @peiyuwang54/deepseek-harness-cli
 brew install peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-```powershell
-irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.ps1 | iex
-```
+The first command runs the curl installer, which downloads the newest `deepseek-harness-cli-v*` release, verifies the tarball against the release's sha256 sidecar, and installs both `deepseek` and the compatibility name `deepseek-harness-cli` under `$HOME/.deepseek-harness-cli/bin` (`sh -s -- --to <dir>` overrides the directory, `--version <ver>` pins a version). The npm and Homebrew channels expose the same two names. See [the installer README](install/README.md) for the full contract and the planned minisign signature upgrade.
 
-The curl and `irm` installers download the newest `deepseek-harness-cli-v*` release, verify the tarball against the release's sha256 sidecar, and install under `$HOME/.deepseek-harness-cli/bin` (`sh -s -- --to <dir>` or `-InstallDir` overrides the directory; `--version` / `-Version` pins a version). Windows also writes `dsh.cmd` and `deepseek.cmd`. The npm channel includes Windows x64; Homebrew covers macOS and Linux only. See [the installer README](install/README.md) for the full contract and the planned minisign signature upgrade.
-
-Upgrading re-runs the same command — the curl and `irm` installers replace the binaries in place, `npm update -g @peiyuwang54/deepseek-harness-cli` pulls the newest version, and `brew upgrade deepseek-harness-cli` refreshes the cask.
+Upgrading re-runs the same command — the curl installer replaces the binaries in place, `npm update -g @peiyuwang54/deepseek-harness-cli` pulls the newest version, and `brew upgrade deepseek-harness-cli` refreshes the cask.
 
 ## Development
 
 Production runs require built package and frontend artifacts. From the repository root, run `pnpm run build` separately, then use `pnpm dsh <args...>` to run the TypeScript entry and forward every argument; the [source-execution reference](reference/README.md#source-execution) owns the module-resolution contract.
 
-On Windows, the release installer is [`apps/cli/install/install.ps1`](install/install.ps1). [`scripts/install/install.ps1`](../../scripts/install/install.ps1) still packs a checkout into `%LOCALAPPDATA%\Programs\dsh` with `deepseek.cmd` and `dsh.cmd` when you want the directory package. Both launchers open the TUI when the user passes no arguments.
+On Windows, [`scripts/install/install.ps1`](../../scripts/install/install.ps1) installs a packed copy with `deepseek.cmd` and `dsh.cmd` into `%LOCALAPPDATA%\Programs\dsh`. Both launchers open the TUI when the user passes no arguments.

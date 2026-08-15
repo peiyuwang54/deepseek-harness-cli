@@ -28,15 +28,9 @@ macOS 或 Linux：
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
 ```
 
-Windows（x64）会下载最新的 `deepseek-harness-cli-v*` 发布包：
-
-```powershell
-irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.ps1 | iex
-```
+Windows 目前从源码 checkout 安装：
 
 <a id="install-windows"></a>
-
-源码 checkout 仍会构建目录包，供你需要宿主 `node.exe` 树、而不是发布 exe 时使用：
 
 ```powershell
 git clone https://github.com/peiyuwang54/deepseek-harness-cli.git

@@ -84,6 +84,7 @@ const CHECKPOINTS = [
   'model-selector',
   'model-selector-filtered',
   'model-switching',
+  'model-reasoning-off',
   'permissions-selector',
   'permissions-switching',
   'skills-selector',
@@ -1208,6 +1209,11 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('model-switching', harness.terminal, { includeScrollback: true })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/model off')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('model-reasoning-off', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

@@ -176,7 +176,22 @@ export function createModelController(deps: ModelControllerDeps): ModelControlle
     }
     const parts = argument.split(/\s+/u)
     if (parts.length > 2) {
-      deps.appendNotice('Usage: /model [provider/]model', 'warning')
+      deps.appendNotice('Usage: /model [[provider/]model|off|high|max]', 'warning')
+      return
+    }
+
+    if (parts.length === 1 && ['off', 'high', 'max'].includes(argument.toLowerCase())) {
+      const current = choices.find(choice => choice.provider === target.current?.provider && choice.model === target.current.model)
+      if (current === undefined) {
+        deps.appendNotice('Select a model before choosing its reasoning effort.', 'warning')
+        return
+      }
+      const effort = current.reasoning?.efforts.find(candidate => candidate.id.toLowerCase() === argument.toLowerCase())
+      if (effort === undefined) {
+        deps.appendNotice(`Current model ${targetLabel(current)} does not advertise reasoning effort ${argument.toLowerCase()}. Run /model to view its choices.`, 'warning')
+        return
+      }
+      selectModel(current, { effort: effort.id })
       return
     }
 

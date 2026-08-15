@@ -55,8 +55,8 @@ buffer
   style 0-68 dim
 25| "/mention [path] — Insert a workspace file reference into the composer                       "
   style 0-68 dim
-26| "/model [[provider/]model] — Show or switch this session's model                             "
-  style 0-62 dim
+26| "/model [[provider/]model|off|high|max] — Show or switch this session's model                "
+  style 0-75 dim
 27| "/new — Start a new chat in the current workspace                                            "
   style 0-47 dim
 28| "/palette — Show every color and attribute role this terminal renders                        "

@@ -30,6 +30,8 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 
 随附展示默认使用 alternate screen，并把 transcript 位置作为显式 view state：有界 viewport 会跟随新输出，直到 Page Up／Page Down 或鼠标滚轮移开；用户通过 Ctrl+End 或回到最新页时，它会恢复跟随尾部。Alternate-screen 和 SGR mouse mode 在 pi-tui 启动前进入，仅在它停止后退出；启动失败、常规 dispose 与进程 handoff 都使用同一恢复边界。普通内建 picker 现在占用带框 editor 之后的专用 composer-flow container，因此会把状态行向下推，而不会遮住对话中央；阻塞式审批／提问保留模态位置，resume 则继续使用全 viewport 浏览器。Slash、Skill、文件和会话引用补全保留 pi-tui editor 拥有的选择状态与输入处理，但通过紧跟完整 editor 边框的独立组件投影其候选行；这既避免了第二套补全状态机，又匹配 composer-attached 布局。所有位置仍由同一个 FIFO 焦点所有者串行化。现有多行 editor、bracketed paste 与感知 cursor 的 `@` 补全仍是输入权威。`/model`、Alt+M 与 footer 的鼠标目标都进入同一 model controller，因此快捷键和可见操作点不会与命令行为分叉。选择器会把高亮适配器公布的精确 reasoning-effort 选项渲染为专用行，以方括号标记实时选择，并支持用 Tab 或方向键前后移动，最后由 Enter 一次提交模型与强度。该 footer 下方的详细统计栏不会重新折叠浏览器节点：TUI bundle 会挂载 Web 的 `sessionStats` 投影，并把它的全日志计数、LLM／工具时间、TTFT 与解码时长同共享的不相交 token 桶组合。终端只持有单行格式化、宽度省略和主题安全的暗色样式。
 
+直接调用 `/model off`、`/model high` 或 `/model max` 会复用当前路由公布的推理强度 catalog。不可用的等级会被拒绝，且不改变选择。
+
 真正处于零状态的会话会使用自适应双栏欢迎卡，而不是让紧凑 transcript header 横跨空白 viewport。其编排借鉴 Claude Code 左侧身份／右侧更新的节奏，但只保留第一方 DeepSeek 内容：左栏以终端前景色渲染从官方 SVG 派生的 Braille 鲸鱼，并从各自权威服务投影 preset、模型、权限和 workspace；右栏列出真实 Harness 命令与最新可查询会话。该标志在浅色终端中呈黑色，在深色主题中不会消失，缩小档位也不依赖 Kitty／iTerm 图像协议。第一个持久 turn 会将欢迎卡收缩为普通 header，因此不会让重复欢迎状态进入对话。多行 editor 持有一圈完整边框，其底框承载随状态变化的发送／steer 提示；独立底部状态栏则把工作区和用量与 agent 状态、模型、上下文压力及排队工作对齐。
 
 富文本输出保持终端原生，而不是导入 Web React tree。pi-tui 的 GFM renderer 持有标题、强调、链接、嵌套／任务列表、引用、表格与代码围栏；一个窄范围 highlighter 把 `diff`/`patch` 元数据、hunk、删除和新增映射到工具 diff 卡片共用的语义 palette。同一路径的相邻 hunk 形成一个可见分组。KaTeX 排版、获取 Markdown 图像、Shiki token 着色、复制控件与水平滚动器仍是明确的浏览器差异，而不是终端包中的隐藏依赖。

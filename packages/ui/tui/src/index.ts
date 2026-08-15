@@ -2037,7 +2037,7 @@ export function createTuiChat(
     commandCtx.commands.register({
       name: 'model',
       description: 'Show or switch this session\'s model',
-      input: { hint: '[[provider/]model]' },
+      input: { hint: '[[provider/]model|off|high|max]' },
       handler: ({ rawInput }) => {
         modelController.queueModelCommand(rawInput)
         return { kind: 'success' }

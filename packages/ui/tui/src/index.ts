@@ -203,6 +203,7 @@ import {
   writeMarkdownTranscript,
 } from './chat/transcript-export.ts'
 import { mcpCommandResult } from './chat/mcp-command.ts'
+import { memoriesCommandResult } from './chat/memories-command.ts'
 import { hooksCommandResult } from './chat/hooks-command.ts'
 import { pluginsCommandResult } from './chat/plugins-command.ts'
 import {
@@ -2750,6 +2751,12 @@ export function createTuiChat(
       description: 'List MCP tools visible to this session',
       input: { hint: '[verbose]' },
       handler: ({ rawInput }) => mcpCommandResult(rawInput, agent.ctx.tools.schemas(agent)),
+    })
+    commandCtx.commands.register({
+      name: 'memories',
+      description: 'Inspect Memory MCP capabilities visible to this session',
+      input: { hint: '[verbose]' },
+      handler: ({ rawInput }) => memoriesCommandResult(rawInput, agent.ctx.tools.schemas(agent)),
     })
     commandCtx.commands.register({
       name: 'hooks',

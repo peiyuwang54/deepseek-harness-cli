@@ -96,6 +96,7 @@ const CHECKPOINTS = [
   'goal-status-paused',
   'goal-status-complete',
   'mcp-tools',
+  'memory-providers',
   'hooks-browser',
   'plugins-browser',
   'import-selector',
@@ -1507,6 +1508,39 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('mcp-tools', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins visible Memory MCP capabilities without claiming provider state', async () => {
+    const output: ToolDefinition['output'] = {
+      schema: { type: 'null' },
+      render: () => [],
+    }
+    const harness = await setupSnapshot({
+      tools: {
+        readGraph: {
+          name: 'mcp__reference_memory__read_graph', description: 'Read the memory graph', parameters: {}, output,
+          execute: async () => null,
+        },
+        createEntities: {
+          name: 'mcp__reference_memory__create_entities', description: 'Create memory entities', parameters: {}, output,
+          execute: async () => null,
+        },
+        recall: {
+          name: 'mcp__engram__recall', description: 'Recall stored knowledge', parameters: {}, output,
+          execute: async () => null,
+        },
+        github: {
+          name: 'mcp__github__search', description: 'Search GitHub repositories', parameters: {}, output,
+          execute: async () => null,
+        },
+      },
+    }, { columns: 104, rows: 32 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/memories verbose')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('memory-providers', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

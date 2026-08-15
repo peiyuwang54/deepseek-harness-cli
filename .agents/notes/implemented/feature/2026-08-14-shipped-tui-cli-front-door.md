@@ -54,6 +54,8 @@ Direct `/model off`, `/model high`, and `/model max` reuse the current route's a
 
 `/mcp [verbose]` projects only MCP-qualified schemas from the current Agent's scoped tool view. The projection reports public names and optional descriptions without claiming connection status that the tool registry cannot determine.
 
+`/memories [verbose]` narrows that same scoped tool view to MCP server ids identifying `memory`, `memorix`, or `engram`, then groups the visible tools by provider. The command is read-only and does not infer stored data, enable memory use, or offer destructive reset. The Harness has no built-in memory store; provider configuration and every data lifecycle operation remain outside this TUI projection.
+
 `/hooks [verbose]` projects successfully loaded Claude Code and Codex bridge configurations from the read-only `ctx.hooks` registry. The base bundle mounts the registry, each bridge contributes its absolute source path, runnable lifecycle entries, and skipped handlers for its effect lifetime, and the TUI expands commands, matchers, and timeout overrides only in verbose mode. Profile composition remains the authority for enabling, trusting, disabling, or editing hooks.
 
 `/plugins [verbose] [query]` projects the existing Host plugin inventory into the terminal with bounded output, package or Loader-id filtering, and optional root Fiber diagnostics. The TUI bundle mounts the same inventory provider as Web settings, while package mutation remains outside chat through the profile-aware `deepseek plugin` command. This keeps the renderer read-only and avoids creating a second plugin or marketplace state store.
@@ -89,6 +91,8 @@ The hook browser was compared with Codex commit [`c494130`](https://github.com/o
 The plugin browser was compared with Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/chatwidget/plugins.rs). Codex's remote marketplaces, account policies, and application-server install flow do not apply to the local open-source CLI. DeepSeek Harness instead reads its existing Cordis Loader inventory and directs mutation to its existing profile package command; no Rust source was copied.
 
 The local setup importer was compared with Codex commit [`c494130`](https://github.com/openai/codex/tree/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/external_agent_config_migration), whose `/import` flow detects a source, groups setup by scope, and requires an explicit selection before its app-server migration. DeepSeek Harness implements only filesystem formats it can consume directly and uses its own Node filesystem and pi-tui dialog code; no Rust source was copied.
+
+The memory capability view was compared with Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/bottom_pane/memories_settings_view.rs). Codex controls its own local app-server memory generator and reset lifecycle. DeepSeek Harness instead reports only tools exposed by optional Memory MCP providers and leaves their data policies untouched; no Rust source was copied.
 
 ## Reference and provenance boundary
 
@@ -129,6 +133,8 @@ The `/personality` selector has a keyless checkpoint. Focused integration covera
 `/plugins verbose <query>` has a keyless terminal checkpoint. Focused tests cover lifecycle totals, compact rows, module and Loader-id filtering, full diagnostics, empty results, and profiles without the optional inventory service.
 
 `/import` has keyless selector and completed-result checkpoints. Filesystem tests cover user/project detection, Git-root resolution, skill bundle and flat-file copies, global and project instructions, direct argument parsing, category filtering, result formatting, and a destination created between detection and execution without overwriting it.
+
+`/memories verbose` has a keyless terminal checkpoint. Focused tests cover provider grouping, deterministic tool order, normalized descriptions, unrelated-tool exclusion, capability absence, and rejection of mutation-like arguments.
 
 ## Alternatives considered
 

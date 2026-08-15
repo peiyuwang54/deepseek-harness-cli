@@ -54,6 +54,8 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 
 `/mcp [verbose]` 只投影当前 Agent 作用域工具视图中的 MCP 限定 schema。该投影会报告公开名称与可选描述，不会声称工具注册表无法判定的连接状态。
 
+`/memories [verbose]` 会把同一份作用域工具视图缩小到 server id 能识别为 `memory`、`memorix` 或 `engram` 的 MCP 工具，再按 provider 归组可见工具。该命令为只读，不会推断已存数据、启用记忆使用或提供破坏性重置。Harness 没有内置记忆存储；provider 配置与所有数据生命周期操作都留在该 TUI projection 之外。
+
 `/hooks [verbose]` 会从只读 `ctx.hooks` registry 投影成功加载的 Claude Code 与 Codex 桥接配置。基础 bundle 挂载该 registry；每个桥接会在其 effect 生命周期内贡献绝对来源路径、可运行生命周期条目与被跳过的 handler；TUI 只在 verbose 模式展开命令、matcher 与超时覆盖。启用、信任、禁用或编辑 hook 仍由 profile 组合持有。
 
 `/plugins [verbose] [query]` 会把现有 Host 插件清单投影到终端，提供有界输出、软件包或 Loader id 过滤，以及可选的根 Fiber 诊断。TUI bundle 挂载与 Web 设置相同的 inventory provider，软件包修改则继续由 chat 外、感知 profile 的 `deepseek plugin` 命令负责。Renderer 因此保持只读，也不会产生第二套插件或 marketplace 状态存储。
@@ -89,6 +91,8 @@ Hook 浏览器对照了 Codex commit [`c494130`](https://github.com/openai/codex
 插件浏览器对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/chatwidget/plugins.rs)。Codex 的远端 marketplace、账号策略与 application-server 安装流程不适用于本地开源 CLI。DeepSeek Harness 改为读取已有 Cordis Loader 清单，并把修改操作引导至既有 profile 软件包命令；没有复制 Rust 源码。
 
 本地配置导入器对照了 Codex commit [`c494130`](https://github.com/openai/codex/tree/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/external_agent_config_migration)；其 `/import` 流程先检测来源、按作用域分组配置，再要求显式选择后交给 app-server 迁移。DeepSeek Harness 只实现自身可直接消费的文件系统格式，并使用自己的 Node 文件系统与 pi-tui 对话框代码；没有复制 Rust 源码。
+
+记忆能力视图对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/bottom_pane/memories_settings_view.rs)。Codex 控制自身本地 app-server 的记忆生成器与重置生命周期。DeepSeek Harness 改为只报告可选 Memory MCP provider 暴露的工具，并保持其数据策略不变；没有复制 Rust 源码。
 
 ## 参考与来源边界
 
@@ -129,6 +133,8 @@ Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服
 `/plugins verbose <query>` 具有无密钥终端 checkpoint。聚焦测试覆盖生命周期总数、紧凑行、模块与 Loader id 过滤、完整诊断、空结果，以及缺少可选 inventory 服务的 profile。
 
 `/import` 具有无密钥选择器与完成结果 checkpoint。文件系统测试覆盖用户／项目检测、Git 根解析、Skill bundle 与扁平文件复制、全局与项目指令、直接参数解析、类别过滤、结果格式，以及目标在检测和执行之间出现时不覆盖该目标。
+
+`/memories verbose` 具有无密钥终端 checkpoint。聚焦测试覆盖 provider 归组、确定性的工具顺序、规整描述、排除无关工具、能力缺失，以及拒绝类似修改的参数。
 
 ## 考虑过的替代方案
 

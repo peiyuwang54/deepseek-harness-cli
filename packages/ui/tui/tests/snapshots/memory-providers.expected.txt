@@ -1,0 +1,48 @@
+terminal 104x32 buffer=normal length=32 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor visible column=3 viewportRow=14 bufferRow=14
+buffer
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1| <blank>
+2| "Memory MCP providers (2 providers · 3 tools)                                                            "
+  style 0-103 dim
+3| "- engram · 1 tool                                                                                       "
+  style 0-103 dim
+4| "  - mcp__engram__recall — Recall stored knowledge                                                       "
+  style 0-103 dim
+5| "- reference_memory · 2 tools                                                                            "
+  style 0-103 dim
+6| "  - mcp__reference_memory__create_entities — Create memory entities                                     "
+  style 0-103 dim
+7| "  - mcp__reference_memory__read_graph — Read the memory graph                                           "
+  style 0-103 dim
+8| "Memory use, generation, retention, and reset remain provider-owned.                                     "
+  style 0-103 dim
+9| "Configure an optional provider outside chat; see examples/mcp-memory/README.md. /mcp verbose lists all  "
+  style 0-103 dim
+10| "MCP tools.                                                                                              "
+  style 0-9 dim
+11-12| <blank>
+13| "                                                                                                        "
+  style 0-103 bg=ansi-236
+14| " › │Describe a task, @ a file, or / for commands                                                        "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-103 bg=ansi-236
+15| "                                                                                                        "
+  style 0-103 bg=ansi-236
+16| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+17| "                                                        ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 56-57 dim
+  style 60-84 dim
+  style 87-91 dim
+  style 94-103 dim
+18-31| <blank>

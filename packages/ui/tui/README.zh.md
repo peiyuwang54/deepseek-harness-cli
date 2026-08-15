@@ -66,6 +66,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/mcp [verbose]` 会列出当前 Agent 作用域工具注册表中可见的 MCP 限定工具。默认视图输出稳定的公开工具名；`verbose` 还会输出经规整的描述。它不会暴露无关工具，也不会推断工具注册表不持有的服务器连接状态。
 
+`/memories [verbose]` 会以只读方式展示当前 Agent 可见的 Memory MCP 能力。它按 MCP server id 中的 `memory`、`memorix` 或 `engram` 识别并归组工具；`verbose` 还会输出经规整的工具描述。DeepSeek Harness 不内置记忆存储，因此使用、生成、保留与重置仍由已配置的 provider 持有。可选 provider 见 [`examples/mcp-memory`](../../../examples/mcp-memory/README.md)。
+
 `/hooks [verbose]` 会列出可选 `ctx.hooks` 中成功加载的 Claude Code 与 Codex hook 桥接配置。默认视图报告每个来源和可运行 handler 总数；`verbose` 展开生命周期点、matcher、命令、超时覆盖与已解析但被跳过的 handler。该命令只用于诊断且为只读；启用、信任、禁用或编辑 hook 仍由 profile 配置负责。
 
 `/plugins [verbose] [query]` 会浏览当前 profile 的实时 Cordis Loader 清单。默认输出最多 20 行，并报告配置总数、active 数与 disabled 数；query 可按模块标识或 Loader id 过滤，`verbose` 则补充完整值与根 Fiber 阶段。该浏览器为只读。安装 profile 软件包需在 chat 外运行 `deepseek plugin --profile tui add <package>`；移除或更新时在相同位置使用 `remove` 或 `update`，也可使用等价的 `dsh` 写法。

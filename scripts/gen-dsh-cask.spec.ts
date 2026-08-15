@@ -39,6 +39,7 @@ describe('generateCask', () => {
     for (const digest of Object.values(SHAS)) expect(cask).toContain(digest)
     expect(cask.indexOf('on_macos')).toBeLessThan(cask.indexOf('on_linux'))
     expect(cask).toContain('binary "bin/deepseek-harness-cli", target: "deepseek"')
+    expect(cask).toContain('binary "bin/deepseek-harness-cli", target: "dsh"')
     expect(cask).toContain('binary "bin/deepseek-harness-cli"')
   })
 

@@ -71,6 +71,7 @@ export function generateCask(version: string, shas: PlatformShas): string {
   end
 
   binary "bin/deepseek-harness-cli", target: "deepseek"
+  binary "bin/deepseek-harness-cli", target: "dsh"
   binary "bin/deepseek-harness-cli"
 
   livecheck do

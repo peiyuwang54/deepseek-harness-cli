@@ -1039,6 +1039,11 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'id', description: 'the session the batch belongs to.' }, { name: 'events', description: 'the contiguous batch to persist, in seq order.' }],
       },
       {
+        signature: 'delete(_id: SessionId, signal?: AbortSignal): Promise<void>',
+        description: 'Permanently remove one session\'s durable log. A live session is flushed first. Events emitted while deletion is pending are restored if deletion fails and never re-materialize the log if it succeeds; callers that delete a live session must dispose it immediately. Deleting an absent or never- materialized session succeeds without creating an artifact.',
+        parameters: [{ name: '_id', description: 'the session to remove.' }, { name: 'signal', description: 'optional cancellation before the destructive backend write starts.' }],
+      },
+      {
         signature: 'async prepare(id: SessionId, signal?: AbortSignal): Promise<SessionPreparation>',
         description: 'Prepare the exact unpublished Session used by resume. Implementations may reuse object graphs retained by an earlier inspect after confirming their durable revision is still current; disposal releases an unpublished reservation. Revision retries require the durable log to remain unchanged for one read/check round trip; continuous external writers may delay completion.',
         parameters: [{ name: 'id', description: 'persisted session to prepare.' }, { name: 'signal', description: 'optional cancellation for preparation work.' }],

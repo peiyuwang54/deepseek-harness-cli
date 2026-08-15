@@ -15,6 +15,7 @@ The persisted unit IS the existing `SessionEvent` (event-sourced model — the l
 | `readRaw(id, signal?): Promise<SessionRawArtifact \| undefined>` | Read a supported backend's own artifact text verbatim, decoded from its physical encoding but never reconstructed from events. `undefined` means only that the requested artifact is absent; an unsupported backend rejects. |
 | `create(meta): Promise<void>` | Register a new session's metadata. MAY defer the physical write until the first `append` (lazy materialization). |
 | `append(id, events): Promise<void>` | Durably persist a batch. Append-only; first event `seq` == stored next-seq after any repair; rejects non-JSON-serializable data naming the offending type. |
+| `delete(id, signal?): Promise<void>` | Flush and permanently remove one session. An absent or never-materialized id succeeds; events arriving during a failed deletion are restored, while successful deletion cannot be undone by teardown. The caller immediately disposes a deleted live Session. |
 | `prepare(id, signal?): Promise<SessionPreparation>` | Reserve the exact unpublished Session used by resume. A coordinator reuses an earlier inspection when available, commits pending recovery, and releases an unpublished reservation back to its bounded cache on disposal. |
 | `load(id): Promise<{ meta; events }>` | Return an immutable balanced logical log after converting supported older records from the same format version and committing cold recovery. A live load first flushes its snapshot and rejects while its turn is open; a cold load preserves an interrupted final turn and durably closes it with synthetic `tool/result`/`step/end?`/`turn/end {interrupted}` events. Only a torn tail fragment is dropped; committed corruption and malformed records reject as `SessionPersistenceCorruptionError`, while an unsupported format `version` or an event type unknown to this build (without the envelope's `ignorable` marker) refuses as `SessionFormatUnsupportedError`, naming the refusal direction and the raw log path when the backend keeps one artifact per session. |
 | `inspect(id, signal?): Promise<{ meta; events }>` | Return an upgraded, validated, deeply frozen logical view without committing recovery or publishing a Session. A cold view receives in-memory synthetic recovery closers while its physical torn tail remains untouched; an already-live view is its current immutable snapshot and may contain an open turn. Coordinator-backed implementations retain the exact cold unpublished Session in a bounded LRU for later `prepare`, but discard and reload it when the stored revision changes. Same-id inspections share an in-flight read. |
@@ -53,6 +54,7 @@ The `PersistenceBackend<TornMarker>` hooks (the only contract between the coordi
 | `loadStoredFrom?(id, fromSeq, signal?)` | Optional seek-capable suffix read behind the service's `readFrom`: the header plus stored events with `seq >= fromSeq`, non-mutating, no torn marker. SQLite implements it (`WHERE seq >= ?`); a backend that omits it gets the coordinator's fallback — `loadStored` plus a forward skip. |
 | `appendBatch(meta, events, isMaterialized)` | Durably append a contiguous batch, lazily materializing ATOMICALLY when not yet materialized. |
 | `commitRepair(meta, tornMarker, closers)` | Make a crash repair durable: truncate the torn tail (iff `tornMarker !== undefined` — a marker may be falsy, e.g. seq/offset `0`) and append `closers`. NOT required to be atomic. Used by load (truncate + closers) and live-adoption (truncate only). |
+| `deleteStored(id, signal?)` | Permanently remove one stored session; absence succeeds. |
 | `list(signal?)` | List all stored metadata, observing optional cancellation. |
 | `close?()` | Optional lifecycle teardown (e.g. close a db handle), awaited after the dispose drain. |
 
@@ -80,6 +82,6 @@ Persistence does not mutate live request prefixes. A resumed loop can reuse prov
 
 ## Known Limitations and Deferred Work
 
-- **No deletion or retention API** — pruning stored sessions is out-of-band backend maintenance.
+- **No retention policy** — callers explicitly delete one session; automatic age, size, and quota pruning remain deployment policy.
 - **`list()` is unpaginated and unfiltered** — it returns every stored session's header; fine for local stores, unindexed at scale.
 - **Repair-time synthetic closers are the only crash story** — a backend must synthesize `tool/result`/`step/end`/`turn/end` closers on load; there is no partial-turn resume that continues an interrupted turn instead of closing it.

@@ -1,0 +1,46 @@
+terminal 96x30 buffer=normal length=30 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor hidden column=96 viewportRow=13 bufferRow=13
+buffer
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1-2| <blank>
+3| "                                                                                                "
+  style 0-95 bg=ansi-236
+4| " › Describe a task, @ a file, or / for commands                                                 "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-46 bg=ansi-236 dim
+  style 47-95 bg=ansi-236
+5| "                                                                                                "
+  style 0-95 bg=ansi-236
+6| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+7| "╭ Delete this session? ────────────────────────────────────────────────────╮"
+  style 0-75 fg=bright-blue
+8| "│ → No, keep this session           Return to the current conversation     │"
+  style 0-0 fg=bright-blue
+  style 2-69 fg=bright-blue inverse
+  style 75-75 fg=bright-blue
+9| "│   Yes, delete and exit            Permanently remove this session log;   │"
+  style 0-0 fg=bright-blue
+  style 24-71 dim
+  style 75-75 fg=bright-blue
+10| "│                                                                          │"
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
+11| "│ ↑/↓ move • Enter select • Esc close                                      │"
+  style 0-0 fg=bright-blue
+  style 2-36 dim
+  style 75-75 fg=bright-blue
+12| "╰──────────────────────────────────────────────────────────────────────────╯"
+  style 0-75 fg=bright-blue
+13| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 48-49 dim
+  style 52-76 dim
+  style 79-83 dim
+  style 86-95 dim
+14-29| <blank>

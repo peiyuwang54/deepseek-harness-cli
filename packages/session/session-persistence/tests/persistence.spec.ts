@@ -101,6 +101,10 @@ class MemoryPersistence extends SessionPersistence implements PersistenceBackend
     return this.coordinator.append(id, events)
   }
 
+  override delete(id: SessionId, signal?: AbortSignal): Promise<void> {
+    return this.coordinator.delete(id, signal)
+  }
+
   override prepare(id: SessionId, signal?: AbortSignal): ReturnType<PersistenceCoordinator['prepare']> {
     return this.coordinator.prepare(id, signal)
   }
@@ -159,6 +163,11 @@ class MemoryPersistence extends SessionPersistence implements PersistenceBackend
     /* v8 ignore next -- commitRepair only runs for a materialized (stored) session */
     if (!entry) return
     if (closers.length > 0) entry.events.push(...structuredClone(closers) as SessionEvent[])
+  }
+
+  async deleteStored(id: SessionId, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted()
+    this.store.delete(id)
   }
 
   async list(signal?: AbortSignal): Promise<SessionHeader[]> {
@@ -228,6 +237,11 @@ class ControlledBackend implements PersistenceBackend<never> {
     if (entry !== undefined) entry.events.push(...structuredClone(closers) as SessionEvent[])
   }
 
+  async deleteStored(id: SessionId, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted()
+    this.store.delete(id)
+  }
+
   async list(): Promise<SessionHeader[]> {
     return [...this.store.values()].map(entry => structuredClone(entry.meta))
   }
@@ -266,6 +280,55 @@ describe('the inherited readRaw default', () => {
     await expect(
       ctx.sessionPersistence.readRaw(SessionId('any-session'), controller.signal),
     ).rejects.toThrow('aborted')
+  })
+})
+
+describe('live session deletion', () => {
+  it('flushes once and does not recreate the log during teardown', async () => {
+    const store: MemoryStore = new Map()
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(MemoryPersistence, { store })
+    const id = SessionId('delete-live')
+    const session = ctx.sessions.create(id)
+    session.append('turn/start', { turn: 1 })
+    session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+
+    await ctx.sessionPersistence.delete(id)
+    expect(store.has(id)).toBe(false)
+    session.append('turn/start', { turn: 2 })
+
+    await ctx.fiber.dispose()
+    expect(store.has(id)).toBe(false)
+  })
+
+  it('restores events that arrive while backend deletion fails', async () => {
+    const store: MemoryStore = new Map()
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(MemoryPersistence, { store })
+    const persistence = ctx.sessionPersistence as MemoryPersistence
+    const id = SessionId('delete-live-failure')
+    const session = ctx.sessions.create(id)
+    session.append('turn/start', { turn: 1 })
+    session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    const entered = Promise.withResolvers<undefined>()
+    const release = Promise.withResolvers<undefined>()
+    vi.spyOn(persistence, 'deleteStored').mockImplementation(async () => {
+      entered.resolve(undefined)
+      await release.promise
+      throw new Error('delete failed')
+    })
+
+    const deletion = persistence.delete(id)
+    await entered.promise
+    session.append('turn/start', { turn: 2 })
+    session.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
+    release.resolve(undefined)
+    await expect(deletion).rejects.toThrow('delete failed')
+    expect(store.get(id)?.events.map(event => event.seq)).toEqual([0, 1, 2, 3])
+
+    await ctx.fiber.dispose()
   })
 })
 

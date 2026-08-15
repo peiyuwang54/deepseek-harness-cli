@@ -99,6 +99,22 @@ export function runPersistenceContract(name: string, make: () => Promise<Contrac
       }
     })
 
+    it('permanently deletes a materialized session and treats absence as success', async () => {
+      const { persistence, dispose } = await make()
+      try {
+        const m = meta('delete-session', '/work')
+        await persistence.create(m)
+        await persistence.append(m.id, oneTurnLog())
+        await persistence.delete(m.id)
+
+        expect((await persistence.list()).some(item => item.id === m.id)).toBe(false)
+        await expect(persistence.load(m.id)).rejects.toThrow(`session "${m.id}" not found`)
+        await persistence.delete(m.id)
+      } finally {
+        await dispose()
+      }
+    })
+
     it('rejects a fractional creation timestamp without reserving its session id', async () => {
       const { persistence, dispose } = await make()
       try {

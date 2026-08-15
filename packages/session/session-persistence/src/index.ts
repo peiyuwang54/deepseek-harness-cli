@@ -143,6 +143,20 @@ export abstract class SessionPersistence extends Service {
   abstract append(id: SessionId, events: readonly SessionEvent[]): Promise<void>
 
   /**
+   * Permanently remove one session's durable log. A live session is flushed
+   * first. Events emitted while deletion is pending are restored if deletion
+   * fails and never re-materialize the log if it succeeds; callers that delete
+   * a live session must dispose it immediately. Deleting an absent or never-
+   * materialized session succeeds without creating an artifact.
+   * @param _id - the session to remove.
+   * @param signal - optional cancellation before the destructive backend write starts.
+   */
+  delete(_id: SessionId, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted()
+    return Promise.reject(new Error('this session persistence backend does not support deletion'))
+  }
+
+  /**
    * Prepare the exact unpublished Session used by resume. Implementations may
    * reuse object graphs retained by an earlier {@link inspect} after confirming
    * their durable revision is still current; disposal releases an unpublished

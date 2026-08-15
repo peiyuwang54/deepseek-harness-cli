@@ -1901,6 +1901,7 @@ export function createTuiChat(
   let commandHubOverlay: TuiOverlaySession | undefined
   let commandHubOperations = Promise.resolve()
   let archiveInFlight = false
+  let deleteInFlight = false
   const openActionDialog = (
     title: string,
     choices: readonly ActionDialogChoice[],
@@ -1977,6 +1978,51 @@ export function createTuiChat(
           if (!isDisposed()) appendNotice(`Session archive failed: ${errorChain(error)}`, 'error')
         } finally {
           archiveInFlight = false
+        }
+      })
+    }, 'cancel')
+    return { kind: 'success' }
+  }
+
+  const runDeleteCommand = (raw: string): CommandResult => {
+    if (raw.trim() !== '') return { kind: 'error', text: 'Usage: /delete (no arguments)' }
+    if (deleteInFlight) return { kind: 'error', text: 'Session deletion is already in progress.' }
+    if (agent.status !== 'idle') {
+      return { kind: 'error', text: '/delete requires the current turn to finish or be cancelled first.' }
+    }
+    const navigation = runtime.agentNavigation
+    if (navigation !== undefined && navigation.currentSessionId() !== navigation.rootSessionId) {
+      return { kind: 'error', text: 'Switch to Main before deleting this CLI session.' }
+    }
+    if (ctx.get('sessionPersistence') === undefined) {
+      return { kind: 'error', text: 'Session deletion is unavailable in this TUI embedding.' }
+    }
+    const copy = tuiCopy(locale)
+    openActionDialog(copy.deleteTitle, [
+      {
+        value: 'cancel',
+        label: copy.deleteKeep,
+        description: copy.deleteKeepDescription,
+      },
+      {
+        value: 'delete',
+        label: copy.deleteConfirm,
+        description: copy.deleteConfirmDescription,
+      },
+    ], (value) => {
+      if (value !== 'delete' || deleteInFlight) return
+      deleteInFlight = true
+      commandHubOperations = commandHubOperations.then(async () => {
+        try {
+          const persistence = ctx.get('sessionPersistence')
+          if (persistence === undefined) throw new Error('session persistence was removed before confirmation')
+          if (agentStatus() !== 'idle') throw new Error('the current turn started before confirmation')
+          await persistence.delete(agent.session.id)
+          if (!isDisposed()) requestExit()
+        } catch (error: unknown) {
+          if (!isDisposed()) appendNotice(`Session deletion failed: ${errorChain(error)}`, 'error')
+        } finally {
+          deleteInFlight = false
         }
       })
     }, 'cancel')
@@ -2668,6 +2714,11 @@ export function createTuiChat(
       name: 'archive',
       description: 'Archive this session and exit',
       handler: ({ rawInput }) => runArchiveCommand(rawInput),
+    })
+    commandCtx.commands.register({
+      name: 'delete',
+      description: 'Permanently delete this session and exit',
+      handler: ({ rawInput }) => runDeleteCommand(rawInput),
     })
     commandCtx.commands.register({
       name: 'debug-config',

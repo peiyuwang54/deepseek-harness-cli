@@ -182,6 +182,10 @@ export class SqliteSessionPersistence extends SessionPersistence implements Pers
     return this.coordinator.append(id, events)
   }
 
+  override delete(id: SessionId, signal?: AbortSignal): Promise<void> {
+    return this.coordinator.delete(id, signal)
+  }
+
   override prepare(id: SessionId, signal?: AbortSignal): Promise<SessionPreparation> {
     return this.coordinator.prepare(id, signal)
   }
@@ -335,6 +339,14 @@ export class SqliteSessionPersistence extends SessionPersistence implements Pers
       throw error
       /* v8 ignore stop */
     }
+  }
+
+  /** Delete a session row; the schema cascades deletion to all event rows. */
+  async deleteStored(id: SessionId, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted()
+    await this.ready
+    signal?.throwIfAborted()
+    this.db.prepare('DELETE FROM sessions WHERE id = ?').run(id)
   }
 
   /** List all materialized sessions' metadata (every row is a materialized session). */

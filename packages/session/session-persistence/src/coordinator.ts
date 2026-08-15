@@ -199,6 +199,14 @@ export interface PersistenceBackend<TornMarker = unknown> {
   list(signal?: AbortSignal): Promise<SessionHeader[]>
 
   /**
+   * Permanently remove one stored session. Absence succeeds. Implementations
+   * must not recreate or partially retain the session after resolution.
+   * @param id - persisted session id to remove.
+   * @param signal - optional cancellation before deletion begins.
+   */
+  deleteStored(id: SessionId, signal?: AbortSignal): Promise<void>
+
+  /**
    * Optional side-effect-free artifact locator, used to point refusal
    * diagnostics ({@link SessionFormatUnsupportedError}) at the raw log.
    * Backends without one artifact per session omit it or return `undefined`.
@@ -590,6 +598,12 @@ export class PersistenceCoordinator<TornMarker = unknown> {
   private states = new Map<SessionId, SessionState>()
   /** Lifecycle and write-behind state keyed by the exact live Session. */
   private live = new Map<Session, LiveSessionState>()
+  /** Live lifecycles whose durable identity was deleted and may only retire. */
+  private deletedLive = new Set<Session>()
+  /** Events held outside write-behind while a live deletion may still fail. */
+  private deletingLive = new Map<Session, SessionEvent[]>()
+  /** Identities closed to new write admission while deletion is in progress. */
+  private deleting = new Set<SessionId>()
   /** Exact disposed lifecycles whose buffered tail is still draining. */
   private retirements = new Map<SessionId, Promise<void>>()
   /** Shared cold reads, unpublished reservations, and completed LRU entries. */
@@ -667,6 +681,9 @@ export class PersistenceCoordinator<TornMarker = unknown> {
    *   as a detached lossless-JSON snapshot at call time.
    */
   async append(id: SessionId, events: readonly SessionEvent[]): Promise<void> {
+    if (this.deleting.has(id)) {
+      throw new Error(`cannot append session "${id}" while it is being deleted`)
+    }
     // Validate and deep-snapshot the complete batch HERE, in one traversal,
     // before the op waits behind the per-session chain. A check followed by
     // structuredClone would reread accessors and could sanitize an exotic value
@@ -677,6 +694,58 @@ export class PersistenceCoordinator<TornMarker = unknown> {
       throw new TypeError('session event batch is not losslessly JSON-serializable because it contains non-JSON-serializable data')
     }
     return this.serialize(id, () => this.appendCore(id, batch))
+  }
+
+  /**
+   * Flush and permanently remove one session without allowing a later teardown
+   * flush to recreate it. A successfully deleted live lifecycle is retired by
+   * its owner immediately after this call.
+   * @param id - session identity to remove.
+   * @param signal - optional cancellation before the backend deletion starts.
+   */
+  async delete(id: SessionId, signal?: AbortSignal): Promise<void> {
+    if (this.deleting.has(id)) {
+      throw new Error(`session "${id}" deletion is already in progress`)
+    }
+    this.deleting.add(id)
+    try {
+      await this.waitForRetirement(id, signal)
+      signal?.throwIfAborted()
+      const live = this.ctx.sessions.get(id)
+      const deferred: SessionEvent[] = []
+      if (live !== undefined) this.deletingLive.set(live, deferred)
+      if (live !== undefined) await this.flush(live)
+      try {
+        await this.serialize(id, async () => {
+          this.preparations.assertWritable(id)
+          await this.backend.deleteStored(id, signal)
+          this.preparations.invalidate(id)
+          this.states.delete(id)
+          if (live !== undefined) this.deletedLive.add(live)
+        }, signal)
+      } catch (error: unknown) {
+        if (live !== undefined) {
+          this.deletingLive.delete(live)
+          const controller = this.live.get(live)
+          /* v8 ignore next -- a live store owner remains attached until its caller handles this rejection. */
+          if (controller === undefined) throw error
+          for (const event of deferred) controller.writes.enqueue(event)
+          try {
+            await this.flush(live)
+          } catch (restoreError: unknown) {
+            throw new AggregateError(
+              [error, restoreError],
+              `session "${id}" deletion failed and deferred events could not be restored`,
+            )
+          }
+        }
+        throw error
+      } finally {
+        if (live !== undefined) this.deletingLive.delete(live)
+      }
+    } finally {
+      this.deleting.delete(id)
+    }
   }
 
   private async appendCore(id: SessionId, events: readonly SessionEvent[]): Promise<void> {
@@ -1121,6 +1190,12 @@ export class PersistenceCoordinator<TornMarker = unknown> {
 
     // Keep a persistence-owned copy of each frozen event and start its bounded window.
     ctx.on('session/event', (session, event) => {
+      const deferred = this.deletingLive.get(session)
+      if (deferred !== undefined) {
+        deferred.push(event)
+        return
+      }
+      if (this.deletedLive.has(session)) return
       const live = this.initFor(session)
       live.writes.enqueue(event)
     })
@@ -1152,10 +1227,11 @@ export class PersistenceCoordinator<TornMarker = unknown> {
 
   /** Drain and release state owned by one exact disposed Session lifecycle. */
   private async retireCore(session: Session): Promise<void> {
-    await this.flush(session)
+    if (!this.deletedLive.has(session)) await this.flush(session)
     const id = session.header.id
     await this.serialize(id, () => {
       this.live.delete(session)
+      this.deletedLive.delete(session)
       if (this.states.get(id)?.owner === session) this.states.delete(id)
     })
   }

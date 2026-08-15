@@ -98,6 +98,7 @@ const CHECKPOINTS = [
   'permissions-switching',
   'agent-selector',
   'archive-confirmation',
+  'delete-confirmation',
   'debug-config',
   'skills-selector',
   'keymap-selector',
@@ -1506,6 +1507,24 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('archive-confirmation', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins the destructive session delete confirmation', async () => {
+    const harness = await setupSnapshot({
+      configureContext: async (ctx) => {
+        await ctx.plugin(SystemPrompt)
+        await ctx.plugin(ToolRegistry)
+        ctx.provide('sessionPersistence', {
+          delete: () => Promise.resolve(),
+        } as never)
+      },
+    }, { columns: 96, rows: 30 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/delete')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('delete-confirmation', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

@@ -9,7 +9,7 @@
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { readdirSync } from 'node:fs'
-import { open, mkdir, readFile, readdir, realpath, link, rm, stat, truncate } from 'node:fs/promises'
+import { open, mkdir, readFile, readdir, realpath, link, lstat, rm, rmdir, stat, truncate, unlink } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { scheduler } from 'node:timers/promises'
@@ -179,6 +179,10 @@ export class JsonlSessionPersistence extends SessionPersistence implements Persi
 
   append(id: SessionId, events: readonly SessionEvent[]): Promise<void> {
     return this.coordinator.append(id, events)
+  }
+
+  override delete(id: SessionId, signal?: AbortSignal): Promise<void> {
+    return this.coordinator.delete(id, signal)
   }
 
   override prepare(id: SessionId, signal?: AbortSignal): Promise<SessionPreparation> {
@@ -441,6 +445,31 @@ export class JsonlSessionPersistence extends SessionPersistence implements Persi
     if (tornMarker !== undefined) await this.repair(meta, tornMarker.truncateTo)
     const repairedEvents = [...(tornMarker?.recoveredEvents ?? []), ...closers]
     if (repairedEvents.length > 0) await this.appendLines(meta, repairedEvents)
+  }
+
+  /** Delete one exact log and then remove its empty per-session directory. */
+  async deleteStored(id: SessionId, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted()
+    await this.ensureRootEncoding()
+    const path = await this.findLog(id, signal)
+    if (path === undefined) return
+    const dir = dirname(path)
+    const identity = await lstat(dir)
+    if (!identity.isDirectory() || identity.isSymbolicLink()) {
+      throw new Error(`refusing to delete session "${id}": storage directory is not a real directory`)
+    }
+    signal?.throwIfAborted()
+    await unlink(path)
+    /* v8 ignore next -- native Windows does not expose POSIX directory fsync semantics. */
+    if (process.platform !== 'win32') await this.syncDirPosix(dir)
+    try {
+      await rmdir(dir)
+      /* v8 ignore next -- native Windows does not expose POSIX directory fsync semantics. */
+      if (process.platform !== 'win32') await this.syncDirPosix(dirname(dir))
+    } catch (error: unknown) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (code !== 'ENOENT' && code !== 'ENOTEMPTY' && code !== 'EEXIST') throw error
+    }
   }
 
   /** List valid unique stored sessions' metadata (header line only — no full-log parse). */

@@ -919,6 +919,72 @@ describe('shared settings, appearance, and workspaces', () => {
     await dispose(missing)
   })
 
+  it('confirms permanent session deletion before exiting', async () => {
+    const deleteSession = vi.fn(() => Promise.resolve())
+    const result = await setup({
+      configureContext: composeFrontDoorServices((ctx) => {
+        ctx.provide('sessionPersistence', { delete: deleteSession } as never)
+      }),
+    })
+
+    result.terminal.send('/delete')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Delete this session?')
+    expect(result.terminal.output).toContain('No, keep this session')
+    expect(result.terminal.output).toContain('Yes, delete and exit')
+
+    result.terminal.send('\r')
+    await tick()
+    expect(deleteSession).not.toHaveBeenCalled()
+
+    result.terminal.send('/delete')
+    result.terminal.send('\r')
+    await tick()
+    result.terminal.send('\x1b[B')
+    result.terminal.send('\r')
+    await vi.waitFor(() => { expect(deleteSession).toHaveBeenCalledWith(result.session.id) })
+    await vi.waitFor(() => { expect(result.exit).toHaveBeenCalledWith(0) })
+    await dispose(result)
+  })
+
+  it('keeps /delete failures and unsupported states in the current TUI', async () => {
+    const deleteSession = vi.fn(() => Promise.reject(new Error('delete store unavailable')))
+    const result = await setup({
+      configureContext: composeFrontDoorServices((ctx) => {
+        ctx.provide('sessionPersistence', { delete: deleteSession } as never)
+      }),
+    })
+
+    result.terminal.send('/delete unexpected')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Usage: /delete (no arguments)')
+
+    result.agent.status = 'running'
+    result.terminal.send('/delete')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('/delete requires the current turn to finish')
+    result.agent.status = 'idle'
+
+    result.terminal.send('/delete')
+    result.terminal.send('\r')
+    await tick()
+    result.terminal.send('\x1b[B')
+    result.terminal.send('\r')
+    await vi.waitFor(() => { expect(result.terminal.output).toContain('Session deletion failed: delete store unavailable') })
+    expect(result.exit).not.toHaveBeenCalled()
+    await dispose(result)
+
+    const missing = await setup()
+    missing.terminal.send('/delete')
+    missing.terminal.send('\r')
+    await tick()
+    expect(missing.terminal.output).toContain('Session deletion is unavailable')
+    await dispose(missing)
+  })
+
   it('latches a workspace selection before asynchronous preflight', async () => {
     const pendingStatus = Promise.withResolvers<'ok'>()
     const status = vi.fn(() => pendingStatus.promise)

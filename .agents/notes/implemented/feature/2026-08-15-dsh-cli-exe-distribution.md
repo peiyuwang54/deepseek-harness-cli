@@ -22,6 +22,8 @@ The `deepseek-harness-cli` ships as a single-file executable per platform, built
 - [`scripts/exe-build/pipeline.ts`](../../../../scripts/exe-build/pipeline.ts) — the `ExeBuild` pipeline: `--targets` parsing, the per-target `pkg --sea` invocation, `ASSET_GLOBS`, `prepareNativePty`, and the macOS `-spawn-helper` packaging.
 - [`scripts/build-exe-for-python-sdk.ts`](../../../../scripts/build-exe-for-python-sdk.ts) and [`scripts/build-dsh-cli-exe.ts`](../../../../scripts/build-dsh-cli-exe.ts) — products: the Python SDK runtime and the `deepseek-harness-cli` (`deployFilter: '@deepseek-ai/dsh'`, `entryBin: 'node_modules/@deepseek-ai/dsh/lib/bin.js'`, `outputBasename: 'deepseek-harness-cli'`). Behavior of the Python build is unchanged.
 
+The pipeline resolves pnpm through its `.cmd` shim on Windows. Node does not execute command shims directly there, so the subprocess runner enables the host shell only for `.cmd`; every command and argument comes from fixed product configuration or validated target enums.
+
 ### The closure gate verifies both deploy roots
 
 [`scripts/verify-runtime-closure.ts`](../../../../scripts/verify-runtime-closure.ts) now accepts a repeatable `--manifest` and verifies every listed deploy root; errors carry the manifest name. It runs for both [`python/sdk-runtime/package.json`](../../../../python/sdk-runtime/package.json) and the new [`apps/cli/exe/package.json`](../../../../apps/cli/exe/package.json).
@@ -41,14 +43,14 @@ Codex's npm contract, under the fork's scope. The main package `@peiyuwang54/dee
 
 ### Channel 3: Homebrew cask
 
-[`scripts/gen-dsh-cask.ts`](../../../../scripts/gen-dsh-cask.ts) renders the `deepseek-harness-cli` cask from the release version and the four tarball sha256 sidecars. Because the four tarballs have distinct digests, the cask nests `on_macos`/`on_linux` with `on_arm`/`on_intel` sha256 blocks, builds the per-platform URL from Homebrew's `arch`/`os` macros, declares `binary "bin/deepseek-harness-cli"`, and adds a `livecheck` matching `deepseek-harness-cli-v(\d+\.\d+\.\d+(?:-rc\.\d+)?)` tags. CI pushes the generated `Casks/d/deepseek-harness-cli.rb` to the `peiyuwang54/homebrew-dsh` tap, so `brew install peiyuwang54/dsh/deepseek-harness-cli` resolves the cask.
+[`scripts/gen-dsh-cask.ts`](../../../../scripts/gen-dsh-cask.ts) renders the `deepseek-harness-cli` cask from the release version and the four tarball sha256 sidecars. Because the four tarballs have distinct digests, the cask nests `on_macos`/`on_linux` with `on_arm`/`on_intel` sha256 blocks, builds the per-platform URL from Homebrew's `arch`/`os` macros, exposes the executable as `deepseek-harness-cli`, `deepseek`, and `dsh`, and adds a `livecheck` matching `deepseek-harness-cli-v(\d+\.\d+\.\d+(?:-rc\.\d+)?)` tags. CI pushes the generated `Casks/d/deepseek-harness-cli.rb` to the `peiyuwang54/homebrew-dsh` tap, so `brew install peiyuwang54/dsh/deepseek-harness-cli` resolves the cask.
 
 ### The release workflow
 
 [`.github/workflows/deepseek-harness-cli-release.yml`](../../../../.github/workflows/deepseek-harness-cli-release.yml) builds and publishes all three channels in one run, triggered by a `deepseek-harness-cli-v*` tag push or a manual dispatch whose optional `version` input overrides the tag or `apps/cli/package.json`:
 
 - **plan** resolves the version and computes the five-target matrix (`node24-linux-x64`→ubuntu-latest, `node24-linux-arm64`→ubuntu-24.04-arm, `node24-macos-arm64`→macos-15, `node24-macos-x64`→macos-15-intel, `node24-win-x64`→windows-2025).
-- **build** runs per target: immutable install, the node-pty manylinux 2.28 rebuild on Linux, `scripts/build-dsh-cli-exe.ts --targets=<target>`, a GLIBC ≤ 2.28 check on Linux, the macOS deployment-target check, a `--version` smoke equal to the release version, and artifact upload.
+- **build** runs per target: immutable install, the node-pty manylinux 2.28 rebuild on Linux, `scripts/build-dsh-cli-exe.ts --targets=<target>`, a GLIBC ≤ 2.28 check on Linux, the macOS deployment-target check, a `--version` smoke equal to the release version, and artifact upload. The manylinux container mounts the pnpm action directory at its absolute `$RUNNER_TEMP/setup-pnpm` path because node-gyp records that path in the generated Makefile.
 - **package** builds the five release tarballs plus `.sha256` sidecars, runs the npm layout, generates the cask, and uploads all three groups.
 - **release** creates or refreshes the GitHub release with `GITHUB_TOKEN` + `contents: write`.
 - **npm-publish** (`environment: npm-publish`, `NPM_TOKEN`) publishes the main and platform packages; its `Release-publish` concurrency group is shared with the npm release workflow because dist-tags are shared registry state.

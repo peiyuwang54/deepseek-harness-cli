@@ -276,6 +276,9 @@ class ExeBuild {
       const child = spawn(command, args, {
         cwd: root,
         stdio: 'inherit',
+        // Node cannot execute Windows .cmd shims directly. Product commands and
+        // their arguments are fixed by this pipeline or parsed from closed target enums.
+        shell: process.platform === 'win32' && command.toLowerCase().endsWith('.cmd'),
         // Artifact builds must not mutate or validate a developer's Git hooks.
         env: { ...process.env, CI: 'true' },
       })

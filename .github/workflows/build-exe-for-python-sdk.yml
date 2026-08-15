@@ -203,7 +203,7 @@ jobs:
             --user "$(id -u):$(id -g)" \
             -v "$PWD:$PWD" \
             -v "$HOME/.cache/node-gyp:$HOME/.cache/node-gyp:ro" \
-            -v "$HOME/setup-pnpm:$HOME/setup-pnpm:ro" \
+            -v "$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm:ro" \
             -w "$addon_dir" \
             "$image" \
             bash -euxo pipefail -c \

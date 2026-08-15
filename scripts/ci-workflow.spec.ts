@@ -407,7 +407,7 @@ describe('Python release workflows', () => {
     expect(manylinuxAddon).toMatchObject({ if: "runner.os == 'Linux'" })
     expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_x86_64')
     expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_aarch64')
-    expect(JSON.stringify(manylinuxAddon)).toContain('$HOME/setup-pnpm:$HOME/setup-pnpm:ro')
+    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm:ro')
     expect(JSON.stringify(manylinuxAddon)).toContain('node-pty-glibc-versions.txt')
     expect(JSON.stringify(manylinuxAddon)).toContain('le 2.28')
     expect(macosCheck).toMatchObject({ if: "runner.os == 'macOS'" })
@@ -479,12 +479,23 @@ describe('CLI release workflow', () => {
   it('builds win-x64 on windows-2025 beside the four Unix targets', () => {
     const workflow = loadWorkflow('.github/workflows/deepseek-harness-cli-release.yml')
     const plan = workflowJob(workflow, 'plan')
-    if (!Array.isArray(plan.steps)) throw new TypeError('plan job must define steps')
+    const build = workflowJob(workflow, 'build')
+    if (!Array.isArray(plan.steps) || !Array.isArray(build.steps)) {
+      throw new TypeError('plan and build jobs must define steps')
+    }
+    const buildSteps: unknown[] = build.steps
     const matrixStep = plan.steps.find((step): step is Record<string, unknown> & { run: string } => (
       isRecord(step) && typeof step.run === 'string' && step.run.includes('node24-win-x64')
     ))
+    const manylinuxAddon = buildSteps.find(step => (
+      isRecord(step) && step.name === 'Rebuild Linux node-pty against manylinux 2.28'
+    ))
     expect(matrixStep?.run).toContain('node24-win-x64 windows-2025')
     expect(matrixStep?.run).toContain('node24-linux-x64 ubuntu-latest')
+    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm:ro')
+    expect(readFileSync(resolve(root, 'scripts/exe-build/pipeline.ts'), 'utf8')).toContain(
+      "shell: process.platform === 'win32' && command.toLowerCase().endsWith('.cmd')",
+    )
   })
 })
 

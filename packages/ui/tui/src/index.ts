@@ -171,6 +171,10 @@ import { WorkspaceFileSearch } from './chat/file-autocomplete.ts'
 import { createTuiTerminalMode, parseTuiMouseEvent } from './chat/terminal-mode.ts'
 import { TranscriptViewport } from './components/transcript-viewport.ts'
 
+const INIT_GUIDE_PROMPT = 'Inspect the current repository and initialize its contributor guidance. If AGENTS.md already exists in the current working directory, report that and do not modify it. Otherwise create a concise AGENTS.md grounded in this repository\'s actual structure, development commands, coding conventions, testing requirements, and security or configuration constraints. Do not invent commands or policies.'
+
+const REVIEW_CHANGES_PROMPT = 'Review the current workspace changes, including untracked files. Identify concrete bugs, regressions, security risks, and missing tests without modifying files. Report findings in severity order with file and line references. If there are no findings, state that explicitly.'
+
 export { TuiPromptService } from './prompt.ts'
 export { renderSkillInvocation } from './chat/skill-invocation.ts'
 export type { TuiResumeHost, TuiRuntime } from './runtime.ts'
@@ -2093,6 +2097,36 @@ export function createTuiChat(
           return { kind: 'success', text: 'One matching retry of the latest rejected tool request is approved.' }
         }
         return { kind: 'error', text: 'No active or recently rejected tool approval is available.' }
+      },
+    })
+    commandCtx.commands.register({
+      name: 'init',
+      description: 'Create an AGENTS.md repository guide',
+      handler: ({ rawInput }) => {
+        if (rawInput.trim() !== '') return { kind: 'error', text: 'Usage: /init (no arguments)' }
+        if (agent.status !== 'idle') return { kind: 'error', text: '/init requires the current turn to finish or be cancelled first.' }
+        agent.followup(createUserMessage({
+          content: [{ type: 'text', text: INIT_GUIDE_PROMPT }],
+          source: { kind: 'user' },
+        }))
+        return { kind: 'success' }
+      },
+    })
+    commandCtx.commands.register({
+      name: 'review',
+      description: 'Review the current workspace changes',
+      input: { hint: '[instructions]' },
+      handler: ({ rawInput }) => {
+        if (agent.status !== 'idle') return { kind: 'error', text: '/review requires the current turn to finish or be cancelled first.' }
+        const instructions = rawInput.trim()
+        const prompt = instructions === ''
+          ? REVIEW_CHANGES_PROMPT
+          : `${REVIEW_CHANGES_PROMPT}\n\nAdditional review instructions: ${instructions}`
+        agent.followup(createUserMessage({
+          content: [{ type: 'text', text: prompt }],
+          source: { kind: 'user' },
+        }))
+        return { kind: 'success' }
       },
     })
     commandCtx.commands.register({

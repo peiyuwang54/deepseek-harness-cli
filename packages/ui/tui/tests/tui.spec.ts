@@ -4701,6 +4701,42 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await result.ctx.fiber.dispose()
   })
 
+  it('schedules /init and /review through ordinary durable user turns', async () => {
+    const result = await setup()
+
+    result.terminal.send('/init')
+    result.terminal.send('\r')
+    await tick()
+    const initBlock = result.agent.sent.at(-1)?.[0]
+    expect(initBlock?.type).toBe('text')
+    if (initBlock?.type === 'text') expect(initBlock.text).toContain('If AGENTS.md already exists')
+
+    result.terminal.send('/review focus on lifecycle races')
+    result.terminal.send('\r')
+    await tick()
+    const reviewBlock = result.agent.sent.at(-1)?.[0]
+    expect(reviewBlock?.type).toBe('text')
+    if (reviewBlock?.type === 'text') {
+      expect(reviewBlock.text).toContain('Additional review instructions: focus on lifecycle races')
+    }
+
+    result.terminal.send('/init unexpected')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Usage: /init (no arguments)')
+
+    result.agent.status = 'running'
+    result.terminal.send('/init')
+    result.terminal.send('\r')
+    result.terminal.send('/review')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(result.terminal.output).toContain('/init requires the current turn to finish')
+    expect(result.terminal.output).toContain('/review requires the current turn to finish')
+    expect(result.agent.sent).toHaveLength(2)
+    await dispose(result)
+  })
+
   it('drops a deferred NO_ADAPTER resolution when the target moved before the adapter registered', async () => {
     const result = await setup({
       agentOptions: { provider: 'openai-codex', model: 'gpt-x' },

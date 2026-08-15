@@ -68,6 +68,7 @@ const CHECKPOINTS = [
   'welcome-dashboard',
   'banner-gradient',
   'file-autocomplete',
+  'external-editor-draft',
   'slash-autocomplete',
   'skill-autocomplete',
   'session-title-autocomplete',
@@ -918,6 +919,19 @@ describe('TUI terminal-state snapshots', () => {
       await disposeSnapshot(harness)
       await rm(cwd, { recursive: true, force: true })
     }
+  })
+
+  it('pins a draft returned by the external editor handoff', async () => {
+    const harness = await setupSnapshot({
+      externalEditor: async seed => `${seed} · revised outside the TUI\n`,
+    })
+    harness.terminal.send('Review this draft')
+    harness.terminal.send('\x07')
+    await vi.waitFor(async () => {
+      expect(await harness.terminal.snapshot()).toContain('Review this draft · revised outside the TUI')
+    })
+    await checkpoint('external-editor-draft', harness.terminal)
+    await disposeSnapshot(harness)
   })
 
   it('pins session autocomplete discovered through a log-backed title', async () => {

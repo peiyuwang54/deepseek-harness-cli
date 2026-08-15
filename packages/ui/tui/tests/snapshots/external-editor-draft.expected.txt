@@ -1,0 +1,28 @@
+terminal 96x36 buffer=normal length=36 base=0 viewport=0
+lifecycle started=2 stopped=1 progress=inactive
+title "DSH snapshot"
+cursor visible column=46 viewportRow=4 bufferRow=4
+viewport
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1-2| <blank>
+3| "                                                                                                "
+  style 0-95 bg=ansi-236
+4| " › Review this draft · revised outside the TUI                                                  "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-45 bg=ansi-236
+  style 46-46 bg=ansi-236 inverse
+5| "                                                                                                "
+  style 0-95 bg=ansi-236
+6| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+7| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 48-49 dim
+  style 52-76 dim
+  style 79-83 dim
+  style 86-95 dim
+8-35| <blank>

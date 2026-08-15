@@ -75,6 +75,10 @@ import {
   type TuiPromptTemplateToken,
   type TuiPromptValueHandle,
 } from './prompt.ts'
+import {
+  editInExternalEditor,
+  MissingExternalEditorError,
+} from './chat/external-editor.ts'
 import type {
   TuiOverlayRequest,
   TuiOverlaySession,
@@ -612,6 +616,7 @@ export function createTuiChat(
   let runCommand!: (text: string) => void
   // oxlint-disable-next-line prefer-const -- skill-browser callbacks run only after dispatch is assigned.
   let invokeSkill!: (name: string, instructions: string) => void
+  let externalEditorActive = false
   const now = (): number => runtime.now?.() ?? Date.now()
   const liveStatusSpacer = new Spacer(1)
   const liveTurnStatus = new LiveTurnStatusComponent(
@@ -1596,6 +1601,25 @@ export function createTuiChat(
     ui.requestRender(true)
   }
 
+  /** Release terminal ownership while the user's editor edits the current draft. */
+  const launchExternalEditor = (): void => {
+    if (externalEditorActive) return
+    externalEditorActive = true
+    const seed = editor.getText()
+    releaseTerminal()
+    void (runtime.externalEditor ?? editInExternalEditor)(seed).then((updated) => {
+      if (!disposed) editor.setText(updated.trimEnd())
+    }, (error: unknown) => {
+      if (disposed) return
+      appendNotice(error instanceof MissingExternalEditorError
+        ? 'Cannot open external editor: set VISUAL or EDITOR before starting DeepSeek.'
+        : `External editor failed: ${errorChain(error)}`, 'error')
+    }).finally(() => {
+      externalEditorActive = false
+      if (!disposed) restoreTerminal()
+    })
+  }
+
   const resume = createResumeController({
     ctx,
     agent,
@@ -1935,6 +1959,7 @@ export function createTuiChat(
           ? 'Page Up/Down scroll transcript • Ctrl+End follow latest • mouse wheel scrolls transcript or selectors'
           : 'Drag selects terminal text • Page Up/Down scroll transcript • Ctrl+End follow latest',
       'Esc interrupt turn • Ctrl+O cycle cards (collapse/expand/hide) • Ctrl+R toggle reasoning • Ctrl+L redraw',
+      'Ctrl+G edit the current draft in VISUAL or EDITOR',
       'Ctrl+C cancel while running; clear input or exit while idle • Ctrl+D exit',
       '',
       ...commandLines,
@@ -3368,6 +3393,10 @@ export function createTuiChat(
       ui.requestRender(true)
       return { consume: true }
     }
+    if (matchesKey(data, Key.ctrl('g'))) {
+      launchExternalEditor()
+      return { consume: true }
+    }
     if (matchesKey(data, Key.escape) && agent.status === 'running') {
       interruptActiveTurn()
       return { consume: true }
@@ -3952,6 +3981,7 @@ export function apply(ctx: Context, config: Config): void {
     ), {
       terminal: new ProcessTerminal(),
       exit: (code) => { disposeRootAndExit(ctx, code) },
+      externalEditor: editInExternalEditor,
       ...resumeHost === undefined ? {} : { handoffResume: (sessionId, cwd) => resumeHost.handoff(sessionId, cwd) },
       ...startWorkspace === undefined ? {} : { handoffWorkspace: cwd => startWorkspace(cwd) },
       ...goodbyeMessage === undefined ? {} : { goodbyeMessage },

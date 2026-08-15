@@ -45,6 +45,7 @@ import {
 } from '../src/index.ts'
 import { WorkspaceFileSearch } from '../src/chat/file-autocomplete.ts'
 import { osc52ClipboardSequence } from '../src/chat/clipboard.ts'
+import { MissingExternalEditorError } from '../src/chat/external-editor.ts'
 import { renderMarkdownTranscript, renderRawTranscript } from '../src/chat/transcript-export.ts'
 import { CURSOR_BLINK_INTERVAL_MS } from '../src/chat/helpers.ts'
 import { TUI_LOCALE_OPTIONS, formatDeepDivingStatus } from '../src/chat/language.ts'
@@ -4992,6 +4993,60 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).not.toContain('\x1b[?1000h')
     expect(result.terminal.output).not.toContain('\x1b[?1049h')
     await dispose(result)
+  })
+
+  it('hands the current draft to Ctrl+G external editing and restores the terminal', async () => {
+    const edited = Promise.withResolvers<string>()
+    const externalEditor = vi.fn((_seed: string) => edited.promise)
+    const result = await setup({ externalEditor })
+    result.terminal.send('draft text')
+    result.terminal.send('\x07')
+    result.terminal.send('\x07')
+
+    expect(externalEditor).toHaveBeenCalledOnce()
+    expect(externalEditor).toHaveBeenCalledWith('draft text')
+    expect(result.terminal.stopped).toBe(1)
+    edited.resolve('edited text\n\n')
+    await vi.waitFor(() => { expect(result.terminal.started).toBe(2) })
+
+    result.terminal.send('\r')
+    expect(result.agent.sent).toEqual([[{ type: 'text', text: 'edited text' }]])
+    await dispose(result)
+  })
+
+  it.each([
+    [new MissingExternalEditorError(), 'Cannot open external editor: set VISUAL or EDITOR before starting DeepSeek.'],
+    [new Error('editor crashed'), 'External editor failed: editor crashed'],
+  ])('restores the terminal after an external editor error', async (failure, notice) => {
+    const result = await setup({ externalEditor: () => Promise.reject(failure) })
+    result.terminal.send('\x07')
+    await vi.waitFor(() => { expect(result.terminal.started).toBe(2) })
+    expect(result.terminal.output).toContain(notice)
+    await dispose(result)
+  })
+
+  it('does not restore or apply an external edit after disposal', async () => {
+    const edited = Promise.withResolvers<string>()
+    const result = await setup({ externalEditor: () => edited.promise })
+    result.terminal.send('\x07')
+    await result.controller.dispose()
+    const starts = result.terminal.started
+    edited.resolve('late edit')
+    await tick()
+    expect(result.terminal.started).toBe(starts)
+    await result.ctx.fiber.dispose()
+  })
+
+  it('ignores an external editor rejection after disposal', async () => {
+    const edited = Promise.withResolvers<string>()
+    const result = await setup({ externalEditor: () => edited.promise })
+    result.terminal.send('\x07')
+    await result.controller.dispose()
+    const output = result.terminal.output
+    edited.reject(new Error('late failure'))
+    await tick()
+    expect(result.terminal.output).toBe(output)
+    await result.ctx.fiber.dispose()
   })
 
   it('opens a keyboard selector and switches the session model without sending slash text to the agent', async () => {

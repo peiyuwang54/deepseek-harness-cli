@@ -10,6 +10,7 @@ import type { Terminal } from '@earendil-works/pi-tui'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { GitDiffResult } from './chat/git-diff.ts'
 import type { ExternalImportGateway } from './chat/external-import.ts'
+import type { ExternalEditor } from './chat/external-editor.ts'
 
 /** Source category for one launcher-composed configuration layer. */
 export type TuiConfigLayerKind = 'bundle' | 'profile' | 'home' | 'overlay' | 'runtime' | 'environment'
@@ -124,6 +125,8 @@ export interface TuiRuntime {
   gitDiff?: (cwd: string, timeoutMs: number, signal: AbortSignal) => Promise<GitDiffResult>
   /** Host override for `/import` detection and non-overwriting setup copies. */
   externalImport?: ExternalImportGateway
+  /** Host override for editing the current composer draft outside the TUI. */
+  externalEditor?: ExternalEditor
   /** Monotonic-enough wall clock for elapsed status rendering. Defaults to `Date.now`. */
   now?(): number
   /** Host-owned process handoff; absent leaves the session selectable but not resumable in place. */

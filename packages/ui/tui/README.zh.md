@@ -50,6 +50,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/debug-config` 按从低到高的优先级报告当前 profile、Loader 根文件与启动器持有的配置来源层。它只列出路径与环境开关名称，绝不显示配置值；需要完整且不启动应用的组合树时，请运行输出中的 `deepseek --profile <name> --dump-config`。未提供启动器来源信息的自定义 embedding 会明确报告该诊断不可用。
 
+`/title` 配置终端窗口或标签页标题，不会重命名持久 Session。不带参数的 `/title` 会打开多选对话框，可选择应用名、Session 标题、工作区、运行状态、模型、推理强度与 Session id。Space 切换字段并实时预览终端标题，Enter 将按目录顺序排列的选择持久化到 `ui-terminal.titleItems`，Escape 恢复之前的标题。`/title status`、`/title reset` 与 `/title set <item> ...` 分别用于非交互查看、恢复默认值和指定明确顺序。修改持久 Session 标题仍使用 `/rename`。
+
 `/init` 会安排一个普通用户轮次：先检查仓库，仅当当前目录不存在 `AGENTS.md` 时才创建简洁且基于事实的版本。`/review [instructions]` 会安排一次不修改文件的审查，覆盖 workspace 中已跟踪与未跟踪的改动，并按问题严重程度输出。两条命令都要求 agent 处于 idle，其提示词会走普通的持久 user-message 路径，不会绕过 agent loop。
 
 共享的 [`dsh-command-jobs`](../../jobs/command-jobs/README.md) 插件会贡献 `/ps`、`/stop` 与别名 `/clean`。`/ps` 在不消费输出的前提下列出本会话中处于运行或停止中状态的通用后台任务；`/stop` 与 `/clean` 请求取消全部运行中任务，并保持已经处于停止中状态的任务不变。

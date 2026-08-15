@@ -1,6 +1,6 @@
 /**
  * Shared user-settings surfaces for the terminal channel: a metadata-only
- * Settings hub and a persistent light/dark/system appearance selector.
+ * Settings hub plus persistent appearance and terminal-presentation selectors.
  * @module @deepseek-ai/dsh-tui/chat/settings
  */
 
@@ -11,7 +11,12 @@ import {
 } from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import type { Context } from '@deepseek-ai/cordis'
-import { ActionDialog, type ActionDialogChoice } from '../components/dialogs.ts'
+import {
+  ActionDialog,
+  MultiSelectDialog,
+  type ActionDialogChoice,
+  type MultiSelectDialogChoice,
+} from '../components/dialogs.ts'
 import {
   ACCENT_HUES,
   ACCENT_IDS,
@@ -48,23 +53,87 @@ const TUI_THEME_SETTINGS_NAMESPACE = settingsNamespace('ui-theme')
 /** TUI-owned settings namespace for the terminal accent hue. */
 const TUI_ACCENT_SETTINGS_NAMESPACE = settingsNamespace('ui-accent')
 
+/** TUI-owned settings namespace for terminal title and status presentation. */
+const TUI_TERMINAL_SETTINGS_NAMESPACE = settingsNamespace('ui-terminal')
+
+/** Stable terminal-title fields accepted by `/title`. */
+export const TERMINAL_TITLE_ITEM_IDS = [
+  'app-name',
+  'session-title',
+  'workspace',
+  'status',
+  'model',
+  'reasoning',
+  'session-id',
+] as const
+
+/** One persisted terminal-title field. */
+export type TerminalTitleItem = typeof TERMINAL_TITLE_ITEM_IDS[number]
+
+/** Default terminal title preserves the product's existing session-title-first presentation. */
+export const DEFAULT_TERMINAL_TITLE_ITEMS: readonly TerminalTitleItem[] = ['session-title', 'app-name']
+
+/** User-facing catalog for the terminal-title setup dialog. */
+const TERMINAL_TITLE_CHOICES: readonly MultiSelectDialogChoice[] = [
+  { value: 'app-name', label: 'App name', description: 'DeepSeek Harness' },
+  { value: 'session-title', label: 'Session title', description: 'omitted when unnamed' },
+  { value: 'workspace', label: 'Workspace', description: 'current working directory' },
+  { value: 'status', label: 'Run status', description: 'idle, running, or waiting state' },
+  { value: 'model', label: 'Model', description: 'current model name' },
+  { value: 'reasoning', label: 'Reasoning effort', description: 'current effort when selected' },
+  { value: 'session-id', label: 'Session ID', description: 'full durable session identifier' },
+]
+
 /** Durable accent section schema; also the wire envelope validation against it. */
 const AccentSettingsSchema: z<AccentSelection> = z.object({
   light: z.union([...ACCENT_IDS]).default(DEFAULT_ACCENT),
   dark: z.union([...ACCENT_IDS]).default(DEFAULT_ACCENT),
 })
 
+/** Durable terminal presentation section. */
+interface TerminalPresentationSettings {
+  titleItems: TerminalTitleItem[]
+}
+
+/** Durable terminal-presentation schema and file-input validation. */
+const TerminalPresentationSettingsSchema: z<TerminalPresentationSettings> = z.object({
+  titleItems: z.array(z.union([...TERMINAL_TITLE_ITEM_IDS])).default([...DEFAULT_TERMINAL_TITLE_ITEMS]),
+})
+
 /**
- * Register the TUI accent namespace on the host settings service when one is
- * composed, exactly like the Web `ui-theme` and `locale` sections.
+ * Register the TUI-owned accent and terminal-presentation namespaces on the
+ * host settings service when one is composed.
  * @param ctx - Context whose optional settings service owns the section.
  * @param registered - Called after the namespace has loaded its stored value.
  */
-export function registerTuiAccentSettings(ctx: Context, registered?: () => void): void {
+export function registerTuiSettingsNamespaces(ctx: Context, registered?: () => void): void {
   ctx.inject(['settings'], (settingsCtx) => {
     settingsCtx.settings.register(TUI_ACCENT_SETTINGS_NAMESPACE, AccentSettingsSchema)
+    settingsCtx.settings.register(TUI_TERMINAL_SETTINGS_NAMESPACE, TerminalPresentationSettingsSchema)
     registered?.()
   })
+}
+
+/** Narrow one durable terminal-title id. */
+function isTerminalTitleItem(value: unknown): value is TerminalTitleItem {
+  return TERMINAL_TITLE_ITEM_IDS.some(item => item === value)
+}
+
+/** Resolve one durable terminal-presentation section to its valid, de-duplicated title ordering. */
+function resolveTitleItems(section: unknown): TerminalTitleItem[] {
+  if (typeof section !== 'object' || section === null) return [...DEFAULT_TERMINAL_TITLE_ITEMS]
+  const titleItems = (section as { titleItems?: unknown }).titleItems
+  if (!Array.isArray(titleItems)) return [...DEFAULT_TERMINAL_TITLE_ITEMS]
+  return [...new Set(titleItems.filter(isTerminalTitleItem))]
+}
+
+/**
+ * Read the terminal-title item ordering, rejecting unknown durable entries and duplicates.
+ * @param settings - optional settings provider.
+ * @returns persisted item order or the product default.
+ */
+export function readTuiTitleItems(settings: SettingsProvider | undefined): TerminalTitleItem[] {
+  return resolveTitleItems(settings?.get(TUI_TERMINAL_SETTINGS_NAMESPACE))
 }
 
 /** Narrow an unknown settings value to the shared preference vocabulary. */
@@ -112,6 +181,8 @@ export interface SettingsControllerDeps extends ChatChannelDeps, ChannelNotice {
   applyAccent(accent: AccentSelection): void
   /** Refresh terminal chrome after the shared locale changes. */
   applyLocale(locale: TuiLocale): void
+  /** Preview or commit the ordered terminal-title fields. */
+  applyTitle(items: readonly TerminalTitleItem[]): void
 }
 
 /** Terminal Settings and appearance controller. */
@@ -126,6 +197,8 @@ export interface SettingsController {
   queueLanguageCommand(raw: string): void
   /** Queue `/settings`; empty input opens the metadata hub. */
   queueSettingsCommand(raw: string): void
+  /** Queue `/title`; empty input opens the terminal-title setup dialog. */
+  queueTitleCommand(raw: string): void
   /** Close settings-owned overlays during shutdown. */
   clearOverlays(): void
   /** Remove the shared settings listener. */
@@ -152,6 +225,8 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
   let settingsOverlay: TuiOverlaySession | undefined
   let themeOverlay: TuiOverlaySession | undefined
   let languageOverlay: TuiOverlaySession | undefined
+  let titleOverlay: TuiOverlaySession | undefined
+  let titleItems = readTuiTitleItems(ctx.get('settings'))
   let operations = Promise.resolve()
 
   const settings = (): SettingsProvider | undefined => ctx.get('settings')
@@ -237,6 +312,22 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       deps.applyLocale(nextLocale)
     }
     if (!deps.isDisposed()) deps.appendNotice(tuiCopy(nextLocale).languageChanged)
+  }
+
+  const commitTitleItems = async (nextItems: readonly TerminalTitleItem[]): Promise<boolean> => {
+    const provider = settings()
+    if (provider?.get(TUI_TERMINAL_SETTINGS_NAMESPACE) === undefined) {
+      deps.appendNotice('Terminal title settings are unavailable: the ui-terminal namespace is not registered.', 'warning')
+      return false
+    }
+    await provider.mutate(TUI_TERMINAL_SETTINGS_NAMESPACE, [{
+      op: 'set',
+      path: ['titleItems'],
+      value: [...nextItems],
+    }])
+    titleItems = [...nextItems]
+    deps.applyTitle(titleItems)
+    return true
   }
 
   const showTheme = (): void => {
@@ -345,6 +436,47 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     deps.requestRender()
   }
 
+  const showTitle = (): void => {
+    void titleOverlay?.close()
+    const original = [...titleItems]
+    const session = overlayManager.open({
+      create: () => new MultiSelectDialog(
+        'Configure Terminal Title',
+        TERMINAL_TITLE_CHOICES,
+        original,
+        resolved.maxModelOptions,
+        palette,
+        (values) => { deps.applyTitle(values.filter(isTerminalTitleItem)) },
+        (values) => {
+          void session.close()
+          const selected = values.filter(isTerminalTitleItem)
+          operations = operations.then(async () => {
+            if (!await commitTitleItems(selected)) deps.applyTitle(original)
+            else if (!deps.isDisposed()) deps.appendNotice(`Terminal title: ${selected.length === 0 ? 'disabled' : selected.join(' · ')}.`)
+          }).catch((error: unknown) => {
+            deps.applyTitle(original)
+            if (!deps.isDisposed()) deps.appendNotice(`Terminal title update failed: ${String(error)}`, 'error')
+          })
+        },
+        () => {
+          deps.applyTitle(original)
+          void session.close()
+        },
+      ),
+      options: {
+        width: resolved.modelDialogWidth,
+        maxHeight: resolved.modelDialogMaxHeight,
+        anchor: 'center',
+        margin: 1,
+      },
+    }, 'composer')
+    titleOverlay = session
+    void session.closed.then(() => {
+      if (titleOverlay === session) titleOverlay = undefined
+    })
+    deps.requestRender()
+  }
+
   const showSettings = (): void => {
     const copy = tuiCopy(locale)
     const provider = settings()
@@ -356,6 +488,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     const items: SettingsHubItem[] = [
       { value: '@theme', label: 'Theme', description: `${themePreference} · ${accentHue(accent.light).label} / ${accentHue(accent.dark).label}` },
       { value: '@language', label: copy.language, description: tuiLocaleLabel(locale) },
+      { value: '@title', label: 'Terminal title', description: titleItems.length === 0 ? 'disabled' : titleItems.join(' · ') },
       {
         value: '@document',
         label: copy.settingsDocument,
@@ -380,6 +513,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
           void session.close()
           if (value === '@theme') showTheme()
           else if (value === '@language') showLanguage()
+          else if (value === '@title') showTitle()
           else if (value === '@document') {
             operations = operations.then(showDocument).catch((error: unknown) => {
               if (!deps.isDisposed()) deps.appendNotice(`Settings document failed: ${String(error)}`, 'error')
@@ -469,6 +603,35 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     deps.appendNotice('Usage: /settings [list|document]', 'warning')
   }
 
+  const titleCommand = async (raw: string): Promise<void> => {
+    const argument = raw.trim()
+    if (argument === '') {
+      showTitle()
+      return
+    }
+    if (argument === 'status') {
+      deps.appendNotice(`Terminal title: ${titleItems.length === 0 ? 'disabled' : titleItems.join(' · ')}.`)
+      return
+    }
+    if (argument === 'reset') {
+      if (await commitTitleItems(DEFAULT_TERMINAL_TITLE_ITEMS) && !deps.isDisposed()) {
+        deps.appendNotice(`Terminal title reset: ${DEFAULT_TERMINAL_TITLE_ITEMS.join(' · ')}.`)
+      }
+      return
+    }
+    const tokens = argument.startsWith('set ')
+      ? argument.slice(4).split(/[\s,]+/u).filter(Boolean)
+      : []
+    if (tokens.length === 0 || tokens.some(token => !isTerminalTitleItem(token))) {
+      deps.appendNotice(`Usage: /title [status|reset|set <${TERMINAL_TITLE_ITEM_IDS.join('|')}> ...]`, 'warning')
+      return
+    }
+    const selected = [...new Set(tokens.filter(isTerminalTitleItem))]
+    if (await commitTitleItems(selected) && !deps.isDisposed()) {
+      deps.appendNotice(`Terminal title: ${selected.join(' · ')}.`)
+    }
+  }
+
   const disposeSettingsUpdates = ctx.on('settings/updated', (namespace, next) => {
     if (typeof next !== 'object' || next === null) return
     if (namespace === TUI_LOCALE_SETTINGS_NAMESPACE) {
@@ -485,6 +648,13 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       if (light === accent.light && dark === accent.dark) return
       accent = { light, dark }
       deps.applyAccent(accent)
+      return
+    }
+    if (namespace === TUI_TERMINAL_SETTINGS_NAMESPACE) {
+      const nextItems = resolveTitleItems(next)
+      if (nextItems.length === titleItems.length && nextItems.every((item, index) => item === titleItems[index])) return
+      titleItems = nextItems
+      deps.applyTitle(titleItems)
       return
     }
     if (namespace !== TUI_THEME_SETTINGS_NAMESPACE) return
@@ -512,10 +682,16 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
         if (!deps.isDisposed()) deps.appendNotice(`Settings command failed: ${String(error)}`, 'error')
       })
     },
+    queueTitleCommand(raw): void {
+      operations = operations.then(() => titleCommand(raw)).catch((error: unknown) => {
+        if (!deps.isDisposed()) deps.appendNotice(`Title command failed: ${String(error)}`, 'error')
+      })
+    },
     clearOverlays(): void {
       settingsOverlay = undefined
       themeOverlay = undefined
       languageOverlay = undefined
+      titleOverlay = undefined
     },
     detach(): void {
       disposeSettingsUpdates()

@@ -30,6 +30,8 @@ DeepSeek 认证仍由共享 `ctx.credentials` provider 持有。所选 DeepSeek 
 
 `/debug-config` 是不显示配置值的启动器诊断。Profile 启动器会在 Loader 条目挂载前提供当前 profile、Loader 根文件，以及按应用顺序排列的所有文件、运行时与环境来源层。Renderer 只打印这些名称与路径；确实需要完整组合值的用户会被引导到现有且不启动应用的 `--dump-config` 命令。自定义 TUI embedding 可以省略该 provider，此时命令会明确报告不可用。
 
+`/title` 持有终端窗口展示，而不是 Session 命名。`ui-terminal.titleItems` 设置会保存应用名、Session 标题、工作区、运行状态、模型、推理强度与 Session id 的有序子集。不带参数时会打开附着 composer 的多选对话框并实时预览；取消会恢复之前的选择，确认则通过共享 settings service 写入。显式 `status`、`reset` 与 `set` 形式支持非交互使用，并保留参数顺序。`/rename` 继续作为独立的持久 `session/title` 操作。
+
 Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到当前 API。权威 `Session` 事件仍是唯一持久对话来源：replay 将这些事件折叠成已提交终端输出，实时 chunk、工具进度、问题与审批则是瞬时 projection。TUI 不会增加第二份聊天日志或工具 scheduler。它消费现有的作用域 command registry、Agent inbox 操作、session query/reference 服务、skill registry、工具 presenter、token meter 与模型选择 seam。
 
 终端命令 catalog 包含受 Codex 启发的 `/skills`、`/agent`、`/subagents`、`/keymap`、`/vim`、`/fast`、`/experimental`、`/ide`、`/mention`、`/copy`、`/export`、`/diff`、`/rename`、`/init`、`/review`、`/new`、`/clear`、`/ps`、`/stop`、`/clean` 与 `/approve` 适配器，但不引入 Codex 运行时状态。Skill 仍是 Agent 作用域 registry 条目；Vim 是 pi-tui editor 之上的输入模式 projection；fast 模式仅选择元数据标识为低延迟变体的已公布路由，并保留先前路由以便可逆切换。Experiments 启动现有终端 action，而不创建第二个 feature-flag store。在 embedding 提供 IDE bridge 之前，IDE 上下文会退化为终端宿主诊断、`@` 引用与 workspace handoff；mention 复用这条文件引用 composer 路径。Copy 选择 transcript 中最新可见的 assistant Markdown，并写入 OSC 52 帧，同时支持 tmux 透传和编码前 100,000 字节上限。Export 从稳定的 Session event 快照投影完整的人类可见 transcript，排除注入上下文和仅供模型使用的替换节点；它可以复制该 Markdown，也可以先写入并 sync 同目录临时文件，再用不覆盖目标的 hard link 发布。Diff 会读取未暂存 worktree，并为未跟踪且未忽略的文件生成 no-index diff，而不修改 index；它会禁用 Git textconv、外部 diff、hook、文件系统 monitor 以及已配置的 clean/process 可执行程序，并由展示配置限制每个子进程的运行时间。Rename 将标题规范化、持久 `session/title` 记录和固定行为交给 session-title service。Init 与 review 只在 agent 处于 idle 时，把仓库指引和不修改文件的 worktree 审查提示作为普通持久用户轮次准入；可选的 review 指令仍属于同一条已记录消息。New 与 clear 都会在 idle 检查与 session flush 后进入当前不可变 workspace 的既有全新进程 handoff；宿主未提供或拒绝迁移时，当前会话仍可使用。全局 `command-jobs` Consumer 把 Codex 的后台终端命令映射到调用者可见的活动 `ctx.jobs`：`/ps` 使用不消费输出的 snapshot，`/stop` 与 `/clean` 只请求取消 `running` 任务，并保持 `stopping` 工作不变。该用户侧 controller 让任务准入不依赖 preset 是否公开面向模型的 `job_*` 工具，而注册表的所有者检查会阻止一个 session 列出或取消其他 session 的任务。Approve 会把活动队列条目结算为 `allowed-once`，或为下一个工具和理由与最新交互拒绝完全匹配的请求预批准一次；如果下一个请求不匹配，它会消耗该授权但不会获得批准，因此该命令不能扩大会话策略，也不会创建持久授权。`/status` 保持为会话诊断 projection，不打印 system prompt 或已注册工具 catalog。
@@ -64,6 +66,8 @@ Agent 选择器对照了 Codex commit [`c494130`](https://github.com/openai/code
 
 配置诊断对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/chatwidget/slash_dispatch.rs)。DeepSeek Harness 报告自己的 Cordis profile 组合，并有意把不显示值的 TUI 来源信息与启动器的完整 `--dump-config` 输出分开；没有复制 Rust 源码。
 
+终端标题设置对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/bottom_pane/title_setup.rs)。DeepSeek Harness 使用自己的 settings provider、pi-tui 对话框与已有运行时 projection；没有复制 Rust 源码。
+
 ## 参考与来源边界
 
 我们研究了 Gemini CLI 与 OpenAI Codex 的进程模式分离、终端输入路由、已提交／实时渲染、审批、恢复、headless 输出纪律与 PTY 测试。当前命令名称与行为固定到 OpenAI Codex commit [`22bf16a`](https://github.com/openai/codex/blob/22bf16a37ed45006c0226541874abd7449c29911/codex-rs/tui/src/slash_command.rs)，分派细节来自 [`slash_dispatch.rs`](https://github.com/openai/codex/blob/22bf16a37ed45006c0226541874abd7449c29911/codex-rs/tui/src/chatwidget/slash_dispatch.rs)，回复与人类消息展示来自 [`messages.rs`](https://github.com/openai/codex/blob/22bf16a37ed45006c0226541874abd7449c29911/codex-rs/tui/src/history_cell/messages.rs)，运行状态计时来自 [`status_indicator_widget.rs`](https://github.com/openai/codex/blob/22bf16a37ed45006c0226541874abd7449c29911/codex-rs/tui/src/status_indicator_widget.rs)，Goal footer 计时来自 [`goal_status.rs`](https://github.com/openai/codex/blob/22bf16a37ed45006c0226541874abd7449c29911/codex-rs/tui/src/chatwidget/goal_status.rs)，剪贴板上限来自 [`clipboard_copy.rs`](https://github.com/openai/codex/blob/22bf16a37ed45006c0226541874abd7449c29911/codex-rs/tui/src/clipboard_copy.rs)。`/diff` 的安全行为与未跟踪文件处理还对照了 Codex commit [`4861236`](https://github.com/openai/codex/blob/4861236f06d0df397436531b4aa3d7fa6975959c/codex-rs/tui/src/get_git_diff.rs)；运行中输入预览与 Markdown transcript 导出则分别对照了 Codex commit [`e5470f1`](https://github.com/openai/codex/blob/e5470f1bce099442d73e491ce63d189d355b061e/codex-rs/tui/src/bottom_pane/pending_input_preview.rs) 及其 [`transcript_export.rs`](https://github.com/openai/codex/blob/e5470f1bce099442d73e491ce63d189d355b061e/codex-rs/tui/src/app/transcript_export.rs)。我们还检查了采用 MIT 许可证的 [`dsh-TUI`](https://github.com/ccch1mneyyy/dsh-TUI/tree/9a0559b820fb0a8733089560916dfeb75075c244) 对斜杠命令目录、排队输入验证、压缩投影、主题持久化和启动器检查的实现；没有复制其 Ink renderer 与 rc.6 兼容层。Codex 与 Gemini 的许可证允许带署名复用，但本实现没有复制这些仓库的源码。官方 Claude Code 与检查过的 all-rights-reserved 源码重建只贡献了高层可观察行为，没有复制代码或非平凡表达。`@earendil-works/pi-tui` 仍是显式依赖，并带有本地兼容 patch 与生成的第三方声明。
@@ -87,6 +91,8 @@ Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服
 `/archive` checkpoint 会固定默认安全的确认对话框。聚焦测试覆盖取消、参数拒绝、Agent 运行时拒绝、先 flush 再归档的顺序、持久归档身份、成功退出、workspace 能力缺失，以及存储失败时不退出。
 
 `/debug-config` checkpoint 会固定 profile 身份、来源顺序、路径换行与 `--dump-config` 交接，且不记录配置值。聚焦 TUI 测试覆盖参数与启动器能力缺失；编译后 CLI 的 PTY 测试通过发布版 Loader 树注入该诊断 service，并验证真实启动器会报告 `tui` profile 及其来源层。
+
+`/title` checkpoint 会固定多选字段、当前勾选状态与键盘提示。聚焦集成测试证明启动恢复、有序字段持久化、终端标题预览、取消回滚、参数拒绝，以及它与持久 Session 标题相互独立。
 
 ## 考虑过的替代方案
 

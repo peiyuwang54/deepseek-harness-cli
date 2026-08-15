@@ -556,6 +556,83 @@ export interface ActionDialogChoice {
   readonly description?: string
 }
 
+/** Keyboard multi-select row shared by terminal presentation setup commands. */
+export type MultiSelectDialogChoice = ActionDialogChoice
+
+/** Keyboard multi-select setup with live preview, safe cancellation, and explicit confirmation. */
+export class MultiSelectDialog implements Component {
+  private list: SelectList
+  private readonly enabled: Set<string>
+
+  constructor(
+    private readonly title: string,
+    private readonly choices: readonly MultiSelectDialogChoice[],
+    selected: readonly string[],
+    private readonly maxVisible: number,
+    private readonly palette: Palette,
+    private readonly preview: (values: readonly string[]) => void,
+    private readonly done: (values: readonly string[]) => void,
+    private readonly cancel: () => void,
+  ) {
+    this.enabled = new Set(selected)
+    this.list = this.buildList(selected[0])
+  }
+
+  /** Selected values in catalog order. */
+  private values(): string[] {
+    return this.choices.filter(choice => this.enabled.has(choice.value)).map(choice => choice.value)
+  }
+
+  /** Rebuild checkbox labels while retaining the highlighted row. */
+  private buildList(selectedValue: string | undefined): SelectList {
+    const items: SelectItem[] = this.choices.map(choice => ({
+      value: choice.value,
+      label: `${this.enabled.has(choice.value) ? '☑' : '☐'} ${displayText(choice.label)}`,
+      ...choice.description === undefined ? {} : { description: displayText(choice.description) },
+    }))
+    const list = new SelectList(
+      items,
+      Math.max(1, Math.min(this.maxVisible, items.length)),
+      dialogSelectTheme(this.palette),
+    )
+    const selectedIndex = selectedValue === undefined ? 0 : items.findIndex(item => item.value === selectedValue)
+    list.setSelectedIndex(Math.max(0, selectedIndex))
+    return list
+  }
+
+  /** Toggle the highlighted item and publish the live preview. */
+  private toggle(): void {
+    const selected = this.list.getSelectedItem()
+    /* v8 ignore next -- a non-empty choice catalog always has one selection. */
+    if (selected === null) return
+    if (this.enabled.has(selected.value)) this.enabled.delete(selected.value)
+    else this.enabled.add(selected.value)
+    this.list = this.buildList(selected.value)
+    this.preview(this.values())
+  }
+
+  invalidate(): void {
+    this.list.invalidate()
+  }
+
+  handleInput(data: string): void {
+    if (matchesKey(data, Key.escape) || matchesKey(data, Key.ctrl('c'))) this.cancel()
+    else if (matchesKey(data, Key.space)) this.toggle()
+    else if (matchesKey(data, Key.enter)) this.done(this.values())
+    else this.list.handleInput(data)
+    this.invalidate()
+  }
+
+  render(width: number): string[] {
+    const innerWidth = Math.max(1, width - 4)
+    return renderDialog(this.title, [
+      ...this.list.render(innerWidth),
+      '',
+      this.palette.dim('↑/↓ move • Space toggle • Enter save • Esc cancel'),
+    ], width, this.palette)
+  }
+}
+
 /** Copy and callbacks for a masked API-key entry dialog. */
 export interface CredentialDialogOptions {
   /** Dialog title. */

@@ -37,7 +37,7 @@ import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type { SessionStatsProjection } from '@deepseek-ai/dsh-session-stats/types'
 import type { CommandResult } from '@deepseek-ai/dsh-commands'
-import { createUserMessage, errorChain } from '@deepseek-ai/dsh-llm'
+import { assertNever, createUserMessage, errorChain } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, MessageId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-llm-retry'
 import {
@@ -170,9 +170,11 @@ import { createForkController } from './chat/fork.ts'
 import {
   createSettingsController,
   readTuiAccent,
+  readTuiTitleItems,
   readTuiThemePreference,
-  registerTuiAccentSettings,
+  registerTuiSettingsNamespaces,
   type SettingsController,
+  type TerminalTitleItem,
   type TuiThemePreference,
 } from './chat/settings.ts'
 import {
@@ -406,6 +408,7 @@ export function createTuiChat(
   const resolved = resolveTuiConfig(config)
   let themePreference = readTuiThemePreference(ctx.get('settings'))
   let accent: AccentSelection = readTuiAccent(ctx.get('settings'))
+  let titleItems = readTuiTitleItems(ctx.get('settings'))
   let locale = readTuiLocale(ctx.get('settings'))
   let terminalScheme: TerminalColorScheme = 'dark'
   const initialScheme: TerminalColorScheme = themePreference === 'light' ? 'light' : 'dark'
@@ -627,7 +630,8 @@ export function createTuiChat(
     () => runtime.terminal.rows,
     () => locale,
   )
-  const formattedCwd = displayText(runtime.formatCwd?.(agent.session.header.cwd) ?? formatCwd(agent.session.header.cwd))
+  const terminalWorkspaceLabel = runtime.formatCwd?.(agent.session.header.cwd) ?? formatCwd(agent.session.header.cwd)
+  const formattedCwd = displayText(terminalWorkspaceLabel)
   const branch = runtime.gitBranch?.(cwd) ?? gitBranch(cwd)
   const readGoalFooterState = (): GoalFooterState | undefined => {
     const restored = foldGoal(agent.session.events)
@@ -738,9 +742,21 @@ export function createTuiChat(
   ui.addChild(promptContext)
   ui.addChild(sessionStatsLine)
   ui.setFocus(editor)
+  const terminalTitleValue = (item: TerminalTitleItem): string | undefined => {
+    switch (item) {
+      case 'app-name': return resolved.title
+      case 'session-title': return sessionTitle
+      case 'workspace': return terminalWorkspaceLabel
+      case 'status': return agent.status
+      case 'model': return target.current?.model
+      case 'reasoning': return target.current?.reasoningEffort
+      case 'session-id': return agent.session.id
+      default: return assertNever(item, 'terminal-title item')
+    }
+  }
   const updateTerminalTitle = (): void => {
     runtime.terminal.setTitle(displayText(
-      sessionTitle === undefined ? resolved.title : `${sessionTitle} — ${resolved.title}`,
+      titleItems.map(terminalTitleValue).filter(value => value !== undefined && value !== '').join(' — '),
     ))
   }
   updateTerminalTitle()
@@ -750,6 +766,7 @@ export function createTuiChat(
     // State changes and user input begin a fresh visible phase. The blink timer
     // bypasses this wrapper when it intentionally renders the hidden phase.
     editor.cursorVisible = editor.cursorEnabled
+    updateTerminalTitle()
     updatePromptValues()
     const inputPrompt = renderInputPrompt()
     editor.setPrompt({ first: inputPrompt, continuation: ' '.repeat(visibleWidth(inputPrompt)) })
@@ -1625,6 +1642,10 @@ export function createTuiChat(
     applyTheme: applyThemePreference,
     applyAccent,
     applyLocale,
+    applyTitle: (items) => {
+      titleItems = [...items]
+      updateTerminalTitle()
+    },
   })
   credentialsController = createCredentialsController({
     ctx,
@@ -2643,6 +2664,15 @@ export function createTuiChat(
       },
     })
     commandCtx.commands.register({
+      name: 'title',
+      description: 'Configure terminal window title fields',
+      input: { hint: '[status|reset|set <items...>]' },
+      handler: ({ rawInput }) => {
+        settingsController.queueTitleCommand(rawInput)
+        return { kind: 'success' }
+      },
+    })
+    commandCtx.commands.register({
       name: 'workspace',
       description: 'Choose or add a workspace and start a fresh session there',
       input: { hint: '[directory]' },
@@ -3481,9 +3511,9 @@ export function apply(ctx: Context, config: Config): void {
       ...goodbyeMessage === undefined ? {} : { goodbyeMessage },
     })
   }
-  // A composed settings service must load ui-accent before createTuiChat reads it.
-  const waitForAccentSettings = ctx.get('settings') !== undefined
-  registerTuiAccentSettings(ctx, mount)
-  if (!waitForAccentSettings) mount()
+  // A composed settings service must load TUI-owned namespaces before createTuiChat reads them.
+  const waitForTuiSettings = ctx.get('settings') !== undefined
+  registerTuiSettingsNamespaces(ctx, mount)
+  if (!waitForTuiSettings) mount()
 }
 /* v8 ignore stop */

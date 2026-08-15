@@ -521,6 +521,72 @@ describe('shared settings, appearance, and workspaces', () => {
     await dispose(result)
   })
 
+  it('persists and previews ordered /title fields without renaming the session', async () => {
+    const terminalNamespace = settingsNamespace('ui-terminal')
+    let titleItems = ['model', 'session-title']
+    let resultContext: Context | undefined
+    const mutate = vi.fn(async (
+      namespace: string,
+      ops: ReadonlyArray<{ op: string; path: readonly string[]; value?: unknown }>,
+    ) => {
+      const operation = ops[0]
+      if (namespace !== terminalNamespace || operation?.op !== 'set' || operation.path.join('.') !== 'titleItems') return
+      const previous = { titleItems }
+      titleItems = [...operation.value as string[]]
+      resultContext?.emit('settings/updated', terminalNamespace, { titleItems }, previous, 'update')
+    })
+    const result = await setup({
+      configureContext: composeFrontDoorServices((ctx) => {
+        resultContext = ctx
+        ctx.provide('settings', {
+          get: (namespace: string) => namespace === terminalNamespace ? { titleItems } : undefined,
+          mutate,
+          describe: () => [],
+          writable: true,
+          prepareDocument: () => Promise.resolve(undefined),
+        } as never)
+      }),
+      beforeMount(session) {
+        session.append('session/title', {
+          title: 'Durable title',
+          messageSeqs: [1],
+          source: { kind: 'fallback' },
+        })
+      },
+    })
+    expect(result.terminal.title).toBe('deepseek-v4-flash — Durable title')
+
+    result.terminal.send('/title set workspace app-name')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(mutate).toHaveBeenCalledWith(terminalNamespace, [{
+      op: 'set',
+      path: ['titleItems'],
+      value: ['workspace', 'app-name'],
+    }])
+    expect(result.terminal.title).toBe('/workspace — DeepSeek Harness')
+    expect(result.terminal.output).toContain('Terminal title: workspace · app-name.')
+
+    result.terminal.send('/title')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Configure Terminal Title')
+    expect(result.terminal.output).toContain('Space toggle')
+    result.terminal.send(' ')
+    await tick()
+    expect(result.terminal.title).toBe('DeepSeek Harness')
+    result.terminal.send('\x1b')
+    await tick()
+    expect(result.terminal.title).toBe('/workspace — DeepSeek Harness')
+
+    result.terminal.send('/title invalid')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Usage: /title [status|reset|set')
+    expect(result.session.events.some(event => event.type === 'session/title' && event.data.title === 'Durable title')).toBe(true)
+    await dispose(result)
+  })
+
   it('shares /language with the Web locale preference and refreshes terminal chrome', async () => {
     const localeNamespace = settingsNamespace('locale')
     let preference = 'en'

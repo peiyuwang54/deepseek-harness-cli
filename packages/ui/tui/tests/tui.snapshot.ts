@@ -108,6 +108,7 @@ const CHECKPOINTS = [
   'approve-empty',
   'settings-hub',
   'theme-selector',
+  'title-selector',
   'language-selector',
   'credential-onboarding',
   'workspace-selector',
@@ -1598,6 +1599,7 @@ describe('TUI terminal-state snapshots', () => {
   it('pins shared Settings, Appearance, workspace selection, and handoff recovery', async () => {
     const uiTheme = settingsNamespace('ui-theme')
     const locale = settingsNamespace('locale')
+    const uiTerminal = settingsNamespace('ui-terminal')
     const workspace = snapshotWorkspace(
       'snapshot-secondary-workspace',
       '/workspace/secondary',
@@ -1613,7 +1615,11 @@ describe('TUI terminal-state snapshots', () => {
         ctx.provide('settings', {
           get: (namespace: string) => namespace === uiTheme
             ? { preference: 'dark' }
-            : namespace === locale ? { preference: 'zh' } : undefined,
+            : namespace === locale
+              ? { preference: 'zh' }
+              : namespace === uiTerminal
+                ? { titleItems: ['session-title', 'app-name'] }
+                : undefined,
           mutate: () => Promise.resolve(),
           describe: () => [{
             ns: uiTheme,
@@ -1671,6 +1677,13 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('language-selector', harness.terminal, { includeScrollback: true })
+
+    await renderAfter(harness, () => { harness.terminal.send('\x1b') })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/title')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('title-selector', harness.terminal, { includeScrollback: true })
 
     await renderAfter(harness, () => { harness.terminal.send('\x1b') })
     await renderAfter(harness, () => {

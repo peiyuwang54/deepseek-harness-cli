@@ -64,6 +64,8 @@ Direct `/model off`, `/model high`, and `/model max` reuse the current route's a
 
 `/usage` records the existing shared session-statistics line in the transcript. It reports observed conversation timings and token buckets; provider account limits remain absent because no account-quota service supplies them.
 
+`/feedback <text>` reaches the existing global `command-feedback` plugin through the same command adapter as Web. The accepted text remains a log-only `feedback/record`; TUI adds no second feedback store, model turn, upload path, or delivery claim. Its acknowledgement retains the command owner's Session, anonymous-user, and sharing-policy disclosure.
+
 A true zero-state session uses an adaptive split welcome card rather than stretching the compact transcript header across an empty viewport. Its composition borrows the left-identity/right-update rhythm of Claude Code while retaining only first-party DeepSeek content: the left column renders the official SVG-derived Braille whale in the terminal foreground and projects preset, model, permission, and workspace from their owning services; the right column names real Harness commands and the newest queryable sessions. The mark is black on light terminals without becoming invisible on dark themes, and its reduced tier avoids Kitty/iTerm image protocols. The first durable turn contracts the card to a product-only transcript header, so neither a banner subtitle nor a session id survives into conversation. The multiline composer and submitted human cards use the Web theme's exact light and dark user-bubble tokens selected by `/theme`; a separate bottom bar shows Goal, model, compact usage, context pressure, and queued work while leaving its default left side empty so workspace and branch do not consume conversation width.
 
 Rich output remains terminal-native rather than importing the Web React tree. pi-tui's GFM renderer owns headings, emphasis, links, nested/task lists, blockquotes, tables, and fenced code; a narrow highlighter maps `diff`/`patch` metadata, hunks, removals, and additions to the same semantic palette used by tool diff cards. Adjacent hunks for one path form one visual group. KaTeX typesetting, fetched Markdown images, Shiki token coloring, copy controls, and horizontal scrollers remain explicit browser-only differences instead of hidden dependencies in the terminal package.
@@ -93,6 +95,8 @@ The plugin browser was compared with Codex commit [`c494130`](https://github.com
 The local setup importer was compared with Codex commit [`c494130`](https://github.com/openai/codex/tree/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/external_agent_config_migration), whose `/import` flow detects a source, groups setup by scope, and requires an explicit selection before its app-server migration. DeepSeek Harness implements only filesystem formats it can consume directly and uses its own Node filesystem and pi-tui dialog code; no Rust source was copied.
 
 The memory capability view was compared with Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/bottom_pane/memories_settings_view.rs). Codex controls its own local app-server memory generator and reset lifecycle. DeepSeek Harness instead reports only tools exposed by optional Memory MCP providers and leaves their data policies untouched; no Rust source was copied.
+
+The feedback entry point was compared with Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/bottom_pane/feedback_view.rs). Codex uses an app-server-managed category, note, consent, diagnostics, and upload flow. DeepSeek Harness already owns a smaller trigger-independent feedback event and optional telemetry policy, so the TUI reuses that command instead of copying Codex upload state; no Rust source was copied.
 
 ## Reference and provenance boundary
 
@@ -135,6 +139,8 @@ The `/personality` selector has a keyless checkpoint. Focused integration covera
 `/import` has keyless selector and completed-result checkpoints. Filesystem tests cover user/project detection, Git-root resolution, skill bundle and flat-file copies, global and project instructions, direct argument parsing, category filtering, result formatting, and a destination created between detection and execution without overwriting it.
 
 `/memories verbose` has a keyless terminal checkpoint. Focused tests cover provider grouping, deterministic tool order, normalized descriptions, unrelated-tool exclusion, capability absence, and rejection of mutation-like arguments.
+
+The existing `/feedback` command has a keyless TUI usage checkpoint in addition to its producer, registry, Loader-composition, redaction, and telemetry tests. The checkpoint proves the plugin command reaches the TUI adapter without a duplicate registration.
 
 ## Alternatives considered
 

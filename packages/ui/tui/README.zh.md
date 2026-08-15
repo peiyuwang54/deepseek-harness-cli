@@ -82,6 +82,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/usage` 会记录一份时点副本，其内容来自与 Web composer 共享的同一条全会话统计线：已完成轮次与步骤、LLM 与工具耗时、平均 TTFT、解码吞吐率、缓存命中率，以及不相交的输入／输出 token 总量。DeepSeek Harness 不公开提供方账户配额服务，因此该命令报告实测会话用量，不会虚构账户限额或重置日期。
 
+`/feedback <text>` 会复用基础 bundle 挂载的全局会话反馈命令。它只记录一条仅写入日志的 `feedback/record`，不启动模型轮次，并在确认中说明接收 Session、匿名用户 id 与当前会话共享策略。该命令绝不会声称可选遥测后端已经投递或保留该条目。
+
 所选 DeepSeek 路由缺少 `DEEPSEEK_API_KEY` 时，首次使用会打开一个附着 composer 的掩码输入框。原始 Key 不会进入编辑器、命令参数、Session 日志、transcript 或输入历史；Enter 会把它直接交给共享 `ctx.credentials` provider，Escape 则跳过本次启动的引导。`/credentials [status|set|unset]` 只报告配置状态、来源与可写性；新值只能通过同一个掩码输入框提交，删除操作也只移除 provider 管理的已保存值。从启动环境继承的 Key 在 TUI 内保持只读。
 
 `/settings` 是基于共享可选 `ctx.settings` provider 的终端 hub。不带参数时，它显示基于文件的设置文档与所有已注册 namespace 的脱敏元数据（实时／重启作用域、继承值／用户覆盖，以及已隐藏 secret 的数量）；`/settings list` 打印同样的 namespace 摘要，`/settings document` 则准备并报告可编辑文档路径。它刻意不复制 Web React 表单，也不会把一个完整的脱敏 section 写回，因为这类替换可能擦除已存的 secret。`/theme [deepseek|light|dark|system] [id]` 是终端安全的实时 action：它以字段级 mutate 更改与 Web client 共用的 `ui-theme.preference` namespace，跟随外部设置更新，并通过终端颜色方案报告解析 `system`。不带参数的 `/theme` 会打开一个统一选择器，不再拆分「外观」与「配色」。

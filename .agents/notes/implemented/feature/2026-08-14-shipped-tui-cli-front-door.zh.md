@@ -64,6 +64,8 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 
 `/usage` 会把现有共享会话统计线记录到 transcript。它报告已观测的对话耗时与 token 桶；由于没有账户配额服务提供数据，提供方账户限额仍不展示。
 
+`/feedback <text>` 会通过与 Web 相同的命令适配器进入现有全局 `command-feedback` 插件。接受的文本仍只形成一条仅写入日志的 `feedback/record`；TUI 不新增第二套反馈存储、模型轮次、上传路径或投递声明。确认文本保留命令所有者提供的 Session、匿名用户与共享策略披露。
+
 真正处于零状态的会话会使用自适应双栏欢迎卡，而不是让紧凑 transcript header 横跨空白 viewport。其编排借鉴 Claude Code 左侧身份／右侧更新的节奏，但只保留第一方 DeepSeek 内容：左栏以终端前景色渲染从官方 SVG 派生的 Braille 鲸鱼，并从各自权威服务投影 preset、模型、权限和 workspace；右栏列出真实 Harness 命令与最新可查询会话。该标志在浅色终端中呈黑色，在深色主题中不会消失，缩小档位也不依赖 Kitty／iTerm 图像协议。第一个持久 turn 会将欢迎卡收缩为仅含产品名的 header，因此 banner 副标题与 Session id 都不会进入对话。多行 composer 与已提交的人类消息卡片使用由 `/theme` 选择的 Web 主题精确明暗用户气泡色；独立底部状态栏显示 Goal、模型、紧凑用量、上下文压力和排队工作，并默认留空左侧，让工作区与分支不占用对话宽度。
 
 富文本输出保持终端原生，而不是导入 Web React tree。pi-tui 的 GFM renderer 持有标题、强调、链接、嵌套／任务列表、引用、表格与代码围栏；一个窄范围 highlighter 把 `diff`/`patch` 元数据、hunk、删除和新增映射到工具 diff 卡片共用的语义 palette。同一路径的相邻 hunk 形成一个可见分组。KaTeX 排版、获取 Markdown 图像、Shiki token 着色、复制控件与水平滚动器仍是明确的浏览器差异，而不是终端包中的隐藏依赖。
@@ -93,6 +95,8 @@ Hook 浏览器对照了 Codex commit [`c494130`](https://github.com/openai/codex
 本地配置导入器对照了 Codex commit [`c494130`](https://github.com/openai/codex/tree/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/external_agent_config_migration)；其 `/import` 流程先检测来源、按作用域分组配置，再要求显式选择后交给 app-server 迁移。DeepSeek Harness 只实现自身可直接消费的文件系统格式，并使用自己的 Node 文件系统与 pi-tui 对话框代码；没有复制 Rust 源码。
 
 记忆能力视图对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/bottom_pane/memories_settings_view.rs)。Codex 控制自身本地 app-server 的记忆生成器与重置生命周期。DeepSeek Harness 改为只报告可选 Memory MCP provider 暴露的工具，并保持其数据策略不变；没有复制 Rust 源码。
+
+反馈入口对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/bottom_pane/feedback_view.rs)。Codex 使用由 app-server 管理的类别、备注、同意、诊断与上传流程。DeepSeek Harness 已有更小且与触发方式无关的反馈事件与可选遥测策略，因此 TUI 会复用该命令，而不复制 Codex 上传状态；没有复制 Rust 源码。
 
 ## 参考与来源边界
 
@@ -135,6 +139,8 @@ Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服
 `/import` 具有无密钥选择器与完成结果 checkpoint。文件系统测试覆盖用户／项目检测、Git 根解析、Skill bundle 与扁平文件复制、全局与项目指令、直接参数解析、类别过滤、结果格式，以及目标在检测和执行之间出现时不覆盖该目标。
 
 `/memories verbose` 具有无密钥终端 checkpoint。聚焦测试覆盖 provider 归组、确定性的工具顺序、规整描述、排除无关工具、能力缺失，以及拒绝类似修改的参数。
+
+除了 producer、registry、Loader 组合、脱敏与遥测测试，现有 `/feedback` 命令还具有无密钥 TUI 用法 checkpoint。该 checkpoint 证明插件命令能进入 TUI adapter，无需重复注册。
 
 ## 考虑过的替代方案
 

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { agentEvents, Inbox, type Agent } from '@deepseek-ai/dsh-agent'
+import * as CommandFeedback from '@deepseek-ai/dsh-command-feedback'
 import * as CommandJobs from '@deepseek-ai/dsh-command-jobs'
 import DynamicCordisRunner from '@deepseek-ai/dsh-cordis-host-runner'
 import { compactCheckpointSource, CompactionId } from '@deepseek-ai/dsh-compaction'
@@ -97,6 +98,7 @@ const CHECKPOINTS = [
   'goal-status-complete',
   'mcp-tools',
   'memory-providers',
+  'feedback-usage',
   'hooks-browser',
   'plugins-browser',
   'import-selector',
@@ -1541,6 +1543,18 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('memory-providers', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins the existing session-feedback command through the TUI adapter', async () => {
+    const harness = await setupSnapshot({
+      configureContext: async (ctx) => { await ctx.plugin(CommandFeedback) },
+    }, { columns: 92, rows: 32 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/feedback')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('feedback-usage', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

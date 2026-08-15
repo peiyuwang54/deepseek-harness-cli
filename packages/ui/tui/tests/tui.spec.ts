@@ -555,6 +555,55 @@ describe('shared settings, appearance, and workspaces', () => {
     await dispose(result)
   })
 
+  it('starts a fresh current-workspace session through /new and /clear', async () => {
+    const handoff = vi.fn<NonNullable<TuiRuntime['handoffWorkspace']>>(
+      () => Promise.reject(new Error('test host retained process')),
+    )
+    const result = await setup({ cwd: '/workspace', handoffWorkspace: handoff })
+
+    result.terminal.send('/new')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(handoff).toHaveBeenNthCalledWith(1, '/workspace')
+    expect(result.terminal.output).toContain('New session failed: test host retained process')
+
+    result.terminal.send('/clear')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(handoff).toHaveBeenNthCalledWith(2, '/workspace')
+    expect(result.session.header.cwd).toBe('/workspace')
+    expect(result.terminal.stopped).toBeGreaterThanOrEqual(2)
+
+    result.terminal.send('/new with-a-prompt')
+    result.terminal.send('\r')
+    result.terminal.send('/clear later')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(result.terminal.output).toContain('Usage: /new (no arguments)')
+    expect(result.terminal.output).toContain('Usage: /clear (no arguments)')
+    expect(handoff).toHaveBeenCalledTimes(2)
+    await dispose(result)
+  })
+
+  it('keeps /new in the current process when a fresh-session handoff is unavailable or busy', async () => {
+    const unavailable = await setup({ cwd: '/workspace' })
+    unavailable.terminal.send('/new')
+    unavailable.terminal.send('\r')
+    await tick(); await tick()
+    expect(unavailable.terminal.output).toContain('New session is available, but this host cannot start it in place.')
+    await dispose(unavailable)
+
+    const busyHandoff = vi.fn<NonNullable<TuiRuntime['handoffWorkspace']>>()
+    const busy = await setup({ cwd: '/workspace', handoffWorkspace: busyHandoff })
+    busy.agent.status = 'running'
+    busy.terminal.send('/new')
+    busy.terminal.send('\r')
+    await tick(); await tick()
+    expect(busy.terminal.output).toContain('New session command failed: Starting a session requires an idle agent')
+    expect(busyHandoff).not.toHaveBeenCalled()
+    await dispose(busy)
+  })
+
   it('does not stop pi-tui twice when root disposal follows a committed workspace handoff', async () => {
     const target = workspaceFixture('committed-workspace', '/committed', 'Committed project')
     const handoff = vi.fn<NonNullable<TuiRuntime['handoffWorkspace']>>(
@@ -2126,7 +2175,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     })
     result.terminal.send('/clear')
     result.terminal.send('\r')
-    await tick() // the executor logs command/run durably before the handler clears
+    await tick() // the host-less fixture reports that a fresh-session handoff is unavailable
     appendAssistant(result.session, [{ type: 'text', text: 'answer after clear' }], undefined, { turn: 3, step: 1 })
     await tick()
     expect(result.terminal.output).toContain('answer after clear')
@@ -3446,7 +3495,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     for (const command of ['/clear', '/wat']) {
       result.terminal.send(command)
       result.terminal.send('\r')
-      await tick() // /clear's handler runs after the durable command/run append; keep it from wiping the next notice
+      await tick()
     }
     result.terminal.send('draft')
     result.terminal.send('\x03')

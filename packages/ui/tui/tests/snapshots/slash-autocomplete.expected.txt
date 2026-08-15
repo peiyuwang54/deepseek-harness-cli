@@ -24,15 +24,15 @@ viewport
   style 0-95 dim
 8| "→ approve       Allow an active request or one retry of the latest rejected request"
   style 0-82 fg=bright-magenta
-9| "  clear         Clear the transcript view (session history is unchanged)"
-  style 7-71 dim
+9| "  clear         Clear the terminal and start a new chat"
+  style 7-54 dim
 10| "  copy          Copy the latest assistant response to the terminal clipboard"
   style 6-75 dim
 11| "  details       [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility"
   style 9-93 dim
 12| "  exit          Exit after the active turn reaches idle"
   style 6-54 dim
-13| "  (1/24)"
+13| "  (1/25)"
   style 0-7 dim
 14| "/workspace/project (tui-staging)              ▸ idle  deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold

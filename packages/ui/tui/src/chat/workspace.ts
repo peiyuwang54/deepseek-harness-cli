@@ -1,7 +1,7 @@
 /**
- * Workspace-selection controller for the terminal channel. A selection always
- * starts a fresh process/session in that directory; the current session's
- * immutable header cwd is never rewritten.
+ * Fresh-session and workspace-selection controller for the terminal channel.
+ * A request starts a fresh process/session in the selected or current directory;
+ * the current session's immutable header cwd is never rewritten.
  * @module @deepseek-ai/dsh-tui/chat/workspace
  */
 
@@ -144,16 +144,18 @@ export interface WorkspaceControllerDeps extends ChatChannelDeps, ChannelNotice 
   restoreTerminal(): void
 }
 
-/** Workspace-selection controller. */
+/** Fresh-session and workspace-selection controller. */
 export interface WorkspaceController {
   /** Queue `/workspace`; empty input opens the registry picker, a path creates/selects it. */
   queueWorkspaceCommand(raw: string): void
+  /** Start a fresh session in the current session's immutable workspace. */
+  queueFreshSession(): void
   /** Forget the picker during shutdown. */
   clearOverlay(): void
 }
 
 /**
- * Build a workspace picker over the shared durable registry.
+ * Build fresh-session commands and a workspace picker over the shared durable registry.
  * @param deps - channel, agent, terminal, and handoff collaborators.
  * @returns the command controller.
  */
@@ -165,10 +167,17 @@ export function createWorkspaceController(deps: WorkspaceControllerDeps): Worksp
 
   const registry = (): WorkspaceRegistry | undefined => ctx.get('workspaceRegistry')
 
-  const handoff = async (workspace: Workspace): Promise<void> => {
+  const handoff = async (
+    cwd: string,
+    labels: {
+      readonly unavailable: string
+      readonly failure: string
+    },
+    validate?: () => Promise<void>,
+  ): Promise<void> => {
     if (handoffInFlight) return
     if (deps.agentStatus() !== 'idle') {
-      throw new Error(`Workspace selection requires an idle agent (status: ${deps.agentStatus()}).`)
+      throw new Error(`Starting a session requires an idle agent (status: ${deps.agentStatus()}).`)
     }
     // Claim before the first await: repeated Enter/mouse activation must not
     // run two status checks, flushes, or host handoffs in parallel.
@@ -179,16 +188,14 @@ export function createWorkspaceController(deps: WorkspaceControllerDeps): Worksp
       if (host === undefined) {
         await workspaceOverlay?.close()
         workspaceOverlay = undefined
-        deps.appendNotice('Workspace selection is available, but this host cannot start it in place.', 'warning')
+        deps.appendNotice(labels.unavailable, 'warning')
         return
       }
-      if (await workspace.status() !== 'ok') {
-        throw new Error(`workspace directory is unavailable: ${workspace.path}`)
-      }
+      await validate?.()
       await ctx.sessions.flush(agent.session)
       if (deps.isDisposed()) return
       if (deps.agentStatus() !== 'idle') {
-        throw new Error(`Workspace selection requires an idle agent (status: ${deps.agentStatus()}).`)
+        throw new Error(`Starting a session requires an idle agent (status: ${deps.agentStatus()}).`)
       }
       await workspaceOverlay?.close()
       workspaceOverlay = undefined
@@ -196,16 +203,31 @@ export function createWorkspaceController(deps: WorkspaceControllerDeps): Worksp
       if (deps.isDisposed()) return
       deps.releaseTerminal()
       terminalReleased = true
-      await host(workspace.path)
-      throw new Error('workspace host returned without replacing the process')
+      await host(cwd)
+      throw new Error('session host returned without replacing the process')
     } catch (error: unknown) {
       if (!deps.isDisposed()) {
         if (terminalReleased) deps.restoreTerminal()
-        deps.appendNotice(`Workspace switch failed: ${errorChain(error)}`, 'error')
+        deps.appendNotice(`${labels.failure}: ${errorChain(error)}`, 'error')
       }
     } finally {
       handoffInFlight = false
     }
+  }
+
+  const handoffWorkspace = async (workspace: Workspace): Promise<void> => {
+    await handoff(
+      workspace.path,
+      {
+        unavailable: 'Workspace selection is available, but this host cannot start it in place.',
+        failure: 'Workspace switch failed',
+      },
+      async () => {
+        if (await workspace.status() !== 'ok') {
+          throw new Error(`workspace directory is unavailable: ${workspace.path}`)
+        }
+      },
+    )
   }
 
   const showWorkspacePicker = (): void => {
@@ -234,7 +256,7 @@ export function createWorkspaceController(deps: WorkspaceControllerDeps): Worksp
         resolved.maxResumeOptions,
         palette,
         (choice) => {
-          void handoff(choice.workspace).catch((error: unknown) => {
+          void handoffWorkspace(choice.workspace).catch((error: unknown) => {
             if (!deps.isDisposed()) deps.appendNotice(`Workspace switch failed: ${errorChain(error)}`, 'error')
           })
         },
@@ -270,13 +292,30 @@ export function createWorkspaceController(deps: WorkspaceControllerDeps): Worksp
       return
     }
     const workspace = await service.create(resolve(argument))
-    if (!deps.isDisposed()) await handoff(workspace)
+    if (!deps.isDisposed()) await handoffWorkspace(workspace)
+  }
+
+  const runFreshSession = async (): Promise<void> => {
+    const cwd = agent.session.header.cwd
+    if (cwd === undefined) {
+      deps.appendNotice('New session is unavailable because the current session has no workspace.', 'warning')
+      return
+    }
+    await handoff(cwd, {
+      unavailable: 'New session is available, but this host cannot start it in place.',
+      failure: 'New session failed',
+    })
   }
 
   return {
     queueWorkspaceCommand(raw): void {
       operations = operations.then(() => runWorkspaceCommand(raw)).catch((error: unknown) => {
         if (!deps.isDisposed()) deps.appendNotice(`Workspace command failed: ${errorChain(error)}`, 'error')
+      })
+    },
+    queueFreshSession(): void {
+      operations = operations.then(runFreshSession).catch((error: unknown) => {
+        if (!deps.isDisposed()) deps.appendNotice(`New session command failed: ${errorChain(error)}`, 'error')
       })
     },
     clearOverlay(): void {

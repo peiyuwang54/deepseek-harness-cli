@@ -98,6 +98,7 @@ const CHECKPOINTS = [
   'language-selector',
   'workspace-selector',
   'workspace-handoff-recovered',
+  'new-session-handoff-recovered',
   'errors-and-help',
   'disposed-terminal',
   'resume-sessions-loading',
@@ -1378,6 +1379,13 @@ describe('TUI terminal-state snapshots', () => {
     expect(restored).toContain('Snapshot agent ready.')
     expect(harness.session.header.cwd).toBe('/workspace/project')
     await checkpoint('workspace-handoff-recovered', harness.terminal, { includeScrollback: true })
+
+    await renderAfter(harness, () => {
+      harness.terminal.send('/new')
+      harness.terminal.send('\r')
+    })
+    await vi.waitFor(() => { expect(handoff).toHaveBeenCalledWith('/workspace/project') })
+    await checkpoint('new-session-handoff-recovered', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

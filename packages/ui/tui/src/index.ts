@@ -2096,9 +2096,22 @@ export function createTuiChat(
       },
     })
     commandCtx.commands.register({
+      name: 'new',
+      description: 'Start a new chat in the current workspace',
+      handler: ({ rawInput }) => {
+        if (rawInput.trim() !== '') return { kind: 'error', text: 'Usage: /new (no arguments)' }
+        workspaceController.queueFreshSession()
+        return { kind: 'success' }
+      },
+    })
+    commandCtx.commands.register({
       name: 'clear',
-      description: 'Clear the transcript view (session history is unchanged)',
-      handler: () => { chat.clear(); transcriptViewport.followTail(); requestRender(); return { kind: 'success' } },
+      description: 'Clear the terminal and start a new chat',
+      handler: ({ rawInput }) => {
+        if (rawInput.trim() !== '') return { kind: 'error', text: 'Usage: /clear (no arguments)' }
+        workspaceController.queueFreshSession()
+        return { kind: 'success' }
+      },
     })
     commandCtx.commands.register({
       name: 'copy',

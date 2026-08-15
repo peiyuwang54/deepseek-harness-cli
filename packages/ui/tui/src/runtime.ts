@@ -57,7 +57,7 @@ export interface TuiRuntime {
   now?(): number
   /** Host-owned process handoff; absent leaves the session selectable but not resumable in place. */
   handoffResume?: TuiResumeHost['handoff']
-  /** Host-owned fresh-session handoff used by the workspace selector. */
+  /** Host-owned fresh-session handoff used by `/new`, `/clear`, and the workspace selector. */
   handoffWorkspace?: NonNullable<TuiResumeHost['start']>
   /**
    * Line the host wants printed once the terminal is released on exit, such as

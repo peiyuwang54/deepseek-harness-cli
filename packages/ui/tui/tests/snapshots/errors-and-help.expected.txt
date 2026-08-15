@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=58 base=26 viewport=26
+terminal 92x32 buffer=normal length=59 base=27 viewport=27
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=8 viewportRow=28 bufferRow=54
+cursor visible column=8 viewportRow=28 bufferRow=55
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -29,8 +29,8 @@ buffer
 11| "                                                                                            "
 12| "/approve — Allow an active request or one retry of the latest rejected request              "
   style 0-77 dim
-13| "/clear — Clear the transcript view (session history is unchanged)                           "
-  style 0-64 dim
+13| "/clear — Clear the terminal and start a new chat                                            "
+  style 0-47 dim
 14| "/copy — Copy the latest assistant response to the terminal clipboard                        "
   style 0-67 dim
 15| "/details [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility and "
@@ -55,67 +55,69 @@ buffer
   style 0-68 dim
 25| "/model [[provider/]model] — Show or switch this session's model                             "
   style 0-62 dim
-26| "/palette — Show every color and attribute role this terminal renders                        "
+26| "/new — Start a new chat in the current workspace                                            "
+  style 0-47 dim
+27| "/palette — Show every color and attribute role this terminal renders                        "
   style 0-67 dim
-27| "/quit — Exit after the active turn reaches idle                                             "
+28| "/quit — Exit after the active turn reaches idle                                             "
   style 0-46 dim
-28| "/reload — EXPERIMENTAL (dev): re-read loader config files and apply the diff (idle only)    "
+29| "/reload — EXPERIMENTAL (dev): re-read loader config files and apply the diff (idle only)    "
   style 0-87 dim
-29| "/rename <title> — Rename this session and pin its title                                     "
+30| "/rename <title> — Rename this session and pin its title                                     "
   style 0-54 dim
-30| "/resume — List this workspace's resumable sessions                                          "
+31| "/resume — List this workspace's resumable sessions                                          "
   style 0-49 dim
-31| "/settings [list|document] — Show shared settings namespaces and the settings document       "
+32| "/settings [list|document] — Show shared settings namespaces and the settings document       "
   style 0-84 dim
-32| "/skills [name] — Browse and invoke user-invocable skills for this agent                     "
+33| "/skills [name] — Browse and invoke user-invocable skills for this agent                     "
   style 0-70 dim
-33| "/status — Show session status and token usage                                               "
+34| "/status — Show session status and token usage                                               "
   style 0-44 dim
-34| "/theme [light|dark|system] — Choose and persist the light, dark, or system appearance       "
+35| "/theme [light|dark|system] — Choose and persist the light, dark, or system appearance       "
   style 0-84 dim
-35| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
+36| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
   style 0-73 dim
-36| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
+37| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
   style 0-81 dim
-37| "/skill:<name> [instructions] — load a skill into the conversation                           "
+38| "/skill:<name> [instructions] — load a skill into the conversation                           "
   style 0-64 dim
-38| <blank>
-39| "provider stream failed after partial output                                                 "
+39| <blank>
+40| "provider stream failed after partial output                                                 "
   style 0-42 fg=red
-40| <blank>
-41| "Assistant                                                                                   "
+41| <blank>
+42| "Assistant                                                                                   "
   style 0-8 fg=bright-magenta bold underline
-42| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
+43| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
   style 0-46 dim
-43| <blank>
-44| "The previous process ended during this turn.                                                "
+44| <blank>
+45| "The previous process ended during this turn.                                                "
   style 0-43 fg=yellow
-45| <blank>
-46| "Turn stopped: the agent was disposed.                                                       "
+46| <blank>
+47| "Turn stopped: the agent was disposed.                                                       "
   style 0-36 fg=yellow
-47| <blank>
-48| "Turn ended: plugin-policy.                                                                  "
+48| <blank>
+49| "Turn ended: plugin-policy.                                                                  "
   style 0-25 fg=yellow
-49| <blank>
-50| "Unknown command: /unknown-advanced-command                                                  "
+50| <blank>
+51| "Unknown command: /unknown-advanced-command                                                  "
   style 0-41 fg=yellow
-51-52| <blank>
-53| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
+52-53| <blank>
+54| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
   style 0-91 dim
-54| "│ dsh > │Describe a task, @ a file, or / for commands                                      │"
+55| "│ dsh > │Describe a task, @ a file, or / for commands                                      │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
   style 6-7 dim
   style 9-52 dim
   style 91-91 dim
-55| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+56| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-91 dim
-56| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+57| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 40-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-57| "                                      1 turn · 1 step"
+58| "                                      1 turn · 1 step"
   style 38-52 dim

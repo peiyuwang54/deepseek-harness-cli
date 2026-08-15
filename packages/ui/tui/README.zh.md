@@ -36,6 +36,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/copy` 通过 OSC 52 将 transcript 中最新可见的 assistant 回复作为原始 Markdown 写入剪贴板，支持 tmux 透传，并在编码前拒绝超过 100,000 个 UTF-8 字节的回复。`/mention` 会插入 `@` 并打开工作区补全；`/mention <path>` 直接插入该路径。`/rename` 会在 composer 中恢复 `/rename ` 以便继续输入标题，而 `/rename <title>` 会通过可选的 session-title service 记录规范化的用户标题，并立即更新终端标题。
 
+共享的 [`dsh-command-jobs`](../../jobs/command-jobs/README.md) 插件会贡献 `/ps` 与 `/stop`。`/ps` 在不消费输出的前提下列出本会话中处于运行或停止中状态的通用后台任务；`/stop` 请求取消全部运行中任务，并保持已经处于停止中状态的任务不变。
+
 `/model`、Alt+M 或左键点击编辑器旁的模型徽标，会把建议性的 `ctx.llm` catalog 紧贴在带框编辑器下方打开，而不是放在终端中央。列表上方设有一个过滤框，按对每行 `provider/model` 标签、模型名称和描述的大小写不敏感子串匹配来缩小行集，并在高亮行仍通过过滤时保持其选中状态。Up/Down 或鼠标滚轮在模型间移动。专用的 `Reasoning effort` 行会始终列出适配器为高亮模型公布的精确等级（包括存在时的 `Off`），并用方括号标记当前选择；Tab 或 Right 向前切换，Shift+Tab 或 Left 向后切换。Enter 选择当前可见的模型与推理强度组合；Escape 会先清除非空过滤内容，再次按下才关闭选择器。适配器未公布默认推理强度时，该行还会包含 `Default`，用于清除显式选择并保留提供方行为；没有 reasoning 元数据的模型会显示 `Not available`。选择器不会合成、自动调整或在模型之间转移推理强度。`/model <model>` 仍可直接选择无歧义的模型 id，`/model <provider>/<model>` 则选择精确目标，并在存在时使用其适配器默认值。已配置目标或最新记录的请求 header 会初始化选择器；由于 catalog 仅提供建议，未列出的当前模型仍会显示。选择仅对本 TUI 会话有效。提示词组装会为一个步骤建立目标快照，替换 `{{provider}}` 和 `{{model}}`，并通过 `agent/request` 应用同一个提供方／模型／推理强度目标；因此组装期间的切换会从后续步骤开始生效。请求 header 会持久记录真正到达模型的目标，未使用的选择则只存在于进程本地。
 
 `/reload`（实验性，仅开发环境）会重新读取所有基于文件的 loader 配置树，并把 diff 应用到运行中 app：它手动调用 HMR（热模块替换）watcher 的配置路径；上下文中必须有 cordis Loader，否则退化为警告。它只在 agent 空闲时运行，并拒绝 reload 进行期间的再次进入。模块源代码热重载仍由 watcher 持有。挂载 `skills` 服务后，`/skill:<name> [instructions]` 会把该 skill 的指令作为一个 user 轮次加载到会话中；自动补全列出用户可调用的 skill，按精确名称调用时也会拒绝用户策略禁用的 skill。

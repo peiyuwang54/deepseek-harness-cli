@@ -1,0 +1,42 @@
+terminal 92x32 buffer=normal length=32 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor visible column=8 viewportRow=12 bufferRow=12
+buffer
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+  style 18-23 dim
+1| " Snapshot agent ready."
+  style 1-21 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "Background jobs                                                                             "
+  style 0-91 dim
+5| "                                                                                            "
+  style 0-91 dim
+6| "  • bash-1 [bash] running — pnpm run test:watch                                             "
+  style 0-46 dim
+7| <blank>
+8| "Requested cancellation for 1 background job.                                                "
+  style 0-43 dim
+9-10| <blank>
+11| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
+  style 0-91 dim
+12| "│ dsh > │Describe a task, @ a file, or / for commands                                      │"
+  style 0-0 dim
+  style 2-4 fg=bright-magenta bold
+  style 6-7 dim
+  style 9-52 dim
+  style 91-91 dim
+13| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+  style 0-91 dim
+14| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-magenta bold
+  style 18-31 dim
+  style 40-45 dim
+  style 48-72 dim
+  style 75-79 dim
+  style 82-91 dim
+15-31| <blank>

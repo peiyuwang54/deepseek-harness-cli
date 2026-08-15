@@ -9,6 +9,7 @@
 | [`jobs/`](jobs/README.md) | 定义任务注册表和生命周期约定 | `ctx.jobs` |
 | [`jobs-local/`](jobs-local/README.md) | 实现进程本地任务注册表 | 注册到 `ctx.jobs` |
 | [`tool-jobs/`](tool-jobs/README.md) | 向模型公开任务控制和完成通知 | 注册到 `ctx.tools` |
+| [`command-jobs/`](command-jobs/README.md) | 向用户公开按所有者隔离的 `/ps` 与 `/stop` 控制 | 注册到 `ctx.commands` |
 
 参见[后台任务运行时](../../.agents/notes/implemented/architecture/2026-06-20-generic-long-running-tool-runtime.md)和[任务注册表](../../.agents/notes/implemented/architecture/2026-07-26-job-registry-seam.md)决策。
 

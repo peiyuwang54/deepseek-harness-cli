@@ -16,6 +16,7 @@ The `jobs/` package group owns background-job semantics:
 
 - `@deepseek-ai/dsh-jobs` registers running work as `ctx.jobs` and owns job ids, authorization, snapshots, reads, cancellation, waiting, completion listeners, and cleanup.
 - `@deepseek-ai/dsh-tool-jobs` exposes `job_output`, `job_list`, and `job_kill`, injects completion notices, and supplies the background-job system-prompt guidance.
+- `@deepseek-ai/dsh-command-jobs` exposes non-consuming `/ps` and asynchronous `/stop` controls to people through `ctx.commands`.
 
 Long-running tools are producers. `dsh-tool-bash` adapts a `ShellProcess` into incremental output and process cancellation; `dsh-tool-subagent` adapts a child run into final output and child disposal. The bash and subagent capability seams remain independent of sessions and the job registry.
 
@@ -67,7 +68,7 @@ For contract-compliant producers, `AgentHandle.dispose()` resolves only after ow
 
 `wait` returns the terminal snapshot when the task settles or the live snapshot when its timeout expires. Aborting a wait cancels only that wait. If settlement has already assigned terminal delivery to the waiter, the terminal snapshot still wins. Waiters unregister synchronously on abort so a same-tick settlement cannot suppress a completion notice on behalf of a reader that receives nothing.
 
-A producer loaded without any controller would let callers start work they cannot collect or stop. `dsh-tool-jobs` therefore calls `attachController()` for its lifetime, and `start()` fails before producer execution when no controller is attached. This check occurs at start rather than plugin load because sibling plugins may activate concurrently. Custom non-model controllers can attach themselves without teaching the registry tool names.
+A producer loaded without any controller would let callers start work they cannot collect or stop. `dsh-tool-jobs` and `dsh-command-jobs` therefore call `attachController()` for their lifetimes, and `start()` fails before producer execution when no controller is attached. The model tool remains an Agent-preset choice, while the shipped base mounts the human command globally so an interactive session can always list or stop its own work. This check occurs at start rather than plugin load because sibling plugins may activate concurrently. Custom controllers can attach themselves without teaching the registry tool or command names.
 
 ## Model-facing control API
 
@@ -127,7 +128,7 @@ Authorization, not unguessability, is the access boundary, and ids do not derive
 
 ## Testing
 
-Unit coverage pins preflight atomicity, per-kind ids, per-exact-owner and unowned-bucket admission, `stopping` occupancy, terminal release, output-limit validation and projection, complete UTF-8 result bounds, stream and final reads, wait timeout and abort races, cancellation, first-wins settlement, listener containment, notice suppression, owner isolation, stale owner instances, owner cleanup, service teardown, and the no-controller fence. Producer tests cover bash process mapping, subagent startup cancellation, terminal mapping, and disposal. Snapshot coverage pins the control-tool schemas, prompt guidance, and an assembled ACP path where the configured limit rejects a second real background Bash task with a `job_kill` recovery action.
+Unit coverage pins preflight atomicity, per-kind ids, per-exact-owner and unowned-bucket admission, `stopping` occupancy, terminal release, output-limit validation and projection, complete UTF-8 result bounds, stream and final reads, wait timeout and abort races, cancellation, first-wins settlement, listener containment, notice suppression, owner isolation, stale owner instances, owner cleanup, service teardown, and the no-controller fence. Command and Loader-composition coverage pins owner-visible active filtering, non-consuming `/ps`, asynchronous `/stop`, cancellation-hook failures, and controller disposal. Producer tests cover bash process mapping, subagent startup cancellation, terminal mapping, and disposal. Snapshot coverage pins the control-tool schemas, prompt guidance, one TUI background-command path, and an assembled ACP path where the configured limit rejects a second real background Bash task with a `job_kill` recovery action.
 
 ## Consequences
 

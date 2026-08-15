@@ -259,6 +259,9 @@
     - id: command-feedback
       name: '@deepseek-ai/dsh-command-feedback'
 
+    - id: command-jobs
+      name: '@deepseek-ai/dsh-command-jobs'
+
     - id: goal
       name: '@deepseek-ai/dsh-goal'
 

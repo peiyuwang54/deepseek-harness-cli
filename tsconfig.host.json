@@ -266,6 +266,7 @@
     { "path": "./packages/subagent/subagent-dsh-sdk" },
     { "path": "./packages/jobs/jobs" },
     { "path": "./packages/jobs/jobs-local" },
+    { "path": "./packages/jobs/command-jobs" },
     { "path": "./packages/jobs/tool-jobs" },
     { "path": "./packages/workflow/workflow" },
     { "path": "./packages/workflow/workflow-worker-thread" },

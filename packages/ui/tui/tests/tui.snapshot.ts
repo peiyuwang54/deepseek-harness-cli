@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { afterAll, describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import { agentEvents } from '@deepseek-ai/dsh-agent'
+import * as CommandJobs from '@deepseek-ai/dsh-command-jobs'
 import DynamicCordisRunner from '@deepseek-ai/dsh-cordis-host-runner'
 import { compactCheckpointSource, CompactionId } from '@deepseek-ai/dsh-compaction'
 import {
@@ -16,6 +17,8 @@ import {
   type ContentBlock,
 } from '@deepseek-ai/dsh-llm'
 import { RetryId } from '@deepseek-ai/dsh-llm-retry'
+import type { JobOutcome } from '@deepseek-ai/dsh-jobs'
+import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
 import PermissionPresetService from '@deepseek-ai/dsh-permission-presets'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import { SessionId, type JsonValue, type Session, type SessionEvent } from '@deepseek-ai/dsh-session'
@@ -101,6 +104,7 @@ const CHECKPOINTS = [
   'resume-sessions',
   'resume-sessions-all-workspaces',
   'command-parity',
+  'background-job-commands',
   'status-diagnostics',
   'status-diagnostics-narrow',
   'todo-plan-cleared',
@@ -1526,6 +1530,36 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('command-parity', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('lists and stops background jobs through shared commands', async () => {
+    const harness = await setupSnapshot({}, { columns: 92, rows: 32 })
+    await harness.ctx.plugin(LocalJobRegistry)
+    await harness.ctx.plugin(CommandJobs)
+    let settle!: (outcome: JobOutcome) => void
+    const cancels: Array<string | undefined> = []
+    harness.ctx.jobs.start({
+      kind: 'bash',
+      label: 'pnpm run test:watch',
+      owner: harness.agent,
+      run: () => ({
+        cancel(reason) { cancels.push(reason) },
+        done: new Promise((resolve) => { settle = resolve }),
+      }),
+    })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/ps')
+      harness.terminal.send('\r')
+    })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/stop')
+      harness.terminal.send('\r')
+    })
+    expect(cancels).toEqual(['Stopped by /stop.'])
+    await checkpoint('background-job-commands', harness.terminal, { includeScrollback: true })
+    settle({ status: 'killed' })
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0) })
     await disposeSnapshot(harness)
   })
 })

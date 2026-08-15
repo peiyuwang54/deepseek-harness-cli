@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=78 base=46 viewport=46
+terminal 92x32 buffer=normal length=80 base=48 viewport=48
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=3 viewportRow=27 bufferRow=73
+cursor visible column=3 viewportRow=27 bufferRow=75
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-blue bold
@@ -59,102 +59,106 @@ buffer
   style 0-72 dim
 27| "/ide [path] — Inspect terminal IDE context or insert a workspace file reference             "
   style 0-78 dim
-28| "/init — Create an AGENTS.md repository guide                                                "
+28| "/import [claude|codex] [all|skills|instructions] — Import compatible local setup from Claude"
+  style 0-91 dim
+29| "Code or Codex                                                                               "
+  style 0-12 dim
+30| "/init — Create an AGENTS.md repository guide                                                "
   style 0-43 dim
-29| "/keymap [default|vim] — Choose the default or Vim terminal editing keymap                   "
+31| "/keymap [default|vim] — Choose the default or Vim terminal editing keymap                   "
   style 0-72 dim
-30| "/language [en|zh|ar|fr|ru|es|ja|ko] — Choose and persist the terminal interface language    "
+32| "/language [en|zh|ar|fr|ru|es|ja|ko] — Choose and persist the terminal interface language    "
   style 0-87 dim
-31| "/mcp [verbose] — List MCP tools visible to this session                                     "
+33| "/mcp [verbose] — List MCP tools visible to this session                                     "
   style 0-54 dim
-32| "/mention [path] — Insert a workspace file reference into the composer                       "
+34| "/mention [path] — Insert a workspace file reference into the composer                       "
   style 0-68 dim
-33| "/model [[provider/]model|off|high|max] — Show or switch this session's model                "
+35| "/model [[provider/]model|off|high|max] — Show or switch this session's model                "
   style 0-75 dim
-34| "/new — Start a new chat in the current workspace                                            "
+36| "/new — Start a new chat in the current workspace                                            "
   style 0-47 dim
-35| "/palette — Show every color and attribute role this terminal renders                        "
+37| "/palette — Show every color and attribute role this terminal renders                        "
   style 0-67 dim
-36| "/personality [friendly|pragmatic|status] — Choose a communication style for DeepSeek        "
+38| "/personality [friendly|pragmatic|status] — Choose a communication style for DeepSeek        "
   style 0-83 dim
-37| "/plugins [verbose] [query] — Browse plugins configured in the current profile               "
+39| "/plugins [verbose] [query] — Browse plugins configured in the current profile               "
   style 0-76 dim
-38| "/quit — Exit after the active turn reaches idle                                             "
+40| "/quit — Exit after the active turn reaches idle                                             "
   style 0-46 dim
-39| "/raw [on|off|status] — Toggle copy-friendly plain transcript rendering                      "
+41| "/raw [on|off|status] — Toggle copy-friendly plain transcript rendering                      "
   style 0-69 dim
-40| "/reload — EXPERIMENTAL (dev): re-read loader config files and apply the diff (idle only)    "
+42| "/reload — EXPERIMENTAL (dev): re-read loader config files and apply the diff (idle only)    "
   style 0-87 dim
-41| "/rename <title> — Rename this session and pin its title                                     "
+43| "/rename <title> — Rename this session and pin its title                                     "
   style 0-54 dim
-42| "/resume [session] — Resume a saved chat                                                     "
+44| "/resume [session] — Resume a saved chat                                                     "
   style 0-38 dim
-43| "/review [instructions] — Review the current workspace changes                               "
+45| "/review [instructions] — Review the current workspace changes                               "
   style 0-60 dim
-44| "/settings [list|document] — Show shared settings namespaces and the settings document       "
+46| "/settings [list|document] — Show shared settings namespaces and the settings document       "
   style 0-84 dim
-45| "/side [message] — Start a temporary side conversation in an ephemeral fork                  "
+47| "/side [message] — Start a temporary side conversation in an ephemeral fork                  "
   style 0-73 dim
-46| "/skills [name] — Browse and invoke user-invocable skills for this agent                     "
+48| "/skills [name] — Browse and invoke user-invocable skills for this agent                     "
   style 0-70 dim
-47| "/status — Show session status and token usage                                               "
+49| "/status — Show session status and token usage                                               "
   style 0-44 dim
-48| "/statusline [status|reset|off|set <items...>] — Configure which items appear in the status  "
+50| "/statusline [status|reset|off|set <items...>] — Configure which items appear in the status  "
   style 0-91 dim
-49| "line                                                                                        "
+51| "line                                                                                        "
   style 0-3 dim
-50| "/subagents — Switch the active agent thread                                                 "
+52| "/subagents — Switch the active agent thread                                                 "
   style 0-42 dim
-51| "/theme [light|dark|system] [accent [light|dark] [id]] — Choose and persist appearance and   "
+53| "/theme [light|dark|system] [accent [light|dark] [id]] — Choose and persist appearance and   "
   style 0-91 dim
-52| "accent color                                                                                "
+54| "accent color                                                                                "
   style 0-11 dim
-53| "/title [status|reset|set <items...>] — Configure terminal window title fields               "
+55| "/title [status|reset|set <items...>] — Configure terminal window title fields               "
   style 0-76 dim
-54| "/usage — Show this session's model timing and token usage                                   "
+56| "/usage — Show this session's model timing and token usage                                   "
   style 0-56 dim
-55| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
+57| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
   style 0-73 dim
-56| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
+58| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
   style 0-81 dim
-57| "/skill:<name> [instructions] — load a skill into the conversation                           "
+59| "/skill:<name> [instructions] — load a skill into the conversation                           "
   style 0-64 dim
-58| <blank>
-59| "provider stream failed after partial output                                                 "
-  style 0-42 fg=red
 60| <blank>
-61| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
-  style 0-46 dim
+61| "provider stream failed after partial output                                                 "
+  style 0-42 fg=red
 62| <blank>
-63| "The previous process ended during this turn.                                                "
-  style 0-43 fg=yellow
+63| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
+  style 0-46 dim
 64| <blank>
-65| "Turn stopped: the agent was disposed.                                                       "
-  style 0-36 fg=yellow
+65| "The previous process ended during this turn.                                                "
+  style 0-43 fg=yellow
 66| <blank>
-67| "Turn ended: plugin-policy.                                                                  "
-  style 0-25 fg=yellow
+67| "Turn stopped: the agent was disposed.                                                       "
+  style 0-36 fg=yellow
 68| <blank>
-69| "Unknown command: /unknown-advanced-command                                                  "
+69| "Turn ended: plugin-policy.                                                                  "
+  style 0-25 fg=yellow
+70| <blank>
+71| "Unknown command: /unknown-advanced-command                                                  "
   style 0-41 fg=yellow
-70-71| <blank>
-72| "                                                                                            "
+72-73| <blank>
+74| "                                                                                            "
   style 0-91 bg=ansi-236
-73| " › │Describe a task, @ a file, or / for commands                                            "
+75| " › │Describe a task, @ a file, or / for commands                                            "
   style 0-0 bg=ansi-236
   style 1-1 fg=bright-blue bg=ansi-236 bold
   style 2-2 bg=ansi-236 dim
   style 3-3 bg=ansi-236
   style 4-47 bg=ansi-236 dim
   style 48-91 bg=ansi-236
-74| "                                                                                            "
+76| "                                                                                            "
   style 0-91 bg=ansi-236
-75| "  Enter send · Shift+Enter newline · / commands"
+77| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-76| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+78| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 44-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-77| "                                      1 turn · 1 step"
+79| "                                      1 turn · 1 step"
   style 38-52 dim

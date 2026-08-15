@@ -9,6 +9,7 @@
 import type { Terminal } from '@earendil-works/pi-tui'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { GitDiffResult } from './chat/git-diff.ts'
+import type { ExternalImportGateway } from './chat/external-import.ts'
 
 /** Source category for one launcher-composed configuration layer. */
 export type TuiConfigLayerKind = 'bundle' | 'profile' | 'home' | 'overlay' | 'runtime' | 'environment'
@@ -121,6 +122,8 @@ export interface TuiRuntime {
    * @returns Worktree detection and unified diff text.
    */
   gitDiff?: (cwd: string, timeoutMs: number, signal: AbortSignal) => Promise<GitDiffResult>
+  /** Host override for `/import` detection and non-overwriting setup copies. */
+  externalImport?: ExternalImportGateway
   /** Monotonic-enough wall clock for elapsed status rendering. Defaults to `Date.now`. */
   now?(): number
   /** Host-owned process handoff; absent leaves the session selectable but not resumable in place. */

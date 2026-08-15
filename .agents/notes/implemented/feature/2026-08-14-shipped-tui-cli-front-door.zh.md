@@ -58,6 +58,8 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 
 `/plugins [verbose] [query]` 会把现有 Host 插件清单投影到终端，提供有界输出、软件包或 Loader id 过滤，以及可选的根 Fiber 诊断。TUI bundle 挂载与 Web 设置相同的 inventory provider，软件包修改则继续由 chat 外、感知 profile 的 `deepseek plugin` 命令负责。Renderer 因此保持只读，也不会产生第二套插件或 marketplace 状态存储。
 
+`/import` 会从本地用户目录与项目目录检测 Claude Code 和 Codex 配置，提供产品与类别选择，并且只复制 Harness 文件系统 provider 已能直接消费的指令文件和 Skill 条目。用户与项目 Skill 分别汇入共享的 `.agents/skills` 根；用户指令汇入 `$DSH_HOME/AGENTS.md`，而产品目录中的项目指令可以成为根 `AGENTS.md`。检测会略过已有目标，执行时再使用排他文件创建复查，因此并发出现的目标仍会保留。目录复制会在开始前拒绝符号链接与特殊文件，并在失败后只移除本次新建的不完整目标。项目根 `CLAUDE.md` 保持原位，因为 agent-instructions 已原生读取它；无关的设置、插件、hook、MCP 与 Session 格式继续由各自产品所有。
+
 `/usage` 会把现有共享会话统计线记录到 transcript。它报告已观测的对话耗时与 token 桶；由于没有账户配额服务提供数据，提供方账户限额仍不展示。
 
 真正处于零状态的会话会使用自适应双栏欢迎卡，而不是让紧凑 transcript header 横跨空白 viewport。其编排借鉴 Claude Code 左侧身份／右侧更新的节奏，但只保留第一方 DeepSeek 内容：左栏以终端前景色渲染从官方 SVG 派生的 Braille 鲸鱼，并从各自权威服务投影 preset、模型、权限和 workspace；右栏列出真实 Harness 命令与最新可查询会话。该标志在浅色终端中呈黑色，在深色主题中不会消失，缩小档位也不依赖 Kitty／iTerm 图像协议。第一个持久 turn 会将欢迎卡收缩为仅含产品名的 header，因此 banner 副标题与 Session id 都不会进入对话。多行 composer 与已提交的人类消息卡片使用由 `/theme` 选择的 Web 主题精确明暗用户气泡色；独立底部状态栏显示 Goal、模型、紧凑用量、上下文压力和排队工作，并默认留空左侧，让工作区与分支不占用对话宽度。
@@ -85,6 +87,8 @@ Agent 选择器对照了 Codex commit [`c494130`](https://github.com/openai/code
 Hook 浏览器对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/chatwidget/hooks.rs) 及其 [`hooks_browser_view.rs`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/bottom_pane/hooks_browser_view.rs)。DeepSeek Harness 读取自身 bridge registry 与 profile 持有的配置，没有复刻 Codex 的信任和修改界面，也没有复制 Rust 源码。
 
 插件浏览器对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/chatwidget/plugins.rs)。Codex 的远端 marketplace、账号策略与 application-server 安装流程不适用于本地开源 CLI。DeepSeek Harness 改为读取已有 Cordis Loader 清单，并把修改操作引导至既有 profile 软件包命令；没有复制 Rust 源码。
+
+本地配置导入器对照了 Codex commit [`c494130`](https://github.com/openai/codex/tree/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/external_agent_config_migration)；其 `/import` 流程先检测来源、按作用域分组配置，再要求显式选择后交给 app-server 迁移。DeepSeek Harness 只实现自身可直接消费的文件系统格式，并使用自己的 Node 文件系统与 pi-tui 对话框代码；没有复制 Rust 源码。
 
 ## 参考与来源边界
 
@@ -123,6 +127,8 @@ Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服
 `/hooks verbose` 具有无密钥终端 checkpoint。Registry 单元测试覆盖 handler 总数、注册顺序、effect dispose 与不可变快照；两套真实桥接集成测试证明成功解析的可运行和跳过 handler 会进入目录，同时该目录不会成为执行的强制依赖。
 
 `/plugins verbose <query>` 具有无密钥终端 checkpoint。聚焦测试覆盖生命周期总数、紧凑行、模块与 Loader id 过滤、完整诊断、空结果，以及缺少可选 inventory 服务的 profile。
+
+`/import` 具有无密钥选择器与完成结果 checkpoint。文件系统测试覆盖用户／项目检测、Git 根解析、Skill bundle 与扁平文件复制、全局与项目指令、直接参数解析、类别过滤、结果格式，以及目标在检测和执行之间出现时不覆盖该目标。
 
 ## 考虑过的替代方案
 

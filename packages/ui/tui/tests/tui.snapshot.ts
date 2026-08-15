@@ -42,6 +42,7 @@ import {
 } from './harness.ts'
 import { HeadlessTerminal, type TerminalSnapshotOptions } from './headless-terminal.ts'
 import { TestSessionQueryService } from './session-query.ts'
+import type { TuiRuntime } from '../src/runtime.ts'
 
 const SNAPSHOTS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'snapshots')
 const COMPACT_CHECKPOINT_SOURCE = compactCheckpointSource(CompactionId('tui-snapshot-compaction'))
@@ -97,6 +98,8 @@ const CHECKPOINTS = [
   'mcp-tools',
   'hooks-browser',
   'plugins-browser',
+  'import-selector',
+  'import-complete',
   'permissions-selector',
   'permissions-switching',
   'agent-selector',
@@ -1528,6 +1531,51 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('plugins-browser', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins compatible setup selection and a completed non-overwriting import', async () => {
+    const externalImport: NonNullable<TuiRuntime['externalImport']> = {
+      detect: async ({ source }) => source === 'claude'
+        ? [
+          {
+            id: 'claude:user-skills',
+            source: 'claude',
+            kind: 'user-skills',
+            label: 'User skills',
+            description: '3 items → /home/user/.agents/skills',
+            transfers: [
+              { sourcePath: '/home/user/.claude/skills/review', destinationPath: '/home/user/.agents/skills/review', directory: true },
+              { sourcePath: '/home/user/.claude/skills/test', destinationPath: '/home/user/.agents/skills/test', directory: true },
+              { sourcePath: '/home/user/.claude/skills/docs.md', destinationPath: '/home/user/.agents/skills/docs.md', directory: false },
+            ],
+          },
+          {
+            id: 'claude:project-instructions',
+            source: 'claude',
+            kind: 'project-instructions',
+            label: 'Project instructions',
+            description: '1 item → /workspace/project/AGENTS.md',
+            transfers: [{ sourcePath: '/workspace/project/.claude/CLAUDE.md', destinationPath: '/workspace/project/AGENTS.md', directory: false }],
+          },
+        ]
+        : [],
+      execute: async () => ({ imported: 4, skipped: 0, failures: [] }),
+    }
+    const harness = await setupSnapshot({ externalImport }, { columns: 100, rows: 32 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/import claude')
+      harness.terminal.send('\r')
+    })
+    await vi.waitFor(async () => {
+      expect(await harness.terminal.snapshot()).toContain('Import from Claude Code')
+    })
+    await checkpoint('import-selector', harness.terminal, { includeScrollback: true })
+    await renderAfter(harness, () => { harness.terminal.send('\r') })
+    await vi.waitFor(async () => {
+      expect(await harness.terminal.snapshot({ includeScrollback: true })).toContain('Claude Code import complete')
+    })
+    await checkpoint('import-complete', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

@@ -133,6 +133,7 @@ import {
   formatDiagnosticTime,
   initialTarget,
   PermissionDialog,
+  MultiSelectDialog,
   StatusCardComponent,
   PromptContextComponent,
   targetLabel,
@@ -204,6 +205,15 @@ import {
 import { mcpCommandResult } from './chat/mcp-command.ts'
 import { hooksCommandResult } from './chat/hooks-command.ts'
 import { pluginsCommandResult } from './chat/plugins-command.ts'
+import {
+  externalImportMatches,
+  externalImportSourceLabel,
+  formatExternalImportResult,
+  localExternalImportGateway,
+  parseExternalImportRequest,
+  type ExternalImportCandidate,
+  type ExternalImportSource,
+} from './chat/external-import.ts'
 import { gitDiff } from './chat/git-diff.ts'
 import { GoalTimingTracker, formatGoalFooterStatus, type GoalFooterState } from './chat/goal-status.ts'
 import type {
@@ -1969,6 +1979,110 @@ export function createTuiChat(
     requestRender()
   }
 
+  const externalImportGateway = runtime.externalImport ?? localExternalImportGateway
+
+  const openImportItems = (
+    source: ExternalImportSource,
+    candidates: readonly ExternalImportCandidate[],
+  ): void => {
+    if (candidates.length === 0) {
+      appendNotice(`No compatible ${externalImportSourceLabel(source)} setup was found to import.`)
+      return
+    }
+    void commandHubOverlay?.close()
+    const session = overlayManager.open({
+      create: () => new MultiSelectDialog(
+        `Import from ${externalImportSourceLabel(source)}`,
+        candidates.map(item => ({
+          value: item.id,
+          label: item.label,
+          description: item.description,
+        })),
+        candidates.map(item => item.id),
+        resolved.maxModelOptions,
+        palette,
+        () => {},
+        (values) => {
+          void session.close()
+          const selected = candidates.filter(item => values.includes(item.id))
+          if (selected.length === 0) {
+            appendNotice('Import cancelled: no setup categories selected.')
+            return
+          }
+          const controller = new AbortController()
+          commandControllers.add(controller)
+          void externalImportGateway.execute(selected, controller.signal).then(
+            (result) => {
+              if (!disposed) appendNotice(formatExternalImportResult(source, result), result.failures.length === 0 ? 'info' : 'warning')
+            },
+            (error: unknown) => {
+              if (!disposed) appendNotice(`Import failed: ${errorChain(error)}`, 'error')
+            },
+          ).finally(() => { commandControllers.delete(controller) })
+        },
+        () => { void session.close() },
+      ),
+      options: {
+        width: resolved.modelDialogWidth,
+        maxHeight: resolved.modelDialogMaxHeight,
+        anchor: 'center',
+        margin: 1,
+      },
+    }, 'composer')
+    commandHubOverlay = session
+    void session.closed.then(() => {
+      if (commandHubOverlay === session) commandHubOverlay = undefined
+    })
+    requestRender()
+  }
+
+  const runImportCommand = async (rawInput: string, signal: AbortSignal): Promise<CommandResult> => {
+    const request = parseExternalImportRequest(rawInput)
+    if (typeof request === 'string') return { kind: 'error', text: request }
+    try {
+      if (request.source === undefined) {
+        const detections = await Promise.all((['claude', 'codex'] as const).map(async source => ({
+          source,
+          candidates: await externalImportGateway.detect({ source, cwd, signal }),
+        })))
+        const available = detections.filter(entry => entry.candidates.length > 0)
+        if (available.length === 0) {
+          return { kind: 'success', text: 'No compatible Claude Code or Codex setup was found to import.' }
+        }
+        if (available.length === 1) {
+          const entry = available[0]
+          /* v8 ignore next -- filtering a non-empty array preserves its first entry */
+          if (entry !== undefined) openImportItems(entry.source, entry.candidates)
+          return { kind: 'success' }
+        }
+        openActionDialog('Choose an import source', available.map(entry => ({
+          value: entry.source,
+          label: externalImportSourceLabel(entry.source),
+          description: `${String(entry.candidates.reduce((count, item) => count + item.transfers.length, 0))} compatible items`,
+        })), (value) => {
+          const entry = available.find(item => item.source === value)
+          if (entry !== undefined) openImportItems(entry.source, entry.candidates)
+        })
+        return { kind: 'success' }
+      }
+      const candidates = await externalImportGateway.detect({ source: request.source, cwd, signal })
+      const kind = request.kind
+      if (kind === undefined) {
+        openImportItems(request.source, candidates)
+        return { kind: 'success' }
+      }
+      const selected = candidates.filter(item => externalImportMatches(item, kind))
+      if (selected.length === 0) {
+        return { kind: 'success', text: `No compatible ${externalImportSourceLabel(request.source)} ${kind} were found to import.` }
+      }
+      const result = await externalImportGateway.execute(selected, signal)
+      return { kind: 'success', text: formatExternalImportResult(request.source, result) }
+    } catch (error) {
+      if (signal.aborted) throw error
+      return { kind: 'error', text: `Import failed: ${errorChain(error)}` }
+    }
+  }
+
   const runArchiveCommand = (raw: string): CommandResult => {
     if (raw.trim() !== '') return { kind: 'error', text: 'Usage: /archive (no arguments)' }
     if (archiveInFlight) return { kind: 'error', text: 'Session archiving is already in progress.' }
@@ -2651,6 +2765,12 @@ export function createTuiChat(
         rawInput,
         ctx.get('pluginInventory') as PluginInventoryGateway | undefined,
       ),
+    })
+    commandCtx.commands.register({
+      name: 'import',
+      description: 'Import compatible local setup from Claude Code or Codex',
+      input: { hint: '[claude|codex] [all|skills|instructions]' },
+      handler: ({ rawInput, signal }) => runImportCommand(rawInput, signal),
     })
     commandCtx.commands.register({
       name: 'approve',

@@ -51,6 +51,7 @@ export interface TuiHarnessOptions {
   formatCwd?: TuiRuntime['formatCwd']
   gitBranch?: TuiRuntime['gitBranch']
   gitDiff?: TuiRuntime['gitDiff']
+  externalImport?: TuiRuntime['externalImport']
   /** Fake-agent creation options (`provider`/`model` seed the model selector's initial target). */
   agentOptions?: AgentOptions
   contextWindow?: number
@@ -269,6 +270,7 @@ export async function createTuiTestHarness<TerminalType extends Terminal, Exit e
     ...(options.now === undefined ? {} : { now: options.now }),
     ...(options.formatCwd === undefined ? {} : { formatCwd: options.formatCwd }),
     ...(options.gitDiff === undefined ? {} : { gitDiff: options.gitDiff }),
+    ...(options.externalImport === undefined ? {} : { externalImport: options.externalImport }),
     ...(options.handoffResume === undefined ? {} : { handoffResume: options.handoffResume }),
     ...(options.handoffWorkspace === undefined ? {} : { handoffWorkspace: options.handoffWorkspace }),
     ...(options.agentNavigation === undefined ? {} : { agentNavigation: options.agentNavigation }),

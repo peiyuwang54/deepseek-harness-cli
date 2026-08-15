@@ -488,8 +488,15 @@ describe('CLI release workflow', () => {
     const workflow = loadWorkflow('.github/workflows/deepseek-harness-cli-release.yml')
     const plan = workflowJob(workflow, 'plan')
     const build = workflowJob(workflow, 'build')
-    if (!Array.isArray(plan.steps) || !Array.isArray(build.steps)) {
-      throw new TypeError('plan and build jobs must define steps')
+    const packageJob = workflowJob(workflow, 'package')
+    const release = workflowJob(workflow, 'release')
+    const npmPublish = workflowJob(workflow, 'npm-publish')
+    if (!Array.isArray(plan.steps)
+      || !Array.isArray(build.steps)
+      || !Array.isArray(packageJob.steps)
+      || !Array.isArray(release.steps)
+      || !Array.isArray(npmPublish.steps)) {
+      throw new TypeError('CLI release jobs must define steps')
     }
     const buildSteps: unknown[] = build.steps
     const matrixStep = plan.steps.find((step): step is Record<string, unknown> & { run: string } => (
@@ -512,6 +519,21 @@ describe('CLI release workflow', () => {
     expect(readFileSync(resolve(root, 'scripts/exe-build/pipeline.ts'), 'utf8')).toContain(
       "shell: process.platform === 'win32' && command.toLowerCase().endsWith('.cmd')",
     )
+
+    const npmArtifact = packageJob.steps.find(step => (
+      isRecord(step) && step.uses === 'actions/upload-artifact@v4'
+      && isRecord(step.with) && step.with.name === 'deepseek-harness-cli-npm-packages'
+    ))
+    const releaseStep = release.steps.find(step => isRecord(step) && step.name === 'Create or refresh the release with assets')
+    const npmStep = npmPublish.steps.find(step => isRecord(step) && step.name === 'Publish the main shim and per-platform packages')
+    if (!isRecord(releaseStep) || typeof releaseStep.run !== 'string'
+      || !isRecord(npmStep) || typeof npmStep.run !== 'string') {
+      throw new TypeError('CLI release and npm publish command steps must define run scripts')
+    }
+    expect(npmArtifact).toMatchObject({ with: { path: 'dist-npm' } })
+    expect(releaseStep.run).toContain('--repo "$GITHUB_REPOSITORY"')
+    expect(npmStep.run).toContain('test -f dist-npm/main/package.json')
+    expect(npmStep.run).toContain('npm publish "./dist-npm/main"')
   })
 })
 

@@ -51,8 +51,8 @@ Codex's npm contract, under the fork's scope. The main package `@peiyuwang54/dee
 
 - **plan** resolves the version and computes the five-target matrix (`node24-linux-x64`→ubuntu-latest, `node24-linux-arm64`→ubuntu-24.04-arm, `node24-macos-arm64`→macos-15, `node24-macos-x64`→macos-15-intel, `node24-win-x64`→windows-2025).
 - **build** runs per target: immutable install, the node-pty manylinux 2.28 rebuild on Linux, `scripts/build-dsh-cli-exe.ts --targets=<target>`, a GLIBC ≤ 2.28 check on Linux, the macOS deployment-target check, a `--version` smoke equal to the release version, and artifact upload. The manylinux container mounts the runner's Node tool cache and pnpm action directory at their absolute paths, then rebuilds the `@deepseek-ai/dsh-subprocess-local` workspace's `node-pty` dependency with source builds enabled; regenerating node-gyp output in the container prevents cached host Makefile paths from entering the Linux artifact. The macOS check accepts both `LC_BUILD_VERSION` and the legacy `LC_VERSION_MIN_MACOSX` load command emitted by Apple's toolchain across architectures.
-- **package** builds the five release tarballs plus `.sha256` sidecars, runs the npm layout, generates the cask, and uploads all three groups.
-- **release** creates or refreshes the GitHub release with `GITHUB_TOKEN` + `contents: write`.
+- **package** builds the five release tarballs plus `.sha256` sidecars, runs the npm layout, generates the cask, and uploads all three groups. Artifact roots preserve the `dist-release` and `dist-npm` directory contents expected by downstream jobs.
+- **release** creates or refreshes the GitHub release with `GITHUB_TOKEN` + `contents: write`; every `gh release` call names `GITHUB_REPOSITORY`, so the checkout-free job does not depend on Git discovery.
 - **npm-publish** (`environment: npm-publish`, `NPM_TOKEN`) publishes the main and platform packages; its `Release-publish` concurrency group is shared with the npm release workflow because dist-tags are shared registry state.
 - **brew-tap** clones the tap with `HOMEBREW_TAP_TOKEN`, replaces `Casks/d/deepseek-harness-cli.rb`, and pushes only when the file changed.
 

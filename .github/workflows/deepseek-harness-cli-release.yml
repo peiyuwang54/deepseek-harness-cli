@@ -255,14 +255,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: deepseek-harness-cli-release-assets
-          path: dist-release/*
+          path: dist-release
           if-no-files-found: error
           retention-days: 7
 
       - uses: actions/upload-artifact@v4
         with:
           name: deepseek-harness-cli-npm-packages
-          path: dist-npm/*
+          path: dist-npm
           if-no-files-found: error
           retention-days: 7
 
@@ -293,10 +293,10 @@ jobs:
         run: |
           set -euo pipefail
           tag="deepseek-harness-cli-v$VERSION"
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" dist-release/*.tar.gz dist-release/*.sha256 --clobber
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" dist-release/*.tar.gz dist-release/*.sha256 --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$tag" dist-release/*.tar.gz dist-release/*.sha256 --title "$tag" --generate-notes
+            gh release create "$tag" dist-release/*.tar.gz dist-release/*.sha256 --title "$tag" --generate-notes --repo "$GITHUB_REPOSITORY"
           fi
 
   npm-publish:
@@ -331,9 +331,11 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$VERSION" == *-* ]]; then main_tag=next; else main_tag=latest; fi
-          npm publish "dist-npm/main" --tag "$main_tag"
+          test -f dist-npm/main/package.json
+          npm publish "./dist-npm/main" --tag "$main_tag"
           for target in macos-arm64 macos-x64 linux-arm64 linux-x64 win-x64; do
-            npm publish "dist-npm/platform/${VERSION}-${target}" --tag "$target"
+            test -f "dist-npm/platform/${VERSION}-${target}/package.json"
+            npm publish "./dist-npm/platform/${VERSION}-${target}" --tag "$target"
           done
 
   brew-tap:

@@ -407,7 +407,14 @@ describe('Python release workflows', () => {
     expect(manylinuxAddon).toMatchObject({ if: "runner.os == 'Linux'" })
     expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_x86_64')
     expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_aarch64')
-    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm:ro')
+    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm')
+    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro')
+    expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_build_from_source=true')
+    expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_python=/opt/python/cp310-cp310/bin/python')
+    expect(JSON.stringify(manylinuxAddon)).toContain(
+      'pnpm --filter @deepseek-ai/dsh-subprocess-local rebuild node-pty',
+    )
+    expect(JSON.stringify(manylinuxAddon)).not.toContain('make -C build')
     expect(JSON.stringify(manylinuxAddon)).toContain('node-pty-glibc-versions.txt')
     expect(JSON.stringify(manylinuxAddon)).toContain('le 2.28')
     expect(macosCheck).toMatchObject({ if: "runner.os == 'macOS'" })
@@ -492,7 +499,14 @@ describe('CLI release workflow', () => {
     ))
     expect(matrixStep?.run).toContain('node24-win-x64 windows-2025')
     expect(matrixStep?.run).toContain('node24-linux-x64 ubuntu-latest')
-    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm:ro')
+    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm')
+    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro')
+    expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_build_from_source=true')
+    expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_python=/opt/python/cp310-cp310/bin/python')
+    expect(JSON.stringify(manylinuxAddon)).toContain(
+      'pnpm --filter @deepseek-ai/dsh-subprocess-local rebuild node-pty',
+    )
+    expect(JSON.stringify(manylinuxAddon)).not.toContain('make -C build')
     expect(readFileSync(resolve(root, 'scripts/exe-build/pipeline.ts'), 'utf8')).toContain(
       "shell: process.platform === 'win32' && command.toLowerCase().endsWith('.cmd')",
     )

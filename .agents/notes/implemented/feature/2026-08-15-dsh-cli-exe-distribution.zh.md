@@ -50,7 +50,7 @@ CLI 部署根是 `apps/cli/exe`（`deepseek-harness-cli-exe-pkg`，镜像 SDK �
 [`.github/workflows/deepseek-harness-cli-release.yml`](../../../../.github/workflows/deepseek-harness-cli-release.yml) 在一次运行里构建并发布全部三个通道，由 `deepseek-harness-cli-v*` tag push 或手动 dispatch 触发；手动 dispatch 的可选 `version` 输入覆盖 tag 或 `apps/cli/package.json`：
 
 - **plan** 解析版本并计算五目标矩阵（`node24-linux-x64`→ubuntu-latest、`node24-linux-arm64`→ubuntu-24.04-arm、`node24-macos-arm64`→macos-15、`node24-macos-x64`→macos-15-intel、`node24-win-x64`→windows-2025）。
-- **build** 按目标运行：不可变安装、Linux 上 node-pty manylinux 2.28 重建、`scripts/build-dsh-cli-exe.ts --targets=<target>`、Linux 上 GLIBC ≤ 2.28 检查、macOS 部署目标检查、`--version` 冒烟（须等于发布版本）、上传产物。manylinux 容器按绝对的 `$RUNNER_TEMP/setup-pnpm` 路径挂载 pnpm action 目录，因为 node-gyp 会把该路径记录进生成的 Makefile。macOS 检查同时接受 Apple 工具链在不同架构上生成的 `LC_BUILD_VERSION` 与旧式 `LC_VERSION_MIN_MACOSX` load command。
+- **build** 按目标运行：不可变安装、Linux 上 node-pty manylinux 2.28 重建、`scripts/build-dsh-cli-exe.ts --targets=<target>`、Linux 上 GLIBC ≤ 2.28 检查、macOS 部署目标检查、`--version` 冒烟（须等于发布版本）、上传产物。manylinux 容器按绝对路径挂载 runner 的 Node 工具缓存与 pnpm action 目录，再以源码构建模式重建 `@deepseek-ai/dsh-subprocess-local` 工作区的 `node-pty` 依赖；在容器内重新生成 node-gyp 产物，避免宿主缓存 Makefile 的路径进入 Linux 产物。macOS 检查同时接受 Apple 工具链在不同架构上生成的 `LC_BUILD_VERSION` 与旧式 `LC_VERSION_MIN_MACOSX` load command。
 - **package** 构建五个发布 tarball 与 `.sha256` 伴随文件、运行 npm 布局、生成 cask，并把三组产物全部上传。
 - **release** 用 `GITHUB_TOKEN` + `contents: write` 创建或刷新 GitHub release。
 - **npm-publish**（`environment: npm-publish`、`NPM_TOKEN`）发布主包与平台包；其 `Release-publish` 并发组与 npm 发布 workflow 共用，因为 dist-tag 是共享的 registry 状态。

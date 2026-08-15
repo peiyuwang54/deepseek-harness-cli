@@ -123,19 +123,22 @@ jobs:
           esac
           addon_dir="$(realpath packages/subprocess/subprocess-local/node_modules/node-pty)"
           addon="$addon_dir/build/Release/pty.node"
-          [ -f "$addon_dir/build/Makefile" ] || {
-            echo "::error::node-pty install did not generate $addon_dir/build/Makefile"
-            exit 1
-          }
+          node_bin_dir="$(dirname "$(command -v node)")"
+          pnpm_bin_dir="$(dirname "$(command -v pnpm)")"
           docker run --rm \
             --user "$(id -u):$(id -g)" \
+            -e "HOME=$HOME" \
+            -e "PATH=$node_bin_dir:$pnpm_bin_dir:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+            -e "PNPM_HOME=$PNPM_HOME" \
+            -e npm_config_build_from_source=true \
+            -e npm_config_python=/opt/python/cp310-cp310/bin/python \
             -v "$PWD:$PWD" \
-            -v "$HOME/.cache/node-gyp:$HOME/.cache/node-gyp:ro" \
-            -v "$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm:ro" \
-            -w "$addon_dir" \
+            -v "$HOME/.cache/node-gyp:$HOME/.cache/node-gyp" \
+            -v "$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm" \
+            -v "$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro" \
+            -w "$PWD" \
             "$image" \
-            bash -euxo pipefail -c \
-              'rm -rf build/Release && make -C build -j2 BUILDTYPE=Release'
+            pnpm --filter @deepseek-ai/dsh-subprocess-local rebuild node-pty
           [ -f "$addon" ] || { echo "::error::$addon missing after manylinux rebuild"; exit 1; }
 
       - name: Build single-exe

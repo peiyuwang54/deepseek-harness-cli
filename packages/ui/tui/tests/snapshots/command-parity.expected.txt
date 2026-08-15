@@ -1,0 +1,52 @@
+terminal 92x32 buffer=normal length=32 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "Command parity — DSH snapshot"
+cursor visible column=22 viewportRow=19 bufferRow=19
+buffer
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-magenta bold
+  style 10-16 bold
+  style 18-23 dim
+1| " Command parity"
+  style 1-14 dim
+2| " main-session"
+  style 1-12 dim
+3| <blank>
+4| "You                                                                                         "
+  style 0-2 fg=bright-magenta bold underline
+5| "Summarize the command changes.                                                              "
+6| <blank>
+7| "Assistant                                                                                   "
+  style 0-8 fg=bright-magenta bold underline
+8| "Three commands are ready.                                                                   "
+  style 0-24 bold
+9| "Model wait 0.0s                                                                             "
+  style 0-14 dim
+10| <blank>
+11| "Copied the latest assistant response to the clipboard.                                      "
+  style 0-53 dim
+12| <blank>
+13| "Session renamed to \"Command parity\".                                                        "
+  style 0-35 dim
+14| <blank>
+15| "Inserted workspace reference @src/index.ts.                                                 "
+  style 0-42 dim
+16-17| <blank>
+18| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
+  style 0-91 dim
+19| "│ dsh > @src/index.ts                                                                      │"
+  style 0-0 dim
+  style 2-4 fg=bright-magenta bold
+  style 6-7 dim
+  style 22-22 inverse
+  style 91-91 dim
+20| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+  style 0-91 dim
+21| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-magenta bold
+  style 18-31 dim
+  style 40-45 dim
+  style 48-72 dim
+  style 75-79 dim
+  style 82-91 dim
+22-31| <blank>

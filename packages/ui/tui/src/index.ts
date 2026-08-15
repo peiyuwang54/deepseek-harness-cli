@@ -23,7 +23,6 @@ import {
 } from '@earendil-works/pi-tui'
 import { Service, type Context, type Fiber, type FiberState } from '@deepseek-ai/cordis'
 import {
-  assembleContextFor,
   installModelSelection,
   type Agent,
   type ModelSelectionRef,
@@ -41,7 +40,6 @@ import type { CommandResult } from '@deepseek-ai/dsh-commands'
 import { createUserMessage, errorChain } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, MessageId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-llm-retry'
-import { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import {
   isReplacementSurfaceEvent,
   SessionId,
@@ -167,6 +165,7 @@ import {
   type WorkspaceController,
 } from './chat/workspace.ts'
 import { readTuiLocale, tuiCopy, type TuiLocale } from './chat/language.ts'
+import { latestVisibleAssistantText, osc52ClipboardSequence } from './chat/clipboard.ts'
 import type { TuiResumeHost, TuiRuntime } from './runtime.ts'
 import { WorkspaceFileSearch } from './chat/file-autocomplete.ts'
 import { createTuiTerminalMode, parseTuiMouseEvent } from './chat/terminal-mode.ts'
@@ -1824,6 +1823,45 @@ export function createTuiChat(
     return { kind: 'success' }
   }
 
+  const runMentionCommand = (raw: string): CommandResult => {
+    const argument = raw.trim()
+    if (argument !== '') return runIdeCommand(raw)
+    editor.insertTextAtCursor('@')
+    editor.handleInput('\t')
+    requestRender()
+    return { kind: 'success' }
+  }
+
+  const runRenameCommand = (raw: string): CommandResult => {
+    const title = raw.trim()
+    if (title === '') {
+      editor.insertTextAtCursor('/rename ')
+      requestRender()
+      return { kind: 'success' }
+    }
+    const service = ctx.get('sessionTitle')
+    if (service === undefined) {
+      return { kind: 'error', text: 'Rename is unavailable: session titles are not mounted.' }
+    }
+    try {
+      const renamed = service.rename(agent.session, title)
+      return { kind: 'success', text: `Session renamed to "${displayText(renamed.title)}".` }
+    } catch (error: unknown) {
+      return { kind: 'error', text: `Rename failed: ${errorChain(error)}` }
+    }
+  }
+
+  const runCopyCommand = (): CommandResult => {
+    const text = latestVisibleAssistantText(agent.session.events)
+    if (text === undefined) return { kind: 'error', text: 'No assistant response is available to copy.' }
+    try {
+      runtime.terminal.write(osc52ClipboardSequence(text, process.env.TMUX !== undefined))
+      return { kind: 'success', text: 'Copied the latest assistant response to the clipboard.' }
+    } catch (error: unknown) {
+      return { kind: 'error', text: `Copy failed: ${errorChain(error)}` }
+    }
+  }
+
   const runExperimentalCommand = (raw: string): CommandResult => {
     const argument = raw.trim().toLowerCase()
     const actions: Record<string, string> = {
@@ -1855,13 +1893,7 @@ export function createTuiChat(
     requestRender()
   }
 
-  const showStatus = async (signal: AbortSignal): Promise<void> => {
-    const assembly = await ctx.systemPrompt.assemble(assembleContextFor(agent, signal))
-    /* v8 ignore next -- disposal during the awaited assembly is covered by command-owner teardown tests. */
-    if (disposed) return
-    /* v8 ignore next -- SystemPrompt always emits at least its required base section. */
-    const systemPrompt = displayText(renderPrompt(assembly)) || '(empty)'
-    const registeredTools = assembly.tools.map(tool => displayText(tool.name)).join(', ') || '(none)'
+  const showStatus = (): void => {
     const events = agent.session.events
     // A persistence end-seed is a loading boundary, not user activity. Preserve
     // the historical status-card semantics even though the core helper was
@@ -1916,12 +1948,6 @@ export function createTuiChat(
     const card = new StatusCardComponent(groups, palette)
     chat.addChild(new Spacer(1))
     chat.addChild(card)
-    chat.addChild(new Spacer(1))
-    chat.addChild(new Text(palette.bold(palette.accent('System prompt')), 0, 0))
-    chat.addChild(new Text(systemPrompt, 0, 0))
-    chat.addChild(new Spacer(1))
-    chat.addChild(new Text(palette.bold(palette.accent('Registered tools')), 0, 0))
-    chat.addChild(new Text(registeredTools, 0, 0))
     requestRender()
   }
 
@@ -2053,6 +2079,12 @@ export function createTuiChat(
       handler: ({ rawInput }) => runIdeCommand(rawInput),
     })
     commandCtx.commands.register({
+      name: 'mention',
+      description: 'Insert a workspace file reference into the composer',
+      input: { hint: '[path]' },
+      handler: ({ rawInput }) => runMentionCommand(rawInput),
+    })
+    commandCtx.commands.register({
       name: 'approve',
       description: 'Allow an active request or one retry of the latest rejected request',
       handler: () => {
@@ -2067,6 +2099,11 @@ export function createTuiChat(
       name: 'clear',
       description: 'Clear the transcript view (session history is unchanged)',
       handler: () => { chat.clear(); transcriptViewport.followTail(); requestRender(); return { kind: 'success' } },
+    })
+    commandCtx.commands.register({
+      name: 'copy',
+      description: 'Copy the latest assistant response to the terminal clipboard',
+      handler: runCopyCommand,
     })
     commandCtx.commands.register({
       name: 'details',
@@ -2088,6 +2125,12 @@ export function createTuiChat(
       name: 'resume',
       description: 'List this workspace\'s resumable sessions',
       handler: () => { resume.showResume(); return { kind: 'success' } },
+    })
+    commandCtx.commands.register({
+      name: 'rename',
+      description: 'Rename this session and pin its title',
+      input: { hint: '<title>' },
+      handler: ({ rawInput }) => runRenameCommand(rawInput),
     })
     commandCtx.commands.register({
       name: 'language',
@@ -2127,8 +2170,8 @@ export function createTuiChat(
     })
     commandCtx.commands.register({
       name: 'status',
-      description: 'Show session diagnostics, system prompt, and registered tools',
-      handler: async ({ signal }) => { await showStatus(signal); return { kind: 'success' } },
+      description: 'Show session status and token usage',
+      handler: () => { showStatus(); return { kind: 'success' } },
     })
     const exitHandler = (): CommandResult => {
       requestExit()

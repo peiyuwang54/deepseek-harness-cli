@@ -40,9 +40,9 @@ buffer
   style 0-0 fg=bright-magenta
   style 20-53 dim
   style 75-75 fg=bright-magenta
-17| "│   Inspect current context         standalone terminal (no IDE bridge)    │"
+17| "│   Inspect current context         vscode                                 │"
   style 0-0 fg=bright-magenta
-  style 27-70 dim
+  style 27-41 dim
   style 75-75 fg=bright-magenta
 18| "│                                                                          │"
   style 0-0 fg=bright-magenta

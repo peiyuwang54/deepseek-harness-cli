@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=42 base=10 viewport=10
+terminal 92x32 buffer=normal length=33 base=1 viewport=1
 lifecycle started=1 stopped=0 progress=inactive
 title "Inspect session diagnostics — DSH snapshot"
-cursor visible column=8 viewportRow=28 bufferRow=38
+cursor visible column=8 viewportRow=28 bufferRow=29
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -84,34 +84,23 @@ buffer
   style 91-91 dim
 25| "╰──────────────────────────────────────────────────────────────────────────────────────────╯"
   style 0-91 dim
-26| <blank>
-27| "System prompt                                                                               "
-  style 0-12 fg=bright-magenta bold
-28| "You are an AI agent powered by DeepSeek Harness.                                            "
-29| "                                                                                            "
-30| "Paths prefixed with @ are files explicitly referenced by the user. Use the read tool when   "
-31| "their contents are needed; do not claim to have inspected a file before reading it.         "
-32| <blank>
-33| "Registered tools                                                                            "
-  style 0-15 fg=bright-magenta bold
-34| "read, write                                                                                 "
-35-36| <blank>
-37| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
+26-27| <blank>
+28| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
   style 0-91 dim
-38| "│ dsh > │Describe a task, @ a file, or / for commands                                      │"
+29| "│ dsh > │Describe a task, @ a file, or / for commands                                      │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
   style 6-7 dim
   style 9-52 dim
   style 91-91 dim
-39| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+30| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-91 dim
-40| "/workspace/project (tui-  ▸ idle  deepseek-v4-pro [alt+m]  ↑1.3k ↓340 cache 67%  33% context"
+31| "/workspace/project (tui-  ▸ idle  deepseek-v4-pro [alt+m]  ↑1.3k ↓340 cache 67%  33% context"
   style 0-17 fg=bright-magenta bold
   style 18-23 dim
   style 26-31 dim
   style 34-56 dim
   style 59-78 dim
   style 81-91 dim
-41| "                      Cache hit 67% | Input 4.5K tok · Output 340 tok"
+32| "                      Cache hit 67% | Input 4.5K tok · Output 340 tok"
   style 22-68 dim

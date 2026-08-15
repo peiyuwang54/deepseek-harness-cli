@@ -23,7 +23,7 @@ import { compactCheckpointSource, CompactionId } from '@deepseek-ai/dsh-compacti
 import SessionStore, { SessionId, type JsonValue, type SessionEvent, type SessionHeader, type TurnEndReason } from '@deepseek-ai/dsh-session'
 import type { SessionRecord } from '@deepseek-ai/dsh-session-query'
 import SkillRegistry, { type SkillCatalogSnapshot, type SkillDefinition, type SkillProvider, type SkillSummary } from '@deepseek-ai/dsh-skill'
-import type {} from '@deepseek-ai/dsh-session-title'
+import SessionTitleService from '@deepseek-ai/dsh-session-title'
 import ToolRegistry, { type ToolDefinition } from '@deepseek-ai/dsh-tools'
 import UserInteractionService from '@deepseek-ai/dsh-user-questions'
 import SessionReferenceResolver, { formatSessionReferenceMention } from '@deepseek-ai/dsh-session-reference'
@@ -44,6 +44,7 @@ import {
   type TuiRuntime,
 } from '../src/index.ts'
 import { WorkspaceFileSearch } from '../src/chat/file-autocomplete.ts'
+import { osc52ClipboardSequence } from '../src/chat/clipboard.ts'
 import { CURSOR_BLINK_INTERVAL_MS } from '../src/chat/helpers.ts'
 import { ResumePicker } from '../src/components/dialogs.ts'
 import {
@@ -3251,11 +3252,6 @@ describe('pi-tui chat lifecycle and transcript', () => {
         })
       },
     })
-    result.ctx.systemPrompt.section({
-      name: 'test:status',
-      order: 1,
-      text: 'Current instructions \u001B]2;prompt-unsafe\u0007',
-    })
     result.agent.status = 'running'
     agentEvents(result.ctx, result.agent).emit('agent/status', { status: 'running' })
     result.terminal.send('/status')
@@ -3276,11 +3272,9 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('[███████████░░░░░] 67% hit (3,000 read + 250 write)')
     expect(result.terminal.output).toContain('[█████░░░░░░░░░░░] 33% used (42,000 / 128,000)')
     expect(result.terminal.output).toContain('2026-07-22 09:10:11 UTC')
-    expect(result.terminal.output).toContain('System prompt')
-    expect(result.terminal.output).toContain('You are an AI agent powered by DeepSeek Harness.')
-    expect(result.terminal.output).toContain('Current instructions \\x1b]2;prompt-unsafe\\x07')
-    expect(result.terminal.output).toContain('Registered tools')
-    expect(result.terminal.output).toContain('read, write')
+    expect(result.terminal.output).not.toContain('System prompt')
+    expect(result.terminal.output).not.toContain('Registered tools')
+    expect(result.terminal.output).not.toContain('You are an AI agent powered by DeepSeek Harness.')
     expect(result.terminal.output).not.toContain('\u001B]2;unsafe\u0007')
 
     result.terminal.resize(56)
@@ -3316,8 +3310,8 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('n/a (0 read + 0 write)')
     expect(result.terminal.output).toContain('7 used · capacity unknown')
     expect(result.terminal.output).toContain('2026-07-22 10:11:12 UTC')
-    expect(result.terminal.output).toContain('You are an AI agent powered by DeepSeek Harness.')
-    expect(result.terminal.output).toContain('(none)')
+    expect(result.terminal.output).not.toContain('System prompt')
+    expect(result.terminal.output).not.toContain('Registered tools')
     await dispose(result)
     dateNow.mockRestore()
   })
@@ -3488,6 +3482,51 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await ctrlCExit.controller.dispose()
     await ctrlCExit.ctx.fiber.dispose()
 
+  })
+
+  it('copies, renames, and inserts file mentions through Codex-shaped commands', async () => {
+    const result = await setup()
+    await result.ctx.plugin(SessionTitleService, {
+      fallbackMaxWords: 5,
+      fallbackMaxBytes: 40,
+      maxTitleBytes: 80,
+    })
+    appendAssistant(result.session, [{ type: 'text', text: '**latest response** 你好' }])
+    await tick()
+
+    result.terminal.send('/copy')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain(osc52ClipboardSequence(
+      '**latest response** 你好',
+      process.env.TMUX !== undefined,
+    ))
+    expect(result.terminal.output).toContain('Copied the latest assistant response to the clipboard.')
+
+    result.terminal.send('/rename')
+    result.terminal.send('\r')
+    await tick()
+    result.terminal.send('Command parity')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.session.events.findLast(event => event.type === 'session/title')?.data).toMatchObject({
+      title: 'Command parity',
+      source: { kind: 'user' },
+    })
+    expect(result.terminal.title).toContain('Command parity')
+
+    result.terminal.send('/mention src/index.ts')
+    result.terminal.send('\r')
+    await tick()
+    result.terminal.send('review it')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.agent.sent.at(-1)?.[0]).toMatchObject({
+      type: 'text',
+      text: '@src/index.ts review it',
+    })
+
+    await dispose(result)
   })
 
   it('combines session autocomplete with files and prepares send/steer references asynchronously', async () => {

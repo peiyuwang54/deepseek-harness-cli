@@ -1,7 +1,7 @@
-terminal 56x36 buffer=normal length=49 base=13 viewport=13
+terminal 56x36 buffer=normal length=38 base=2 viewport=2
 lifecycle started=1 stopped=0 progress=inactive
 title "Inspect session diagnostics — DSH snapshot"
-cursor visible column=8 viewportRow=32 bufferRow=45
+cursor visible column=8 viewportRow=32 bufferRow=34
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -99,34 +99,21 @@ buffer
   style 55-55 dim
 30| "╰──────────────────────────────────────────────────────╯"
   style 0-55 dim
-31| <blank>
-32| "System prompt                                           "
-  style 0-12 fg=bright-magenta bold
-33| "You are an AI agent powered by DeepSeek Harness.        "
-34| "                                                        "
-35| "Paths prefixed with @ are files explicitly referenced by"
-36| "the user. Use the read tool when their contents are     "
-37| "needed; do not claim to have inspected a file before    "
-38| "reading it.                                             "
-39| <blank>
-40| "Registered tools                                        "
-  style 0-15 fg=bright-magenta bold
-41| "read, write                                             "
-42-43| <blank>
-44| "╭ Message ─────────────────────────────────────────────╮"
+31-32| <blank>
+33| "╭ Message ─────────────────────────────────────────────╮"
   style 0-55 dim
-45| "│ dsh > │Describe a task, @ a file, or / for commands  │"
+34| "│ dsh > │Describe a task, @ a file, or / for commands  │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
   style 6-7 dim
   style 9-52 dim
   style 55-55 dim
-46| "╰─────── Enter send · Shift+Enter newline · / commands ╯"
+35| "╰─────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-55 dim
-47| "▸ idle  deepseek-v4-pro [alt+m]  ↑1.3k ↓340 cache 67%  3"
+36| "▸ idle  deepseek-v4-pro [alt+m]  ↑1.3k ↓340 cache 67%  3"
   style 0-5 dim
   style 8-30 dim
   style 33-52 dim
   style 55-55 dim
-48| "    Cache hit 67% | Input 4.5K tok · Output 340 tok"
+37| "    Cache hit 67% | Input 4.5K tok · Output 340 tok"
   style 4-50 dim

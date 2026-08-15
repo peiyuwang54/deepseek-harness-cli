@@ -26,13 +26,13 @@ viewport
   style 0-82 fg=bright-magenta
 9| "  clear         Clear the transcript view (session history is unchanged)"
   style 7-71 dim
-10| "  details       [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility"
+10| "  copy          Copy the latest assistant response to the terminal clipboard"
+  style 6-75 dim
+11| "  details       [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility"
   style 9-93 dim
-11| "  exit          Exit after the active turn reaches idle"
+12| "  exit          Exit after the active turn reaches idle"
   style 6-54 dim
-12| "  experimental  [fast|vim|reload|reasoning] — Open the terminal experimental-feature launcher"
-  style 14-92 dim
-13| "  (1/21)"
+13| "  (1/24)"
   style 0-7 dim
 14| "/workspace/project (tui-staging)              ▸ idle  deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold

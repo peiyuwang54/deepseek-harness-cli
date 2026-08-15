@@ -20,6 +20,7 @@ import PermissionPresetService from '@deepseek-ai/dsh-permission-presets'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import { SessionId, type JsonValue, type Session, type SessionEvent } from '@deepseek-ai/dsh-session'
 import SessionReferenceResolver from '@deepseek-ai/dsh-session-reference'
+import SessionTitleService from '@deepseek-ai/dsh-session-title'
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRegistry, { type ToolDefinition, type ToolResultView } from '@deepseek-ai/dsh-tools'
@@ -99,6 +100,7 @@ const CHECKPOINTS = [
   'resume-sessions-loading',
   'resume-sessions',
   'resume-sessions-all-workspaces',
+  'command-parity',
   'status-diagnostics',
   'status-diagnostics-narrow',
   'todo-plan-cleared',
@@ -1497,6 +1499,34 @@ describe('TUI terminal-state snapshots', () => {
     await checkpoint('status-diagnostics-narrow', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
     dateNow.mockRestore()
+  })
+
+  it('pins copy, rename, and file-mention command behavior', async () => {
+    const harness = await setupSnapshot({
+      beforeMount(session) {
+        appendUser(session, 'Summarize the command changes.')
+        appendAssistant(session, [{ type: 'text', text: '**Three commands are ready.**' }])
+      },
+    }, { columns: 92, rows: 32 })
+    await harness.ctx.plugin(SessionTitleService, {
+      fallbackMaxWords: 5,
+      fallbackMaxBytes: 40,
+      maxTitleBytes: 80,
+    })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/copy')
+      harness.terminal.send('\r')
+    })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/rename Command parity')
+      harness.terminal.send('\r')
+    })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/mention src/index.ts')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('command-parity', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
   })
 })
 

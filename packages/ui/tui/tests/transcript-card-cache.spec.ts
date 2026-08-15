@@ -57,7 +57,7 @@ describe('transcript card render caches', () => {
     const card = new ContextCardComponent('workspace-context', 'line one\nline two', palette)
     const first = card.render(80)
     expect(card.render(80)).toBe(first)
-    expect(first.join('\n')).toContain('▸ 2 lines hidden')
+    expect(first).toEqual([])
     expect(first.join('\n')).not.toContain('line one')
 
     // Same width across the mutation, so a hit here would prove a kept cache.

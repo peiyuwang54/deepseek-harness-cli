@@ -52,10 +52,10 @@ import {
   ATTRIBUTE_ROLES,
   brandText,
   COLOR_ROLES,
+  composerBackground,
   createPalette,
   highlightMarkdownCode,
   paletteSpec,
-  userMessageBackground,
 } from '../src/components/theme.ts'
 import {
   appendAssistant,
@@ -237,8 +237,8 @@ function registerMountAgent(ctx: Context, session: ReturnType<Context['sessions'
 describe('TUI config', () => {
   it('defaults every direct-call TUI option', () => {
     expect(resolveTuiConfig(undefined)).toEqual({
-      fullscreen: true,
-      mouse: true,
+      fullscreen: false,
+      mouse: false,
       showReasoning: true,
       maxToolOutputLines: 6,
       maxDiffEditLength: 1000,
@@ -386,6 +386,7 @@ describe('shared settings, appearance, and workspaces', () => {
     })
     let resultContext: Context | undefined
     const result = await setup({
+      config: { theme: { color: true } },
       configureContext: composeFrontDoorServices((ctx) => {
         resultContext = ctx
         ctx.provide('settings', {
@@ -405,11 +406,15 @@ describe('shared settings, appearance, and workspaces', () => {
       }),
     })
 
-    result.terminal.send('/theme dark')
+    result.terminal.send('\x1b]11;#000000\x07')
+    await tick(); await tick()
+    result.terminal.output = ''
+    result.terminal.send('/theme light')
     result.terminal.send('\r')
     await tick(); await tick()
-    expect(mutate).toHaveBeenCalledWith(uiTheme, [{ op: 'set', path: ['preference'], value: 'dark' }])
-    expect(result.terminal.output).toContain('Theme preference: dark')
+    expect(mutate).toHaveBeenCalledWith(uiTheme, [{ op: 'set', path: ['preference'], value: 'light' }])
+    expect(result.terminal.output).toContain('Theme preference: light')
+    expect(result.terminal.output).toContain('\x1b[48;2;237;243;254m')
 
     result.terminal.send('/settings document')
     result.terminal.send('\r')
@@ -553,7 +558,7 @@ describe('shared settings, appearance, and workspaces', () => {
     expect(result.session.header.cwd).toBe('/workspace')
     expect(result.terminal.stopped).toBeGreaterThan(0)
     expect(result.terminal.output).toContain('Workspace switch failed: test host retained process')
-    expect(result.terminal.output.slice(outputAtHandoff)).toContain('Coding agent ready.')
+    expect(result.terminal.output.slice(outputAtHandoff)).toContain('DEEPSEEK HARNESS')
     await dispose(result)
   })
 
@@ -1992,7 +1997,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await dispose(result)
   })
 
-  it('uses the latest log-backed title for the header subtitle and terminal window', async () => {
+  it('uses the latest log-backed title for the terminal window without adding transcript metadata', async () => {
     const result = await setup({
       // A fixed short cwd keeps the footer's token counters inside the 88-column
       // fake terminal regardless of where the checkout lives; cwd rendering has
@@ -2008,8 +2013,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     })
 
     expect(result.terminal.title).toBe('Restored session title — DeepSeek Harness')
-    expect(result.terminal.output).toContain('Restored session title')
-    expect(result.terminal.output).not.toContain('Coding agent ready.')
+    expect(result.terminal.output).not.toContain('Restored session title')
 
     result.session.append('session/title', {
       title: 'Live title \u001B]0;unsafe\u0007',
@@ -2020,7 +2024,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
 
     expect(result.terminal.title).toContain('Live title \\x1b]0;unsafe\\x07 — DeepSeek Harness')
     expect(result.terminal.title).not.toContain('\u001B')
-    expect(result.terminal.output).toContain('Live title \\x1b]0;unsafe\\x07')
+    expect(result.terminal.output).not.toContain('Live title \\x1b]0;unsafe\\x07')
     await dispose(result)
   })
 
@@ -2053,10 +2057,9 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.started).toBe(1)
     expect(result.terminal.title).toBe('DeepSeek Harness')
     expect(result.terminal.output).toContain('DEEPSEEK')
-    expect(result.terminal.output).toContain('Coding agent ready.')
     expect(result.terminal.output).toContain('restored prompt')
-    expect(result.terminal.output).toContain('› restored prompt')
     expect(result.terminal.output).not.toContain('You')
+    expect(result.terminal.output).not.toContain('› restored prompt')
     expect(result.terminal.output).not.toContain('restored thought')
     expect(result.terminal.output).toContain('restored answer')
     expect(result.terminal.output).toContain('write tests')
@@ -2192,15 +2195,15 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
     expect(result.terminal.output).toContain('steering note')
     expect(result.terminal.output).toContain('user context')
-    expect(result.terminal.output).toContain('Context · workspace-context')
-    // Injected context defaults to a compact disclosure instead of filling the
-    // transcript; its content remains available through the details affordance.
-    expect(result.terminal.output).toContain('▸ 3 lines hidden')
+    expect(result.terminal.output).not.toContain('Context · workspace-context')
+    // Injected context is absent from the compact transcript; its content
+    // remains available through the details affordance.
+    expect(result.terminal.output).not.toContain('lines hidden')
     expect(result.terminal.output).not.toContain('Additional instructions from: nested/AGENTS.md')
     expect(result.terminal.output).not.toContain('Render XML context clearly.')
     expect(result.terminal.output).not.toContain('&#155;')
     expect(result.terminal.output).not.toContain('\u009b')
-    expect(result.terminal.output).toContain('Context · goal') // goal-sourced injected context labels by kind
+    expect(result.terminal.output).not.toContain('Context · goal')
     expect(result.terminal.output).toContain('Turn cancelled')
     expect(result.terminal.progress).toContain(true)
 
@@ -2227,10 +2230,10 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.drainInput).toHaveBeenCalledWith(100, 20)
   })
 
-  it('folds an injected-context card by default and expands it with Ctrl+O', async () => {
+  it('hides injected context by default and expands it with Ctrl+O', async () => {
     const result = await setup()
-    // The collapsed card shows only one disclosure row, hiding every injected
-    // instruction until Ctrl+O explicitly expands the details.
+    // The compact transcript shows no injected-context rows until Ctrl+O
+    // explicitly expands the details.
     const instructions = Array.from({ length: 10 }, (_, index) => `instruction line ${index}`).join('\n')
     result.session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: `<system-reminder>\n${instructions}\n</system-reminder>` }],
@@ -2238,37 +2241,32 @@ describe('pi-tui chat lifecycle and transcript', () => {
     }), { surfaceOp: 'append' })
     await tick()
 
-    // The redundant `system-reminder` frame element is dropped; the card is
-    // collapsed by default with the shared details/Ctrl+O expand marker.
-    expect(result.terminal.output).toContain('Context · workspace-context')
+    expect(result.terminal.output).not.toContain('Context · workspace-context')
     expect(result.terminal.output).not.toContain('system-reminder')
-    expect(result.terminal.output).toContain('▸ 10 lines hidden · click details or Ctrl+O to expand')
+    expect(result.terminal.output).not.toContain('lines hidden')
     expect(result.terminal.output).not.toContain('instruction line 0')
     expect(result.terminal.output).not.toContain('instruction line 5')
 
     result.terminal.send('\x0f')
     await tick()
     expect(result.terminal.output).toContain('Tool and context cards expanded.')
+    expect(result.terminal.output).toContain('Context · workspace-context')
     expect(result.terminal.output).toContain('instruction line 5')
 
-    // Third state: tool cards hide; a context card is injected instructions,
-    // not tool traffic, so it stays visible as its one-line disclosure.
+    // Third state: tool cards and injected context are absent.
     result.terminal.send('\x0f')
     await tick()
     expect(result.terminal.output).toContain('Tool cards hidden.')
-    // A repaint proves the context card SURVIVES the hidden phase: injected
-    // instructions are not tool traffic, so they stay at the collapsed disclosure.
     result.terminal.send('\x0c')
     await tick()
     const hidden = result.terminal.output.slice(result.terminal.output.lastIndexOf('\x1b[2J'))
-    expect(hidden).toContain('Context · workspace-context')
+    expect(hidden).not.toContain('Context · workspace-context')
     // Fourth press returns to the collapsed default, closing the cycle.
     result.terminal.send('\x0f')
     await tick()
     expect(result.terminal.output).toContain('Tool and context cards collapsed.')
 
-    // Context with no frame renders as muted prose under the header; a frame
-    // wrapping nothing renders header-only.
+    // Additional context also stays absent while details are collapsed.
     result.session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'plain reminder text, no tags' }],
       source: { kind: 'plugin', plugin: 'plain-context' },
@@ -2284,11 +2282,9 @@ describe('pi-tui chat lifecycle and transcript', () => {
       source: { kind: 'plugin', plugin: 'unpaired-context' },
     }), { surfaceOp: 'append' })
     await tick()
-    expect(result.terminal.output).toContain('Context · plain-context')
-    expect(result.terminal.output).toContain('▸ 1 line hidden')
+    expect(result.terminal.output).not.toContain('Context · plain-context')
     expect(result.terminal.output).not.toContain('plain reminder text, no tags')
-    expect(result.terminal.output).toContain('Context · empty-context')
-    expect(result.terminal.output).toContain('▸ 3 lines hidden')
+    expect(result.terminal.output).not.toContain('Context · empty-context')
     expect(result.terminal.output).not.toContain('<available_skills>')
     expect(result.terminal.output).not.toContain('kept prose line')
     // Ctrl+L invalidates the mounted tree, exercising the card's invalidate hook.
@@ -2313,13 +2309,14 @@ describe('pi-tui chat lifecycle and transcript', () => {
     }), { surfaceOp: 'append' })
     await tick()
 
-    expect(result.terminal.output).toContain('Context · prose-context')
+    expect(result.terminal.output).not.toContain('Context · prose-context')
     expect(result.terminal.output).not.toContain('<system-reminder>')
-    expect(result.terminal.output).toContain('lines hidden · click details or Ctrl+O to expand')
+    expect(result.terminal.output).not.toContain('lines hidden')
     expect(result.terminal.output).not.toContain('prose line 5')
 
     result.terminal.send('\x0f')
     await tick()
+    expect(result.terminal.output).toContain('Context · prose-context')
     expect(result.terminal.output).toContain('prose line 5')
     // Characters that break a strict XML parse survive unescaped and unexpanded.
     expect(result.terminal.output).toContain('&logo=deepseek')
@@ -2486,8 +2483,6 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.terminal.output = ''
     drainSteering('second')
     await tick()
-    expect(result.terminal.output).toContain('Describe a task, @ a file, or / for commands')
-    expect(result.terminal.output).toContain('│')
     expect(result.terminal.output).not.toContain('queued')
 
     // A drain with no matching queued entry is ignored rather than underflowing.
@@ -2504,6 +2499,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
       content: [{ type: 'text', text: 'continue: goal not reached' }],
       source: { kind: 'plugin', plugin: 'hooks' },
     }), { surfaceOp: 'append' })
+    result.terminal.resize(result.terminal.columns + 1)
     await tick()
     expect(result.terminal.output).toContain('1 queued')
     result.terminal.output = ''
@@ -3068,7 +3064,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).toContain('[future-block]')
     expect(result.terminal.output).toContain('[content]')
     expect(result.terminal.output).toContain('\x1b[36mconst answer = 42\x1b[39m')
-    // User input is a literal Codex-style record, while the assistant fence is rendered.
+    // User cards preserve literal input while assistant fences are rendered.
     expect(result.terminal.output).toContain('```ts')
     expect(result.terminal.output).toContain('↑2.0m ↓1.5m')
     await dispose(result)
@@ -4094,7 +4090,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await terminal.waitForFrame()
     const before = await terminal.snapshot()
     expect(before).toContain('▸ idle')
-    expect(before).toContain('▸ 1 line hidden')
+    expect(before).not.toContain('lines hidden')
     expect(before).not.toContain('private context line')
     expect(before).not.toContain('private reasoning line')
     expect(before).toContain('visible answer')
@@ -4148,6 +4144,51 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(await terminal.snapshot()).toContain('transcript row 18')
     await disposeTuiTestHarness(result)
     await terminal.dispose()
+  })
+
+  it('pages a long transcript while mouse capture is disabled for native selection', async () => {
+    const terminal = new HeadlessTerminal(72, 24)
+    const result = await createTuiTestHarness(terminal, vi.fn(), {
+      config: { fullscreen: true, mouse: false },
+      beforeMount(session) {
+        for (let index = 0; index < 18; index++) appendUser(session, `selectable row ${String(index)}`)
+      },
+    })
+    await terminal.waitForFrame()
+    expect(await terminal.snapshot()).toContain('selectable row 17')
+
+    const beforeOlder = terminal.frames
+    for (let index = 0; index < 12; index++) terminal.send('\x1b[5~')
+    await terminal.waitForFrame(beforeOlder)
+    const older = await terminal.snapshot()
+    expect(older).toContain('selectable row 0')
+    expect(older).not.toContain('selectable row 17')
+
+    const beforeTail = terminal.frames
+    for (let index = 0; index < 12; index++) terminal.send('\x1b[6~')
+    await terminal.waitForFrame(beforeTail)
+    expect(await terminal.snapshot()).toContain('selectable row 17')
+    await disposeTuiTestHarness(result)
+    await terminal.dispose()
+  })
+
+  it('keeps keyboard arrows in prompt history in the default inline chat', async () => {
+    const result = await setup()
+    result.terminal.send('first prompt')
+    result.terminal.send('\r')
+    result.terminal.send('second prompt')
+    result.terminal.send('\r')
+    await tick()
+
+    result.terminal.output = ''
+    result.terminal.send('\x1b[A')
+    await tick()
+    const rendered = result.terminal.output
+      .replaceAll(/\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07|\r/g, '')
+    expect(rendered).toContain('second prompt')
+    expect(result.terminal.output).not.toContain('\x1b[?1000h')
+    expect(result.terminal.output).not.toContain('\x1b[?1049h')
+    await dispose(result)
   })
 
   it('opens a keyboard selector and switches the session model without sending slash text to the agent', async () => {
@@ -7047,7 +7088,6 @@ describe('TUI extension service', () => {
     const secondController = createTuiChat(result.ctx, {
       sessionId: result.agent.id,
       theme: { color: false },
-      welcome: 'Mounted again.',
     }, {
       terminal: secondTerminal,
       exit: vi.fn(),
@@ -7283,7 +7323,12 @@ describe('terminal mounting', () => {
     const terminal = new FakeTerminal()
     terminal.start = () => { throw new Error('terminal startup failed') }
 
-    expect(() => createTuiChat(ctx, { sessionId: 'failed-start-session', theme: { color: false } }, { terminal, exit: vi.fn() }))
+    expect(() => createTuiChat(ctx, {
+      sessionId: 'failed-start-session',
+      fullscreen: true,
+      mouse: true,
+      theme: { color: false },
+    }, { terminal, exit: vi.fn() }))
       .toThrow('terminal startup failed')
     await tick()
     expect(ctx.commands.list(ctx.agents.get(SessionId('failed-start-session'))!)).toEqual([])
@@ -7354,27 +7399,27 @@ describe('terminal mounting', () => {
     expect(brandText('mark')).toBe('\x1b[38;2;77;107;254mmark\x1b[39m')
   })
 
-  it('maps detected terminal backgrounds to the Web user-bubble tone', () => {
-    expect(userMessageBackground(true, 'dark', { r: 0, g: 0, b: 0 })(' prompt '))
-      .toBe('\x1b[48;2;20;20;20m prompt \x1b[49m')
-    expect(userMessageBackground(true, 'light', { r: 255, g: 255, b: 255 })(' prompt '))
-      .toBe('\x1b[48;2;241;243;255m prompt \x1b[49m')
-    expect(userMessageBackground(true, 'dark', undefined)('prompt')).toBe('prompt')
+  it('maps the composer to the exact Web user-bubble tones', () => {
+    expect(composerBackground(true, 'dark', { r: 0, g: 0, b: 0 })(' prompt '))
+      .toBe('\x1b[48;2;44;44;46m prompt \x1b[49m')
+    expect(composerBackground(true, 'light', { r: 255, g: 255, b: 255 })(' prompt '))
+      .toBe('\x1b[48;2;237;243;254m prompt \x1b[49m')
+    expect(composerBackground(false, 'dark', undefined)('prompt')).toBe('prompt')
   })
 
-  it('shares the detected Web bubble surface between the composer and submitted prompts', async () => {
+  it('shares the official bubble surface between the composer and submitted cards', async () => {
     const result = await setup({ config: { theme: { color: true } } })
     result.terminal.output = ''
     result.terminal.send('\x1b]11;#000000\x07')
     await tick()
     await tick()
-    expect(result.terminal.output).toContain('\x1b[48;2;20;20;20m')
+    expect(result.terminal.output).toContain('\x1b[48;2;44;44;46m')
 
     result.terminal.output = ''
     appendUser(result.session, 'same surface')
     await tick()
     expect(result.terminal.output).toContain('same surface')
-    expect(result.terminal.output).toContain('\x1b[48;2;20;20;20m')
+    expect(result.terminal.output).toContain('\x1b[48;2;44;44;46m')
     await dispose(result)
   })
 
@@ -7568,10 +7613,10 @@ describe('banner sweep reveal', () => {
     await dispose(result)
   })
 
-  it('sweeps the compact banner in when no welcome is configured, ending complete', async () => {
+  it('sweeps the compact banner in for full-screen startup, ending complete', async () => {
     const intervals = vi.spyOn(globalThis, 'setInterval')
     const cleared = vi.spyOn(globalThis, 'clearInterval')
-    const result = await setup({ omitWelcome: true })
+    const result = await setup({ config: { fullscreen: true } })
     const revealHandle = intervals.mock.results.at(-1)?.value as ReturnType<typeof setInterval>
     // Run the sweep to natural completion — it clears its own timer at the end.
     const done = (): boolean => cleared.mock.calls.some(call => call[0] === revealHandle)
@@ -7579,31 +7624,22 @@ describe('banner sweep reveal', () => {
     while (!done() && Date.now() < deadline) await tick()
     intervals.mockRestore()
     cleared.mockRestore()
-    // The finished banner carries the title and the model • session detail.
+    // The finished compact banner carries only the product title.
     expect(result.terminal.output).toContain('DEEPSEEK')
     expect(result.terminal.output).toContain('HARNESS')
-    expect(result.terminal.output).toContain('main-session')
+    expect(result.terminal.output).not.toContain('main-session')
     // The minimal composer is independent of the compact banner.
     expect(result.terminal.output).toContain('› │Describe a task')
     expect(result.terminal.output).not.toContain('╭ Message ')
-    // A mid-sweep frame rendered a clipped title: `DEEPSEEK` with no `HARNESS`
-    // on the same line.
-    const clipped = result.terminal.output
-      .split('\n')
-      .some(line => line.includes('DEEPSEEK') && !line.includes('HARNESS'))
-    expect(clipped).toBe(true)
     await dispose(result)
   })
 
-  it('renders a configured welcome verbatim in a complete banner with no sweep', async () => {
+  it('keeps inline compact startup deterministic without a sweep', async () => {
     const result = await setup()
     await tick()
-    expect(result.terminal.output).toContain('Coding agent ready.')
     expect(result.terminal.output).toContain('DEEPSEEK')
     expect(result.terminal.output).toContain('› │Describe a task')
     expect(result.terminal.output).not.toContain('╭ Message ')
-    // No reveal frames: the banner is drawn whole from the first render, so no
-    // clipped-title frame ever appears.
     const clipped = result.terminal.output
       .split('\n')
       .some(line => line.includes('DEEPSEEK') && !line.includes('HARNESS'))
@@ -7611,13 +7647,10 @@ describe('banner sweep reveal', () => {
     await dispose(result)
   })
 
-  it('omits the subtitle line entirely when no welcome is configured', async () => {
-    const result = await setup({ omitWelcome: true })
-    const deadline = Date.now() + 5000
-    while (!result.terminal.output.includes('main-session') && Date.now() < deadline) await tick()
-    // Banner is title + detail only — no subtitle between them.
-    expect(result.terminal.output).toContain('deepseek-v4-flash')
-    expect(result.terminal.output).not.toContain('ready.')
+  it('omits session metadata from the compact header', async () => {
+    const result = await setup()
+    expect(result.terminal.output).toContain('DEEPSEEK HARNESS')
+    expect(result.terminal.output).not.toContain('main-session')
     await dispose(result)
   })
 
@@ -7626,7 +7659,7 @@ describe('banner sweep reveal', () => {
     // (pi-tui's stopped guard silences post-stop renders), so capture the
     // reveal's own interval handle and assert dispose clears exactly it.
     const intervals = vi.spyOn(globalThis, 'setInterval')
-    const result = await setup({ omitWelcome: true })
+    const result = await setup({ config: { fullscreen: true } })
     const revealHandle = intervals.mock.results.at(-1)?.value as ReturnType<typeof setInterval>
     expect(revealHandle).toBeDefined()
     const cleared = vi.spyOn(globalThis, 'clearInterval')

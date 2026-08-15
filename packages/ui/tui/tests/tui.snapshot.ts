@@ -168,7 +168,6 @@ async function setupSnapshot(
     ...options,
     cwd: options.cwd === undefined ? '/workspace/project' : options.cwd,
     config: Object.assign({
-      welcome: 'Snapshot agent ready.',
       theme: { color: true },
       title: 'DSH snapshot',
     }, options.config),
@@ -984,7 +983,6 @@ describe('TUI terminal-state snapshots', () => {
     const harness = await setupSnapshot({
       tools,
       config: {
-        welcome: `Unsafe welcome ${CONTROL_PROBE}`,
         title: `Unsafe terminal title ${CONTROL_PROBE}`,
       },
       beforeMount(session) {
@@ -1488,7 +1486,7 @@ describe('TUI terminal-state snapshots', () => {
     await new Promise(resolve => setTimeout(resolve, 25))
     const restored = await harness.terminal.snapshot({ includeScrollback: true })
     expect(restored).toContain('Workspace switch failed: snapshot host retained process')
-    expect(restored).toContain('Snapshot agent ready.')
+    expect(restored).toContain('DEEPSEEK HARNESS')
     expect(harness.session.header.cwd).toBe('/workspace/project')
     await checkpoint('workspace-handoff-recovered', harness.terminal, { includeScrollback: true })
 

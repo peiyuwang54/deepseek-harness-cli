@@ -44,8 +44,6 @@ export interface TuiHarnessOptions {
   config?: Config
   /** Leave the session event log empty instead of seeding one turn and step. */
   omitInitialLifecycle?: boolean
-  /** Omit the harness's default `welcome`, exercising the banner sweep-reveal path. */
-  omitWelcome?: boolean
   tools?: Record<string, ToolDefinition>
   configureContext?: (ctx: Context) => Promise<void>
   beforeMount?: (session: Session) => void
@@ -253,7 +251,6 @@ export async function createTuiTestHarness<TerminalType extends Terminal, Exit e
   }
   ctx.agents.register(agent)
   const controller = createTuiChat(ctx, Object.assign({
-    ...options.omitWelcome === true ? {} : { welcome: 'Coding agent ready.' },
     sessionId,
     // Most behavior tests assert the renderer independently of terminal-mode
     // ownership; dedicated suites cover the production full-screen defaults.

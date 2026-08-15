@@ -1,107 +1,103 @@
-terminal 100x40 buffer=normal length=55 base=15 viewport=15
+terminal 100x40 buffer=normal length=53 base=13 viewport=13
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=3 viewportRow=36 bufferRow=51
+cursor visible column=3 viewportRow=36 bufferRow=49
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
   style 18-23 dim
-1| " Snapshot agent ready."
-  style 1-21 dim
-2| " main-session"
-  style 1-12 dim
-3-4| <blank>
-5| "● Tool / bash / Run the coverage gate"
+1-2| <blank>
+3| "● Tool / bash / Run the coverage gate"
   style 0-36 fg=green
-6| "$ pnpm run test:coverage                                                                            "
+4| "$ pnpm run test:coverage                                                                            "
   style 0-23 dim
-7| "/workspace/project                                                                                  "
+5| "/workspace/project                                                                                  "
   style 0-17 dim
-8| "packages/ui/tui 100%                                                                                "
+6| "packages/ui/tui 100%                                                                                "
   style 0-19 dim
-9| "4016 tests passed                                                                                   "
+7| "4016 tests passed                                                                                   "
   style 0-16 dim
-10| "1 test skipped                                                                                      "
+8| "1 test skipped                                                                                      "
   style 0-13 dim
-11| "coverage complete                                                                                   "
+9| "coverage complete                                                                                   "
   style 0-16 dim
-12| "[exit 0]                                                                                            "
+10| "[exit 0]                                                                                            "
   style 0-7 dim
-13| <blank>
-14| "● Tool / edit"
+11| <blank>
+12| "● Tool / edit"
   style 0-12 fg=green
-15| "src/view.ts                                                                                         "
+13| "src/view.ts                                                                                         "
   style 0-10 bold
-16| "- old line                                                                                          "
+14| "- old line                                                                                          "
   style 0-9 fg=red
-17| "+ new line                                                                                          "
+15| "+ new line                                                                                          "
   style 0-9 fg=green
-18| "  keep                                                                                              "
+16| "  keep                                                                                              "
   style 0-5 dim
-19| "└ +1 -1 · 1 file                                                                                    "
+17| "└ +1 -1 · 1 file                                                                                    "
   style 0-15 dim
-20| <blank>
-21| "● Tool / subagent"
+18| <blank>
+19| "● Tool / subagent"
   style 0-16 fg=green
-22| "Delegate renderer audit                                                                             "
+20| "Delegate renderer audit                                                                             "
   style 0-99 dim
-23| "The renderer has explicit lifecycle ownership.                                                      "
+21| "The renderer has explicit lifecycle ownership.                                                      "
   style 0-99 dim
-24| <blank>
-25| "● Tool / task_output"
+22| <blank>
+23| "● Tool / task_output"
   style 0-19 fg=green
-26| "Read output from background task subagent-7                                                         "
+24| "Read output from background task subagent-7                                                         "
   style 0-99 dim
-27| "                                                                                                    "
-28| "console                                                                                             "
+25| "                                                                                                    "
+26| "console                                                                                             "
   style 0-6 dim
-29| "  started background task bash-5                                                                    "
+27| "  started background task bash-5                                                                    "
   style 0-1 dim
   style 2-31 fg=cyan dim
   style 32-99 dim
-30| "                                                                                                    "
-31| <blank>
-32| "● Tool / skill"
+28| "                                                                                                    "
+29| <blank>
+30| "● Tool / skill"
   style 0-13 fg=green
-33| "Load skill dsh-code-review                                                                          "
+31| "Load skill dsh-code-review                                                                          "
   style 0-99 dim
-34| "Loaded review instructions.                                                                         "
+32| "Loaded review instructions.                                                                         "
   style 0-99 dim
-35| <blank>
-36| "● Tool / large_edit"
+33| <blank>
+34| "● Tool / large_edit"
   style 0-18 fg=green
-37| "src/large.ts                                                                                        "
+35| "src/large.ts                                                                                        "
   style 0-11 bold
-38| "[exact line diff omitted: >2 changed lines]                                                         "
+36| "[exact line diff omitted: >2 changed lines]                                                         "
   style 0-42 dim
-39| "- old one                                                                                           "
+37| "- old one                                                                                           "
   style 0-8 fg=red
-40| "- old two                                                                                           "
+38| "- old two                                                                                           "
   style 0-8 fg=red
-41| "- old three                                                                                         "
+39| "- old three                                                                                         "
   style 0-10 fg=red
-42| "+ new one                                                                                           "
+40| "+ new one                                                                                           "
   style 0-8 fg=green
-43| "+ new two                                                                                           "
+41| "+ new two                                                                                           "
   style 0-8 fg=green
-44| "+ new three                                                                                         "
+42| "+ new three                                                                                         "
   style 0-10 fg=green
-45| "└ +3 -3 · 1 file · approximate                                                                      "
+43| "└ +3 -3 · 1 file · approximate                                                                      "
   style 0-29 dim
-46| <blank>
-47| "Tool and context cards expanded.                                                                    "
+44| <blank>
+45| "Tool and context cards expanded.                                                                    "
   style 0-31 dim
-48-49| <blank>
-50| "                                                                                                    "
-51| " › │Describe a task, @ a file, or / for commands                                                    "
+46-47| <blank>
+48| "                                                                                                    "
+49| " › │Describe a task, @ a file, or / for commands                                                    "
   style 1-1 fg=bright-magenta bold
   style 2-2 dim
   style 4-47 dim
-52| "                                                                                                    "
-53| "  Enter send · Shift+Enter newline · / commands"
+50| "                                                                                                    "
+51| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-54| "/workspace/project (tui-staging)                ▾ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+52| "/workspace/project (tui-staging)                ▾ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 48-53 dim

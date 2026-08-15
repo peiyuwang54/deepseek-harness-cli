@@ -78,11 +78,11 @@ import type {
 import { displayInlineText, displayText } from './components/text.ts'
 import {
   brandText,
+  composerBackground,
   createPalette,
   markdownTheme,
   renderPalette,
   selectTheme,
-  userMessageBackground,
 } from './components/theme.ts'
 import { contentText, parseArguments } from './components/content.ts'
 import {
@@ -374,7 +374,7 @@ export function createTuiChat(
   let terminalBackground: RgbColor | undefined
   const initialScheme: TerminalColorScheme = themePreference === 'light' ? 'light' : 'dark'
   const palette = createPalette(resolved.theme.color, initialScheme)
-  let userMessageSurface = userMessageBackground(resolved.theme.color, initialScheme, terminalBackground)
+  let composerSurface = composerBackground(resolved.theme.color, initialScheme, terminalBackground)
   const mdTheme = markdownTheme(palette)
   // The software caret below provides deterministic blinking even when a
   // terminal profile ignores DECSCUSR. Keep pi-tui's hardware cursor enabled
@@ -403,7 +403,7 @@ export function createTuiChat(
   })
   editor.cursorEnabled = resolved.showHardwareCursor
   editor.cursorVisible = resolved.showHardwareCursor
-  editor.surface = value => userMessageSurface(value)
+  editor.surface = value => composerSurface(value)
   editor.hintPrefix = initialInputPrompt
   const inputPlaceholder = (): string => resolved.theme.inputPlaceholder === 'Describe a task, @ a file, or / for commands'
     ? tuiCopy(locale).inputPlaceholder
@@ -570,7 +570,6 @@ export function createTuiChat(
   let sessionTitle = foldSessionTitle(agent.session.events)?.title
   const header = new HeaderComponent(
     agent,
-    () => sessionTitle ?? config.welcome,
     palette,
     resolved.theme.color && resolved.theme.truecolor,
     () => ({
@@ -1081,7 +1080,6 @@ export function createTuiChat(
             const card = new ContextCardComponent(label, text, palette)
             card.setExpanded(toolsVisibility === 'expanded')
             contextCards.add(card)
-            chat.addChild(new Spacer(1))
             chat.addChild(card)
           }
           trailPendingStreaming()
@@ -1090,7 +1088,7 @@ export function createTuiChat(
         const text = displayText(contentText(event.data.content).trim())
         if (text) {
           chat.addChild(new Spacer(1))
-          chat.addChild(new UserMessageComponent(text, palette, value => userMessageSurface(value)))
+          chat.addChild(new UserMessageComponent(text, value => composerSurface(value)))
           if (options.addHistory) editor.addToHistory(text)
         }
         trailPendingStreaming()
@@ -1449,7 +1447,7 @@ export function createTuiChat(
     if (scheme === currentScheme && !force) return
     currentScheme = scheme
     Object.assign(palette, createPalette(resolved.theme.color, scheme))
-    userMessageSurface = userMessageBackground(resolved.theme.color, scheme, terminalBackground)
+    composerSurface = composerBackground(resolved.theme.color, scheme, terminalBackground)
     Object.assign(mdTheme, markdownTheme(palette))
     // `setStatus` below re-derives `editor.borderColor` from the new palette.
     rebuildPreservingStreaming()
@@ -1522,8 +1520,7 @@ export function createTuiChat(
   const setToolsVisibility = (next: ToolCardVisibility, announce = true): void => {
     toolsVisibility = next
     for (const card of allToolCards) card.setVisibility(toolsVisibility)
-    // Context cards carry injected instructions rather than tool traffic, so
-    // they never hide: the hidden phase reads as their collapsed preview.
+    // Injected context is visible only in the explicitly expanded detail state.
     for (const card of contextCards) card.setExpanded(toolsVisibility === 'expanded')
     // Hidden mode folds each turn's steps into one assistant message; other
     // modes restore the per-step response bullets.
@@ -1669,7 +1666,11 @@ export function createTuiChat(
     chat.addChild(new Text(palette.bold(palette.accent('Keyboard shortcuts')), 0, 0))
     chat.addChild(new Text([
       'Enter send • Shift/Alt+Enter newline • Up/Down prompt history • Alt+M choose model',
-      'Page Up/Down scroll transcript • Ctrl+End follow latest • mouse wheel scrolls transcript or selectors',
+      !resolved.fullscreen
+        ? 'Mouse wheel scrolls chat • drag selects terminal text • Up/Down stays in prompt history'
+        : resolved.mouse
+          ? 'Page Up/Down scroll transcript • Ctrl+End follow latest • mouse wheel scrolls transcript or selectors'
+          : 'Drag selects terminal text • Page Up/Down scroll transcript • Ctrl+End follow latest',
       'Esc cancel turn • Ctrl+O cycle cards (collapse/expand/hide) • Ctrl+R toggle reasoning • Ctrl+L redraw',
       'Ctrl+C cancel while running; clear input or exit while idle • Ctrl+D exit',
       '',
@@ -2761,9 +2762,8 @@ export function createTuiChat(
   }
 
   // Sweep reveal of the whole banner: the header wipes in left-to-right over
-  // ~BANNER_REVEAL_STEPS frames (started after `ui.start()` succeeds).
-  // Configured subtitles skip it so deployments (and snapshot fixtures) stay
-  // frame-deterministic.
+  // ~BANNER_REVEAL_STEPS frames after a full-screen terminal is acquired.
+  // Inline embeddings stay deterministic and preserve ordinary scrollback.
   let revealTimer: ReturnType<typeof setInterval> | undefined
   const stopBannerReveal = (): void => {
     if (revealTimer === undefined) return
@@ -2772,7 +2772,7 @@ export function createTuiChat(
     header.setRevealWidth(undefined)
   }
   const startBannerReveal = (): void => {
-    if (config.welcome !== undefined) return
+    if (!resolved.fullscreen) return
     const total = Math.max(1, runtime.terminal.columns)
     const step = Math.max(1, Math.ceil(total / BANNER_REVEAL_STEPS))
     let shown = 0

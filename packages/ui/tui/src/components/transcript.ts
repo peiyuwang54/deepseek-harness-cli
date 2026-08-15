@@ -202,7 +202,6 @@ export class HeaderComponent implements Component {
 
   constructor(
     private readonly agent: Agent,
-    private readonly subtitle: () => string | undefined,
     private readonly palette: Palette,
     private readonly gradient: boolean,
     private readonly dashboard?: () => WelcomeDashboardState,
@@ -232,13 +231,7 @@ export class HeaderComponent implements Component {
       ? this.palette.bold(gradientText('DEEPSEEK'))
       : this.palette.bold(this.palette.accent('DEEPSEEK'))
     const title = `${name} ${this.palette.bold('HARNESS')} ${this.palette.dim(`v${displayVersion}`)}`
-    const detail = displayText(this.agent.session.id)
-    const subtitle = this.subtitle()
-    const lines = [
-      title,
-      ...subtitle === undefined ? [] : [this.palette.dim(displayText(subtitle))],
-      this.palette.dim(detail),
-    ]
+    const lines = [title]
       .flatMap(line => wrapTextWithAnsi(line, usable))
       .map(line => ` ${truncateToWidth(line, usable, '')}`)
     if (this.revealWidth === undefined) return lines
@@ -258,10 +251,8 @@ export class HeaderComponent implements Component {
     if (spacious) {
       const leftWidth = Math.min(40, Math.max(32, Math.floor(contentWidth * 0.4)))
       const rightWidth = contentWidth - leftWidth - 7
-      const subtitle = this.subtitle()
       const left: string[] = [
         centered(this.palette.bold(copy.welcomeBack), leftWidth),
-        centered(subtitle === undefined ? '' : this.palette.dim(displayInline(subtitle)), leftWidth),
         ...DEEPSEEK_MARK.map(line => centered(this.palette.bold(this.palette.text(line)), leftWidth)),
         '',
         centered(`${this.palette.dim(copy.preset)} ${displayInline(state.preset)}`, leftWidth),
@@ -313,8 +304,6 @@ export class HeaderComponent implements Component {
       const mark = rows >= 20 ? DEEPSEEK_MARK_COMPACT : []
       for (const line of mark) lines.push(centered(this.palette.bold(this.palette.text(line)), contentWidth))
       lines.push(centered(`${product} ${this.palette.bold('Harness CLI')} ${this.palette.dim(`v${displayVersion}`)}`, contentWidth))
-      const subtitle = this.subtitle()
-      if (subtitle !== undefined) lines.push(centered(this.palette.dim(displayInline(subtitle)), contentWidth))
       lines.push(centered(`${displayInline(state.preset)} · ${displayInline(state.model)} · ${displayInline(state.permission)}`, contentWidth))
       lines.push('')
       const actions = copy.compactActions.replaceAll(
@@ -333,15 +322,14 @@ export class HeaderComponent implements Component {
   }
 }
 
-/**
- * A submitted prompt rendered as the Codex `›` input record. The detected
- * terminal background receives the same low-contrast surface role as the Web
- * user bubble; terminals without an OSC 11 report retain the prefix and
- * spacing without assuming a background color.
- */
+/** A submitted human prompt rendered as a padded card without a role label. */
 export class UserMessageComponent extends Text {
-  constructor(text: string, palette: Palette, background: (text: string) => string) {
-    super(`${palette.bold(palette.brand('›'))} ${displayText(text)}`, 1, 1, background)
+  /**
+   * @param text - Durable user prompt text.
+   * @param background - Active composer/card background wrapper.
+   */
+  constructor(text: string, background: (text: string) => string) {
+    super(displayText(text), 1, 1, background)
   }
 }
 
@@ -977,11 +965,10 @@ function stripReminderFrame(text: string): string {
 }
 
 /**
- * Injected context (plugin/goal source, e.g. `workspace-context`), rendered as a
- * collapsible dim card that shares the tool-card `Ctrl+O` toggle. The header is
- * `Context · <label>`; the body is the message text as dim prose, one tone with
- * the header and the fold marker, folded to `maxOutputLines`, with a surrounding
- * reminder frame stripped because the source label already names the context.
+ * Injected context (plugin/goal source, e.g. `workspace-context`) stays absent
+ * from the compact transcript and shares the tool-card `Ctrl+O` toggle. Its
+ * expanded form starts with `Context · <label>` and renders the message as dim
+ * prose after stripping a surrounding reminder frame.
  *
  * Injected context is prose, not markup, so this card does not parse it. The
  * `<system-reminder>` frame is a prompting convention no model is trained on
@@ -1013,17 +1000,15 @@ export class ContextCardComponent extends CachedCardComponent {
   }
 
   protected renderLines(width: number): string[] {
+    if (!this.expanded) return []
     const header = this.palette.dim(`Context · ${displayText(this.label)}`)
     // Emptiness is decided on the stripped text: styling a blank body would yield
     // one escape-only row, which reads as a stray blank line under the header.
     const stripped = stripReminderFrame(this.text)
-    if (stripped === '') return [header]
+    if (stripped === '') return ['', header]
     const body = stripped.split('\n')
       .map(line => line === '' ? line : this.palette.dim(displayText(line)))
-    const visibleBody = this.expanded
-      ? body
-      : [this.palette.dim(`▸ ${body.length} ${body.length === 1 ? 'line' : 'lines'} hidden · click details or Ctrl+O to expand`)]
-    return [header, ...new Text(visibleBody.join('\n'), 0, 0).render(width)]
+    return ['', header, ...new Text(body.join('\n'), 0, 0).render(width)]
   }
 }
 

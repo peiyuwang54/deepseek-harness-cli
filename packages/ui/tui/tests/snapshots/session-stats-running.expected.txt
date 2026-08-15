@@ -1,40 +1,36 @@
 terminal 120x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=active
 title "DSH snapshot"
-cursor visible column=3 viewportRow=12 bufferRow=12
+cursor visible column=3 viewportRow=10 bufferRow=10
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
   style 18-23 dim
-1| " Snapshot agent ready."
-  style 1-21 dim
-2| " main-session"
-  style 1-12 dim
-3| <blank>
-4| "• The metrics are ready.                                                                                                "
+1| <blank>
+2| "• The metrics are ready.                                                                                                "
   style 0-0 dim
-5| "Model wait 1.2s · Response 0.3s · Completed 2026-07-21 20:00:01                                                         "
+3| "Model wait 1.2s · Response 0.3s · Completed 2026-07-21 20:00:01                                                         "
   style 0-62 dim
-6-7| <blank>
-8| "✧ Deep diving (0s • esc to interrupt)"
+4-5| <blank>
+6| "✧ Deep diving (0s • esc to interrupt)"
   style 0-0 fg=bright-magenta
-9-10| <blank>
-11| "                                                                                                                        "
-12| " › │Describe a task, @ a file, or / for commands                                                                        "
+7-8| <blank>
+9| "                                                                                                                        "
+10| " › │Describe a task, @ a file, or / for commands                                                                        "
   style 1-1 fg=bright-magenta bold
   style 2-2 dim
   style 4-47 dim
-13| "                                                                                                                        "
-14| "  Enter steer · Esc cancel · Shift+Enter newline"
+11| "                                                                                                                        "
+12| "  Enter steer · Esc cancel · Shift+Enter newline"
   style 0-47 fg=bright-magenta
-15| "/workspace/project (tui-staging)                           ▸   deepseek-v4-flash [alt+m]  ↑7.7k ↓32 cache 0%  0% context"
+13| "/workspace/project (tui-staging)                           ▸   deepseek-v4-flash [alt+m]  ↑7.7k ↓32 cache 0%  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 59-60 dim
   style 63-87 dim
   style 90-107 dim
   style 110-119 dim
-16| "         1 turn · 1 step | LLM 1.6s | TTFT avg 1.2s · 83 tok/s | Cache hit 0% | Input 7.7K tok · Output 32 tok"
+14| "         1 turn · 1 step | LLM 1.6s | TTFT avg 1.2s · 83 tok/s | Cache hit 0% | Input 7.7K tok · Output 32 tok"
   style 9-109 dim
-17-35| <blank>
+15-35| <blank>

@@ -161,36 +161,24 @@ export function createPalette(enabled: boolean, scheme: TerminalColorScheme = 'd
   return roles as unknown as Palette
 }
 
-/** Blend one RGB foreground over an opaque RGB background. */
-function blendRgb(base: RgbColor, overlay: RgbColor, alpha: number): RgbColor {
-  return {
-    r: Math.round(base.r + (overlay.r - base.r) * alpha),
-    g: Math.round(base.g + (overlay.g - base.g) * alpha),
-    b: Math.round(base.b + (overlay.b - base.b) * alpha),
-  }
-}
-
 /**
- * Build the detected-terminal background used by Codex-style user messages.
- * Light terminals receive a restrained DeepSeek-blue tint matching the Web
- * bubble role; dark terminals use Web's neutral raised surface. Without an
- * OSC 11 report, the caller gets an identity wrapper and the message remains
- * legible as a plain `›` record.
+ * Build the composer background from the Web theme's exact user-bubble tokens:
+ * `deepseek-50` in light mode and `neutral-bluish-850` in dark mode. The
+ * surface is enabled after OSC 11 confirms that background color is supported.
  * @param enabled - Whether ANSI color output is enabled.
- * @param scheme - Resolved light or dark appearance.
+ * @param scheme - Resolved terminal appearance.
  * @param background - Terminal default background reported through OSC 11.
  * @returns Background wrapper that resets only the background color group.
  */
-export function userMessageBackground(
+export function composerBackground(
   enabled: boolean,
   scheme: TerminalColorScheme,
   background: RgbColor | undefined,
 ): (text: string) => string {
   if (!enabled || background === undefined) return text => text
-  const overlay = scheme === 'light'
-    ? { r: 77, g: 107, b: 254 }
-    : { r: 255, g: 255, b: 255 }
-  const color = blendRgb(background, overlay, 0.08)
+  const color = scheme === 'light'
+    ? { r: 237, g: 243, b: 254 }
+    : { r: 44, g: 44, b: 46 }
   return text => `\x1b[48;2;${color.r};${color.g};${color.b}m${text}\x1b[49m`
 }
 

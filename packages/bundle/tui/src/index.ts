@@ -49,8 +49,8 @@ export type Config = TuiConfig
 
 /** The renderer's presentation schema, without its independently owned identity fields. */
 export const Config: z<Config> = z.object({
-  fullscreen: z.boolean().default(true),
-  mouse: z.boolean().default(true),
+  fullscreen: z.boolean().default(false),
+  mouse: z.boolean().default(false),
   showReasoning: z.boolean().default(true),
   maxToolOutputLines: z.number().step(1).min(1).default(6),
   maxDiffEditLength: z.number().step(1).min(1).default(1000),

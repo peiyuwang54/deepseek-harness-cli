@@ -7,11 +7,7 @@ buffer
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
   style 18-23 dim
-1| " Snapshot agent ready."
-  style 1-21 dim
-2| " main-session"
-  style 1-12 dim
-3-19| <blank>
+1-19| <blank>
 20| "                                                                                            "
 21| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
   style 1-1 fg=bright-magenta bold

@@ -1,102 +1,98 @@
-terminal 92x32 buffer=normal length=33 base=1 viewport=1
+terminal 92x32 buffer=normal length=32 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "Inspect session diagnostics — DSH snapshot"
-cursor visible column=3 viewportRow=27 bufferRow=28
+cursor visible column=3 viewportRow=26 bufferRow=26
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
   style 18-23 dim
-1| " Inspect session diagnostics"
-  style 1-27 dim
-2| " main-session"
-  style 1-12 dim
-3| <blank>
+1| <blank>
+2| "                                                                                            "
+3| " inspect this session                                                                       "
 4| "                                                                                            "
-5| " › inspect this session                                                                     "
-  style 1-1 fg=blue bold
-6| "                                                                                            "
-7| <blank>
-8| "• Session inspected.                                                                        "
+5| <blank>
+6| "• Session inspected.                                                                        "
   style 0-0 dim
-9| <blank>
-10| "╭─ Session status ────────────────────────────────────────────────────────────────────────╮"
+7| <blank>
+8| "╭─ Session status ────────────────────────────────────────────────────────────────────────╮"
   style 0-2 dim
   style 3-16 fg=bright-magenta bold
   style 17-90 dim
-11| "│  Session:    main-session                                                               │"
+9| "│  Session:    main-session                                                               │"
   style 0-0 dim
   style 3-12 dim
   style 90-90 dim
-12| "│  Title:      Inspect session diagnostics                                                │"
+10| "│  Title:      Inspect session diagnostics                                                │"
   style 0-0 dim
   style 3-12 dim
   style 90-90 dim
-13| "│  Directory:  /workspace/project                                                         │"
+11| "│  Directory:  /workspace/project                                                         │"
   style 0-0 dim
   style 3-12 dim
   style 90-90 dim
-14| "│  Model:      deepseek-official/deepseek-v4-pro (effort default; reasoning blocks shown) │"
+12| "│  Model:      deepseek-official/deepseek-v4-pro (effort default; reasoning blocks shown) │"
   style 0-0 dim
   style 3-12 dim
   style 49-88 dim
   style 90-90 dim
+13| "│                                                                                         │"
+  style 0-0 dim
+  style 90-90 dim
+14| "│  Agent:      idle · 8 events · 1 turn · 1 step · 1 tool call                            │"
+  style 0-0 dim
+  style 3-12 dim
+  style 90-90 dim
 15| "│                                                                                         │"
   style 0-0 dim
   style 90-90 dim
-16| "│  Agent:      idle · 8 events · 1 turn · 1 step · 1 tool call                            │"
+16| "│  Tokens:     1,250 input + 340 output                                                   │"
   style 0-0 dim
   style 3-12 dim
   style 90-90 dim
-17| "│                                                                                         │"
-  style 0-0 dim
-  style 90-90 dim
-18| "│  Tokens:     1,250 input + 340 output                                                   │"
-  style 0-0 dim
-  style 3-12 dim
-  style 90-90 dim
-19| "│  KV cache:   [███████████░░░░░] 67% hit (3,000 read + 250 write)                        │"
+17| "│  KV cache:   [███████████░░░░░] 67% hit (3,000 read + 250 write)                        │"
   style 0-0 dim
   style 3-12 dim
   style 15-15 dim
   style 16-26 fg=bright-magenta
   style 27-32 dim
   style 90-90 dim
-20| "│  Context:    [█████░░░░░░░░░░░] 33% used (42,000 / 128,000)                             │"
+18| "│  Context:    [█████░░░░░░░░░░░] 33% used (42,000 / 128,000)                             │"
   style 0-0 dim
   style 3-12 dim
   style 15-15 dim
   style 16-20 fg=bright-magenta
   style 21-32 dim
   style 90-90 dim
-21| "│                                                                                         │"
+19| "│                                                                                         │"
   style 0-0 dim
   style 90-90 dim
-22| "│  Created:    2026-07-22 09:10:11 UTC                                                    │"
-  style 0-0 dim
-  style 3-12 dim
-  style 90-90 dim
-23| "│  Active:     2026-07-22 09:10:11 UTC                                                    │"
+20| "│  Created:    2026-07-22 09:10:11 UTC                                                    │"
   style 0-0 dim
   style 3-12 dim
   style 90-90 dim
-24| "╰─────────────────────────────────────────────────────────────────────────────────────────╯"
+21| "│  Active:     2026-07-22 09:10:11 UTC                                                    │"
+  style 0-0 dim
+  style 3-12 dim
+  style 90-90 dim
+22| "╰─────────────────────────────────────────────────────────────────────────────────────────╯"
   style 0-90 dim
-25-26| <blank>
-27| "                                                                                            "
-28| " › │Describe a task, @ a file, or / for commands                                            "
+23-24| <blank>
+25| "                                                                                            "
+26| " › │Describe a task, @ a file, or / for commands                                            "
   style 1-1 fg=bright-magenta bold
   style 2-2 dim
   style 4-47 dim
-29| "                                                                                            "
-30| "  Enter send · Shift+Enter newline · / commands"
+27| "                                                                                            "
+28| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-31| "/workspace/project (tui-  ▸ idle  deepseek-v4-pro [alt+m]  ↑1.3k ↓340 cache 67%  33% context"
+29| "/workspace/project (tui-  ▸ idle  deepseek-v4-pro [alt+m]  ↑1.3k ↓340 cache 67%  33% context"
   style 0-17 fg=bright-magenta bold
   style 18-23 dim
   style 26-31 dim
   style 34-56 dim
   style 59-78 dim
   style 81-91 dim
-32| "                      Cache hit 67% | Input 4.5K tok · Output 340 tok"
+30| "                      Cache hit 67% | Input 4.5K tok · Output 340 tok"
   style 22-68 dim
+31| <blank>

@@ -1,35 +1,35 @@
-terminal 56x20 buffer=normal length=23 base=3 viewport=3
+terminal 56x20 buffer=normal length=21 base=1 viewport=1
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor hidden column=56 viewportRow=19 bufferRow=22
+cursor hidden column=56 viewportRow=19 bufferRow=20
 viewport
-3-4| <blank>
-5| "  Which advanced TUI states belong in the required      "
-6| "  matrix?                                               "
-7| "                                                        "
-8| "  Review the complete plan including every required     "
-9| "  checkpoint including every required checkpoint        "
-10| "  including every required checkpoint including every   "
-11| "  required checkpoint including every required          "
-12| "  checkpoint including every required checkpoint        "
-13| "  including every required checkpoint including every   "
-14| "  required checkpoint including every required          "
-15| "  … lines 1-10/13 • PgUp/PgDn                           "
+1-2| <blank>
+3| "  Which advanced TUI states belong in the required      "
+4| "  matrix?                                               "
+5| "                                                        "
+6| "  Review the complete plan including every required     "
+7| "  checkpoint including every required checkpoint        "
+8| "  including every required checkpoint including every   "
+9| "  required checkpoint including every required          "
+10| "  checkpoint including every required checkpoint        "
+11| "  including every required checkpoint including every   "
+12| "  required checkpoint including every required          "
+13| "  … lines 1-10/13 • PgUp/PgDn                           "
   style 2-28 dim
-16| "   › 1. [ ] Code Mode                                   "
+14| "   › 1. [ ] Code Mode                                   "
   style 2-20 fg=bright-magenta bold
-17| "            run_code programs and captured output with  "
+15| "            run_code programs and captured output with  "
   style 12-53 dim
-18| "  … lines 1-2/12 • PgUp/PgDn                            "
+16| "  … lines 1-2/12 • PgUp/PgDn                            "
   style 2-27 dim
-19| "  ↓ 3 more                                              "
+17| "  ↓ 3 more                                              "
   style 2-9 dim
-20| "  ↑↓ Tab Sp ↵Esc                                        "
+18| "  ↑↓ Tab Sp ↵Esc                                        "
   style 2-15 dim
-21| "› Describe a task, @ a file, or / for commands        "
+19| "› Describe a task, @ a file, or / for commands        "
   style 0-0 fg=bright-magenta bold
   style 1-45 dim
-22| "/w  ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+20| "/w  ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-1 fg=bright-magenta bold
   style 4-9 dim
   style 12-36 dim

@@ -1,36 +1,36 @@
-terminal 56x20 buffer=normal length=23 base=3 viewport=3
+terminal 56x20 buffer=normal length=21 base=1 viewport=1
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor hidden column=56 viewportRow=16 bufferRow=19
+cursor hidden column=56 viewportRow=16 bufferRow=17
 viewport
-3-4| <blank>
-5| "  Review the complete plan including every required     "
-6| "  checkpoint including every required checkpoint        "
-7| "  including every required checkpoint including every   "
-8| "  required checkpoint including every required          "
-9| "  checkpoint including every required checkpoint        "
-10| "  including every required checkpoint including every   "
-11| "  required checkpoint including every required          "
-12| "  checkpoint including every required checkpoint        "
-13| "  including every required checkpoint including every   "
-14| "  … lines 4-12/13 • PgUp/PgDn                           "
+1-2| <blank>
+3| "  Review the complete plan including every required     "
+4| "  checkpoint including every required checkpoint        "
+5| "  including every required checkpoint including every   "
+6| "  required checkpoint including every required          "
+7| "  checkpoint including every required checkpoint        "
+8| "  including every required checkpoint including every   "
+9| "  required checkpoint including every required          "
+10| "  checkpoint including every required checkpoint        "
+11| "  including every required checkpoint including every   "
+12| "  … lines 4-12/13 • PgUp/PgDn                           "
   style 2-28 dim
-15| "            detail with complete wrapped detail         "
+13| "            detail with complete wrapped detail         "
   style 12-46 dim
-16| "            visible tail                                "
+14| "            visible tail                                "
   style 12-23 dim
-17| "  … lines 11-12/12 • PgUp/PgDn                          "
+15| "  … lines 11-12/12 • PgUp/PgDn                          "
   style 2-29 dim
-18| "  ↓ 3 more                                              "
+16| "  ↓ 3 more                                              "
   style 2-9 dim
-19| "  Error: Select at least one option, or press Tab for…  "
+17| "  Error: Select at least one option, or press Tab for…  "
   style 2-52 fg=red
-20| "  ↑↓ Tab Sp ↵Esc                                        "
+18| "  ↑↓ Tab Sp ↵Esc                                        "
   style 2-15 dim
-21| "› Describe a task, @ a file, or / for commands        "
+19| "› Describe a task, @ a file, or / for commands        "
   style 0-0 fg=bright-magenta bold
   style 1-45 dim
-22| "/w  ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+20| "/w  ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-1 fg=bright-magenta bold
   style 4-9 dim
   style 12-36 dim

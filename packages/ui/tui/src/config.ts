@@ -32,7 +32,7 @@ export interface TuiThemeConfig {
 export interface TuiConfig {
   /** Render in the terminal's alternate screen and restore the prior screen on exit. */
   fullscreen?: boolean
-  /** Enable wheel and click input while full-screen mode is active. */
+  /** Capture wheel and click input; disabled by default so the terminal owns text selection. */
   mouse?: boolean
   /** Render model reasoning blocks. */
   showReasoning?: boolean
@@ -73,8 +73,8 @@ export interface TuiConfig {
 }
 
 const showReasoningSchema = z.boolean().default(true)
-const fullscreenSchema = z.boolean().default(true)
-const mouseSchema = z.boolean().default(true)
+const fullscreenSchema = z.boolean().default(false)
+const mouseSchema = z.boolean().default(false)
 const maxToolOutputLinesSchema = z.number().step(1).min(1).default(6)
 const maxDiffEditLengthSchema = z.number().step(1).min(1).default(1000)
 const maxQuestionOptionsSchema = z.number().step(1).min(1).default(8)
@@ -135,8 +135,6 @@ export const TuiConfigSchema: z<TuiConfig> = z.object(tuiConfigSchemaFields)
 
 /** Serializable plugin configuration. */
 export interface Config extends TuiConfig {
-  /** Banner subtitle line. When absent, the banner has no subtitle and sweeps in on start. */
-  welcome?: string
   /** Exact shared agent/session identity driven by this terminal. Defaults to `main`. */
   sessionId?: string
   /**
@@ -149,7 +147,6 @@ export interface Config extends TuiConfig {
 
 /** Schemastery schema for the full plugin configuration. */
 export const Config: z<Config> = z.object({
-  welcome: z.string(),
   sessionId: z.string().default('main'),
   initialSkill: z.string(),
   fullscreen: tuiConfigSchemaFields.fullscreen,
@@ -216,8 +213,8 @@ export interface ResolvedTuiConfig {
  */
 export function resolveTuiConfig(config: TuiConfig | undefined): ResolvedTuiConfig {
   return {
-    fullscreen: config?.fullscreen ?? true,
-    mouse: config?.mouse ?? true,
+    fullscreen: config?.fullscreen ?? false,
+    mouse: config?.mouse ?? false,
     showReasoning: config?.showReasoning ?? true,
     maxToolOutputLines: config?.maxToolOutputLines ?? 6,
     maxDiffEditLength: config?.maxDiffEditLength ?? 1000,

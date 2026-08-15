@@ -8,11 +8,11 @@ DeepSeek Harness agent（智能体）的交互式终端入口，基于 [`@earend
 
 支持 macOS、Linux 和 Windows 上的交互式终端。Windows 使用 pi-tui 原生控制台 VT 输入处理与 ConPTY 进程验证。
 
-Renderer 默认使用 alternate screen，因此对话、overlay 和不断扩展的多行编辑器会占据一个完整终端 viewport，退出时恢复此前的 shell 画面。普通内建选择器会附着在 composer：使用统一背景表面的 composer 保持可见，命令对应的面板紧贴在它下方展开，状态行继续位于面板之下，而不是让模态框盖住对话中央。Slash 命令、Skill、工作区文件和会话引用补全也使用同一布局：composer 内容结束后，候选列表从后续行开始渲染，不会进入输入背景表面。根 `/` catalog 只保留普通命令；具体 Skill 行只会在明确输入 `/skill:` 或打开 `/skills` 浏览器后出现。审批请求和结构化用户问题会继续使用模态样式，因为它们会中断执行并要求明确回答；`/resume` 仍保留专用的全 viewport 浏览器。获得焦点的编辑器会保留 pi-tui 的硬件 cursor marker 作为终端 IME 锚点，并每隔 530 ms 交替渲染一个单字符软件光标，因此即使终端配置禁用或忽略光标闪烁，输入焦点仍清晰可见。点击或按键会重新开始可见阶段。Shift/Alt+Enter 插入换行，bracketed paste 保留多行内容，任意光标位置仍可使用 `@` 补全。Page Up/Down 或鼠标滚轮滚动 transcript；到达最新页后会恢复跟随实时输出。应用鼠标跟踪也会让模型徽标和 footer 详情图标可点击，并允许滚轮在已打开的选择器或补全列表中导航。如需框选文本复制，请按住终端的选择修饰键（通常是 Shift）。设置 `fullscreen: false` 会恢复 inline scrollback 渲染，并把鼠标处理交还终端。
+Renderer 默认使用终端原生 inline scrollback。鼠标滚轮只滚动不断增长的聊天记录，鼠标拖选由终端直接处理，而键盘 Up／Down 只负责切换编辑器输入历史。普通内建选择器会附着在 composer：使用统一背景表面的 composer 保持可见，命令对应的面板紧贴在它下方展开，状态行继续位于面板之下，而不是让模态框盖住对话中央。Slash 命令、Skill、工作区文件和会话引用补全也使用同一布局：composer 内容结束后，候选列表从后续行开始渲染，不会进入输入背景表面。根 `/` catalog 只保留普通命令；具体 Skill 行只会在明确输入 `/skill:` 或打开 `/skills` 浏览器后出现。审批请求和结构化用户问题会继续使用模态样式，因为它们会中断执行并要求明确回答；`/resume` 仍保留专用的全 viewport 浏览器。获得焦点的编辑器会保留 pi-tui 的硬件 cursor marker 作为终端 IME 锚点，并每隔 530 ms 交替渲染一个单字符软件光标，因此即使终端配置禁用或忽略光标闪烁，输入焦点仍清晰可见。按键会重新开始可见阶段。Shift/Alt+Enter 插入换行，bracketed paste 保留多行内容，任意光标位置仍可使用 `@` 补全。设置 `fullscreen: true` 后会启用有界 alternate-screen transcript，此时 Page Up／Page Down 负责滚动，Ctrl+End 恢复跟随尾部；再设置 `mouse: true` 才会接管点击与滚轮，用于模型和 footer 操作、选择器、补全及 transcript 滚动，此时文本框选通常需要按住 Shift。
 
 全新的空会话会打开一张自适应、借鉴 Claude Code 编排方式的双栏欢迎卡，但不会复制 Claude 的产品文案或资产。标题显示基础包版本号；左栏显示欢迎语、由仓库第一方 DeepSeek SVG 鲸鱼标志派生的 Braille 字符栅格，并投影已组合的 agent preset、所选模型、有效 permission preset 或 approval policy 以及 workspace。鲸鱼继承终端前景色，因此在浅色终端中呈黑色，在深色终端中仍然可见。右栏列出真实存在的 Harness 入口，并通过可选 session-query 服务显示最多两个最新会话。较窄终端使用缩小鲸鱼、紧凑状态行和操作行。欢迎卡与输入框之间只保留两行安静留白，不再用空 transcript 把输入框推到屏幕底部。第一个 turn 开始后，欢迎卡会自动收缩为普通 transcript header。最近会话行只提供信息而不直接点击；搜索与校验仍由 `/resume` 持有。
 
-提示词区域是无边框多行 composer，其低对比背景色和水平留白与每条已提交的用户消息完全一致。操作提示会根据 idle／running 状态切换发送或 steer／cancel 文案，第一条底部状态栏则把工作区、分支、紧凑 token 用量、agent 状态、模型和上下文压力与可编辑文本分开。第二条居中统计栏会复用 Web 的全日志 `sessionStats` 投影与 token 计量，显示轮次／步骤、LLM 与工具总耗时、平均 TTFT、解码吞吐、缓存命中率以及计费输入／输出 token。缺失事实会整组省略而不是伪造为零；窄终端会在单行内省略，不会折行挤压编辑器。这些标签投影自当前服务和会话事件，不是另一套 UI 配置真相源。
+提示词区域是无边框多行 composer，其水平留白和背景与每张已提交的用户消息卡片保持一致。提交后的提示词会继续显示在 transcript 中，但不带 `You:` 或提示符标签，同时也保留在持久 Session 和编辑器历史中。操作提示会根据 idle／running 状态切换发送或 steer／cancel 文案，第一条底部状态栏则把工作区、分支、紧凑 token 用量、agent 状态、模型和上下文压力与可编辑文本分开。第二条居中统计栏会复用 Web 的全日志 `sessionStats` 投影与 token 计量，显示轮次／步骤、LLM 与工具总耗时、平均 TTFT、解码吞吐、缓存命中率以及计费输入／输出 token。缺失事实会整组省略而不是伪造为零；窄终端会在单行内省略，不会折行挤压编辑器。这些标签投影自当前服务和会话事件，不是另一套 UI 配置真相源。
 
 受 Codex 启发的开发者命令是 Harness 服务之上的终端原生适配器。`/skills` 浏览当前 Agent 作用域中面向用户可调用的 catalog；`/keymap` 与 `/vim` 在默认编辑和 Vim Insert／Normal 模式间切换 composer；`/fast` 仅选择元数据真正标识为 flash、fast、turbo 或 lite 的已公布路由，没有这类路由时不会假称加速。`/experimental` 统一启动现有的 fast、Vim、reasoning 可见性与 Loader reload action。`/ide` 报告检测到的终端宿主，并提供 `@` 文件引用或 workspace handoff；没有 IDE bridge 时仍无法捕获已打开文件与选区。`/approve` 会允许活动请求一次，或为下一个与最新交互拒绝在工具和理由上完全匹配的请求预批准一次；如果下一个请求不匹配，它会消耗该授权但不会获得批准，命令也绝不改变 permission preset。
 
@@ -34,7 +34,7 @@ Markdown 响应支持标题、强调、链接、嵌套列表与任务列表、�
 
 挂载可选的 `ctx.sessionReferenceResolver` 后，同一个 `@` 菜单还会提供仅含元数据的会话候选项，插入 `@[label](dsh-session:<payload>)`，并在分派前准备所选快照。会话引用保持结构化，因为模型没有类似文件系统的工具可在稍后检索会话快照。准备期间会禁止重复提交，并在失败时恢复编辑器输入。准备完成后，TUI 会注入解析后的上下文，并根据当前状态选择 `agent.steer()` 或 `agent.followup()`；不存在单独的 prompt-admission hook。
 
-Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候调用 `agent.followup()`。提交行以斜杠开头时会改为进入 `ctx.commands`：已知命令直接执行，未知命令产生警告，两条路径都不会自动到达模型。命令生产方可以显式调度 agent 工作；[`dsh-plan-mode`](../../plan/plan-mode/README.md#model-and-human-interactions) 使用该契约实现 `/plan [message]`。TUI 将 `/help`、`/model`、`/fast`、`/skills`、`/keymap`、`/vim`、`/experimental`、`/ide`、`/mention`、`/approve`、`/init`、`/review`、`/new`、`/clear`、`/copy`、`/details`、`/palette`、`/reload`、`/resume`、`/rename`、`/language`、`/settings`、`/theme`、`/workspace`、`/status`、`/exit` 和 `/quit` 注册为 agent 作用域定义；其他所有有效命令都会动态加入自动补全与 `/help`，`/skill:` 补全也相同。共享 permission service 会贡献 `/permissions [preset]`。不带参数的 `/permissions` 会打开一个附着 composer 的选择器，其选项来自服务当前的 preset 表；选中条目会提交与 Web 选择器相同的带参命令，而 `/permissions <preset>` 仍是直接切换路径。全访问启动由随附应用的 `dsh tui --yolo` 参数持有，因此会话命令 catalog 有意不包含 `/yolo`。欢迎卡片与 footer 会显示配置的展示名称，而不是存储 key。运行时 composer 操作提示显示 `Enter steer · Esc cancel`；Steering 消息等待到达模型期间会在 footer 中显示排队数量，并随每条消息排空而清除。在实时独立压缩（compaction）标记对处于开启状态期间，composer 上方会显示固定的 `Context being compacted <elapsed>` 状态行，终端进度状态保持活跃直至标记对闭合。该状态绝不会从日志中重建；闭合失败时会向 transcript 添加 `Compaction failed: <error>`，而恢复会话时遇到的陈旧未匹配 start 绝不会激活该指示器。Ctrl+C 或 Escape 会取消运行中的轮次。工具卡片与注入上下文卡片都把长主体折叠为可配置的头尾预览；Ctrl+O 让工具卡片在折叠预览、完整输出、隐藏三种状态间循环——隐藏阶段把工具卡片从 transcript 中完全去掉，而上下文卡片保持预览，因为注入的指令不属于工具流量。隐藏阶段还会把每个轮次的 assistant 步骤折叠为一条消息：第一个有可见文本或 reasoning 的步骤使用该轮次开头的 `•`，之后的步骤渲染为对齐续段，没有可见正文的步骤则不渲染任何内容；离开隐藏阶段会恢复每步各自的项目符号。注入上下文卡片把消息渲染为文本，并去掉生产方的外层提醒外框，因此折叠与去外框都不依赖载荷的语法。Ctrl+R 切换 reasoning，Ctrl+L 重绘，Ctrl+D 在空闲时退出。`/details` 命名的正是这两个快捷键循环的同一份状态：不带参数时打开一个附着 composer 的键盘开关，每个维度一个条目——`Tool cards` 与 `Reasoning`——显示实时值，Tab 循环高亮条目并立即应用变更（编辑器上方的 transcript 即是预览），Enter、Esc 或 Ctrl+C 关闭；`/details collapsed|expanded|hidden` 让工具卡片直接跳到该阶段，`/details reasoning [on|off]` 设置——或裸 `reasoning` 切换——reasoning 块显示；参数可在一次调用中组合，未知参数会以用法行报错，组合调用先应用 reasoning，使其 transcript 重建不会丢掉卡片通知。
+Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候调用 `agent.followup()`。提交行以斜杠开头时会改为进入 `ctx.commands`：已知命令直接执行，未知命令产生警告，两条路径都不会自动到达模型。命令生产方可以显式调度 agent 工作；[`dsh-plan-mode`](../../plan/plan-mode/README.md#model-and-human-interactions) 使用该契约实现 `/plan [message]`。TUI 将 `/help`、`/model`、`/fast`、`/skills`、`/keymap`、`/vim`、`/experimental`、`/ide`、`/mention`、`/approve`、`/init`、`/review`、`/new`、`/clear`、`/copy`、`/details`、`/palette`、`/reload`、`/resume`、`/rename`、`/language`、`/settings`、`/theme`、`/workspace`、`/status`、`/exit` 和 `/quit` 注册为 agent 作用域定义；其他所有有效命令都会动态加入自动补全与 `/help`，`/skill:` 补全也相同。共享 permission service 会贡献 `/permissions [preset]`。不带参数的 `/permissions` 会打开一个附着 composer 的选择器，其选项来自服务当前的 preset 表；选中条目会提交与 Web 选择器相同的带参命令，而 `/permissions <preset>` 仍是直接切换路径。全访问启动由随附应用的 `dsh tui --yolo` 参数持有，因此会话命令 catalog 有意不包含 `/yolo`。欢迎卡片与 footer 会显示配置的展示名称，而不是存储 key。运行时 composer 操作提示显示 `Enter steer · Esc cancel`；Steering 消息等待到达模型期间会在 footer 中显示排队数量，并随每条消息排空而清除。在实时独立压缩（compaction）标记对处于开启状态期间，composer 上方会显示固定的 `Context being compacted <elapsed>` 状态行，终端进度状态保持活跃直至标记对闭合。该状态绝不会从日志中重建；闭合失败时会向 transcript 添加 `Compaction failed: <error>`，而恢复会话时遇到的陈旧未匹配 start 绝不会激活该指示器。Ctrl+C 或 Escape 会取消运行中的轮次。工具卡片保留可配置的折叠头尾预览，注入上下文卡片在紧凑状态下则渲染零行。Ctrl+O 在折叠、展开、隐藏三种详情状态之间循环；只有展开状态会显示注入上下文，并在去掉生产方 reminder 外框后呈现来源标签与完整文本。隐藏阶段还会把每个轮次的 assistant 步骤折叠为一条消息：第一个有可见文本或 reasoning 的步骤使用该轮次开头的 `•`，之后的步骤渲染为对齐续段，没有可见正文的步骤则不渲染任何内容；离开隐藏阶段会恢复每步各自的项目符号。Ctrl+R 切换 reasoning，Ctrl+L 重绘，Ctrl+D 在空闲时退出。`/details` 命名的正是这两个快捷键循环的同一份状态：不带参数时打开一个附着 composer 的键盘开关，每个维度一个条目——`Tool cards` 与 `Reasoning`——显示实时值，Tab 循环高亮条目并立即应用变更（编辑器上方的 transcript 即是预览），Enter、Esc 或 Ctrl+C 关闭；`/details collapsed|expanded|hidden` 让工具卡片直接跳到该阶段，`/details reasoning [on|off]` 设置——或裸 `reasoning` 切换——reasoning 块显示；参数可在一次调用中组合，未知参数会以用法行报错，组合调用先应用 reasoning，使其 transcript 重建不会丢掉卡片通知。
 
 `/copy` 通过 OSC 52 将 transcript 中最新可见的 assistant 回复作为原始 Markdown 写入剪贴板，支持 tmux 透传，并在编码前拒绝超过 100,000 个 UTF-8 字节的回复。`/mention` 会插入 `@` 并打开工作区补全；`/mention <path>` 直接插入该路径。`/rename` 会在 composer 中恢复 `/rename ` 以便继续输入标题，而 `/rename <title>` 会通过可选的 session-title service 记录规范化的用户标题，并立即更新终端标题。
 
@@ -74,19 +74,18 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 嵌入方可通过设置 direct renderer 的 `initialSkill` 配置，或在启动上下文上提供 `INITIAL_SKILL_KEY` 来播种会话。聊天就绪后，TUI 会像用户手动键入 `/skill:<name>` 一样自动调用该 skill；若要获得仅限全新会话的行为，嵌入方必须在恢复会话时省略它。随附的 `dsh tui` 启动器不设置初始 skill；未知名称会以通知形式报告。
 
-Reasoning 首次渲染时默认在 `Think` 标题下显示。注入上下文卡片只显示一行 `N lines hidden` 详情入口，不再显示头尾预览。点击 footer 的 `▸` 图标会同时展开上下文和工具卡片，并把图标切换为 `▾`；再次点击会恢复紧凑视图。Ctrl+O、Ctrl+R 和 `/details` 仍是对应的键盘与命令入口。
+Reasoning 首次渲染时默认在 `Think` 标题下显示。提交的用户卡片保留在紧凑 transcript 中，注入上下文与 Session 元数据则不占用任何行。展开详情后才会显示上下文来源和完整文本，并移除生产方的 reminder 外框。设置 `mouse: true` 时，footer 的 `▸` 图标可点击并同时展开上下文与工具卡片；Ctrl+O、Ctrl+R 和 `/details` 仍是对应的键盘与命令入口。
 
 ## 配置
 
-`TuiConfig` 是随附 bundle 中 `tui-runner` 行和 direct renderer 共同接受的展示配置 schema。Direct `@deepseek-ai/dsh-tui` 插件的完整 `Config` 另外包含 `welcome`、`sessionId` 与 `initialSkill`；bundle runner 刻意只公开 `TuiConfig`，其会话身份由 `tuiStartup` 持有，而随附启动器不提供初始 skill。
+`TuiConfig` 是随附 bundle 中 `tui-runner` 行和 direct renderer 共同接受的展示配置 schema。Direct `@deepseek-ai/dsh-tui` 插件的完整 `Config` 另外包含 `sessionId` 与 `initialSkill`；bundle runner 刻意只公开 `TuiConfig`，其会话身份由 `tuiStartup` 持有，而随附启动器不提供初始 skill。
 
 | 键 | 作用域 | 默认值 | 含义 |
 |---|---|---|---|
-| `welcome` | 仅 direct renderer | 未设置 | 会话出现已记录标题前使用的 banner 副标题；未设置时，banner 进入时没有副标题 |
 | `sessionId` | 仅 direct renderer | `main` | 由终端驱动的精确共享 agent／会话身份 |
 | `initialSkill` | 仅 direct renderer | 未设置 | 聊天就绪后自动调用的 skill |
-| `fullscreen` | `TuiConfig` | `true` | 使用 alternate screen，退出时恢复之前的 shell 画面 |
-| `mouse` | `TuiConfig` | `true` | 在全屏模式中启用 transcript／选择器滚轮输入和模型徽标点击 |
+| `fullscreen` | `TuiConfig` | `false` | 使用有界 alternate screen，而不是终端原生 scrollback |
+| `mouse` | `TuiConfig` | `false` | 在全屏模式中接管滚轮和点击；关闭时由终端直接处理拖选 |
 | `showReasoning` | `TuiConfig` | `true` | 默认在 `Think` 标题下渲染 reasoning 块；可通过详情切换 |
 | `maxToolOutputLines` | `TuiConfig` | `6` | 折叠工具卡片的头尾预览所保留的输出行数 |
 | `maxDiffEditLength` | `TuiConfig` | `1000` | 回退到整侧展示前，精确 diff 最多探索的新增与删除行总数 |
@@ -122,14 +121,13 @@ Reasoning 首次渲染时默认在 `Think` 标题下显示。注入上下文卡�
       color: false
 ```
 
-Direct renderer 组合还可以选择会话身份与启动内容：
+Direct renderer 组合还可以选择会话身份与启动 Skill：
 
 ```yaml
 # Direct renderer: full Config extends TuiConfig.
 - id: terminal
   name: '@deepseek-ai/dsh-tui'
   config:
-    welcome: 'Coding agent ready.'
     sessionId: main-session-123
     initialSkill: onboarding
     theme:
@@ -142,11 +140,11 @@ Direct renderer 组合还可以选择会话身份与启动内容：
 
 ## 颜色
 
-TUI 发出的所有通用 SGR 代码都集中在 `components/theme.ts` 的 `paletteSpec` 表中；`createPalette` 从该表派生包装层，`/palette` 则打印该表。该表只包含标准 16 色 ANSI 前景色和 SGR 属性，由终端映射到当前配色方案。启动 banner 渐变、官方标志的精确 `#4D6BFE` 色值，以及根据终端背景推导的低对比用户消息表面，是有意保留的真彩色例外。正文使用终端默认前景色，而非固定色调。
+TUI 发出的所有通用 SGR 代码都集中在 `components/theme.ts` 的 `paletteSpec` 表中；`createPalette` 从该表派生包装层，`/palette` 则打印该表。该表只包含标准 16 色 ANSI 前景色和 SGR 属性，由终端映射到当前配色方案。启动 banner 渐变、官方标志的精确 `#4D6BFE` 色值，以及官网 composer 表面，是有意保留的真彩色例外。正文使用终端默认前景色，而非固定色调。
 
 每种视觉语义只对应一个角色：`dim` 是唯一的弱化色调，`accent` 是唯一的交互强调色，`brand` 是 DeepSeek 标志的标准 ANSI 回退色，`success` 和 `error` 还分别充当 diff 的新增行与删除行。颜色和属性分属不同类型，因此 `bold(accent(x))` 可以通过编译，`accent(error(x))` 则不行——SGR 没有颜色栈；在一种颜色内嵌套另一种颜色时，内层颜色闭合时会静默丢弃外层颜色。各属性占用彼此独立的 SGR 组，可以按任一顺序与任何颜色组合。运行 `/palette` 可查看每个角色在你的终端上的实际渲染效果及其 SGR 码对。
 
-用户提示词渲染为带留白的 `›` 记录。初始 composer 与每条已提交记录共用同一背景表面：终端通过 OSC 11 报告背景色时，两者都会使用从 Web 用户气泡推导的低对比色；未报告时，两者保留完全一致的间距，但不会臆造背景色。Assistant 回复不再显示角色标题，而使用暗色 `•` 与对齐续行；可见 reasoning 以 `Think` 开头。工具状态仍由彩色带下划线的标题字形与标题表达，工具正文与注入上下文统一使用一种暗色。Diff 卡片会为精确新增 `+` 行和删除 `-` 行着色并计数，未变更上下文保持暗色且不计数；超出 `maxDiffEditLength` 时使用已记录的整侧回退。问题面板以粗体强调色突出活跃行，选择器使用反色。除用户消息与 composer 的背景表面外，这些效果都只作用于前景色。设置 `theme.color: false` 会移除样式和背景表面。
+用户提示词会渲染为带留白且无标签的卡片。这些卡片和当前 composer 在浅色模式中精确使用 Web 主题的 `deepseek-50`（`#EDF3FE`）用户气泡色，在暗色模式中使用 `neutral-bluish-850`（`#2C2C2E`）；`/theme light|dark|system` 会同时切换两类表面。Assistant 回复不再显示角色标题，而使用暗色 `•` 与对齐续行；可见 reasoning 以 `Think` 开头。工具状态仍由彩色带下划线的标题字形与标题表达，工具正文与展开后的注入上下文统一使用一种暗色。Diff 卡片会为精确新增 `+` 行和删除 `-` 行着色并计数，未变更上下文保持暗色且不计数；超出 `maxDiffEditLength` 时使用已记录的整侧回退。问题面板以粗体强调色突出活跃行，选择器使用反色。除用户卡片与 composer 的背景表面外，这些效果都只作用于前景色。设置 `theme.color: false` 会移除样式和背景表面。
 
 ## 模型体验
 

@@ -1,77 +1,67 @@
-terminal 100x34 buffer=normal length=41 base=7 viewport=7
+terminal 100x34 buffer=normal length=36 base=2 viewport=2
 lifecycle started=1 stopped=0 progress=inactive
 title "Unsafe terminal title \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m"
-cursor hidden column=57 viewportRow=33 bufferRow=40
+cursor hidden column=57 viewportRow=33 bufferRow=35
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
   style 18-23 dim
-1| " Unsafe welcome \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m"
-  style 1-60 dim
-2| " main-session"
-  style 1-12 dim
-3| <blank>
+1| <blank>
+2| "                                                                                                    "
+3| " Unsafe user \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                          "
 4| "                                                                                                    "
-5| " › Unsafe user \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                        "
-  style 1-1 fg=blue bold
-6| "                                                                                                    "
-7| <blank>
-8| "• Think                                                                                             "
+5| <blank>
+6| "• Think                                                                                             "
   style 0-0 dim
   style 2-6 dim italic
-9| "                                                                                                    "
-10| "  Unsafe reasoning \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                    "
+7| "                                                                                                    "
+8| "  Unsafe reasoning \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                    "
   style 2-63 dim italic
-11| "• Unsafe assistant \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                    "
+9| "• Unsafe assistant \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                    "
   style 0-0 dim
-12-13| <blank>
-14| "● Tool / unsafe / Unsafe description \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m"
+10-11| <blank>
+12| "● Tool / unsafe / Unsafe description \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m"
   style 0-81 fg=green
-15| "$ Unsafe title \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                        "
+13| "$ Unsafe title \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                        "
   style 0-59 dim
-16| "/unsafe/\\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                               "
+14| "/unsafe/\\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                               "
   style 0-52 dim
-17| "Unsafe output \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                         "
+15| "Unsafe output \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                         "
   style 0-58 dim
-18| "[signal SIG\\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m]                                           "
+16| "[signal SIG\\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m]                                           "
   style 0-56 fg=red
-19| "Model wait 0.0s · Completed 2026-07-21 15:00:00                                                     "
+17| "Model wait 0.0s · Completed 2026-07-21 15:00:00                                                     "
   style 0-46 dim
-20| <blank>
-21| "Context · unsafe-\\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m"
-  style 0-61 dim
-22| "▸ 1 line hidden · click details or Ctrl+O to expand                                                 "
-  style 0-50 dim
-23| <blank>
-24| "Unsafe turn error \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                     "
+18| <blank>
+19| "Unsafe turn error \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                     "
   style 0-62 fg=red
-25-27| <blank>
-28| "Plan"
+20-22| <blank>
+23| "Plan"
   style 0-3 fg=bright-magenta bold
-29| "  ● Unsafe todo \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m"
+24| "  ● Unsafe todo \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m"
   style 2-2 fg=yellow
-30| "                                                                                                    "
-31| "  Question 1/1 (1 unanswered) · Unsafe header \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m         "
+25| "                                                                                                    "
+26| "  Question 1/1 (1 unanswered) · Unsafe header \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m         "
   style 2-90 dim
-32| "  Unsafe question \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                     "
-33| "                                                                                                    "
-34| "   › 1. Unsafe option \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                 "
+27| "  Unsafe question \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                     "
+28| "                                                                                                    "
+29| "   › 1. Unsafe option \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                 "
   style 2-66 fg=bright-magenta bold
-35| "        Unsafe detail \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                 "
+30| "        Unsafe detail \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                 "
   style 8-66 dim
-36| "  Tab custom answer • Enter submit • Esc interrupt                                                  "
+31| "  Tab custom answer • Enter submit • Esc interrupt                                                  "
   style 2-49 dim
-37| "                                                                                                    "
-38| "› Describe a task, @ a file, or / for commands                                                    "
+32| "                                                                                                    "
+33| "› Describe a task, @ a file, or / for commands                                                    "
   style 0-0 fg=bright-magenta bold
   style 1-45 dim
-39| "/workspace/project (tui-staging)                ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+34| "/workspace/project (tui-staging)                ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 48-53 dim
   style 56-80 dim
   style 83-87 dim
   style 90-99 dim
-40| "                                          1 turn · 1 step"
+35| "                                          1 turn · 1 step"
   style 42-56 dim

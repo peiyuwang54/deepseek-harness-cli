@@ -1,41 +1,37 @@
 terminal 96x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=3 viewportRow=16 bufferRow=16
+cursor visible column=3 viewportRow=14 bufferRow=14
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
   style 18-23 dim
-1| " Snapshot agent ready."
-  style 1-21 dim
-2| " main-session"
-  style 1-12 dim
-3-4| <blank>
-5| "○ Tool / workflow"
+1-2| <blank>
+3| "○ Tool / workflow"
   style 0-16 fg=yellow
-6| "workflow: tui-matrix                                                                            "
-7| "phase('Inspect')                                                                                "
-8| "const reports = await parallel([                                                                "
-9| "… +2 lines (Ctrl+O to expand)                                                                   "
+4| "workflow: tui-matrix                                                                            "
+5| "phase('Inspect')                                                                                "
+6| "const reports = await parallel([                                                                "
+7| "… +2 lines (Ctrl+O to expand)                                                                   "
   style 0-28 dim
-10| "])                                                                                              "
-11| "phase('Verify')                                                                                 "
-12| "return { reports, verdict: 'covered' }                                                          "
-13-14| <blank>
-15| "                                                                                                "
-16| " › │Describe a task, @ a file, or / for commands                                                "
+8| "])                                                                                              "
+9| "phase('Verify')                                                                                 "
+10| "return { reports, verdict: 'covered' }                                                          "
+11-12| <blank>
+13| "                                                                                                "
+14| " › │Describe a task, @ a file, or / for commands                                                "
   style 1-1 fg=bright-magenta bold
   style 2-2 dim
   style 4-47 dim
-17| "                                                                                                "
-18| "  Enter send · Shift+Enter newline · / commands"
+15| "                                                                                                "
+16| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-19| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+17| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 44-49 dim
   style 52-76 dim
   style 79-83 dim
   style 86-95 dim
-20-35| <blank>
+18-35| <blank>

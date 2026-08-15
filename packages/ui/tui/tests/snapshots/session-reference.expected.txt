@@ -1,40 +1,36 @@
-terminal 96x24 buffer=alternate length=24 base=0 viewport=0
+terminal 96x24 buffer=normal length=24 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH session reference"
-cursor visible column=3 viewportRow=20 bufferRow=20
+cursor visible column=3 viewportRow=13 bufferRow=13
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
   style 18-23 dim
-1| " Session reference snapshot."
-  style 1-27 dim
-2| " target-session"
-  style 1-14 dim
-3| <blank>
-4| "Referenced sessions · Source session (source-session)                                           "
+1| <blank>
+2| "Referenced sessions · Source session (source-session)                                           "
   style 0-52 dim
-5| <blank>
+3| <blank>
+4| "                                                                                                "
+5| " Use @Source session                                                                            "
 6| "                                                                                                "
-7| " › Use @Source session                                                                          "
-  style 1-1 fg=blue bold
-8| "                                                                                                "
-9| <blank>
-10| "• Combined reference request accepted.                                                          "
+7| <blank>
+8| "• Combined reference request accepted.                                                          "
   style 0-0 dim
-11| "Model wait 0.0s · Completed 2026-07-21 12:30:00                                                 "
+9| "Model wait 0.0s · Completed 2026-07-21 12:30:00                                                 "
   style 0-46 dim
-12-18| <blank>
-19| "                                                                                                "
-20| " › │Describe a task, @ a file, or / for commands                                                "
+10-11| <blank>
+12| "                                                                                                "
+13| " › │Describe a task, @ a file, or / for commands                                                "
   style 1-1 fg=bright-magenta bold
   style 2-2 dim
   style 4-47 dim
-21| "                                                                                                "
-22| "  Enter send · Shift+Enter newline · / commands"
+14| "                                                                                                "
+15| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-23| "/workspace/project                                                   ▸ idle  mock [alt+m]  ↑0 ↓0"
+16| "/workspace/project                                                   ▸ idle  mock [alt+m]  ↑0 ↓0"
   style 0-17 fg=bright-magenta bold
   style 69-74 dim
   style 77-88 dim
   style 91-95 dim
+17-23| <blank>

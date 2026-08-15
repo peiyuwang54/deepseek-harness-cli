@@ -1,52 +1,48 @@
-terminal 80x24 buffer=normal length=25 base=1 viewport=1
+terminal 80x24 buffer=normal length=24 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=3 viewportRow=20 bufferRow=21
+cursor visible column=3 viewportRow=19 bufferRow=19
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
   style 18-23 dim
-1| " Snapshot agent ready."
-  style 1-21 dim
-2| " main-session"
-  style 1-12 dim
-3| <blank>
-4| "                                                                                "
-5| " › Old prompt with a long line that exercises wrapping and stays visible after  "
-  style 1-1 fg=blue bold
-6| " compaction.                                                                    "
-7| "                                                                                "
-8-9| <blank>
-10| "● Tool / bash / Run the coverage gate"
+1| <blank>
+2| "                                                                                "
+3| " Old prompt with a long line that exercises wrapping and stays visible after    "
+4| " compaction.                                                                    "
+5| "                                                                                "
+6-7| <blank>
+8| "● Tool / bash / Run the coverage gate"
   style 0-36 fg=green
-11| "$ pnpm run test:coverage                                                        "
+9| "$ pnpm run test:coverage                                                        "
   style 0-23 dim
-12| "/workspace/project                                                              "
+10| "/workspace/project                                                              "
   style 0-17 dim
-13| "packages/ui/tui 100%                                                            "
+11| "packages/ui/tui 100%                                                            "
   style 0-19 dim
-14| "… +1 lines (Ctrl+O to expand)                                                   "
+12| "… +1 lines (Ctrl+O to expand)                                                   "
   style 0-28 dim
-15| "1 test skipped                                                                  "
+13| "1 test skipped                                                                  "
   style 0-13 dim
-16| "coverage complete                                                               "
+14| "coverage complete                                                               "
   style 0-16 dim
-17| "[exit 0]                                                                        "
+15| "[exit 0]                                                                        "
   style 0-7 dim
-18-19| <blank>
-20| "                                                                                "
-21| " › │Describe a task, @ a file, or / for commands                                "
+16-17| <blank>
+18| "                                                                                "
+19| " › │Describe a task, @ a file, or / for commands                                "
   style 1-1 fg=bright-magenta bold
   style 2-2 dim
   style 4-47 dim
-22| "                                                                                "
-23| "  Enter send · Shift+Enter newline · / commands"
+20| "                                                                                "
+21| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-24| "/workspace/project (tui-st  ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+22| "/workspace/project (tui-st  ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-25 dim
   style 28-33 dim
   style 36-60 dim
   style 63-67 dim
   style 70-79 dim
+23| <blank>

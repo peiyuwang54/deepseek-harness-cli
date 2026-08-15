@@ -1,7 +1,7 @@
 terminal 104x38 buffer=normal length=38 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=3 viewportRow=22 bufferRow=22
+cursor visible column=3 viewportRow=21 bufferRow=21
 viewport
 0| "  ╭─ DeepSeek Harness CLI v0.1.0 ────────────────────────────────────────────────────────────────────╮"
   style 2-3 dim
@@ -15,105 +15,100 @@ viewport
   style 45-45 dim
   style 47-56 fg=bright-magenta bold
   style 101-101 dim
-2| "  │          Snapshot agent ready.           │ /skills browse and run agent skills                   │"
-  style 2-2 dim
-  style 13-33 dim
-  style 45-45 dim
-  style 47-53 fg=bright-magenta
-  style 101-101 dim
-3| "  │                  ⣀⣀⣀⣀⣤⡄  ⢠⡄              │ /permissions choose approval and sandbox mode         │"
+2| "  │                  ⣀⣀⣀⣀⣤⡄  ⢠⡄              │ /skills browse and run agent skills                   │"
   style 2-2 dim
   style 16-30 bold
   style 45-45 dim
+  style 47-53 fg=bright-magenta
+  style 101-101 dim
+3| "  │            ⢀⣴⣾⣿⣿⣿⣿⣿⣿⣤⡀ ⢻⣿⣶⣠⣤⣶⡟           │ /permissions choose approval and sandbox mode         │"
+  style 2-2 dim
+  style 14-33 bold
+  style 45-45 dim
   style 47-58 fg=bright-magenta
   style 101-101 dim
-4| "  │            ⢀⣴⣾⣿⣿⣿⣿⣿⣿⣤⡀ ⢻⣿⣶⣠⣤⣶⡟           │ /model switch model and reasoning effort              │"
+4| "  │           ⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡈⠻⣿⣿⡿⠟⠁           │ /model switch model and reasoning effort              │"
   style 2-2 dim
   style 14-33 bold
   style 45-45 dim
   style 47-52 fg=bright-magenta
   style 101-101 dim
-5| "  │           ⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡈⠻⣿⣿⡿⠟⠁           │ /workspace start in another workspace                 │"
+5| "  │            ⢸⣯  ⠉⠙⠻⣿⣿⣿⣯⡙⢿⣿⣾⣿⡇             │ /workspace start in another workspace                 │"
   style 2-2 dim
-  style 14-33 bold
+  style 15-31 bold
   style 45-45 dim
   style 47-56 fg=bright-magenta
   style 101-101 dim
-6| "  │            ⢸⣯  ⠉⠙⠻⣿⣿⣿⣯⡙⢿⣿⣾⣿⡇             │ /resume search previous sessions                      │"
+6| "  │            ⢸⣿⡄    ⠈⠻⣿⣿⣧⣤⣿⣿⣿⠁             │ /resume search previous sessions                      │"
   style 2-2 dim
   style 15-31 bold
   style 45-45 dim
   style 47-53 fg=bright-magenta
   style 101-101 dim
-7| "  │            ⢸⣿⡄    ⠈⠻⣿⣿⣧⣤⣿⣿⣿⠁             │                                                       │"
+7| "  │              ⢻⣿⣄  ⢀⣀ ⠙⣿⣿⣿⣿⡿⠃             │                                                       │"
   style 2-2 dim
-  style 15-31 bold
+  style 16-31 bold
   style 45-45 dim
   style 101-101 dim
-8| "  │              ⢻⣿⣄  ⢀⣀ ⠙⣿⣿⣿⣿⡿⠃             │ Recent sessions                                       │"
+8| "  │               ⠙⢿⣷⣤⣤⣿⣷⣦⣈⣻⣿⣿⣦⡄             │ Recent sessions                                       │"
   style 2-2 dim
   style 16-31 bold
   style 45-45 dim
   style 47-61 bold
   style 101-101 dim
-9| "  │               ⠙⢿⣷⣤⣤⣿⣷⣦⣈⣻⣿⣿⣦⡄             │ • Refactor terminal welcome screen         2026-08-13 │"
-  style 2-2 dim
-  style 16-31 bold
-  style 45-45 dim
-  style 47-47 fg=bright-magenta
-  style 90-99 dim
-  style 101-101 dim
-10| "  │                   ⠉⠛⠻⠿⠿⠟⠛⠉               │ • Stabilize CLI release tests              2026-08-12 │"
+9| "  │                   ⠉⠛⠻⠿⠿⠟⠛⠉               │ • Refactor terminal welcome screen         2026-08-13 │"
   style 2-2 dim
   style 18-29 bold
   style 45-45 dim
   style 47-47 fg=bright-magenta
   style 90-99 dim
   style 101-101 dim
-11| "  │                                          │                                                       │"
+10| "  │                                          │ • Stabilize CLI release tests              2026-08-12 │"
   style 2-2 dim
   style 45-45 dim
+  style 47-47 fg=bright-magenta
+  style 90-99 dim
   style 101-101 dim
-12| "  │           preset: not composed           │ /help for commands · @ to attach a file               │"
+11| "  │           preset: not composed           │                                                       │"
   style 2-2 dim
   style 14-20 dim
   style 45-45 dim
-  style 47-85 dim italic
   style 101-101 dim
-13| "  │         model: deepseek-v4-flash         │                                                       │"
+12| "  │         model: deepseek-v4-flash         │ /help for commands · @ to attach a file               │"
   style 2-2 dim
   style 12-17 dim
   style 45-45 dim
+  style 47-85 dim italic
   style 101-101 dim
-14| "  │        permissions: approval ask         │                                                       │"
+13| "  │        permissions: approval ask         │                                                       │"
   style 2-2 dim
   style 11-22 dim
   style 45-45 dim
   style 101-101 dim
-15| "  │            /workspace/project            │                                                       │"
+14| "  │            /workspace/project            │                                                       │"
   style 2-2 dim
   style 15-32 dim
   style 45-45 dim
   style 101-101 dim
-16| "  ╰──────────────────────────────────────────┴───────────────────────────────────────────────────────╯"
+15| "  ╰──────────────────────────────────────────┴───────────────────────────────────────────────────────╯"
   style 2-101 dim
-17| "  "
-18| "                     Enter sends · Shift+Enter newline · Alt+M model · ? shortcuts"
+16| "  "
+17| "                     Enter sends · Shift+Enter newline · Alt+M model · ? shortcuts"
   style 21-81 dim
-19-20| <blank>
-21| "                                                                                                        "
-22| " › │Describe a task, @ a file, or / for commands                                                        "
+18-19| <blank>
+20| "                                                                                                        "
+21| " › │Describe a task, @ a file, or / for commands                                                        "
   style 1-1 fg=bright-magenta bold
   style 2-2 dim
   style 4-47 dim
-23| "                                                                                                        "
-24| "  Enter send · Shift+Enter newline · / commands"
+22| "                                                                                                        "
+23| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-25| "/workspace/project (tui-staging)                    ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+24| "/workspace/project (tui-staging)                    ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 52-57 dim
   style 60-84 dim
   style 87-91 dim
   style 94-103 dim
-26-37| <blank>
+25-37| <blank>

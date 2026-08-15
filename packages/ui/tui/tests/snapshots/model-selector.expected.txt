@@ -1,61 +1,57 @@
 terminal 92x32 buffer=normal length=32 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=4 viewportRow=10 bufferRow=10
+cursor visible column=4 viewportRow=8 bufferRow=8
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
   style 18-23 dim
-1| " Snapshot agent ready."
-  style 1-21 dim
-2| " main-session"
-  style 1-12 dim
-3-4| <blank>
-5| "                                                                                            "
-6| " › Describe a task, @ a file, or / for commands                                             "
+1-2| <blank>
+3| "                                                                                            "
+4| " › Describe a task, @ a file, or / for commands                                             "
   style 1-1 fg=bright-magenta bold
   style 2-46 dim
-7| "                                                                                            "
-8| "  Enter send · Shift+Enter newline · / commands"
+5| "                                                                                            "
+6| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-9| "╭ Select model ────────────────────────────────────────────────────────────╮"
+7| "╭ Select model ────────────────────────────────────────────────────────────╮"
   style 0-75 fg=bright-magenta
-10| "│ >                                                                        │"
+8| "│ >                                                                        │"
   style 0-0 fg=bright-magenta
   style 4-4 inverse
   style 75-75 fg=bright-magenta
-11| "│                                                                          │"
+9| "│                                                                          │"
   style 0-0 fg=bright-magenta
   style 75-75 fg=bright-magenta
-12| "│ → deepseek-official/deepseek-v4-  DeepSeek V4 Flash — High — current     │"
+10| "│ → deepseek-official/deepseek-v4-  DeepSeek V4 Flash — High — current     │"
   style 0-0 fg=bright-magenta
   style 2-33 fg=bright-magenta inverse
   style 75-75 fg=bright-magenta
-13| "│   deepseek-official/deepseek-v4-  DeepSeek V4 Pro — High                 │"
+11| "│   deepseek-official/deepseek-v4-  DeepSeek V4 Pro — High                 │"
   style 0-0 fg=bright-magenta
   style 34-57 dim
   style 75-75 fg=bright-magenta
-14| "│                                                                          │"
+12| "│                                                                          │"
   style 0-0 fg=bright-magenta
   style 75-75 fg=bright-magenta
-15| "│ Reasoning effort  Off  [High]  Max                                       │"
+13| "│ Reasoning effort  Off  [High]  Max                                       │"
   style 0-0 fg=bright-magenta
   style 20-22 dim
   style 25-30 fg=bright-magenta bold
   style 33-35 dim
   style 75-75 fg=bright-magenta
-16| "│ type to filter • ↑/↓ model • Tab/←/→ effort • Enter select • Esc         │"
+14| "│ type to filter • ↑/↓ model • Tab/←/→ effort • Enter select • Esc         │"
   style 0-0 fg=bright-magenta
   style 2-65 dim
   style 75-75 fg=bright-magenta
-17| "╰──────────────────────────────────────────────────────────────────────────╯"
+15| "╰──────────────────────────────────────────────────────────────────────────╯"
   style 0-75 fg=bright-magenta
-18| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+16| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 40-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-19-31| <blank>
+17-31| <blank>

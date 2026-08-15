@@ -1,7 +1,7 @@
 terminal 96x36 buffer=normal length=36 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor hidden column=96 viewportRow=32 bufferRow=32
+cursor hidden column=96 viewportRow=31 bufferRow=31
 buffer
 0| "  ╭─ DeepSeek Harness CLI v0.1.0 ────────────────────────────────────────────────────────────╮"
   style 2-3 dim
@@ -15,124 +15,119 @@ buffer
   style 41-41 dim
   style 43-52 fg=bright-magenta bold
   style 93-93 dim
-2| "  │        Snapshot agent ready.         │ /skills browse and run agent skills               │"
-  style 2-2 dim
-  style 11-31 dim
-  style 41-41 dim
-  style 43-49 fg=bright-magenta
-  style 93-93 dim
-3| "  │                ⣀⣀⣀⣀⣤⡄  ⢠⡄            │ /permissions choose approval and sandbox mode     │"
+2| "  │                ⣀⣀⣀⣀⣤⡄  ⢠⡄            │ /skills browse and run agent skills               │"
   style 2-2 dim
   style 14-28 bold
   style 41-41 dim
+  style 43-49 fg=bright-magenta
+  style 93-93 dim
+3| "  │          ⢀⣴⣾⣿⣿⣿⣿⣿⣿⣤⡀ ⢻⣿⣶⣠⣤⣶⡟         │ /permissions choose approval and sandbox mode     │"
+  style 2-2 dim
+  style 12-31 bold
+  style 41-41 dim
   style 43-54 fg=bright-magenta
   style 93-93 dim
-4| "  │          ⢀⣴⣾⣿⣿⣿⣿⣿⣿⣤⡀ ⢻⣿⣶⣠⣤⣶⡟         │ /model switch model and reasoning effort          │"
+4| "  │         ⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡈⠻⣿⣿⡿⠟⠁         │ /model switch model and reasoning effort          │"
   style 2-2 dim
   style 12-31 bold
   style 41-41 dim
   style 43-48 fg=bright-magenta
   style 93-93 dim
-5| "  │         ⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡈⠻⣿⣿⡿⠟⠁         │ /workspace start in another workspace             │"
+5| "  │          ⢸⣯  ⠉⠙⠻⣿⣿⣿⣯⡙⢿⣿⣾⣿⡇           │ /workspace start in another workspace             │"
   style 2-2 dim
-  style 12-31 bold
+  style 13-29 bold
   style 41-41 dim
   style 43-52 fg=bright-magenta
   style 93-93 dim
-6| "  │          ⢸⣯  ⠉⠙⠻⣿⣿⣿⣯⡙⢿⣿⣾⣿⡇           │ /resume search previous sessions                  │"
+6| "  │          ⢸⣿⡄    ⠈⠻⣿⣿⣧⣤⣿⣿⣿⠁           │ /resume search previous sessions                  │"
   style 2-2 dim
   style 13-29 bold
   style 41-41 dim
   style 43-49 fg=bright-magenta
   style 93-93 dim
-7| "  │          ⢸⣿⡄    ⠈⠻⣿⣿⣧⣤⣿⣿⣿⠁           │                                                   │"
+7| "  │            ⢻⣿⣄  ⢀⣀ ⠙⣿⣿⣿⣿⡿⠃           │                                                   │"
   style 2-2 dim
-  style 13-29 bold
+  style 14-29 bold
   style 41-41 dim
   style 93-93 dim
-8| "  │            ⢻⣿⣄  ⢀⣀ ⠙⣿⣿⣿⣿⡿⠃           │ Recent sessions                                   │"
+8| "  │             ⠙⢿⣷⣤⣤⣿⣷⣦⣈⣻⣿⣿⣦⡄           │ Recent sessions                                   │"
   style 2-2 dim
   style 14-29 bold
   style 41-41 dim
   style 43-57 bold
   style 93-93 dim
-9| "  │             ⠙⢿⣷⣤⣤⣿⣷⣦⣈⣻⣿⣿⣦⡄           │ No previous sessions in this profile.             │"
-  style 2-2 dim
-  style 14-29 bold
-  style 41-41 dim
-  style 43-79 dim
-  style 93-93 dim
-10| "  │                 ⠉⠛⠻⠿⠿⠟⠛⠉             │                                                   │"
+9| "  │                 ⠉⠛⠻⠿⠿⠟⠛⠉             │ No previous sessions in this profile.             │"
   style 2-2 dim
   style 16-27 bold
   style 41-41 dim
+  style 43-79 dim
   style 93-93 dim
-11| "  │                                      │ /help for commands · @ to attach a file           │"
+10| "  │                                      │                                                   │"
   style 2-2 dim
   style 41-41 dim
-  style 43-81 dim italic
   style 93-93 dim
-12| "  │         preset: not composed         │                                                   │"
+11| "  │         preset: not composed         │ /help for commands · @ to attach a file           │"
   style 2-2 dim
   style 12-18 dim
   style 41-41 dim
+  style 43-81 dim italic
   style 93-93 dim
-13| "  │       model: deepseek-v4-flash       │                                                   │"
+12| "  │       model: deepseek-v4-flash       │                                                   │"
   style 2-2 dim
   style 10-15 dim
   style 41-41 dim
   style 93-93 dim
-14| "  │     permissions: Approve for me      │                                                   │"
+13| "  │     permissions: Approve for me      │                                                   │"
   style 2-2 dim
   style 8-19 dim
   style 41-41 dim
   style 93-93 dim
-15| "  │          /workspace/project          │                                                   │"
+14| "  │          /workspace/project          │                                                   │"
   style 2-2 dim
   style 13-30 dim
   style 41-41 dim
   style 93-93 dim
-16| "  ╰──────────────────────────────────────┴───────────────────────────────────────────────────╯"
+15| "  ╰──────────────────────────────────────┴───────────────────────────────────────────────────╯"
   style 2-93 dim
-17| "  "
-18| "                 Enter sends · Shift+Enter newline · Alt+M model · ? shortcuts"
+16| "  "
+17| "                 Enter sends · Shift+Enter newline · Alt+M model · ? shortcuts"
   style 17-77 dim
-19-20| <blank>
-21| "                                                                                                "
-22| " › Describe a task, @ a file, or / for commands                                                 "
+18-19| <blank>
+20| "                                                                                                "
+21| " › Describe a task, @ a file, or / for commands                                                 "
   style 1-1 fg=bright-magenta bold
   style 2-46 dim
-23| "                                                                                                "
-24| "  Enter send · Shift+Enter newline · / commands"
+22| "                                                                                                "
+23| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-25| "╭ Update Permissions ──────────────────────────────────────────────────────╮"
+24| "╭ Update Permissions ──────────────────────────────────────────────────────╮"
   style 0-75 fg=bright-magenta
-26| "│   Ask for approval                Read files by default; changes and w   │"
+25| "│   Ask for approval                Read files by default; changes and w   │"
   style 0-0 fg=bright-magenta
   style 20-71 dim
   style 75-75 fg=bright-magenta
-27| "│ → Approve for me                  current · Read and edit in the works   │"
+26| "│ → Approve for me                  current · Read and edit in the works   │"
   style 0-0 fg=bright-magenta
   style 2-71 fg=bright-magenta inverse
   style 75-75 fg=bright-magenta
-28| "│   Full access                     Edit outside the workspace and acces   │"
+27| "│   Full access                     Edit outside the workspace and acces   │"
   style 0-0 fg=bright-magenta
   style 15-71 dim
   style 75-75 fg=bright-magenta
-29| "│                                                                          │"
+28| "│                                                                          │"
   style 0-0 fg=bright-magenta
   style 75-75 fg=bright-magenta
-30| "│ ↑/↓ move • Enter confirm • Esc close                                     │"
+29| "│ ↑/↓ move • Enter confirm • Esc close                                     │"
   style 0-0 fg=bright-magenta
   style 2-37 dim
   style 75-75 fg=bright-magenta
-31| "╰──────────────────────────────────────────────────────────────────────────╯"
+30| "╰──────────────────────────────────────────────────────────────────────────╯"
   style 0-75 fg=bright-magenta
-32| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+31| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 44-49 dim
   style 52-76 dim
   style 79-83 dim
   style 86-95 dim
-33-35| <blank>
+32-35| <blank>

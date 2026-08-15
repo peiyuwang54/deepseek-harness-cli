@@ -2807,8 +2807,6 @@ export type ToolPresentationMode = 'native' | 'code' | 'both'
 ```ts config-catalog
 /** Serializable plugin configuration. */
 export interface Config extends TuiConfig {
-  /** Banner subtitle line. When absent, the banner has no subtitle and sweeps in on start. */
-  welcome?: string
   /** Exact shared agent/session identity driven by this terminal. Defaults to `main`. */
   sessionId?: string
   /**
@@ -2823,7 +2821,7 @@ export interface Config extends TuiConfig {
 export interface TuiConfig {
   /** Render in the terminal's alternate screen and restore the prior screen on exit. */
   fullscreen?: boolean
-  /** Enable wheel and click input while full-screen mode is active. */
+  /** Capture wheel and click input; disabled by default so the terminal owns text selection. */
   mouse?: boolean
   /** Render model reasoning blocks. */
   showReasoning?: boolean

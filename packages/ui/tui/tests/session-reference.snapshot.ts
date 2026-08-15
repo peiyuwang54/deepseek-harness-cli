@@ -103,7 +103,6 @@ describe('TUI session-reference snapshot', () => {
     const terminal = new HeadlessTerminal(96, 24)
     const controller = createTuiChat(ctx, {
       sessionId: target.id,
-      welcome: 'Session reference snapshot.',
       theme: { color: true },
       title: 'DSH session reference',
     }, { terminal, exit: () => {} })

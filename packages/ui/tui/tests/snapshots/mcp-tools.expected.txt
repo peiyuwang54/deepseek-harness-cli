@@ -1,37 +1,33 @@
 terminal 92x32 buffer=normal length=32 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=3 viewportRow=10 bufferRow=10
+cursor visible column=3 viewportRow=8 bufferRow=8
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
   style 18-23 dim
-1| " Snapshot agent ready."
-  style 1-21 dim
-2| " main-session"
-  style 1-12 dim
-3| <blank>
-4| "MCP tools visible to this session (2)                                                       "
+1| <blank>
+2| "MCP tools visible to this session (2)                                                       "
   style 0-91 dim
-5| "- mcp__filesystem__read_file — Read a remote file                                           "
+3| "- mcp__filesystem__read_file — Read a remote file                                           "
   style 0-91 dim
-6| "- mcp__github__search — Search GitHub repositories                                          "
+4| "- mcp__github__search — Search GitHub repositories                                          "
   style 0-49 dim
-7-8| <blank>
-9| "                                                                                            "
-10| " › │Describe a task, @ a file, or / for commands                                            "
+5-6| <blank>
+7| "                                                                                            "
+8| " › │Describe a task, @ a file, or / for commands                                            "
   style 1-1 fg=bright-magenta bold
   style 2-2 dim
   style 4-47 dim
-11| "                                                                                            "
-12| "  Enter send · Shift+Enter newline · / commands"
+9| "                                                                                            "
+10| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-13| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+11| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 40-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-14-31| <blank>
+12-31| <blank>

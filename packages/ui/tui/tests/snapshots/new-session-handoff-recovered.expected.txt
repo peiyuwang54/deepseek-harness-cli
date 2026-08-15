@@ -7,17 +7,13 @@ buffer
   style 1-8 fg=bright-magenta bold
   style 10-16 bold
   style 18-23 dim
-1| " Snapshot agent ready."
-  style 1-21 dim
-2| " main-session"
-  style 1-12 dim
-3| <blank>
-4| "Workspace switch failed: snapshot host retained process                                     "
+1| <blank>
+2| "Workspace switch failed: snapshot host retained process                                     "
   style 0-54 fg=red
-5| <blank>
-6| "New session failed: snapshot host retained process                                          "
+3| <blank>
+4| "New session failed: snapshot host retained process                                          "
   style 0-49 fg=red
-7-26| <blank>
+5-26| <blank>
 27| "                                                                                            "
 28| " › │描述任务，@ 添加文件，或输入 / 查看命令                                                 "
   style 1-1 fg=bright-magenta bold

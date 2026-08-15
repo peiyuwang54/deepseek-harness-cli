@@ -27,6 +27,11 @@
     - id: session
       name: '@deepseek-ai/dsh-session'
 
+    # Runtime directory for successfully loaded Codex and Claude Code hook
+    # bridge configurations. Bridges register only after their config parses.
+    - id: hooks
+      name: '@deepseek-ai/dsh-hook-protocol'
+
     - id: typert
       name: '@deepseek-ai/dsh-typert-registry'
 

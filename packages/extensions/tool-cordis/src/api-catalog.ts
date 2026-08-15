@@ -710,6 +710,25 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'hooks',
+    summary: 'Registry of successfully loaded hook bridge configurations.',
+    description: 'Registry of successfully loaded hook bridge configurations. Bridge plugins are Service Providers; terminal and future Web diagnostics are Consumers.',
+    methods: [
+      {
+        signature: 'register(registration: HookCatalogRegistration): () => void',
+        description: 'Register one loaded bridge configuration for the calling plugin\'s lifetime. Multiple instances of the same dialect and path are valid profile composition.',
+        parameters: [{ name: 'registration', description: 'Configuration source and its parsed runnable/skipped handlers.' }],
+        returns: 'The exact effect disposer that removes this contribution.',
+      },
+      {
+        signature: 'list(): HookCatalogSnapshot[]',
+        description: 'Snapshot every active bridge contribution in registration order.',
+        parameters: [],
+        returns: 'New top-level snapshot objects with derived handler totals.',
+      },
+    ],
+  },
+  {
     key: 'invariants',
     summary: 'Package-owned invariant registry with global and regex-based selection.',
     description: 'Package-owned invariant registry with global and regex-based selection.',
@@ -3196,6 +3215,30 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface GoalView extends GoalSnapshot {\n    readonly roundsStarted: number;\n    readonly createdAt: number;\n    readonly updatedAt: number;\n    readonly activation: GoalActivation;\n}',
   },
   {
+    name: 'HookCatalogGroup',
+    declaration: 'export interface HookCatalogGroup {\n    readonly matcher?: string;\n    readonly handlers: readonly HookCatalogHandler[];\n}',
+  },
+  {
+    name: 'HookCatalogHandler',
+    declaration: 'export interface HookCatalogHandler {\n    readonly command: string;\n    readonly timeoutSec?: number;\n}',
+  },
+  {
+    name: 'HookCatalogPoint',
+    declaration: 'export interface HookCatalogPoint {\n    readonly point: string;\n    readonly groups: readonly HookCatalogGroup[];\n}',
+  },
+  {
+    name: 'HookCatalogRegistration',
+    declaration: 'export interface HookCatalogRegistration {\n    readonly dialect: HookDialect;\n    readonly configPath: string;\n    readonly points: readonly HookCatalogPoint[];\n    readonly skipped: readonly SkippedHookCatalogEntry[];\n}',
+  },
+  {
+    name: 'HookCatalogSnapshot',
+    declaration: 'export interface HookCatalogSnapshot extends HookCatalogRegistration {\n    readonly handlerCount: number;\n}',
+  },
+  {
+    name: 'HookDialect',
+    declaration: 'export type HookDialect = \'claude-code\' | \'codex\';',
+  },
+  {
     name: 'ImageAttachmentLimits',
     declaration: 'export interface ImageAttachmentLimits {\n    maxImageBytes: number;\n    maxImagesPerMessage: number;\n    maxMessageImageBytes: number;\n    maxImagePixels: number;\n    mediaTypes: readonly ImageMediaType[];\n}',
   },
@@ -4130,6 +4173,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SkillViewOptions',
     declaration: 'export interface SkillViewOptions extends SkillLookupOptions {\n    readonly scope?: ScopeKey | undefined;\n}',
+  },
+  {
+    name: 'SkippedHookCatalogEntry',
+    declaration: 'export interface SkippedHookCatalogEntry {\n    readonly point: string;\n    readonly reason: string;\n}',
   },
   {
     name: 'SpillLocator',

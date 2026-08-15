@@ -12,6 +12,7 @@ import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
 import { LocalBashExecutor } from '@deepseek-ai/dsh-bash-local'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
+import HookRegistry from '@deepseek-ai/dsh-hook-protocol'
 import * as HooksCodex from '@deepseek-ai/dsh-hooks-codex'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 
@@ -39,13 +40,13 @@ function writeHooks(dir: string, hooks: unknown): void {
   writeFileSync(join(dir, 'hooks.json'), JSON.stringify({ hooks }))
 }
 
-async function harness(dir: string, adapter: MockAdapter, beforeHooks?: (ctx: Context) => void): Promise<Context> {
+async function harness(dir: string, adapter: MockAdapter, beforeHooks?: (ctx: Context) => void | Promise<void>): Promise<Context> {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
-  beforeHooks?.(ctx)
+  await beforeHooks?.(ctx)
   await ctx.plugin(HooksCodex, { configPath: join(dir, 'hooks.json'), model: 'test-model' })
   ctx.llm.registerAdapter(['mock'], adapter)
   return ctx
@@ -66,6 +67,28 @@ async function waitFor(predicate: () => boolean, timeout = 5000, interval = 10):
 }
 
 describe('hooks-codex bridge', () => {
+  it('publishes successfully parsed handlers to the runtime hook catalog', async () => {
+    const dir = configDir()
+    writeHooks(dir, {
+      PreToolUse: [{ matcher: 'bash', hooks: [{ type: 'command', command: 'node guard.mjs', timeout: 12 }] }],
+      Stop: [{ hooks: [{ type: 'command', command: 'node async.mjs', async: true }] }],
+    })
+    const ctx = await harness(dir, new MockAdapter([]), async (root) => {
+      await root.plugin(HookRegistry)
+    })
+
+    expect(ctx.hooks.list()).toEqual([{
+      dialect: 'codex',
+      configPath: join(dir, 'hooks.json'),
+      handlerCount: 1,
+      points: [{
+        point: 'PreToolUse',
+        groups: [{ matcher: 'bash', handlers: [{ command: 'node guard.mjs', timeoutSec: 12 }] }],
+      }],
+      skipped: [{ point: 'Stop', reason: 'async hook' }],
+    }])
+  })
+
   it('a PreToolUse hook (exit 2) denies a tool the regex matcher matches as a substring', async () => {
     const dir = configDir()
     const deny = script(dir, 'deny.sh', '#!/usr/bin/env bash\necho "codex blocked it" >&2\nexit 2\n')

@@ -18,6 +18,7 @@ import {
 } from '@deepseek-ai/dsh-llm'
 import { RetryId } from '@deepseek-ai/dsh-llm-retry'
 import GoalService from '@deepseek-ai/dsh-goal'
+import HookRegistry from '@deepseek-ai/dsh-hook-protocol'
 import type { JobOutcome } from '@deepseek-ai/dsh-jobs'
 import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
 import PermissionPresetService from '@deepseek-ai/dsh-permission-presets'
@@ -94,6 +95,7 @@ const CHECKPOINTS = [
   'goal-status-paused',
   'goal-status-complete',
   'mcp-tools',
+  'hooks-browser',
   'permissions-selector',
   'permissions-switching',
   'agent-selector',
@@ -301,6 +303,30 @@ async function configureSnapshotSkills(ctx: Context): Promise<void> {
     description: 'Review and edit a document artifact',
     source: 'runtime',
     content: 'Review the document.',
+  })
+}
+
+async function configureSnapshotHooks(ctx: Context): Promise<void> {
+  await ctx.plugin(SystemPrompt)
+  await ctx.plugin(ToolRegistry)
+  await ctx.plugin(HookRegistry)
+  ctx.hooks.register({
+    dialect: 'codex',
+    configPath: '/workspace/project/.codex/hooks.json',
+    points: [
+      {
+        point: 'SessionStart',
+        groups: [{ handlers: [{ command: 'node .codex/session-start.mjs' }] }],
+      },
+      {
+        point: 'PreToolUse',
+        groups: [{
+          matcher: 'bash|read',
+          handlers: [{ command: 'node .codex/guard.mjs', timeoutSec: 30 }],
+        }],
+      },
+    ],
+    skipped: [{ point: 'Stop', reason: 'async hook' }],
   })
 }
 
@@ -1448,6 +1474,18 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('mcp-tools', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins configured lifecycle-hook sources and handler diagnostics', async () => {
+    const harness = await setupSnapshot({
+      configureContext: configureSnapshotHooks,
+    }, { columns: 96, rows: 32 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/hooks verbose')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('hooks-browser', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

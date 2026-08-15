@@ -10,6 +10,7 @@
  */
 
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
@@ -24,6 +25,7 @@ import {
   createDetachedRuns,
   DEFAULT_HOOK_TIMEOUT_MS,
   DEFAULT_STDERR_SUMMARY_MAX_CHARS,
+  hookCatalogPoints,
   matchesMatcher,
   mergeHookOutputs,
   runHook,
@@ -34,7 +36,7 @@ import {
 // Pulls in the declaration-merged subagent events and the identity pairing their
 // start/end edges.
 import type { SubagentRunId } from '@deepseek-ai/dsh-subagent'
-import { parseClaudeCodeConfig, type ClaudeCodeHookConfig } from './config.ts'
+import { parseClaudeCodeConfig, type ClaudeCodeHookConfig, type SkippedHook } from './config.ts'
 
 export const name = 'hooks-claude-code'
 // `bash` is required to run hooks; the rest are read opportunistically via
@@ -100,6 +102,7 @@ export function apply(ctx: Context, config: Config): void {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_HOOK_TIMEOUT_MS
   // Parse once at load. A read or parse failure logs and registers nothing.
   let parsed: ClaudeCodeHookConfig = {}
+  let skipped: SkippedHook[] = []
   try {
     const raw: unknown = JSON.parse(readFileSync(config.configPath, 'utf8'))
     const result = parseClaudeCodeConfig(raw, {
@@ -107,6 +110,7 @@ export function apply(ctx: Context, config: Config): void {
       ...config.projectDir !== undefined ? { projectDir: config.projectDir } : {},
     })
     parsed = result.config
+    skipped = result.skipped
     for (const s of result.skipped) {
       ctx.logger.warn(`hooks-claude-code: skipping unsupported "${s.type}" hook on ${s.event} (only command hooks run)`)
     }
@@ -114,6 +118,18 @@ export function apply(ctx: Context, config: Config): void {
     ctx.logger.warn(`hooks-claude-code: could not load hook config "${config.configPath}": ${String(error)} — no hooks registered`)
     return
   }
+
+  ctx.inject(['hooks'], (catalogCtx) => {
+    catalogCtx.hooks.register({
+      dialect: 'claude-code',
+      configPath: resolve(config.configPath),
+      points: hookCatalogPoints(parsed),
+      skipped: skipped.map(entry => ({
+        point: entry.event,
+        reason: `unsupported "${entry.type}" hook`,
+      })),
+    })
+  })
 
   // Emit-shaped points run detached, so track their chains; disposal aborts
   // active hooks and drains continuations before resolving.

@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-Claude Code／Codex hook 协议格式（wire format）的**共享核心**。它不是 Cordis 插件：不注册也不注入任何内容。它是一个**库**，提供两个桥接插件（`@deepseek-ai/dsh-hooks-claude-code`、`@deepseek-ai/dsh-hooks-codex`）导入的方言无关原语，使两者都无需重复实现协议中相同的部分。
+Claude Code／Codex hook 协议格式的共享核心，也是只读 `ctx.hooks` 运行时目录的 provider。它的方言无关原语使两个桥接插件（`@deepseek-ai/dsh-hooks-claude-code`、`@deepseek-ai/dsh-hooks-codex`）无需重复实现相同的协议行为。
 
 Codex 有意重新实现了 Claude Code hook 协议的一个*子集*，包括相同的 `hooks.json` matcher group 结构、相同的退出码／stdout 输出约定以及相同的 command hook 执行模式。真正共享的部分位于此处；每个桥接只负责不同的部分。
 
@@ -24,6 +24,10 @@ Codex 有意重新实现了 Claude Code hook 协议的一个*子集*，包括相
 - **`parseHookOutput(exitCode, stdout, stderr, expectedEventName?)`** 解码退出状态与结构化 stdout。退出码为 2 时，会以 stderr 内容阻止执行；其他失败不阻塞。匹配的 hook 特定权限决策会覆盖遗留顶层决策；事件判别字段不匹配或缺失只会抑制事件特定字段。顶层字段仍与事件无关，成功但非 JSON 的输出会留给桥接处理。
 - **`mergeHookOutputs(outputs)`**：折叠在一个点上匹配的每个 hook 结果：权限优先级为 **deny > ask > allow**，从首个 `continue:false` 起，halt 状态保持不变，阻塞原因用 `\n\n` 连接，`additionalContext`／`systemMessages` 按顺序累积。
 - **`createDetachedRuns()`**：跟踪以 emit 形式脱离运行的点是否完全停稳（没有扩展点等待它们）。桥接会跟踪每条运行链，包括 hook 运行及其 continuation，并将 `drain()` 注册为 effect disposer。drain 会触发 tracker 的 abort `signal`（因此仍在运行的 hook 进程会通过 `runHook` 终止，而不是等待到超时），随后在所有已跟踪链结算后 resolve。因此 `fiber.dispose()` resolve 时，不会遗留任何可能作用于已 dispose（资源释放）的上下文的脱离 hook 工作（见 [防御模式](../../../docs/defensive-patterns.md)：dispose 必须达到完全停稳）。
+
+## 运行时目录
+
+默认插件提供 `ctx.hooks`。桥接只注册成功解析的配置，包括方言、绝对来源路径、可运行事件／matcher／命令／超时、被跳过的 handler，以及派生出的可运行 handler 总数。注册随桥接 effect 生命周期撤销，`list()` 返回只读快照。该目录不加载、启用、信任、禁用或编辑 hook；profile 组合与各桥接的 `configPath` 仍是权威配置来源。
 
 ## `hook/*` 会话事件
 

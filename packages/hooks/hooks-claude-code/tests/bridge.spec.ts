@@ -12,6 +12,7 @@ import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
 import { LocalBashExecutor } from '@deepseek-ai/dsh-bash-local'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
+import HookRegistry from '@deepseek-ai/dsh-hook-protocol'
 import { scopeTarget } from '@deepseek-ai/dsh-scope'
 import SubagentRuntime, { SubagentRunId } from '@deepseek-ai/dsh-subagent'
 import * as HooksClaude from '@deepseek-ai/dsh-hooks-claude-code'
@@ -45,7 +46,7 @@ function writeConfig(hooks: unknown, scripts: Record<string, string> = {}): stri
   return dir
 }
 
-async function harness(configDir: string, adapter: MockAdapter, beforeHooks?: (ctx: Context) => void): Promise<Context> {
+async function harness(configDir: string, adapter: MockAdapter, beforeHooks?: (ctx: Context) => void | Promise<void>): Promise<Context> {
   return (await harnessWithFiber(configDir, adapter, beforeHooks)).ctx
 }
 
@@ -53,14 +54,14 @@ async function harness(configDir: string, adapter: MockAdapter, beforeHooks?: (c
 async function harnessWithFiber(
   configDir: string,
   adapter: MockAdapter,
-  beforeHooks?: (ctx: Context) => void,
+  beforeHooks?: (ctx: Context) => void | Promise<void>,
 ): Promise<{ ctx: Context; hooks: Fiber }> {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
-  beforeHooks?.(ctx)
+  await beforeHooks?.(ctx)
   const hooks = await ctx.plugin(HooksClaude, { configPath: join(configDir, 'hooks.json') })
   ctx.llm.registerAdapter(['mock'], adapter)
   return { ctx, hooks }
@@ -89,6 +90,27 @@ async function waitFor(predicate: () => boolean, timeout = 5000, interval = 10):
 }
 
 describe('hooks-claude-code bridge — UserPromptSubmit', () => {
+  it('publishes runnable and skipped handlers to the runtime hook catalog', async () => {
+    const dir = writeConfig({
+      PreToolUse: [{ matcher: 'bash', hooks: [{ type: 'command', command: 'node guard.mjs', timeout: 12 }] }],
+      Stop: [{ hooks: [{ type: 'prompt', prompt: 'Check the result.' }] }],
+    })
+    const ctx = await harness(dir, new MockAdapter([]), async (root) => {
+      await root.plugin(HookRegistry)
+    })
+
+    expect(ctx.hooks.list()).toEqual([{
+      dialect: 'claude-code',
+      configPath: join(dir, 'hooks.json'),
+      handlerCount: 1,
+      points: [{
+        point: 'PreToolUse',
+        groups: [{ matcher: 'bash', handlers: [{ command: 'node guard.mjs', timeoutSec: 12 }] }],
+      }],
+      skipped: [{ point: 'Stop', reason: 'unsupported "prompt" hook' }],
+    }])
+  })
+
   it('a UserPromptSubmit hook that exits 2 closes a blocked turn without a step', async () => {
     // UserPromptSubmit ignores its malformed matcher field, then exit 2 blocks
     // with the reason on stderr.

@@ -54,6 +54,8 @@ Renderer 从 DeepSeek Harness 自身删除前的历史中恢复，并迁移到�
 
 `/mcp [verbose]` 只投影当前 Agent 作用域工具视图中的 MCP 限定 schema。该投影会报告公开名称与可选描述，不会声称工具注册表无法判定的连接状态。
 
+`/hooks [verbose]` 会从只读 `ctx.hooks` registry 投影成功加载的 Claude Code 与 Codex 桥接配置。基础 bundle 挂载该 registry；每个桥接会在其 effect 生命周期内贡献绝对来源路径、可运行生命周期条目与被跳过的 handler；TUI 只在 verbose 模式展开命令、matcher 与超时覆盖。启用、信任、禁用或编辑 hook 仍由 profile 组合持有。
+
 `/usage` 会把现有共享会话统计线记录到 transcript。它报告已观测的对话耗时与 token 桶；由于没有账户配额服务提供数据，提供方账户限额仍不展示。
 
 真正处于零状态的会话会使用自适应双栏欢迎卡，而不是让紧凑 transcript header 横跨空白 viewport。其编排借鉴 Claude Code 左侧身份／右侧更新的节奏，但只保留第一方 DeepSeek 内容：左栏以终端前景色渲染从官方 SVG 派生的 Braille 鲸鱼，并从各自权威服务投影 preset、模型、权限和 workspace；右栏列出真实 Harness 命令与最新可查询会话。该标志在浅色终端中呈黑色，在深色主题中不会消失，缩小档位也不依赖 Kitty／iTerm 图像协议。第一个持久 turn 会将欢迎卡收缩为仅含产品名的 header，因此 banner 副标题与 Session id 都不会进入对话。多行 composer 与已提交的人类消息卡片使用由 `/theme` 选择的 Web 主题精确明暗用户气泡色；独立底部状态栏显示 Goal、模型、紧凑用量、上下文压力和排队工作，并默认留空左侧，让工作区与分支不占用对话宽度。
@@ -77,6 +79,8 @@ Agent 选择器对照了 Codex commit [`c494130`](https://github.com/openai/code
 状态栏设置对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/bottom_pane/status_line_setup.rs)。DeepSeek Harness 把适用目录映射到自身已有 footer 值与共享 settings provider；未复刻不可用的 Codex 账户和云端字段，也没有复制 Rust 源码。
 
 沟通风格选择对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/chatwidget/settings_popups.rs)。DeepSeek Harness 使用自身的 settings 与系统提示词注册表，没有复制 Rust 源码。
+
+Hook 浏览器对照了 Codex commit [`c494130`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/chatwidget/hooks.rs) 及其 [`hooks_browser_view.rs`](https://github.com/openai/codex/blob/c4941302c73c6322b153bba13ac0a9f4396301d6/codex-rs/tui/src/bottom_pane/hooks_browser_view.rs)。DeepSeek Harness 读取自身 bridge registry 与 profile 持有的配置，没有复刻 Codex 的信任和修改界面，也没有复制 Rust 源码。
 
 ## 参考与来源边界
 
@@ -111,6 +115,8 @@ Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服
 `/statusline` checkpoint 会固定启用字段、排序控制与有界选择器 viewport。聚焦集成测试证明持久顺序、键盘重排、实时预览、取消回滚、参数处理，以及恢复 profile 自定义 footer 模板。
 
 `/personality` 选择器具有无密钥 checkpoint。聚焦集成测试证明设置写入、无效参数处理、外部更新接纳，以及两种沟通风格的提示词重新组装。
+
+`/hooks verbose` 具有无密钥终端 checkpoint。Registry 单元测试覆盖 handler 总数、注册顺序、effect dispose 与不可变快照；两套真实桥接集成测试证明成功解析的可运行和跳过 handler 会进入目录，同时该目录不会成为执行的强制依赖。
 
 ## 考虑过的替代方案
 

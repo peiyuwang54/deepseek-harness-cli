@@ -1,0 +1,48 @@
+terminal 96x32 buffer=normal length=32 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor visible column=3 viewportRow=14 bufferRow=14
+buffer
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1| <blank>
+2| "Lifecycle hooks                                                                                 "
+  style 0-95 dim
+3| "Codex · 2 handlers · /workspace/project/.codex/hooks.json                                       "
+  style 0-95 dim
+4| "  SessionStart                                                                                  "
+  style 0-95 dim
+5| "    matcher: *                                                                                  "
+  style 0-95 dim
+6| "    $ node .codex/session-start.mjs                                                             "
+  style 0-95 dim
+7| "  PreToolUse                                                                                    "
+  style 0-95 dim
+8| "    matcher: bash|read                                                                          "
+  style 0-95 dim
+9| "    $ node .codex/guard.mjs · timeout 30s                                                       "
+  style 0-95 dim
+10| "  skipped Stop: async hook                                                                      "
+  style 0-25 dim
+11-12| <blank>
+13| "                                                                                                "
+  style 0-95 bg=ansi-236
+14| " › │Describe a task, @ a file, or / for commands                                                "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-95 bg=ansi-236
+15| "                                                                                                "
+  style 0-95 bg=ansi-236
+16| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+17| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 48-49 dim
+  style 52-76 dim
+  style 79-83 dim
+  style 86-95 dim
+18-31| <blank>

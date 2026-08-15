@@ -16,6 +16,8 @@ flowchart LR
   cfg --> plugin_dsh_base_llm
   plugin_dsh_base_session["session<br/>@deepseek-ai/dsh-session"]
   cfg --> plugin_dsh_base_session
+  plugin_dsh_base_hooks["hooks<br/>@deepseek-ai/dsh-hook-protocol"]
+  cfg --> plugin_dsh_base_hooks
   plugin_dsh_base_typert["typert<br/>@deepseek-ai/dsh-typert-registry"]
   cfg --> plugin_dsh_base_typert
   plugin_dsh_base_typert_loader["typert-loader<br/>@deepseek-ai/dsh-typert-loader"]
@@ -174,6 +176,7 @@ flowchart LR
 | `hmr` | `@deepseek-ai/cordis-plugin-hmr` |
 | `llm` | `@deepseek-ai/dsh-llm` |
 | `session` | `@deepseek-ai/dsh-session` |
+| `hooks` | `@deepseek-ai/dsh-hook-protocol` |
 | `typert` | `@deepseek-ai/dsh-typert-registry` |
 | `typert-loader` | `@deepseek-ai/dsh-typert-loader` |
 | `typert-gateway` | `@deepseek-ai/dsh-api-gateway` |

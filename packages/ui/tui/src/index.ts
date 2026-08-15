@@ -56,6 +56,7 @@ import { foldSessionTitle } from '@deepseek-ai/dsh-session-title'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type { SessionQueryEngine } from '@deepseek-ai/dsh-session-query'
 import type { SkillRegistry } from '@deepseek-ai/dsh-skill'
+import type {} from '@deepseek-ai/dsh-hook-protocol'
 // Optional service used by the live agent picker. The type import also
 // declaration-merges `ctx.subagents` onto Cordis Context.
 import type {} from '@deepseek-ai/dsh-subagent'
@@ -200,6 +201,7 @@ import {
   writeMarkdownTranscript,
 } from './chat/transcript-export.ts'
 import { mcpCommandResult } from './chat/mcp-command.ts'
+import { hooksCommandResult } from './chat/hooks-command.ts'
 import { gitDiff } from './chat/git-diff.ts'
 import { GoalTimingTracker, formatGoalFooterStatus, type GoalFooterState } from './chat/goal-status.ts'
 import type {
@@ -2632,6 +2634,12 @@ export function createTuiChat(
       description: 'List MCP tools visible to this session',
       input: { hint: '[verbose]' },
       handler: ({ rawInput }) => mcpCommandResult(rawInput, agent.ctx.tools.schemas(agent)),
+    })
+    commandCtx.commands.register({
+      name: 'hooks',
+      description: 'Inspect configured lifecycle hook bridges and handlers',
+      input: { hint: '[verbose]' },
+      handler: ({ rawInput }) => hooksCommandResult(rawInput, ctx.get('hooks')),
     })
     commandCtx.commands.register({
       name: 'approve',

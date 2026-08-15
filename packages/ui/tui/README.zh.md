@@ -16,7 +16,7 @@ Renderer 默认使用终端原生 inline scrollback。鼠标滚轮只滚动不�
 
 受 Codex 启发的开发者命令是 Harness 服务之上的终端原生适配器。`/skills` 浏览当前 Agent 作用域中面向用户可调用的 catalog；`/keymap` 与 `/vim` 在默认编辑和 Vim Insert／Normal 模式间切换 composer；`/fast` 仅选择元数据真正标识为 flash、fast、turbo 或 lite 的已公布路由，没有这类路由时不会假称加速。`/experimental` 统一启动现有的 fast、Vim、reasoning 可见性与 Loader reload action。`/ide` 报告检测到的终端宿主，并提供 `@` 文件引用或 workspace handoff；没有 IDE bridge 时仍无法捕获已打开文件与选区。`/approve` 会允许活动请求一次，或为下一个与最新交互拒绝在工具和理由上完全匹配的请求预批准一次；如果下一个请求不匹配，它会消耗该授权但不会获得批准，命令也绝不改变 permission preset。
 
-本包（package）只持有交互式终端展示和输入。它注入 `agents`、[`commands`](../../interaction/commands/README.md)、`approval`、`llm`、`systemPrompt`、`tokenMeter`、`tools` 和 `userQuestions`，在组合存在时可选读取 `credentials`、`settings`、`skills` 与 `workspaceRegistry` 服务，然后驱动由 app 或开发者代码创建或恢复的 agent。Agent 生命周期、持久化、审批策略与模型侧 [`ask_user_question`](../../interaction/tool-ask-user/README.md) 工具仍是独立组合项。
+本包（package）只持有交互式终端展示和输入。它注入 `agents`、[`commands`](../../interaction/commands/README.md)、`approval`、`llm`、`systemPrompt`、`tokenMeter`、`tools` 和 `userQuestions`，在组合存在时可选读取 `credentials`、`hooks`、`settings`、`skills` 与 `workspaceRegistry` 服务，然后驱动由 app 或开发者代码创建或恢复的 agent。Agent 生命周期、持久化、审批策略与模型侧 [`ask_user_question`](../../interaction/tool-ask-user/README.md) 工具仍是独立组合项。
 
 终端成功启动后，本包会提供终端本地的 `ctx.tui` 扩展服务。注入该服务的插件可以使用组件工厂和受限布局选项调用 `openOverlay()`；宿主会公开 viewport、语义化主题（包括终端安全的 DeepSeek `brand` 样式）、显示文本转义、重绘、关闭和生命周期信号，但不公开 pi-tui 树、终端、焦点控制器或 overlay 句柄。插件 overlay、附着 composer 的选择器、用户问题与审批请求虽然位置不同，但共用一个 FIFO 焦点队列。每个请求都是调用方插件 fiber 的 effect，因此卸载会移除排队工作，或在清理结算前关闭可见工作；终端关闭会先卸载依赖项，再停止 pi-tui。Overlay 状态不会记录或回放。组件代码受信任，可以渲染 ANSI 样式，但必须通过 `host.display()` 处理不受信任文本。
 
@@ -65,6 +65,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 `/model off`、`/model high` 与 `/model max` 会直接选择当前路由公布的对应推理强度。不可用的等级只会报告 catalog 限制，不会改变选择。
 
 `/mcp [verbose]` 会列出当前 Agent 作用域工具注册表中可见的 MCP 限定工具。默认视图输出稳定的公开工具名；`verbose` 还会输出经规整的描述。它不会暴露无关工具，也不会推断工具注册表不持有的服务器连接状态。
+
+`/hooks [verbose]` 会列出可选 `ctx.hooks` 中成功加载的 Claude Code 与 Codex hook 桥接配置。默认视图报告每个来源和可运行 handler 总数；`verbose` 展开生命周期点、matcher、命令、超时覆盖与已解析但被跳过的 handler。该命令只用于诊断且为只读；启用、信任、禁用或编辑 hook 仍由 profile 配置负责。
 
 `/reload`（实验性，仅开发环境）会重新读取所有基于文件的 loader 配置树，并把 diff 应用到运行中 app：它手动调用 HMR（热模块替换）watcher 的配置路径；上下文中必须有 cordis Loader，否则退化为警告。它只在 agent 空闲时运行，并拒绝 reload 进行期间的再次进入。模块源代码热重载仍由 watcher 持有。挂载 `skills` 服务后，`/skill:<name> [instructions]` 会把该 skill 的指令作为一个 user 轮次加载到会话中；自动补全列出用户可调用的 skill，按精确名称调用时也会拒绝用户策略禁用的 skill。
 

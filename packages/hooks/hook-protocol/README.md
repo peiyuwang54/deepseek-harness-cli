@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-The **shared core** of the Claude Code / Codex hook wire protocol. NOT a cordis plugin — it registers nothing and injects nothing. It is a **library** of dialect-neutral primitives the two bridge plugins (`@deepseek-ai/dsh-hooks-claude-code`, `@deepseek-ai/dsh-hooks-codex`) import so neither re-implements the identical halves of the protocol.
+The shared core of the Claude Code / Codex hook wire protocol and the provider for the read-only `ctx.hooks` runtime catalog. Its dialect-neutral primitives keep the two bridge plugins (`@deepseek-ai/dsh-hooks-claude-code`, `@deepseek-ai/dsh-hooks-codex`) from reimplementing identical protocol behavior.
 
 Codex deliberately reimplements a *subset* of the Claude Code hook protocol — the same `hooks.json` matcher-group shape, the same exit-code/stdout output contract, the same command-hook execution model. The genuinely-shared parts live here; each bridge owns only what differs.
 
@@ -24,6 +24,10 @@ Codex deliberately reimplements a *subset* of the Claude Code hook protocol — 
 - **`parseHookOutput(exitCode, stdout, stderr, expectedEventName?)`** decodes exit status and structured stdout. Exit 2 blocks with stderr; other failures are non-blocking. A matching hook-specific permission decision overrides the legacy top-level decision; mismatched or missing event discriminators suppress only event-specific fields. Top-level fields remain event-agnostic, and successful non-JSON output is left to the bridge.
 - **`mergeHookOutputs(outputs)`** — fold the results of every hook that matched one point: permission precedence **deny > ask > allow**, halt sticky on the first `continue:false`, block reasons joined with `\n\n`, `additionalContext`/`systemMessages` accumulated in order.
 - **`createDetachedRuns()`** — quiescence tracking for the emit-shaped points, which run detached (no extension point awaits them). The bridge tracks each run chain — the hook run PLUS its continuation — and registers `drain()` as its effect disposer: drain fires the tracker's abort `signal` (so a still-running hook process is killed via `runHook`, not awaited out to its timeout), then resolves once every tracked chain has settled. `fiber.dispose()` resolving therefore means no detached hook work is left to fire into a disposed context ([defensive patterns](../../../docs/defensive-patterns.md): dispose must reach quiescence).
+
+## Runtime catalog
+
+The default plugin provides `ctx.hooks`. A bridge registers only a successfully parsed configuration, including its dialect, absolute source path, runnable event/matcher/command/timeout entries, skipped handlers, and derived runnable-handler total. Registrations follow the bridge effect lifetime and `list()` returns read-only snapshots. The catalog does not load, enable, trust, disable, or edit hooks; profile composition and each bridge's `configPath` remain authoritative.
 
 ## `hook/*` session events
 

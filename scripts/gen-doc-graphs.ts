@@ -97,6 +97,14 @@ const GROUP_ORDER = [
 
 const SERVICE_ROLES: ServiceRole[] = [
   {
+    key: 'hooks',
+    pkg: 'hook-protocol',
+    title: 'Loaded lifecycle-hook catalog',
+    mode: 'core',
+    consumers: ['hooks-claude-code', 'hooks-codex', 'tui'],
+    note: 'The protocol package owns the read-only registry; bridge plugins contribute parsed profile configuration and the TUI projects diagnostics.',
+  },
+  {
     key: 'attachments',
     pkg: 'attachment',
     title: 'Durable binary attachment storage',

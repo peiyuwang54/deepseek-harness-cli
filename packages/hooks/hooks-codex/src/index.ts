@@ -13,6 +13,7 @@
 // point; a cross-package facade for imports alone would add indirection.
 /* jscpd:ignore-start */
 import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
@@ -27,6 +28,7 @@ import {
   createDetachedRuns,
   DEFAULT_HOOK_TIMEOUT_MS,
   DEFAULT_STDERR_SUMMARY_MAX_CHARS,
+  hookCatalogPoints,
   matchesMatcher,
   mergeHookOutputs,
   runHook,
@@ -34,7 +36,7 @@ import {
   type MatcherGroup,
   type MergedHookOutcome,
 } from '@deepseek-ai/dsh-hook-protocol'
-import { parseCodexConfig, type CodexHookConfig } from './config.ts'
+import { parseCodexConfig, type CodexHookConfig, type SkippedHook } from './config.ts'
 /* jscpd:ignore-end */
 
 export const name = 'hooks-codex'
@@ -84,10 +86,12 @@ export function apply(ctx: Context, config: Config): void {
   assertPositiveInteger('stderrSummaryMaxChars', stderrSummaryMaxChars)
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_HOOK_TIMEOUT_MS
   let parsed: CodexHookConfig = {}
+  let skipped: SkippedHook[] = []
   try {
     const raw: unknown = JSON.parse(readFileSync(config.configPath, 'utf8'))
     const result = parseCodexConfig(raw)
     parsed = result.config
+    skipped = result.skipped
     for (const s of result.skipped) {
       ctx.logger.warn(`hooks-codex: skipping ${s.reason} on ${s.event} (only sync command hooks run)`)
     }
@@ -95,6 +99,15 @@ export function apply(ctx: Context, config: Config): void {
     ctx.logger.warn(`hooks-codex: could not load hook config "${config.configPath}": ${String(error)} — no hooks registered`)
     return
   }
+
+  ctx.inject(['hooks'], (catalogCtx) => {
+    catalogCtx.hooks.register({
+      dialect: 'codex',
+      configPath: resolve(config.configPath),
+      points: hookCatalogPoints(parsed),
+      skipped: skipped.map(entry => ({ point: entry.event, reason: entry.reason })),
+    })
+  })
 
   const model = config.model ?? ''
 

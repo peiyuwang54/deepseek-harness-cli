@@ -178,6 +178,9 @@
 # project-local file is not discovered. Missing config registers nothing. Hook
 # commands still run in the session cwd. Warnings use `ctx.logger`, never stdout;
 # see packages/hooks/hooks-claude-code/README.md for the deferred per-session design.
+- id: hooks
+  name: '@deepseek-ai/dsh-hook-protocol'
+
 - id: hooks-claude-code
   name: '@deepseek-ai/dsh-hooks-claude-code'
   config:

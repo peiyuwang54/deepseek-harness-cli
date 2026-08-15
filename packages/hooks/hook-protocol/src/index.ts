@@ -1,10 +1,13 @@
 /**
- * Shared, non-plugin hook protocol library: matching, command execution and
- * decoding, restrictive outcome merging, durable event helpers, and detached
- * run quiescence. Claude Code and Codex bridges own their distinct payloads,
- * environment rules, matcher mode, and typed extension-point mappings.
+ * Shared hook protocol and runtime registry: matching, command execution,
+ * decoding, restrictive outcome merging, durable event helpers, configured
+ * bridge discovery, and detached run quiescence. Claude Code and Codex bridges
+ * own their distinct payloads, environment rules, matcher mode, and typed
+ * extension-point mappings.
  * @module @deepseek-ai/dsh-hook-protocol
  */
+
+import { HookRegistry } from './registry.ts'
 
 export type {
   CommandHook,
@@ -23,3 +26,15 @@ export { appendHookInvoked, appendHookResult, DEFAULT_STDERR_SUMMARY_MAX_CHARS, 
 export type { HookInvocation, HookResultRecord } from './events.ts'
 export { createDetachedRuns } from './detached.ts'
 export type { DetachedRuns } from './detached.ts'
+export { HookRegistry, hookCatalogPoints } from './registry.ts'
+export type {
+  HookCatalogGroup,
+  HookCatalogHandler,
+  HookCatalogPoint,
+  HookCatalogRegistration,
+  HookCatalogSnapshot,
+  SkippedHookCatalogEntry,
+} from './registry.ts'
+
+/** Default Cordis provider for the `ctx.hooks` runtime catalog. */
+export default class HookRegistryPlugin extends HookRegistry {}

@@ -951,6 +951,9 @@ importers:
       '@deepseek-ai/dsh-goal-round-driver':
         specifier: workspace:*
         version: link:../packages/goal/goal-round-driver
+      '@deepseek-ai/dsh-hook-protocol':
+        specifier: workspace:*
+        version: link:../packages/hooks/hook-protocol
       '@deepseek-ai/dsh-hooks-claude-code':
         specifier: workspace:*
         version: link:../packages/hooks/hooks-claude-code
@@ -1494,6 +1497,9 @@ importers:
       '@deepseek-ai/dsh-goal-round-driver':
         specifier: workspace:^
         version: link:../../goal/goal-round-driver
+      '@deepseek-ai/dsh-hook-protocol':
+        specifier: workspace:^
+        version: link:../../hooks/hook-protocol
       '@deepseek-ai/dsh-jobs-local':
         specifier: workspace:^
         version: link:../../jobs/jobs-local
@@ -8492,6 +8498,9 @@ importers:
       '@deepseek-ai/dsh-goal':
         specifier: workspace:^
         version: link:../../goal/goal
+      '@deepseek-ai/dsh-hook-protocol':
+        specifier: workspace:^
+        version: link:../../hooks/hook-protocol
       '@deepseek-ai/dsh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants

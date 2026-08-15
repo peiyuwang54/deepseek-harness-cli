@@ -67,6 +67,8 @@ flowchart LR
   cfg --> plugin_acp_fs_observation_policy
   plugin_acp_tool_fs["tool-fs<br/>@deepseek-ai/dsh-tool-fs"]
   cfg --> plugin_acp_tool_fs
+  plugin_acp_hooks["hooks<br/>@deepseek-ai/dsh-hook-protocol"]
+  cfg --> plugin_acp_hooks
   plugin_acp_hooks_claude_code["hooks-claude-code<br/>@deepseek-ai/dsh-hooks-claude-code"]
   cfg --> plugin_acp_hooks_claude_code
   plugin_acp_hooks_codex["hooks-codex<br/>@deepseek-ai/dsh-hooks-codex"]
@@ -101,6 +103,7 @@ flowchart LR
 | `fs-sandbox` | `@deepseek-ai/dsh-fs-sandbox` |
 | `fs-observation-policy` | `@deepseek-ai/dsh-fs-observation-policy` |
 | `tool-fs` | `@deepseek-ai/dsh-tool-fs` |
+| `hooks` | `@deepseek-ai/dsh-hook-protocol` |
 | `hooks-claude-code` | `@deepseek-ai/dsh-hooks-claude-code` |
 | `hooks-codex` | `@deepseek-ai/dsh-hooks-codex` |
 

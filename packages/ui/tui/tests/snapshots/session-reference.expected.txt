@@ -4,7 +4,7 @@ title "DSH session reference"
 cursor visible column=3 viewportRow=13 bufferRow=13
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1| <blank>
@@ -22,15 +22,15 @@ buffer
 10-11| <blank>
 12| "                                                                                                "
 13| " › │Describe a task, @ a file, or / for commands                                                "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-2 dim
   style 4-47 dim
 14| "                                                                                                "
 15| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-16| "/workspace/project                                                   ▸ idle  mock [alt+m]  ↑0 ↓0"
-  style 0-17 fg=bright-magenta bold
-  style 69-74 dim
+16| "/workspace/project                                                       ▸   mock [alt+m]  ↑0 ↓0"
+  style 0-17 fg=bright-blue bold
+  style 73-74 dim
   style 77-88 dim
   style 91-95 dim
 17-23| <blank>

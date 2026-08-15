@@ -599,7 +599,7 @@ export function createTuiChat(
   const promptValues: TuiPromptValueHandle[] = [
     ctx.tuiPrompt.register('cwd', palette.bold(palette.accent(formattedCwd))),
     ctx.tuiPrompt.register('git/worktree', branch === undefined ? undefined : palette.dim(` (${displayText(branch)})`)),
-    ctx.tuiPrompt.register('token_meter/cache_hit_rate'),
+    ctx.tuiPrompt.register('token_meter/usage'),
     ctx.tuiPrompt.register('status'),
     ctx.tuiPrompt.register('preset'),
     ctx.tuiPrompt.register('model'),
@@ -626,7 +626,6 @@ export function createTuiChat(
     const renderTime = now()
     cwdValue.set(palette.bold(palette.accent(formattedCwd)))
     gitValue.set(branch === undefined ? undefined : palette.dim(` (${displayText(branch)})`))
-    const rate = cacheHitRate(tokens)
     const usage = `↑${formatTokens(tokens.input)} ↓${formatTokens(tokens.output)}`
     const modelLabel = displayText(target.current === undefined ? 'model unset' : compactTargetLabel(target.current))
     statusValue.set(runningStatus === undefined ? palette.dim(agent.status) : undefined)
@@ -635,7 +634,7 @@ export function createTuiChat(
     permissionValue.set(`  ${palette.dim(displayInlineText(currentPermission()))}`)
     const detailsExpanded = toolsVisibility === 'expanded' && showReasoning
     detailsValue.set(palette.dim(`${detailsExpanded ? '▾' : '▸'} `))
-    tokenValue.set(`  ${palette.dim(rate === undefined ? usage : `${usage} cache ${rate}%`)}`)
+    tokenValue.set(`  ${palette.dim(usage)}`)
     const contextWindow = modelController.contextWindow()
     contextValue.set(contextWindow === undefined ? undefined : `  ${palette.dim(
       `${Math.min(100, Math.round(ctx.tokenMeter.measure(agent.session).totalTokens / contextWindow * 100))}% context`,

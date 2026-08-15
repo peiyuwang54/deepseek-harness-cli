@@ -94,7 +94,7 @@ const colorSchema = z.boolean().default(true)
 // No default: an unset value auto-detects truecolor from COLORTERM in `apply`.
 const truecolorSchema = z.boolean()
 const DEFAULT_LEFT_PROMPT = '${cwd}${git/worktree}'
-const DEFAULT_RIGHT_PROMPT = '${goal}${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}'
+const DEFAULT_RIGHT_PROMPT = '${goal}${details}${model}${token_meter/usage}${context}${queued}'
 const DEFAULT_INPUT_PROMPT = '${indicator}'
 const DEFAULT_INPUT_PLACEHOLDER = 'Describe a task, @ a file, or / for commands'
 const TuiThemeConfigSchema: z<TuiThemeConfig> = z.object({

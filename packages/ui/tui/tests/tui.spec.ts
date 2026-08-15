@@ -259,7 +259,7 @@ describe('TUI config', () => {
         color: true,
         truecolor: false,
         leftPrompt: '${cwd}${git/worktree}',
-        rightPrompt: '${goal}${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}',
+        rightPrompt: '${goal}${details}${model}${token_meter/usage}${context}${queued}',
         inputPrompt: '${indicator}',
         inputPlaceholder: 'Describe a task, @ a file, or / for commands',
       },
@@ -309,7 +309,7 @@ describe('TUI config', () => {
         color: false,
         truecolor: true,
         leftPrompt: '${cwd}${git/worktree}',
-        rightPrompt: '${goal}${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}',
+        rightPrompt: '${goal}${details}${model}${token_meter/usage}${context}${queued}',
         inputPrompt: '${indicator}',
         inputPlaceholder: 'Describe a task, @ a file, or / for commands',
       },
@@ -3143,25 +3143,23 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await dispose(logicalResult)
   })
 
-  it('shows the session cache hit rate in the footer and updates it live', async () => {
-    // Empty session: no input billed yet, so the cache segment is hidden.
-    // A cwd without "cache" in it keeps the negative assertion unambiguous.
+  it('keeps compact token usage in the first footer row and cache rate in session statistics', async () => {
     const empty = await setup({ cwd: '/opt' })
     expect(empty.terminal.output).toContain('↑0 ↓0')
-    expect(empty.terminal.output).not.toContain('cache')
+    expect(empty.ctx.tuiPrompt.get('token_meter/usage')).toContain('↑0 ↓0')
+    expect(empty.ctx.tuiPrompt.get('token_meter/cache_hit_rate')).toBeUndefined()
     await dispose(empty)
 
     const result = await setup({
-      // Pin a short cwd so the footer never clips the cache segment: the
-      // default is process.cwd(), and a deep worktree path truncates
-      // `cache 60%` at the terminal width.
       cwd: '/opt',
       beforeMount(session) {
         // Cold call: 10 billed input tokens, none served from cache.
         appendAssistant(session, [{ type: 'text', text: 'cold' }], { inputTokens: 10, outputTokens: 5 })
       },
     })
-    expect(result.terminal.output).toContain('cache 0%')
+    expect(result.ctx.tuiPrompt.get('token_meter/usage')).toContain('↑10 ↓5')
+    expect(result.ctx.tuiPrompt.get('token_meter/usage')).not.toContain('cache')
+    expect(result.terminal.output).toContain('Cache hit 0%')
 
     result.terminal.output = ''
     // Warm call lands live on the next step (same-step usage replaces rather
@@ -3174,8 +3172,10 @@ describe('pi-tui chat lifecycle and transcript', () => {
       cacheWriteTokens: 5,
     }, { turn: 1, step: 2 })
     await tick()
-    expect(result.terminal.output).toContain('cache 60%')
-    expect(result.terminal.output).not.toContain('cache 0%')
+    expect(result.ctx.tuiPrompt.get('token_meter/usage')).toContain('↑15 ↓10')
+    expect(result.ctx.tuiPrompt.get('token_meter/usage')).not.toContain('cache')
+    expect(result.terminal.output).toContain('Cache hit 60%')
+    expect(result.terminal.output).not.toContain('Cache hit 0%')
     await dispose(result)
   })
 
@@ -4089,24 +4089,26 @@ describe('pi-tui chat lifecycle and transcript', () => {
     })
     await terminal.waitForFrame()
     const before = await terminal.snapshot()
-    expect(before).toContain('▸ idle')
+    expect(before).toContain('▸')
+    expect(before).not.toContain('▸ idle')
     expect(before).not.toContain('lines hidden')
     expect(before).not.toContain('private context line')
     expect(before).not.toContain('private reasoning line')
     expect(before).toContain('visible answer')
 
-    const rowLine = before.split('\n').find(line => line.includes('▸ idle'))
+    const rowLine = before.split('\n').find(line => line.includes('▸'))
     expect(rowLine).toBeDefined()
     const separator = rowLine?.indexOf('| ') ?? -1
     const row = Number(rowLine?.slice(0, separator).replace('~', '')) + 1
     const text = JSON.parse(rowLine?.slice(separator + 2) ?? '""') as string
-    const detailsOffset = text.indexOf('▸ idle')
+    const detailsOffset = text.indexOf('▸')
     const column = visibleWidth(text.slice(0, detailsOffset)) + 1
     terminal.send(`\x1b[<0;${column};${row}M`)
 
     await vi.waitFor(async () => {
       const expanded = await terminal.snapshot()
-      expect(expanded).toContain('▾ idle')
+      expect(expanded).toContain('▾')
+      expect(expanded).not.toContain('▾ idle')
       expect(expanded).toContain('private context line')
       expect(expanded).toContain('private reasoning line')
     })
@@ -7399,6 +7401,15 @@ describe('terminal mounting', () => {
     expect(brandText('mark')).toBe('\x1b[38;2;77;107;254mmark\x1b[39m')
   })
 
+  it('keeps interactive chrome in the DeepSeek blue family', () => {
+    expect(paletteSpec('dark').colors.accent.open).toBe('94')
+    expect(paletteSpec('light').colors.accent.open).toBe('94')
+    for (const scheme of ['dark', 'light'] as const) {
+      expect(Object.values(paletteSpec(scheme).colors).map(role => role.open))
+        .not.toContain('95')
+    }
+  })
+
   it('maps the composer to the exact Web user-bubble tones', () => {
     expect(composerBackground(true, 'dark', { r: 0, g: 0, b: 0 })(' prompt '))
       .toBe('\x1b[48;2;44;44;46m prompt \x1b[49m')
@@ -7508,7 +7519,7 @@ describe('terminal mounting', () => {
       cwd: join(homedir(), 'projects', 'dsh-tui'),
     })
     await tick()
-    expect(terminal.output).toContain('\x1b[95m~/')
+    expect(terminal.output).toContain('\x1b[94m~/')
     expect(terminal.output).toContain('\x1b[2;39m (tui-staging)')
     await disposeTuiTestHarness(result)
   })

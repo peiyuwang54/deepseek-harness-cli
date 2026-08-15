@@ -5,7 +5,7 @@ cursor visible column=6 viewportRow=4 bufferRow=4
 buffer
 0| "                                                                                            "
 1| "  Resume session                                                                            "
-  style 2-15 fg=bright-magenta bold
+  style 2-15 fg=bright-blue bold
 2| "                                                                                            "
 3| "  ╭──────────────────────────────────────────────────────────────────────────────────────╮  "
   style 2-89 dim
@@ -17,7 +17,7 @@ buffer
   style 2-89 dim
 6| "                                                                                            "
 7| "  this workspace /workspace/project  ⇥ all workspaces (0)                                   "
-  style 2-34 fg=bright-magenta
+  style 2-34 fg=bright-blue
   style 35-56 dim
 8| "                                                                                            "
 9| "  Loading sessions…                                                                         "

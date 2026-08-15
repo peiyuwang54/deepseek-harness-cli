@@ -4,7 +4,7 @@ title "DSH snapshot"
 cursor hidden column=56 viewportRow=12 bufferRow=12
 viewport
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1-2| <blank>
@@ -14,18 +14,18 @@ viewport
 5| "  Continue with this change?                            "
 6| "                                                        "
 7| "   › 1. Proceed                                         "
-  style 2-14 fg=bright-magenta bold
+  style 2-14 fg=bright-blue bold
 8| "        Apply the proposed change                       "
   style 8-32 dim
 9| "  Tab custom answer • Enter submit • Esc interrupt      "
   style 2-49 dim
 10| "                                                        "
 11| "› Describe a task, @ a file, or / for commands        "
-  style 0-0 fg=bright-magenta bold
+  style 0-0 fg=bright-blue bold
   style 1-45 dim
-12| "/w  ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-1 fg=bright-magenta bold
-  style 4-9 dim
+12| "/works  ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-5 fg=bright-blue bold
+  style 8-9 dim
   style 12-36 dim
   style 39-43 dim
   style 46-55 dim

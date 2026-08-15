@@ -105,7 +105,7 @@ Reasoning 首次渲染时默认在 `Think` 标题下显示。提交的用户卡�
 | `theme.color` | `TuiConfig` | `true` | 应用内置 ANSI palette（参见[颜色](#color)） |
 | `theme.truecolor` | `TuiConfig` | 进程入口检测 `COLORTERM`；direct runtime 调用使用 `false` | 启用 24-bit 启动渐变与 DeepSeek 品牌色 |
 | `theme.leftPrompt` | `TuiConfig` | `${cwd}${git/worktree}` | 底部状态栏左对齐模板 |
-| `theme.rightPrompt` | `TuiConfig` | `${goal}${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}` | 底部状态栏右对齐模板 |
+| `theme.rightPrompt` | `TuiConfig` | `${goal}${details}${model}${token_meter/usage}${context}${queued}` | 底部状态栏右对齐模板；缓存命中率仅保留在会话统计行 |
 | `theme.inputPrompt` | `TuiConfig` | `${indicator}` | 编辑器首行前缀模板 |
 | `theme.inputPlaceholder` | `TuiConfig` | `Describe a task, @ a file, or / for commands` | 空编辑器 placeholder |
 | `title` | `TuiConfig` | `DeepSeek Harness` | 终端窗口标题的产品后缀 |
@@ -142,7 +142,7 @@ Direct renderer 组合还可以选择会话身份与启动 Skill：
 
 TUI 发出的所有通用 SGR 代码都集中在 `components/theme.ts` 的 `paletteSpec` 表中；`createPalette` 从该表派生包装层，`/palette` 则打印该表。该表只包含标准 16 色 ANSI 前景色和 SGR 属性，由终端映射到当前配色方案。启动 banner 渐变、官方标志的精确 `#4D6BFE` 色值，以及官网 composer 表面，是有意保留的真彩色例外。正文使用终端默认前景色，而非固定色调。
 
-每种视觉语义只对应一个角色：`dim` 是唯一的弱化色调，`accent` 是唯一的交互强调色，`brand` 是 DeepSeek 标志的标准 ANSI 回退色，`success` 和 `error` 还分别充当 diff 的新增行与删除行。颜色和属性分属不同类型，因此 `bold(accent(x))` 可以通过编译，`accent(error(x))` 则不行——SGR 没有颜色栈；在一种颜色内嵌套另一种颜色时，内层颜色闭合时会静默丢弃外层颜色。各属性占用彼此独立的 SGR 组，可以按任一顺序与任何颜色组合。运行 `/palette` 可查看每个角色在你的终端上的实际渲染效果及其 SGR 码对。
+每种视觉语义只对应一个角色：`dim` 是唯一的弱化色调，`accent` 使用 ANSI 亮蓝色，使交互强调保持在 DeepSeek 蓝色体系内，`brand` 是 DeepSeek 标志的标准 ANSI 回退色，`success` 和 `error` 还分别充当 diff 的新增行与删除行。颜色和属性分属不同类型，因此 `bold(accent(x))` 可以通过编译，`accent(error(x))` 则不行——SGR 没有颜色栈；在一种颜色内嵌套另一种颜色时，内层颜色闭合时会静默丢弃外层颜色。各属性占用彼此独立的 SGR 组，可以按任一顺序与任何颜色组合。运行 `/palette` 可查看每个角色在你的终端上的实际渲染效果及其 SGR 码对。
 
 用户提示词会渲染为带留白且无标签的卡片。这些卡片和当前 composer 在浅色模式中精确使用 Web 主题的 `deepseek-50`（`#EDF3FE`）用户气泡色，在暗色模式中使用 `neutral-bluish-850`（`#2C2C2E`）；`/theme light|dark|system` 会同时切换两类表面。Assistant 回复不再显示角色标题，而使用暗色 `•` 与对齐续行；可见 reasoning 以 `Think` 开头。工具状态仍由彩色带下划线的标题字形与标题表达，工具正文与展开后的注入上下文统一使用一种暗色。Diff 卡片会为精确新增 `+` 行和删除 `-` 行着色并计数，未变更上下文保持暗色且不计数；超出 `maxDiffEditLength` 时使用已记录的整侧回退。问题面板以粗体强调色突出活跃行，选择器使用反色。除用户卡片与 composer 的背景表面外，这些效果都只作用于前景色。设置 `theme.color: false` 会移除样式和背景表面。
 

@@ -4,43 +4,43 @@ title "DSH snapshot"
 cursor visible column=4 viewportRow=25 bufferRow=25
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1-19| <blank>
 20| "                                                                                            "
 21| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-41 dim
 22| "                                                                                            "
 23| "  Enter 发送 · Shift+Enter 换行 · / 命令"
   style 0-39 dim
 24| "╭ Select workspace ────────────────────────────────────────────────────────╮"
-  style 0-75 fg=bright-magenta
+  style 0-75 fg=bright-blue
 25| "│ >                                                                        │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 4-4 inverse
-  style 75-75 fg=bright-magenta
+  style 75-75 fg=bright-blue
 26| "│                                                                          │"
-  style 0-0 fg=bright-magenta
-  style 75-75 fg=bright-magenta
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
 27| "│ → Secondary project               /workspace/secondary                   │"
-  style 0-0 fg=bright-magenta
-  style 2-55 fg=bright-magenta inverse
-  style 75-75 fg=bright-magenta
+  style 0-0 fg=bright-blue
+  style 2-55 fg=bright-blue inverse
+  style 75-75 fg=bright-blue
 28| "│                                                                          │"
-  style 0-0 fg=bright-magenta
-  style 75-75 fg=bright-magenta
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
 29| "│ Type to filter • ↑/↓ move • Enter new session • Esc close                │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 2-58 dim
-  style 75-75 fg=bright-magenta
+  style 75-75 fg=bright-blue
 30| "╰──────────────────────────────────────────────────────────────────────────╯"
-  style 0-75 fg=bright-magenta
-31| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-magenta bold
+  style 0-75 fg=bright-blue
+31| "/workspace/project (tui-staging)            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-blue bold
   style 18-31 dim
-  style 40-45 dim
+  style 44-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim

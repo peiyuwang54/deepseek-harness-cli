@@ -4,7 +4,7 @@ title "DSH snapshot"
 cursor hidden column=96 viewportRow=20 bufferRow=20
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1| <blank>
@@ -19,38 +19,38 @@ buffer
 7-8| <blank>
 9| "                                                                                                "
 10| " › Describe a task, @ a file, or / for commands                                                 "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-46 dim
 11| "                                                                                                "
 12| "  VIM INSERT · Enter send · Shift+Enter newline · / commands"
   style 0-59 dim
 13| "╭ IDE Context ─────────────────────────────────────────────────────────────╮"
-  style 0-75 fg=bright-magenta
+  style 0-75 fg=bright-blue
 14| "│ → Reference a workspace file      insert @ and open file completion      │"
-  style 0-0 fg=bright-magenta
-  style 2-68 fg=bright-magenta inverse
-  style 75-75 fg=bright-magenta
+  style 0-0 fg=bright-blue
+  style 2-68 fg=bright-blue inverse
+  style 75-75 fg=bright-blue
 15| "│   Choose workspace                /workspace/project                     │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 20-53 dim
-  style 75-75 fg=bright-magenta
+  style 75-75 fg=bright-blue
 16| "│   Inspect current context         vscode                                 │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 27-41 dim
-  style 75-75 fg=bright-magenta
+  style 75-75 fg=bright-blue
 17| "│                                                                          │"
-  style 0-0 fg=bright-magenta
-  style 75-75 fg=bright-magenta
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
 18| "│ ↑/↓ move • Enter select • Esc close                                      │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 2-36 dim
-  style 75-75 fg=bright-magenta
+  style 75-75 fg=bright-blue
 19| "╰──────────────────────────────────────────────────────────────────────────╯"
-  style 0-75 fg=bright-magenta
-20| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-magenta bold
+  style 0-75 fg=bright-blue
+20| "/workspace/project (tui-staging)                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-blue bold
   style 18-31 dim
-  style 44-49 dim
+  style 48-49 dim
   style 52-76 dim
   style 79-83 dim
   style 86-95 dim

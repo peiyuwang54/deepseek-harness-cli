@@ -112,7 +112,9 @@ export function paletteSpec(scheme: TerminalColorScheme): {
       // their default foreground, which made every "dim" surface the most
       // prominent text on screen.
       dim: { open: '2;39', close: '22;39', purpose: 'The one recessed tone: tool bodies, chrome, footers' },
-      accent: { open: '95', close: '39', purpose: 'The one emphasis color: role headers, prompt, borders' },
+      // Bright blue keeps interactive chrome in the same family as DeepSeek's
+      // official #4D6BFE ink while remaining theme-adaptive ANSI.
+      accent: { open: '94', close: '39', purpose: 'DeepSeek-blue emphasis: role headers, prompt, borders' },
       brand: { open: '34', close: '39', purpose: 'DeepSeek brand art when truecolor is unavailable' },
       // ANSI 36 (cyan) is difficult to read on a light background — use ANSI 34
       // (blue) which is legible on both light and dark schemes.

@@ -71,7 +71,7 @@ export const Config: z<Config> = z.object({
     color: z.boolean().default(true),
     truecolor: z.boolean(),
     leftPrompt: z.string().default('${cwd}${git/worktree}'),
-    rightPrompt: z.string().default('${goal}${details}${status}${model}${token_meter/cache_hit_rate}${context}${queued}'),
+    rightPrompt: z.string().default('${goal}${details}${model}${token_meter/usage}${context}${queued}'),
     inputPrompt: z.string().default('${indicator}'),
     inputPlaceholder: z.string().default('Describe a task, @ a file, or / for commands'),
   }),

@@ -4,7 +4,7 @@ title "Inspect session diagnostics — DSH snapshot"
 cursor visible column=3 viewportRow=26 bufferRow=26
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1| <blank>
@@ -17,7 +17,7 @@ buffer
 7| <blank>
 8| "╭─ Session status ────────────────────────────────────────────────────────────────────────╮"
   style 0-2 dim
-  style 3-16 fg=bright-magenta bold
+  style 3-16 fg=bright-blue bold
   style 17-90 dim
 9| "│  Session:    main-session                                                               │"
   style 0-0 dim
@@ -54,14 +54,14 @@ buffer
   style 0-0 dim
   style 3-12 dim
   style 15-15 dim
-  style 16-26 fg=bright-magenta
+  style 16-26 fg=bright-blue
   style 27-32 dim
   style 90-90 dim
 18| "│  Context:    [█████░░░░░░░░░░░] 33% used (42,000 / 128,000)                             │"
   style 0-0 dim
   style 3-12 dim
   style 15-15 dim
-  style 16-20 fg=bright-magenta
+  style 16-20 fg=bright-blue
   style 21-32 dim
   style 90-90 dim
 19| "│                                                                                         │"
@@ -80,18 +80,18 @@ buffer
 23-24| <blank>
 25| "                                                                                            "
 26| " › │Describe a task, @ a file, or / for commands                                            "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-2 dim
   style 4-47 dim
 27| "                                                                                            "
 28| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-29| "/workspace/project (tui-  ▸ idle  deepseek-v4-pro [alt+m]  ↑1.3k ↓340 cache 67%  33% context"
-  style 0-17 fg=bright-magenta bold
-  style 18-23 dim
-  style 26-31 dim
-  style 34-56 dim
-  style 59-78 dim
+29| "/workspace/project (tui-staging)        ▸   deepseek-v4-pro [alt+m]  ↑1.3k ↓340  33% context"
+  style 0-17 fg=bright-blue bold
+  style 18-31 dim
+  style 40-41 dim
+  style 44-66 dim
+  style 69-78 dim
   style 81-91 dim
 30| "                      Cache hit 67% | Input 4.5K tok · Output 340 tok"
   style 22-68 dim

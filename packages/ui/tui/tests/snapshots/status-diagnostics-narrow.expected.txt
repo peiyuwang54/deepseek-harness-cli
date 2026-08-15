@@ -4,7 +4,7 @@ title "Inspect session diagnostics — DSH snapshot"
 cursor visible column=3 viewportRow=31 bufferRow=31
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1| <blank>
@@ -17,7 +17,7 @@ buffer
 7| <blank>
 8| "╭─ Session status ─────────────────────────────────────╮"
   style 0-2 dim
-  style 3-16 fg=bright-magenta bold
+  style 3-16 fg=bright-blue bold
   style 17-55 dim
 9| "│  Session:    main-session                            │"
   style 0-0 dim
@@ -63,7 +63,7 @@ buffer
   style 0-0 dim
   style 3-12 dim
   style 15-15 dim
-  style 16-26 fg=bright-magenta
+  style 16-26 fg=bright-blue
   style 27-32 dim
   style 55-55 dim
 21| "│              + 250 write)                            │"
@@ -73,7 +73,7 @@ buffer
   style 0-0 dim
   style 3-12 dim
   style 15-15 dim
-  style 16-20 fg=bright-magenta
+  style 16-20 fg=bright-blue
   style 21-32 dim
   style 55-55 dim
 23| "│              128,000)                                │"
@@ -95,16 +95,17 @@ buffer
 28-29| <blank>
 30| "                                                        "
 31| " › │Describe a task, @ a file, or / for commands        "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-2 dim
   style 4-47 dim
 32| "                                                        "
 33| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-34| "▸ idle  deepseek-v4-pro [alt+m]  ↑1.3k ↓340 cache 67%  3"
-  style 0-5 dim
+34| "/w  ▸   deepseek-v4-pro [alt+m]  ↑1.3k ↓340  33% context"
+  style 0-1 fg=bright-blue bold
+  style 4-5 dim
   style 8-30 dim
-  style 33-52 dim
-  style 55-55 dim
+  style 33-42 dim
+  style 45-55 dim
 35| "    Cache hit 67% | Input 4.5K tok · Output 340 tok"
   style 4-50 dim

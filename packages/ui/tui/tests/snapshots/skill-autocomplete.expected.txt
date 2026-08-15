@@ -4,26 +4,26 @@ title "DSH snapshot"
 cursor visible column=10 viewportRow=4 bufferRow=4
 viewport
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1-2| <blank>
 3| "                                                                                                "
 4| " › /skill:                                                                                      "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-2 dim
   style 10-10 inverse
 5| "                                                                                                "
 6| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
 7| "→ skill:browser-workflow  (user) — Inspect a browser-driven workflow"
-  style 0-67 fg=bright-magenta
+  style 0-67 fg=bright-blue
 8| "  skill:document-review   (user) — Review and edit a document artifact"
   style 23-69 dim
-9| "/workspace/project (tui-staging)              ▸ idle  deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-magenta bold
+9| "/workspace/project (tui-staging)                  ▸   deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-blue bold
   style 18-31 dim
-  style 46-51 dim
+  style 50-51 dim
   style 54-76 dim
   style 79-83 dim
   style 86-95 dim

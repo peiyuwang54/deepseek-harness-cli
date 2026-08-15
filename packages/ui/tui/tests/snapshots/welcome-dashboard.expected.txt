@@ -5,7 +5,7 @@ cursor visible column=3 viewportRow=21 bufferRow=21
 viewport
 0| "  ╭─ DeepSeek Harness CLI v0.1.0 ────────────────────────────────────────────────────────────────────╮"
   style 2-3 dim
-  style 5-12 fg=bright-magenta bold
+  style 5-12 fg=bright-blue bold
   style 14-24 bold
   style 26-31 dim
   style 33-101 dim
@@ -13,37 +13,37 @@ viewport
   style 2-2 dim
   style 17-29 bold
   style 45-45 dim
-  style 47-56 fg=bright-magenta bold
+  style 47-56 fg=bright-blue bold
   style 101-101 dim
 2| "  │                  ⣀⣀⣀⣀⣤⡄  ⢠⡄              │ /skills browse and run agent skills                   │"
   style 2-2 dim
   style 16-30 bold
   style 45-45 dim
-  style 47-53 fg=bright-magenta
+  style 47-53 fg=bright-blue
   style 101-101 dim
 3| "  │            ⢀⣴⣾⣿⣿⣿⣿⣿⣿⣤⡀ ⢻⣿⣶⣠⣤⣶⡟           │ /permissions choose approval and sandbox mode         │"
   style 2-2 dim
   style 14-33 bold
   style 45-45 dim
-  style 47-58 fg=bright-magenta
+  style 47-58 fg=bright-blue
   style 101-101 dim
 4| "  │           ⢀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡈⠻⣿⣿⡿⠟⠁           │ /model switch model and reasoning effort              │"
   style 2-2 dim
   style 14-33 bold
   style 45-45 dim
-  style 47-52 fg=bright-magenta
+  style 47-52 fg=bright-blue
   style 101-101 dim
 5| "  │            ⢸⣯  ⠉⠙⠻⣿⣿⣿⣯⡙⢿⣿⣾⣿⡇             │ /workspace start in another workspace                 │"
   style 2-2 dim
   style 15-31 bold
   style 45-45 dim
-  style 47-56 fg=bright-magenta
+  style 47-56 fg=bright-blue
   style 101-101 dim
 6| "  │            ⢸⣿⡄    ⠈⠻⣿⣿⣧⣤⣿⣿⣿⠁             │ /resume search previous sessions                      │"
   style 2-2 dim
   style 15-31 bold
   style 45-45 dim
-  style 47-53 fg=bright-magenta
+  style 47-53 fg=bright-blue
   style 101-101 dim
 7| "  │              ⢻⣿⣄  ⢀⣀ ⠙⣿⣿⣿⣿⡿⠃             │                                                       │"
   style 2-2 dim
@@ -60,13 +60,13 @@ viewport
   style 2-2 dim
   style 18-29 bold
   style 45-45 dim
-  style 47-47 fg=bright-magenta
+  style 47-47 fg=bright-blue
   style 90-99 dim
   style 101-101 dim
 10| "  │                                          │ • Stabilize CLI release tests              2026-08-12 │"
   style 2-2 dim
   style 45-45 dim
-  style 47-47 fg=bright-magenta
+  style 47-47 fg=bright-blue
   style 90-99 dim
   style 101-101 dim
 11| "  │           preset: not composed           │                                                       │"
@@ -98,16 +98,16 @@ viewport
 18-19| <blank>
 20| "                                                                                                        "
 21| " › │Describe a task, @ a file, or / for commands                                                        "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-2 dim
   style 4-47 dim
 22| "                                                                                                        "
 23| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-24| "/workspace/project (tui-staging)                    ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-magenta bold
+24| "/workspace/project (tui-staging)                        ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-blue bold
   style 18-31 dim
-  style 52-57 dim
+  style 56-57 dim
   style 60-84 dim
   style 87-91 dim
   style 94-103 dim

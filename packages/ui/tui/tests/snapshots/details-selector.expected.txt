@@ -4,7 +4,7 @@ title "DSH snapshot"
 cursor hidden column=57 viewportRow=34 bufferRow=34
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1| <blank>
@@ -39,34 +39,34 @@ buffer
 21-22| <blank>
 23| "                                                                                                    "
 24| " › Describe a task, @ a file, or / for commands                                                     "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-46 dim
 25| "                                                                                                    "
 26| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
 27| "╭ Transcript details ──────────────────────────────────────────────────╮"
-  style 0-71 fg=bright-magenta
+  style 0-71 fg=bright-blue
 28| "│ → Tool cards                      collapsed                          │"
-  style 0-0 fg=bright-magenta
-  style 2-44 fg=bright-magenta inverse
-  style 71-71 fg=bright-magenta
+  style 0-0 fg=bright-blue
+  style 2-44 fg=bright-blue inverse
+  style 71-71 fg=bright-blue
 29| "│   Reasoning                       hidden                             │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 13-41 dim
-  style 71-71 fg=bright-magenta
+  style 71-71 fg=bright-blue
 30| "│                                                                      │"
-  style 0-0 fg=bright-magenta
-  style 71-71 fg=bright-magenta
+  style 0-0 fg=bright-blue
+  style 71-71 fg=bright-blue
 31| "│ ↑/↓ move • Tab toggle • Enter/Esc close                              │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 2-40 dim
-  style 71-71 fg=bright-magenta
+  style 71-71 fg=bright-blue
 32| "╰──────────────────────────────────────────────────────────────────────╯"
-  style 0-71 fg=bright-magenta
-33| "/workspace/project (tui-staging)                ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-magenta bold
+  style 0-71 fg=bright-blue
+33| "/workspace/project (tui-staging)                    ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-blue bold
   style 18-31 dim
-  style 48-53 dim
+  style 52-53 dim
   style 56-80 dim
   style 83-87 dim
   style 90-99 dim

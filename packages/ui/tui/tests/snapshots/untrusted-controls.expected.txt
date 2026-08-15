@@ -4,7 +4,7 @@ title "Unsafe terminal title \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m"
 cursor hidden column=57 viewportRow=33 bufferRow=35
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1| <blank>
@@ -38,7 +38,7 @@ buffer
   style 0-62 fg=red
 20-22| <blank>
 23| "Plan"
-  style 0-3 fg=bright-magenta bold
+  style 0-3 fg=bright-blue bold
 24| "  ● Unsafe todo \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m"
   style 2-2 fg=yellow
 25| "                                                                                                    "
@@ -47,19 +47,19 @@ buffer
 27| "  Unsafe question \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                     "
 28| "                                                                                                    "
 29| "   › 1. Unsafe option \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                 "
-  style 2-66 fg=bright-magenta bold
+  style 2-66 fg=bright-blue bold
 30| "        Unsafe detail \\x1b]2;snapshot-controlled\\x07\\x09\\x7f\\x9b31m                                 "
   style 8-66 dim
 31| "  Tab custom answer • Enter submit • Esc interrupt                                                  "
   style 2-49 dim
 32| "                                                                                                    "
 33| "› Describe a task, @ a file, or / for commands                                                    "
-  style 0-0 fg=bright-magenta bold
+  style 0-0 fg=bright-blue bold
   style 1-45 dim
-34| "/workspace/project (tui-staging)                ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-magenta bold
+34| "/workspace/project (tui-staging)                    ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-blue bold
   style 18-31 dim
-  style 48-53 dim
+  style 52-53 dim
   style 56-80 dim
   style 83-87 dim
   style 90-99 dim

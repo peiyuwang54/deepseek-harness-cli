@@ -5,7 +5,7 @@ cursor visible column=6 viewportRow=4 bufferRow=4
 buffer
 0| "                                                                                            "
 1| "  Resume session (1 of 3)                                                                   "
-  style 2-24 fg=bright-magenta bold
+  style 2-24 fg=bright-blue bold
 2| "                                                                                            "
 3| "  ╭──────────────────────────────────────────────────────────────────────────────────────╮  "
   style 2-89 dim
@@ -17,11 +17,11 @@ buffer
   style 2-89 dim
 6| "                                                                                            "
 7| "  all workspaces (3)  ⇥ this workspace (2)                                                  "
-  style 2-19 fg=bright-magenta
+  style 2-19 fg=bright-blue
   style 20-41 dim
 8| "                                                                                            "
 9| "  ❯ Untitled session                                                                        "
-  style 2-19 fg=bright-magenta bold
+  style 2-19 fg=bright-blue bold
 10| "    2026-07-23T08:00:00.000Z · current · live · main-session                                "
   style 2-59 dim
 11| "    workspace /workspace/project                                                            "

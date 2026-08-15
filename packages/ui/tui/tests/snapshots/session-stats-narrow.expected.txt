@@ -4,7 +4,7 @@ title "DSH snapshot"
 cursor visible column=3 viewportRow=10 bufferRow=10
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1| <blank>
@@ -14,21 +14,21 @@ buffer
   style 0-62 dim
 4-5| <blank>
 6| "✧ Deep diving (0s • esc to interrupt)"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
 7-8| <blank>
 9| "                                                                        "
 10| " › │Describe a task, @ a file, or / for commands                        "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-2 dim
   style 4-47 dim
 11| "                                                                        "
 12| "  Enter steer · Esc cancel · Shift+Enter newline"
-  style 0-47 fg=bright-magenta
-13| "/workspac  ▸   deepseek-v4-flash [alt+m]  ↑7.7k ↓32 cache 0%  0% context"
-  style 0-8 fg=bright-magenta bold
-  style 11-12 dim
-  style 15-39 dim
-  style 42-59 dim
+  style 0-47 fg=bright-blue
+13| "/workspace/project  ▸   deepseek-v4-flash [alt+m]  ↑7.7k ↓32  0% context"
+  style 0-17 fg=bright-blue bold
+  style 20-21 dim
+  style 24-48 dim
+  style 51-59 dim
   style 62-71 dim
 14| "1 turn · 1 step | LLM 1.6s | TTFT avg 1.2s · 83 tok/s | Cache hit 0% |…"
   style 0-69 dim

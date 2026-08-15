@@ -4,51 +4,51 @@ title "DSH snapshot"
 cursor hidden column=76 viewportRow=30 bufferRow=30
 buffer
 0| " DEE"
-  style 1-3 fg=bright-magenta bold
+  style 1-3 fg=bright-blue bold
 1-17| <blank>
 18| "                                                                                            "
 19| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-41 dim
 20| "                                                                                            "
 21| "  Enter 发送 · Shift+Enter 换行 · / 命令"
   style 0-39 dim
 22| "╭ 设置 ────────────────────────────────────────────────────────────────────╮"
-  style 0-75 fg=bright-magenta
+  style 0-75 fg=bright-blue
 23| "│ → 外观                            dark                                   │"
-  style 0-0 fg=bright-magenta
-  style 2-39 fg=bright-magenta inverse
-  style 75-75 fg=bright-magenta
+  style 0-0 fg=bright-blue
+  style 2-39 fg=bright-blue inverse
+  style 75-75 fg=bright-blue
 24| "│   语言                            中文                                   │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 8-39 dim
-  style 75-75 fg=bright-magenta
+  style 75-75 fg=bright-blue
 25| "│   设置文件                        /home/snapshot/.dsh/settings.yml       │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 12-67 dim
-  style 75-75 fg=bright-magenta
+  style 75-75 fg=bright-blue
 26| "│   ui-theme                        live · user override                   │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 12-55 dim
-  style 75-75 fg=bright-magenta
+  style 75-75 fg=bright-blue
 27| "│   locale                          live · user override                   │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 10-55 dim
-  style 75-75 fg=bright-magenta
+  style 75-75 fg=bright-blue
 28| "│   llm-deepseek                    restart · inherited · 1 secret field   │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 16-71 dim
-  style 75-75 fg=bright-magenta
+  style 75-75 fg=bright-blue
 29| "│ ↑/↓ 移动 • Enter 选择 • Esc 关闭                                         │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 2-33 dim
-  style 75-75 fg=bright-magenta
+  style 75-75 fg=bright-blue
 30| "╰──────────────────────────────────────────────────────────────────────────╯"
-  style 0-75 fg=bright-magenta
-31| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-magenta bold
+  style 0-75 fg=bright-blue
+31| "/workspace/project (tui-staging)            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-blue bold
   style 18-31 dim
-  style 40-45 dim
+  style 44-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim

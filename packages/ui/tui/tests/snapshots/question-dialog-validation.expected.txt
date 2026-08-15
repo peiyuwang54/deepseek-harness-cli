@@ -28,11 +28,11 @@ viewport
 18| "  ↑↓ Tab Sp ↵Esc                                        "
   style 2-15 dim
 19| "› Describe a task, @ a file, or / for commands        "
-  style 0-0 fg=bright-magenta bold
+  style 0-0 fg=bright-blue bold
   style 1-45 dim
-20| "/w  ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-1 fg=bright-magenta bold
-  style 4-9 dim
+20| "/works  ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-5 fg=bright-blue bold
+  style 8-9 dim
   style 12-36 dim
   style 39-43 dim
   style 46-55 dim

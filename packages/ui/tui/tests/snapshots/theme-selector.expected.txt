@@ -4,38 +4,38 @@ title "DSH snapshot"
 cursor hidden column=76 viewportRow=30 bufferRow=30
 buffer
 0| " DEEPSEEK HA"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-11 bold
 1-20| <blank>
 21| "                                                                                            "
 22| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-41 dim
 23| "                                                                                            "
 24| "  Enter 发送 · Shift+Enter 换行 · / 命令"
   style 0-39 dim
 25| "╭ 外观 ────────────────────────────────────────────────────────────────────╮"
-  style 0-75 fg=bright-magenta
+  style 0-75 fg=bright-blue
 26| "│   Light                                                                  │"
-  style 0-0 fg=bright-magenta
-  style 75-75 fg=bright-magenta
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
 27| "│ → Dark                            current                                │"
-  style 0-0 fg=bright-magenta
-  style 2-42 fg=bright-magenta inverse
-  style 75-75 fg=bright-magenta
+  style 0-0 fg=bright-blue
+  style 2-42 fg=bright-blue inverse
+  style 75-75 fg=bright-blue
 28| "│   System                                                                 │"
-  style 0-0 fg=bright-magenta
-  style 75-75 fg=bright-magenta
+  style 0-0 fg=bright-blue
+  style 75-75 fg=bright-blue
 29| "│ ↑/↓ 移动 • Enter 选择 • Esc 关闭                                         │"
-  style 0-0 fg=bright-magenta
+  style 0-0 fg=bright-blue
   style 2-33 dim
-  style 75-75 fg=bright-magenta
+  style 75-75 fg=bright-blue
 30| "╰──────────────────────────────────────────────────────────────────────────╯"
-  style 0-75 fg=bright-magenta
-31| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-magenta bold
+  style 0-75 fg=bright-blue
+31| "/workspace/project (tui-staging)            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-blue bold
   style 18-31 dim
-  style 40-45 dim
+  style 44-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim

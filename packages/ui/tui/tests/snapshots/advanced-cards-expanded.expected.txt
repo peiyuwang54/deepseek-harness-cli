@@ -4,7 +4,7 @@ title "DSH snapshot"
 cursor visible column=3 viewportRow=36 bufferRow=49
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1-2| <blank>
@@ -91,16 +91,16 @@ buffer
 46-47| <blank>
 48| "                                                                                                    "
 49| " › │Describe a task, @ a file, or / for commands                                                    "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-2 dim
   style 4-47 dim
 50| "                                                                                                    "
 51| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-52| "/workspace/project (tui-staging)                ▾ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-magenta bold
+52| "/workspace/project (tui-staging)                    ▾   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-blue bold
   style 18-31 dim
-  style 48-53 dim
+  style 52-53 dim
   style 56-80 dim
   style 83-87 dim
   style 90-99 dim

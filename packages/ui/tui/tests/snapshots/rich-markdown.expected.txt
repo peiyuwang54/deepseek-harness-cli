@@ -4,7 +4,7 @@ title "DSH snapshot"
 cursor visible column=3 viewportRow=34 bufferRow=34
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1| <blank>
@@ -14,7 +14,7 @@ buffer
 5| <blank>
 6| "• Renderer update                                                                               "
   style 0-0 dim
-  style 2-16 fg=bright-magenta bold underline
+  style 2-16 fg=bright-blue bold underline
 7| "                                                                                                "
 8| "  The terminal view keeps inline code and obsolete text distinct.                               "
   style 6-18 bold
@@ -22,12 +22,12 @@ buffer
   style 42-54 strike
 9| "                                                                                                "
 10| "  - [x] Render task lists                                                                       "
-  style 2-7 fg=bright-magenta
+  style 2-7 fg=bright-blue
 11| "  - [ ] Verify the narrow layout                                                                "
-  style 2-7 fg=bright-magenta
+  style 2-7 fg=bright-blue
 12| "                                                                                                "
 13| "  │ Diff rows use semantic terminal colors.                                                     "
-  style 2-3 fg=bright-magenta
+  style 2-3 fg=bright-blue
   style 4-42 dim italic
 14| "                                                                                                "
 15| "  ┌──────────┬───────┐                                                                          "
@@ -49,7 +49,7 @@ buffer
 26| "    +++ b/view.ts                                                                               "
   style 4-16 dim
 27| "    @@ -1 +1 @@                                                                                 "
-  style 4-14 fg=bright-magenta
+  style 4-14 fg=bright-blue
 28| "    -const state = \"old\"                                                                        "
   style 4-23 fg=red
 29| "    +const state = \"ready\"                                                                      "
@@ -58,16 +58,16 @@ buffer
 31-32| <blank>
 33| "                                                                                                "
 34| " › │Describe a task, @ a file, or / for commands                                                "
-  style 1-1 fg=bright-magenta bold
+  style 1-1 fg=bright-blue bold
   style 2-2 dim
   style 4-47 dim
 35| "                                                                                                "
 36| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-37| "/workspace/project (tui-staging)            ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-magenta bold
+37| "/workspace/project (tui-staging)                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 0-17 fg=bright-blue bold
   style 18-31 dim
-  style 44-49 dim
+  style 48-49 dim
   style 52-76 dim
   style 79-83 dim
   style 86-95 dim

@@ -4,7 +4,7 @@ title "DSH snapshot"
 cursor visible column=34 viewportRow=9 bufferRow=9
 viewport
 0| " DEEPSEEK HARNESS v0.1.0"
-  style 1-8 fg=bright-magenta bold
+  style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1-2| <blank>
@@ -20,9 +20,9 @@ viewport
 10| "                                            "
 11| "  Enter send · Shift+Enter newline · / comma"
   style 0-43 dim
-12| "▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0%"
-  style 0-5 dim
-  style 8-32 dim
-  style 35-39 dim
-  style 42-43 dim
+12| "▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% con"
+  style 0-1 dim
+  style 4-28 dim
+  style 31-35 dim
+  style 38-43 dim
 13-17| <blank>

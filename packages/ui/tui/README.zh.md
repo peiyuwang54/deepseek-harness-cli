@@ -54,6 +54,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/status` 会向 transcript 添加一张时间点诊断卡片，并在 agent 运行时保持可用。它报告会话 id、标题、工作目录、所选提供方／模型、所选推理强度或默认行为、reasoning 块可见性、agent 状态、事件／轮次／步骤／工具调用计数、精确输入／输出／缓存 token bucket、KV-cache 命中率、token-meter 上下文用量与容量、创建时间和最新事件时间。缺失标题、模型、缓存输入或上下文容量时会明确标记，而非推断。该卡片只存在于终端，不会重复紧凑 footer，也不会打印 system prompt 或已注册工具 catalog。
 
+`/usage` 会记录一份时点副本，其内容来自与 Web composer 共享的同一条全会话统计线：已完成轮次与步骤、LLM 与工具耗时、平均 TTFT、解码吞吐率、缓存命中率，以及不相交的输入／输出 token 总量。DeepSeek Harness 不公开提供方账户配额服务，因此该命令报告实测会话用量，不会虚构账户限额或重置日期。
+
 `/settings` 是基于共享可选 `ctx.settings` provider 的终端 hub。不带参数时，它显示基于文件的设置文档与所有已注册 namespace 的脱敏元数据（实时／重启作用域、继承值／用户覆盖，以及已隐藏 secret 的数量）；`/settings list` 打印同样的 namespace 摘要，`/settings document` 则准备并报告可编辑文档路径。它刻意不复制 Web React 表单，也不会把一个完整的脱敏 section 写回，因为这类替换可能擦除已存的 secret。`/theme [light|dark|system]` 是终端安全的实时 action：它以字段级 mutate 更改与 Web client 共用的 `ui-theme.preference` namespace，跟随外部设置更新，并通过终端颜色方案报告解析 `system`。
 
 `/language [zh|en]` 会写入浏览器共用的 `locale.preference` 设置。不带参数的 `/language` 会打开附着 composer 的中英文选择器；无论在 Web 还是 TUI 中修改，欢迎面板、默认输入 placeholder、编辑器 footer 与设置界面都会立即刷新。模型回复、工具载荷、自定义 placeholder 和第三方命令文案保留来源语言，不做机器翻译。

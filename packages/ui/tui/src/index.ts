@@ -83,7 +83,7 @@ import {
   recordEventUsage,
   sessionTokens,
 } from './chat/tokens.ts'
-import { SessionStatsLineComponent } from './chat/stats.ts'
+import { formatSessionStatsLine, SessionStatsLineComponent } from './chat/stats.ts'
 import {
   fadeGlyph,
   formatQueuedStatus,
@@ -1956,6 +1956,16 @@ export function createTuiChat(
     requestRender()
   }
 
+  const runUsageCommand = (rawInput: string): CommandResult => {
+    if (rawInput.trim() !== '') return { kind: 'error', text: 'Usage: /usage (no arguments)' }
+    const { stats, usage } = sessionStatistics()
+    const line = formatSessionStatsLine(stats, usage)
+    return {
+      kind: 'success',
+      text: line === undefined ? 'No model usage has been recorded in this session.' : `Session usage\n${line}`,
+    }
+  }
+
   // Skill listing is async while `createTuiChat` is synchronous, so the TUI
   // retains the last complete invocation-neutral catalog for synchronous
   // editor completion, filters it for user invocation, and refreshes it after
@@ -2232,6 +2242,11 @@ export function createTuiChat(
       name: 'status',
       description: 'Show session status and token usage',
       handler: () => { showStatus(); return { kind: 'success' } },
+    })
+    commandCtx.commands.register({
+      name: 'usage',
+      description: 'Show this session\'s model timing and token usage',
+      handler: ({ rawInput }) => runUsageCommand(rawInput),
     })
     const exitHandler = (): CommandResult => {
       requestExit()

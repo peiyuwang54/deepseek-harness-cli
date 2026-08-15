@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=63 base=31 viewport=31
+terminal 92x32 buffer=normal length=64 base=32 viewport=32
 lifecycle started=1 stopped=1 progress=inactive
 title "DSH snapshot"
-cursor visible column=0 viewportRow=31 bufferRow=62
+cursor visible column=0 viewportRow=31 bufferRow=63
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-magenta bold
@@ -81,50 +81,52 @@ buffer
   style 0-44 dim
 38| "/theme [light|dark|system] — Choose and persist the light, dark, or system appearance       "
   style 0-84 dim
-39| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
+39| "/usage — Show this session's model timing and token usage                                   "
+  style 0-56 dim
+40| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
   style 0-73 dim
-40| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
+41| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
   style 0-81 dim
-41| "/skill:<name> [instructions] — load a skill into the conversation                           "
+42| "/skill:<name> [instructions] — load a skill into the conversation                           "
   style 0-64 dim
-42| <blank>
-43| "provider stream failed after partial output                                                 "
+43| <blank>
+44| "provider stream failed after partial output                                                 "
   style 0-42 fg=red
-44| <blank>
-45| "Assistant                                                                                   "
+45| <blank>
+46| "Assistant                                                                                   "
   style 0-8 fg=bright-magenta bold underline
-46| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
+47| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
   style 0-46 dim
-47| <blank>
-48| "The previous process ended during this turn.                                                "
+48| <blank>
+49| "The previous process ended during this turn.                                                "
   style 0-43 fg=yellow
-49| <blank>
-50| "Turn stopped: the agent was disposed.                                                       "
+50| <blank>
+51| "Turn stopped: the agent was disposed.                                                       "
   style 0-36 fg=yellow
-51| <blank>
-52| "Turn ended: plugin-policy.                                                                  "
+52| <blank>
+53| "Turn ended: plugin-policy.                                                                  "
   style 0-25 fg=yellow
-53| <blank>
-54| "Unknown command: /unknown-advanced-command                                                  "
+54| <blank>
+55| "Unknown command: /unknown-advanced-command                                                  "
   style 0-41 fg=yellow
-55-56| <blank>
-57| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
+56-57| <blank>
+58| "╭ Message ─────────────────────────────────────────────────────────────────────────────────╮"
   style 0-91 dim
-58| "│ dsh > │Describe a task, @ a file, or / for commands                                      │"
+59| "│ dsh > │Describe a task, @ a file, or / for commands                                      │"
   style 0-0 dim
   style 2-4 fg=bright-magenta bold
   style 6-7 dim
   style 9-52 dim
   style 91-91 dim
-59| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
+60| "╰─────────────────────────────────────────── Enter send · Shift+Enter newline · / commands ╯"
   style 0-91 dim
-60| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+61| "/workspace/project (tui-staging)        ▸ idle  deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 0-17 fg=bright-magenta bold
   style 18-31 dim
   style 40-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-61| "                                      1 turn · 1 step"
+62| "                                      1 turn · 1 step"
   style 38-52 dim
-62| <blank>
+63| <blank>

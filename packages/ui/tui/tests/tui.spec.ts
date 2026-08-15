@@ -497,6 +497,10 @@ describe('shared settings, appearance, and workspaces', () => {
     const result = await setup({
       configureContext: composeFrontDoorServices((ctx) => {
         resultContext = ctx
+        ctx.provide('workspaceRegistry', {
+          list: () => [],
+          archiveSession: () => Promise.resolve(),
+        } as never)
         ctx.provide('settings', {
           get: (namespace: string) => namespace === localeNamespace ? { preference } : undefined,
           mutate,
@@ -520,6 +524,13 @@ describe('shared settings, appearance, and workspaces', () => {
     expect(mutate).toHaveBeenCalledWith(localeNamespace, [{ op: 'set', path: ['preference'], value: 'zh' }])
     expect(result.terminal.output).toContain('界面语言已切换为中文。')
     expect(result.terminal.output).toContain('描述任务，@ 添加文件，或输入 / 查看命令')
+    result.terminal.send('/archive')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('归档此会话？')
+    expect(result.terminal.output).toContain('不，保留此会话')
+    result.terminal.send('\x1b')
+    await tick()
 
     expect(resultContext).toBeDefined()
     resultContext?.emit('settings/updated', localeNamespace, { preference: 'en' }, { preference: 'zh' }, 'update')
@@ -628,6 +639,81 @@ describe('shared settings, appearance, and workspaces', () => {
     expect(result.terminal.output).toContain('this host cannot start it in place')
     expect(result.session.header.cwd).toBe('/workspace')
     await dispose(result)
+  })
+
+  it('confirms, flushes, and durably archives the main session before exit', async () => {
+    const archiveSession = vi.fn(() => Promise.resolve())
+    const result = await setup({
+      configureContext: composeFrontDoorServices((ctx) => {
+        ctx.provide('workspaceRegistry', {
+          list: () => [],
+          archiveSession,
+        } as never)
+      }),
+    })
+    const flush = vi.spyOn(result.ctx.sessions, 'flush')
+
+    result.terminal.send('/archive')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Archive this session?')
+    expect(result.terminal.output).toContain('No, keep this session')
+    expect(result.terminal.output).toContain('Yes, archive and exit')
+
+    result.terminal.send('\r')
+    await tick()
+    expect(archiveSession).not.toHaveBeenCalled()
+
+    result.terminal.send('/archive')
+    result.terminal.send('\r')
+    await tick()
+    result.terminal.send('\x1b[B')
+    result.terminal.send('\r')
+    await vi.waitFor(() => { expect(archiveSession).toHaveBeenCalledWith(result.session.id) })
+    expect(flush).toHaveBeenCalledWith(result.session)
+    expect(flush.mock.invocationCallOrder[0]).toBeLessThan(archiveSession.mock.invocationCallOrder[0] ?? 0)
+    await vi.waitFor(() => { expect(result.exit).toHaveBeenCalledWith(0) })
+    await dispose(result)
+  })
+
+  it('keeps /archive failures and unsupported states in the current TUI', async () => {
+    const archiveSession = vi.fn(() => Promise.reject(new Error('archive store unavailable')))
+    const result = await setup({
+      configureContext: composeFrontDoorServices((ctx) => {
+        ctx.provide('workspaceRegistry', {
+          list: () => [],
+          archiveSession,
+        } as never)
+      }),
+    })
+
+    result.terminal.send('/archive unexpected')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Usage: /archive (no arguments)')
+
+    result.agent.status = 'running'
+    result.terminal.send('/archive')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('/archive requires the current turn to finish')
+    result.agent.status = 'idle'
+
+    result.terminal.send('/archive')
+    result.terminal.send('\r')
+    await tick()
+    result.terminal.send('\x1b[B')
+    result.terminal.send('\r')
+    await vi.waitFor(() => { expect(result.terminal.output).toContain('Session archive failed: archive store unavailable') })
+    expect(result.exit).not.toHaveBeenCalled()
+    await dispose(result)
+
+    const missing = await setup()
+    missing.terminal.send('/archive')
+    missing.terminal.send('\r')
+    await tick()
+    expect(missing.terminal.output).toContain('Session archiving is unavailable')
+    await dispose(missing)
   })
 
   it('latches a workspace selection before asynchronous preflight', async () => {

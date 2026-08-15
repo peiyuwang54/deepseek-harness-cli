@@ -97,6 +97,7 @@ const CHECKPOINTS = [
   'permissions-selector',
   'permissions-switching',
   'agent-selector',
+  'archive-confirmation',
   'skills-selector',
   'keymap-selector',
   'vim-normal-mode',
@@ -1483,6 +1484,25 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('agent-selector', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins the non-destructive session archive confirmation', async () => {
+    const harness = await setupSnapshot({
+      configureContext: async (ctx) => {
+        await ctx.plugin(SystemPrompt)
+        await ctx.plugin(ToolRegistry)
+        ctx.provide('workspaceRegistry', {
+          list: () => [],
+          archiveSession: () => Promise.resolve(),
+        } as never)
+      },
+    }, { columns: 96, rows: 30 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/archive')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('archive-confirmation', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

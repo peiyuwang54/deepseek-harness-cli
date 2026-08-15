@@ -1815,6 +1815,7 @@ export function createTuiChat(
 
   let commandHubOverlay: TuiOverlaySession | undefined
   let commandHubOperations = Promise.resolve()
+  let archiveInFlight = false
   const openActionDialog = (
     title: string,
     choices: readonly ActionDialogChoice[],
@@ -1847,6 +1848,54 @@ export function createTuiChat(
       if (commandHubOverlay === session) commandHubOverlay = undefined
     })
     requestRender()
+  }
+
+  const runArchiveCommand = (raw: string): CommandResult => {
+    if (raw.trim() !== '') return { kind: 'error', text: 'Usage: /archive (no arguments)' }
+    if (archiveInFlight) return { kind: 'error', text: 'Session archiving is already in progress.' }
+    if (agent.status !== 'idle') {
+      return { kind: 'error', text: '/archive requires the current turn to finish or be cancelled first.' }
+    }
+    const navigation = runtime.agentNavigation
+    if (navigation !== undefined && navigation.currentSessionId() !== navigation.rootSessionId) {
+      return { kind: 'error', text: 'Switch to Main before archiving this CLI session.' }
+    }
+    if (ctx.get('workspaceRegistry') === undefined) {
+      return { kind: 'error', text: 'Session archiving is unavailable in this TUI embedding.' }
+    }
+    const copy = tuiCopy(locale)
+    openActionDialog(copy.archiveTitle, [
+      {
+        value: 'cancel',
+        label: copy.archiveKeep,
+        description: copy.archiveKeepDescription,
+      },
+      {
+        value: 'archive',
+        label: copy.archiveConfirm,
+        description: copy.archiveConfirmDescription,
+      },
+    ], (value) => {
+      if (value !== 'archive' || archiveInFlight) return
+      archiveInFlight = true
+      commandHubOperations = commandHubOperations.then(async () => {
+        try {
+          const registry = ctx.get('workspaceRegistry')
+          if (registry === undefined) throw new Error('workspace registry was removed before confirmation')
+          if (agentStatus() !== 'idle') throw new Error('the current turn started before confirmation')
+          await ctx.sessions.flush(agent.session)
+          if (isDisposed()) return
+          if (agentStatus() !== 'idle') throw new Error('the current turn started while the session was flushing')
+          await registry.archiveSession(agent.id)
+          if (!isDisposed()) requestExit()
+        } catch (error: unknown) {
+          if (!isDisposed()) appendNotice(`Session archive failed: ${errorChain(error)}`, 'error')
+        } finally {
+          archiveInFlight = false
+        }
+      })
+    }, 'cancel')
+    return { kind: 'success' }
   }
 
   const setKeymap = (next: TuiKeymap): void => {
@@ -2500,6 +2549,11 @@ export function createTuiChat(
       description: 'Rename this session and pin its title',
       input: { hint: '<title>' },
       handler: ({ rawInput }) => runRenameCommand(rawInput),
+    })
+    commandCtx.commands.register({
+      name: 'archive',
+      description: 'Archive this session and exit',
+      handler: ({ rawInput }) => runArchiveCommand(rawInput),
     })
     commandCtx.commands.register({
       name: 'language',

@@ -56,15 +56,16 @@ export function platformTarget(platform = process.platform, arch = process.arch)
 }
 
 function platformManifest(target: PlatformTarget, version: string) {
+  const executable = target.os === 'win' ? 'bin/deepseek-harness-cli.exe' : 'bin/deepseek-harness-cli'
   return {
     name: PACKAGE_NAME,
     version: `${version}-${target.os}-${target.cpu}`,
     description: `deepseek-harness-cli single-file executable for ${target.os}-${target.cpu}`,
     os: [NPM_OS[target.os]],
     cpu: [target.cpu],
-    // No `bin` field: the platform exe would collide with the main shim's
-    // `deepseek-harness-cli` in node_modules/.bin. The shim resolves
-    // bin/deepseek-harness-cli by package path.
+    // npm normalizes ordinary packed files to mode 0644. A private bin name
+    // preserves the executable bit without colliding with the public shims.
+    bin: { 'deepseek-harness-cli-platform': executable },
     files: ['bin'],
     repository: { type: 'git', url: REPOSITORY },
     license: 'MIT',

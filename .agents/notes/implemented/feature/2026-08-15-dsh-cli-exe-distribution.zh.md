@@ -39,7 +39,7 @@ CLI 部署根是 `apps/cli/exe`（`deepseek-harness-cli-exe-pkg`，镜像 SDK �
 
 ### 通道 2：npm 全局安装
 
-沿用 Codex 的 npm 契约，落在 npm 账号的作用域下。主包 `@peiyu_wang/deepseek-harness-cli`（版本 `X.Y.Z`）是一个薄 ESM shim，`bin: { 'deepseek-harness-cli': 'bin/deepseek-harness-cli.js' }`；五个平台包以 `X.Y.Z-<os>-<cpu>` 发布同名版本，带 `os`/`cpu` 字段且**没有 `bin` 字段**（`bin` 字段会与 shim 的 `deepseek-harness-cli` 在 `node_modules/.bin` 里冲突）。shim 通过纯函数 `platformTarget()` 映射 `process.platform`/`process.arch`（`darwin`→`macos`、`linux`；`arm64`、`x64`；其余报错并列出受支持目标），用 `createRequire` 解析 `@peiyu_wang/deepseek-harness-cli-<os>-<cpu>/bin/deepseek-harness-cli`，以继承 stdio 的方式 spawn，转发 SIGINT/SIGTERM/SIGHUP，并以子进程退出码退出。主 manifest 通过 `optionalDependencies` 别名选择平台包（`"@peiyu_wang/deepseek-harness-cli-macos-arm64": "npm:@peiyu_wang/deepseek-harness-cli@<ver>-macos-arm64"`，以及其余四个）——这是 npm 按宿主 `os`/`cpu` 条件化依赖的唯一方式。dist-tag：主包在预发布时以 `next`、稳定版以 `latest` 发布；每个平台包以其各自的 `macos-arm64` / `macos-x64` / `linux-arm64` / `linux-x64` tag 发布。[`scripts/package-dsh-cli-npm.ts`](../../../../scripts/package-dsh-cli-npm.ts) 从已构建的 exe 布局出两种包形态；[`scripts/dsh-npm-shim.js`](../../../../scripts/dsh-npm-shim.js) 是随包发布的 shim。无 key 的 spec 会 pack 主包与宿主平台包，解压进伪装的全局安装目录，并断言 shim 复现宿主 exe 的 `--version` 输出。
+沿用 Codex 的 npm 契约，落在 npm 账号的作用域下。主包 `@peiyu_wang/deepseek-harness-cli`（版本 `X.Y.Z`）是一个薄 ESM shim，对外提供 `deepseek-harness-cli`、`deepseek` 与 `dsh`；五个平台包以 `X.Y.Z-<os>-<cpu>` 发布同名版本，并带 `os`/`cpu` 字段。每个平台 manifest 都把可执行文件登记为内部命令 `deepseek-harness-cli-platform`，因为 npm 会把普通打包文件存为 0644；独立命令名既保留执行权限，又不会与公开 shim 冲突。shim 通过纯函数 `platformTarget()` 映射 `process.platform`/`process.arch`（`darwin`→`macos`、`linux`；`arm64`、`x64`；其余报错并列出受支持目标），用 `createRequire` 解析 `@peiyu_wang/deepseek-harness-cli-<os>-<cpu>/bin/deepseek-harness-cli`，以继承 stdio 的方式 spawn，转发 SIGINT/SIGTERM/SIGHUP，并以子进程退出码退出。主 manifest 通过 `optionalDependencies` 别名选择平台包（`"@peiyu_wang/deepseek-harness-cli-macos-arm64": "npm:@peiyu_wang/deepseek-harness-cli@<ver>-macos-arm64"`，以及其余四个）——这是 npm 按宿主 `os`/`cpu` 条件化依赖的唯一方式。dist-tag：主包在预发布时以 `next`、稳定版以 `latest` 发布；每个平台包以其各自的 `macos-arm64` / `macos-x64` / `linux-arm64` / `linux-x64` / `win-x64` tag 发布。[`scripts/package-dsh-cli-npm.ts`](../../../../scripts/package-dsh-cli-npm.ts) 从已构建的 exe 布局出两种包形态；[`scripts/dsh-npm-shim.js`](../../../../scripts/dsh-npm-shim.js) 是随包发布的 shim。无 key 的 spec 先确认平台载荷经 npm pack 后仍可执行，再把主包与宿主平台包解压进伪装的全局安装目录，并断言 shim 复现宿主 exe 的 `--version` 输出。
 
 ### 通道 3：Homebrew cask
 
@@ -66,7 +66,7 @@ CLI 部署根是 `apps/cli/exe`（`deepseek-harness-cli-exe-pkg`，镜像 SDK �
 
 **把 exe 直接作为主 npm 包的 bin。** 否决：单个 npm 包无法干净地携带四个平台二进制，单一包会把四个都装上。Codex 的拆分——带 `os`/`cpu` 条件化 `optionalDependencies` 别名的 shim 主包——才是可行的契约，它让全局安装只落一个匹配的二进制，也避免了 `.bin/deepseek-harness-cli` 冲突。
 
-**平台包带 `bin` 字段。** 否决：npm 会把每个已安装平台包的 `deepseek-harness-cli` 链接进共享的 `node_modules/.bin`，与 shim 的 `deepseek-harness-cli` 冲突。平台包只带 `files: ['bin']`；由 shim 按包路径解析可执行程序。
+**给平台包一个公开命令名。** 否决：npm 会把已安装平台包的 `deepseek-harness-cli` 链接进共享的 `node_modules/.bin`，与 shim 的命令冲突。内部 `deepseek-harness-cli-platform` bin 项只负责保留文件权限；shim 仍按包路径解析可执行程序。
 
 **通过 GitHub 的 `releases/latest` 解析最新版本。** 否决：该端点排除预发布版本，而本仓库的发布暂时都是预发布。安装器查询 `releases?per_page=100` 并取最新的 `deepseek-harness-cli-v*` tag，因此 `--rc` 版本无需固定版本号也能解析。
 

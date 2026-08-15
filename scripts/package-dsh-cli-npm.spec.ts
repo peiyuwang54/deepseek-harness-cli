@@ -7,7 +7,18 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -79,9 +90,37 @@ describe('layoutPlatformPackage', () => {
       const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8')) as {
         os: string[]
         cpu: string[]
+        bin: Record<string, string>
       }
       expect(manifest.os).toEqual(['win32'])
       expect(manifest.cpu).toEqual(['x64'])
+      expect(manifest.bin).toEqual({ 'deepseek-harness-cli-platform': 'bin/deepseek-harness-cli.exe' })
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
+  it.skipIf(process.platform === 'win32')('retains the executable bit after npm pack', async () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-npm-mode-'))
+    try {
+      const distDir = join(tmp, 'dist')
+      mkdirSync(distDir)
+      const fakeExe = join(distDir, 'deepseek-harness-cli-linux-x64')
+      writeFileSync(fakeExe, '#!/bin/sh\nexit 0\n')
+      chmodSync(fakeExe, 0o755)
+      const linux = PLATFORMS.find(target => target.os === 'linux' && target.cpu === 'x64')
+      expect(linux).toBeDefined()
+      const packageDir = await layoutPlatformPackage(join(tmp, 'out'), linux!, '0.0.0-mode', distDir)
+
+      const packed = join(tmp, 'packed')
+      const unpacked = join(tmp, 'unpacked')
+      mkdirSync(packed)
+      mkdirSync(unpacked)
+      const tarball = runIn(packed, 'npm', ['pack', packageDir, '--pack-destination', packed, '--silent'])
+      runIn(tmp, 'tar', ['-xzf', join(packed, tarball), '-C', unpacked])
+
+      const mode = statSync(join(unpacked, 'package', 'bin', 'deepseek-harness-cli')).mode
+      expect(mode & 0o111).not.toBe(0)
     } finally {
       rmSync(tmp, { recursive: true, force: true })
     }

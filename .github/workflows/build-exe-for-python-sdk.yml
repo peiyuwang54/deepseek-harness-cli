@@ -200,7 +200,8 @@ jobs:
           docker run --rm \
             --user "$(id -u):$(id -g)" \
             -e "HOME=$HOME" \
-            -e "PATH=$node_bin_dir:$pnpm_bin_dir:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+            -e "DSH_NODE_BIN_DIR=$node_bin_dir" \
+            -e "DSH_PNPM_BIN_DIR=$pnpm_bin_dir" \
             -e "PNPM_HOME=$PNPM_HOME" \
             -e npm_config_build_from_source=true \
             -e npm_config_python=/opt/python/cp310-cp310/bin/python \
@@ -210,7 +211,9 @@ jobs:
             -v "$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro" \
             -w "$PWD" \
             "$image" \
-            pnpm --filter @deepseek-ai/dsh-subprocess-local rebuild node-pty
+            bash -euxo pipefail -c \
+              'export PATH="$DSH_NODE_BIN_DIR:$DSH_PNPM_BIN_DIR:$PATH"
+              pnpm --filter @deepseek-ai/dsh-subprocess-local rebuild node-pty'
           [ -f "$addon" ] || { echo "::error::$addon missing after manylinux rebuild"; exit 1; }
           readelf --version-info "$addon" | tee node-pty-glibc-versions.txt
           maximum="$(sed -n 's/.*Name: GLIBC_\([0-9.]*\).*/\1/p' node-pty-glibc-versions.txt | sort -V | tail -1)"

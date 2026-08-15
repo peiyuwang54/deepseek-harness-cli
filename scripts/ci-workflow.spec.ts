@@ -409,6 +409,7 @@ describe('Python release workflows', () => {
     expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_aarch64')
     expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm')
     expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro')
+    expect(JSON.stringify(manylinuxAddon)).toContain('DSH_NODE_BIN_DIR:$DSH_PNPM_BIN_DIR:$PATH')
     expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_build_from_source=true')
     expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_python=/opt/python/cp310-cp310/bin/python')
     expect(JSON.stringify(manylinuxAddon)).toContain(
@@ -501,6 +502,7 @@ describe('CLI release workflow', () => {
     expect(matrixStep?.run).toContain('node24-linux-x64 ubuntu-latest')
     expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm')
     expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro')
+    expect(JSON.stringify(manylinuxAddon)).toContain('DSH_NODE_BIN_DIR:$DSH_PNPM_BIN_DIR:$PATH')
     expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_build_from_source=true')
     expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_python=/opt/python/cp310-cp310/bin/python')
     expect(JSON.stringify(manylinuxAddon)).toContain(

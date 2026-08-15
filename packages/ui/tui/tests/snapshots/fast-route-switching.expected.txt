@@ -25,9 +25,7 @@ buffer
 11| "                                                                                                "
 12| "  VIM INSERT · Enter send · Shift+Enter newline · / commands"
   style 0-59 dim
-13| "/workspace/project (tui-staging)                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-blue bold
-  style 18-31 dim
+13| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 48-49 dim
   style 52-76 dim
   style 79-83 dim

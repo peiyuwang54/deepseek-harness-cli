@@ -24,13 +24,11 @@ viewport
   style 6-75 dim
 10| "  details       [collapsed|expanded|hidden] [reasoning [on|off]] — Select tool-card visibility"
   style 9-93 dim
-11| "  exit          Exit after the active turn reaches idle"
-  style 6-54 dim
-12| "  (1/29)"
+11| "  diff          Show the Git diff, including untracked files"
+  style 6-59 dim
+12| "  (1/30)"
   style 0-7 dim
-13| "/workspace/project (tui-staging)                  ▸   deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-blue bold
-  style 18-31 dim
+13| "                                                  ▸   deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
   style 50-51 dim
   style 54-76 dim
   style 79-83 dim

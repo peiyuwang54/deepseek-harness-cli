@@ -1631,8 +1631,13 @@ describe('TUI terminal-state snapshots', () => {
     dateNow.mockRestore()
   })
 
-  it('pins copy, rename, and file-mention command behavior', async () => {
+  it('pins copy, rename, file-mention, and Git-diff command behavior', async () => {
     const harness = await setupSnapshot({
+      gitDiff: async () => ({
+        isWorktree: true,
+        text: 'diff --git a/src/index.ts b/src/index.ts\n--- a/src/index.ts\n+++ b/src/index.ts\n@@ -1 +1 @@\n-old command\n+new command\n' +
+          'diff --git a/notes.txt b/notes.txt\nnew file mode 100644\n--- /dev/null\n+++ b/notes.txt\n@@ -0,0 +1 @@\n+untracked note\n',
+      }),
       beforeMount(session) {
         appendUser(session, 'Summarize the command changes.')
         appendAssistant(session, [{ type: 'text', text: '**Three commands are ready.**' }])
@@ -1655,6 +1660,13 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('/mention src/index.ts')
       harness.terminal.send('\r')
     })
+    await renderAfter(harness, () => {
+      harness.terminal.send('\x03')
+      harness.terminal.send('/diff')
+      harness.terminal.send('\r')
+    })
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0) })
+    await harness.terminal.flush()
     await checkpoint('command-parity', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })

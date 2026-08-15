@@ -18,9 +18,7 @@ viewport
   style 0-46 dim
 7| "→ File · terminal-special-case.t  src/terminal-special-case.ts"
   style 0-31 fg=bright-blue
-8| "/workspace/project (tui-staging)                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-blue bold
-  style 18-31 dim
+8| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 48-49 dim
   style 52-76 dim
   style 79-83 dim

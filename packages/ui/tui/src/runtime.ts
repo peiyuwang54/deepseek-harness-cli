@@ -8,6 +8,7 @@
 
 import type { Terminal } from '@earendil-works/pi-tui'
 import type { SessionId } from '@deepseek-ai/dsh-session'
+import type { GitDiffResult } from './chat/git-diff.ts'
 
 /** Optional process-lifecycle owner for an atomic resume handoff. */
 export interface TuiResumeHost {
@@ -53,6 +54,15 @@ export interface TuiRuntime {
    * @returns Unescaped branch name, or `undefined` outside a Git worktree.
    */
   gitBranch?: (cwd: string) => string | undefined
+  /**
+   * Override the read-only Git inspection used by `/diff`; production invokes
+   * the local Git executable with repository-configured helpers disabled.
+   * @param cwd - Operational working directory from the session header.
+   * @param timeoutMs - Configured maximum lifetime of each Git child process.
+   * @param signal - Slash-command cancellation signal.
+   * @returns Worktree detection and unified diff text.
+   */
+  gitDiff?: (cwd: string, timeoutMs: number, signal: AbortSignal) => Promise<GitDiffResult>
   /** Monotonic-enough wall clock for elapsed status rendering. Defaults to `Date.now`. */
   now?(): number
   /** Host-owned process handoff; absent leaves the session selectable but not resumable in place. */

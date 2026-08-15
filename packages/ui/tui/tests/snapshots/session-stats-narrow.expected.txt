@@ -24,8 +24,7 @@ buffer
 11| "                                                                        "
 12| "  Enter steer · Esc cancel · Shift+Enter newline"
   style 0-47 fg=bright-blue
-13| "/workspace/project  ▸   deepseek-v4-flash [alt+m]  ↑7.7k ↓32  0% context"
-  style 0-17 fg=bright-blue bold
+13| "                    ▸   deepseek-v4-flash [alt+m]  ↑7.7k ↓32  0% context"
   style 20-21 dim
   style 24-48 dim
   style 51-59 dim

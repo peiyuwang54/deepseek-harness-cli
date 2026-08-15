@@ -54,6 +54,7 @@ export const Config: z<Config> = z.object({
   showReasoning: z.boolean().default(true),
   maxToolOutputLines: z.number().step(1).min(1).default(6),
   maxDiffEditLength: z.number().step(1).min(1).default(1000),
+  gitDiffTimeoutMs: z.number().step(1).min(1).default(30_000),
   maxQuestionOptions: z.number().step(1).min(1).default(8),
   maxModelOptions: z.number().step(1).min(1).default(8),
   maxResumeOptions: z.number().step(1).min(1).default(8),
@@ -70,7 +71,7 @@ export const Config: z<Config> = z.object({
   theme: z.object({
     color: z.boolean().default(true),
     truecolor: z.boolean(),
-    leftPrompt: z.string().default('${cwd}${git/worktree}'),
+    leftPrompt: z.string().default(''),
     rightPrompt: z.string().default('${goal}${details}${model}${token_meter/usage}${context}${queued}'),
     inputPrompt: z.string().default('${indicator}'),
     inputPlaceholder: z.string().default('Describe a task, @ a file, or / for commands'),

@@ -101,8 +101,7 @@ buffer
 32| "                                                        "
 33| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-34| "/w  ▸   deepseek-v4-pro [alt+m]  ↑1.3k ↓340  33% context"
-  style 0-1 fg=bright-blue bold
+34| "    ▸   deepseek-v4-pro [alt+m]  ↑1.3k ↓340  33% context"
   style 4-5 dim
   style 8-30 dim
   style 33-42 dim

@@ -21,9 +21,7 @@ buffer
 8| "                                                                                            "
 9| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-10| "/workspace/project (tui-staging)         ▸   deepseek-v4-pro high [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-blue bold
-  style 18-31 dim
+10| "                                         ▸   deepseek-v4-pro high [alt+m]  ↑0 ↓0  0% context"
   style 41-42 dim
   style 45-72 dim
   style 75-79 dim

@@ -29,8 +29,7 @@ viewport
 19| "› Describe a task, @ a file, or / for commands        "
   style 0-0 fg=bright-blue bold
   style 1-45 dim
-20| "/works  ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-5 fg=bright-blue bold
+20| "        ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 8-9 dim
   style 12-36 dim
   style 39-43 dim

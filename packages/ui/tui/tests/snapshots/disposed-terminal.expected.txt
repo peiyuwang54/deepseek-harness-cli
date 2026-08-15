@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=61 base=29 viewport=29
+terminal 92x32 buffer=normal length=62 base=30 viewport=30
 lifecycle started=1 stopped=1 progress=inactive
 title "DSH snapshot"
-cursor visible column=0 viewportRow=31 bufferRow=60
+cursor visible column=0 viewportRow=31 bufferRow=61
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-blue bold
@@ -31,92 +31,92 @@ buffer
   style 0-91 dim
 13| "reasoning display                                                                           "
   style 0-16 dim
-14| "/exit — Exit after the active turn reaches idle                                             "
+14| "/diff — Show the Git diff, including untracked files                                        "
+  style 0-51 dim
+15| "/exit — Exit after the active turn reaches idle                                             "
   style 0-46 dim
-15| "/experimental [fast|vim|reload|reasoning] — Open the terminal experimental-feature launcher "
+16| "/experimental [fast|vim|reload|reasoning] — Open the terminal experimental-feature launcher "
   style 0-90 dim
-16| "/fast [on|off|status] — Toggle a real advertised low-latency model route                    "
+17| "/fast [on|off|status] — Toggle a real advertised low-latency model route                    "
   style 0-71 dim
-17| "/help — Show keyboard shortcuts and commands                                                "
+18| "/help — Show keyboard shortcuts and commands                                                "
   style 0-43 dim
-18| "/ide [path] — Inspect terminal IDE context or insert a workspace file reference             "
+19| "/ide [path] — Inspect terminal IDE context or insert a workspace file reference             "
   style 0-78 dim
-19| "/init — Create an AGENTS.md repository guide                                                "
+20| "/init — Create an AGENTS.md repository guide                                                "
   style 0-43 dim
-20| "/keymap [default|vim] — Choose the default or Vim terminal editing keymap                   "
+21| "/keymap [default|vim] — Choose the default or Vim terminal editing keymap                   "
   style 0-72 dim
-21| "/language [zh|en] — Choose and persist the CLI/Web interface language                       "
+22| "/language [zh|en] — Choose and persist the CLI/Web interface language                       "
   style 0-68 dim
-22| "/mcp [verbose] — List MCP tools visible to this session                                     "
+23| "/mcp [verbose] — List MCP tools visible to this session                                     "
   style 0-54 dim
-23| "/mention [path] — Insert a workspace file reference into the composer                       "
+24| "/mention [path] — Insert a workspace file reference into the composer                       "
   style 0-68 dim
-24| "/model [[provider/]model|off|high|max] — Show or switch this session's model                "
+25| "/model [[provider/]model|off|high|max] — Show or switch this session's model                "
   style 0-75 dim
-25| "/new — Start a new chat in the current workspace                                            "
+26| "/new — Start a new chat in the current workspace                                            "
   style 0-47 dim
-26| "/palette — Show every color and attribute role this terminal renders                        "
+27| "/palette — Show every color and attribute role this terminal renders                        "
   style 0-67 dim
-27| "/quit — Exit after the active turn reaches idle                                             "
+28| "/quit — Exit after the active turn reaches idle                                             "
   style 0-46 dim
-28| "/reload — EXPERIMENTAL (dev): re-read loader config files and apply the diff (idle only)    "
+29| "/reload — EXPERIMENTAL (dev): re-read loader config files and apply the diff (idle only)    "
   style 0-87 dim
-29| "/rename <title> — Rename this session and pin its title                                     "
+30| "/rename <title> — Rename this session and pin its title                                     "
   style 0-54 dim
-30| "/resume [session] — Resume a saved chat                                                     "
+31| "/resume [session] — Resume a saved chat                                                     "
   style 0-38 dim
-31| "/review [instructions] — Review the current workspace changes                               "
+32| "/review [instructions] — Review the current workspace changes                               "
   style 0-60 dim
-32| "/settings [list|document] — Show shared settings namespaces and the settings document       "
+33| "/settings [list|document] — Show shared settings namespaces and the settings document       "
   style 0-84 dim
-33| "/skills [name] — Browse and invoke user-invocable skills for this agent                     "
+34| "/skills [name] — Browse and invoke user-invocable skills for this agent                     "
   style 0-70 dim
-34| "/status — Show session status and token usage                                               "
+35| "/status — Show session status and token usage                                               "
   style 0-44 dim
-35| "/theme [light|dark|system] — Choose and persist the light, dark, or system appearance       "
+36| "/theme [light|dark|system] — Choose and persist the light, dark, or system appearance       "
   style 0-84 dim
-36| "/usage — Show this session's model timing and token usage                                   "
+37| "/usage — Show this session's model timing and token usage                                   "
   style 0-56 dim
-37| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
+38| "/vim [on|off|status] — Toggle Vim Normal and Insert modes for the composer                  "
   style 0-73 dim
-38| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
+39| "/workspace [directory] — Choose or add a workspace and start a fresh session there          "
   style 0-81 dim
-39| "/skill:<name> [instructions] — load a skill into the conversation                           "
+40| "/skill:<name> [instructions] — load a skill into the conversation                           "
   style 0-64 dim
-40| <blank>
-41| "provider stream failed after partial output                                                 "
+41| <blank>
+42| "provider stream failed after partial output                                                 "
   style 0-42 fg=red
-42| <blank>
-43| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
+43| <blank>
+44| "Model wait 0.0s · Completed 2026-07-21 15:05:00                                             "
   style 0-46 dim
-44| <blank>
-45| "The previous process ended during this turn.                                                "
+45| <blank>
+46| "The previous process ended during this turn.                                                "
   style 0-43 fg=yellow
-46| <blank>
-47| "Turn stopped: the agent was disposed.                                                       "
+47| <blank>
+48| "Turn stopped: the agent was disposed.                                                       "
   style 0-36 fg=yellow
-48| <blank>
-49| "Turn ended: plugin-policy.                                                                  "
+49| <blank>
+50| "Turn ended: plugin-policy.                                                                  "
   style 0-25 fg=yellow
-50| <blank>
-51| "Unknown command: /unknown-advanced-command                                                  "
+51| <blank>
+52| "Unknown command: /unknown-advanced-command                                                  "
   style 0-41 fg=yellow
-52-53| <blank>
-54| "                                                                                            "
-55| " › │Describe a task, @ a file, or / for commands                                            "
+53-54| <blank>
+55| "                                                                                            "
+56| " › │Describe a task, @ a file, or / for commands                                            "
   style 1-1 fg=bright-blue bold
   style 2-2 dim
   style 4-47 dim
-56| "                                                                                            "
-57| "  Enter send · Shift+Enter newline · / commands"
+57| "                                                                                            "
+58| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-58| "/workspace/project (tui-staging)            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-blue bold
-  style 18-31 dim
+59| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 44-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-59| "                                      1 turn · 1 step"
+60| "                                      1 turn · 1 step"
   style 38-52 dim
-60| <blank>
+61| <blank>

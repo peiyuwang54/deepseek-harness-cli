@@ -20,9 +20,7 @@ viewport
   style 0-67 fg=bright-blue
 8| "  skill:document-review   (user) — Review and edit a document artifact"
   style 23-69 dim
-9| "/workspace/project (tui-staging)                  ▸   deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-blue bold
-  style 18-31 dim
+9| "                                                  ▸   deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
   style 50-51 dim
   style 54-76 dim
   style 79-83 dim

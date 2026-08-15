@@ -28,8 +28,7 @@ buffer
 14| "                                                                                                "
 15| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-16| "/workspace/project                                                       ▸   mock [alt+m]  ↑0 ↓0"
-  style 0-17 fg=bright-blue bold
+16| "                                                                         ▸   mock [alt+m]  ↑0 ↓0"
   style 73-74 dim
   style 77-88 dim
   style 91-95 dim

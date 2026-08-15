@@ -40,6 +40,8 @@ export interface TuiConfig {
   maxToolOutputLines?: number
   /** Maximum added and removed lines explored while deriving an exact line diff. */
   maxDiffEditLength?: number
+  /** Maximum lifetime in milliseconds of each Git child used by `/diff`. */
+  gitDiffTimeoutMs?: number
   /** Maximum options visible at once in a user-question panel. */
   maxQuestionOptions?: number
   /** Maximum models visible at once in the model selector. */
@@ -77,6 +79,7 @@ const fullscreenSchema = z.boolean().default(false)
 const mouseSchema = z.boolean().default(false)
 const maxToolOutputLinesSchema = z.number().step(1).min(1).default(6)
 const maxDiffEditLengthSchema = z.number().step(1).min(1).default(1000)
+const gitDiffTimeoutMsSchema = z.number().step(1).min(1).default(30_000)
 const maxQuestionOptionsSchema = z.number().step(1).min(1).default(8)
 const maxModelOptionsSchema = z.number().step(1).min(1).default(8)
 const maxResumeOptionsSchema = z.number().step(1).min(1).default(8)
@@ -93,7 +96,7 @@ const showHardwareCursorSchema = z.boolean().default(true)
 const colorSchema = z.boolean().default(true)
 // No default: an unset value auto-detects truecolor from COLORTERM in `apply`.
 const truecolorSchema = z.boolean()
-const DEFAULT_LEFT_PROMPT = '${cwd}${git/worktree}'
+const DEFAULT_LEFT_PROMPT = ''
 const DEFAULT_RIGHT_PROMPT = '${goal}${details}${model}${token_meter/usage}${context}${queued}'
 const DEFAULT_INPUT_PROMPT = '${indicator}'
 const DEFAULT_INPUT_PLACEHOLDER = 'Describe a task, @ a file, or / for commands'
@@ -113,6 +116,7 @@ const tuiConfigSchemaFields = {
   showReasoning: showReasoningSchema,
   maxToolOutputLines: maxToolOutputLinesSchema,
   maxDiffEditLength: maxDiffEditLengthSchema,
+  gitDiffTimeoutMs: gitDiffTimeoutMsSchema,
   maxQuestionOptions: maxQuestionOptionsSchema,
   maxModelOptions: maxModelOptionsSchema,
   maxResumeOptions: maxResumeOptionsSchema,
@@ -154,6 +158,7 @@ export const Config: z<Config> = z.object({
   showReasoning: tuiConfigSchemaFields.showReasoning,
   maxToolOutputLines: tuiConfigSchemaFields.maxToolOutputLines,
   maxDiffEditLength: tuiConfigSchemaFields.maxDiffEditLength,
+  gitDiffTimeoutMs: tuiConfigSchemaFields.gitDiffTimeoutMs,
   maxQuestionOptions: tuiConfigSchemaFields.maxQuestionOptions,
   maxModelOptions: tuiConfigSchemaFields.maxModelOptions,
   maxResumeOptions: tuiConfigSchemaFields.maxResumeOptions,
@@ -188,6 +193,7 @@ export interface ResolvedTuiConfig {
   showReasoning: boolean
   maxToolOutputLines: number
   maxDiffEditLength: number
+  gitDiffTimeoutMs: number
   maxQuestionOptions: number
   maxModelOptions: number
   maxResumeOptions: number
@@ -218,6 +224,7 @@ export function resolveTuiConfig(config: TuiConfig | undefined): ResolvedTuiConf
     showReasoning: config?.showReasoning ?? true,
     maxToolOutputLines: config?.maxToolOutputLines ?? 6,
     maxDiffEditLength: config?.maxDiffEditLength ?? 1000,
+    gitDiffTimeoutMs: config?.gitDiffTimeoutMs ?? 30_000,
     maxQuestionOptions: config?.maxQuestionOptions ?? 8,
     maxModelOptions: config?.maxModelOptions ?? 8,
     maxResumeOptions: config?.maxResumeOptions ?? 8,

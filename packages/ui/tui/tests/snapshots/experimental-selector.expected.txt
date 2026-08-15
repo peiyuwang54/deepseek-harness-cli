@@ -51,9 +51,7 @@ buffer
   style 75-75 fg=bright-blue
 20| "╰──────────────────────────────────────────────────────────────────────────╯"
   style 0-75 fg=bright-blue
-21| "/workspace/project (tui-staging)                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-blue bold
-  style 18-31 dim
+21| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 48-49 dim
   style 52-76 dim
   style 79-83 dim

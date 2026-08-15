@@ -50,6 +50,7 @@ export interface TuiHarnessOptions {
   cwd?: string | null
   formatCwd?: TuiRuntime['formatCwd']
   gitBranch?: TuiRuntime['gitBranch']
+  gitDiff?: TuiRuntime['gitDiff']
   /** Fake-agent creation options (`provider`/`model` seed the model selector's initial target). */
   agentOptions?: AgentOptions
   contextWindow?: number
@@ -265,6 +266,7 @@ export async function createTuiTestHarness<TerminalType extends Terminal, Exit e
     // test pins the clock only by passing `now` explicitly.
     ...(options.now === undefined ? {} : { now: options.now }),
     ...(options.formatCwd === undefined ? {} : { formatCwd: options.formatCwd }),
+    ...(options.gitDiff === undefined ? {} : { gitDiff: options.gitDiff }),
     ...(options.handoffResume === undefined ? {} : { handoffResume: options.handoffResume }),
     ...(options.handoffWorkspace === undefined ? {} : { handoffWorkspace: options.handoffWorkspace }),
     ...(options.goodbyeMessage === undefined ? {} : { goodbyeMessage: options.goodbyeMessage }),

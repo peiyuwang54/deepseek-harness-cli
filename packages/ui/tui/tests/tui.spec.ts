@@ -242,6 +242,7 @@ describe('TUI config', () => {
       showReasoning: true,
       maxToolOutputLines: 6,
       maxDiffEditLength: 1000,
+      gitDiffTimeoutMs: 30_000,
       maxQuestionOptions: 8,
       maxModelOptions: 8,
       maxResumeOptions: 8,
@@ -258,7 +259,7 @@ describe('TUI config', () => {
       theme: {
         color: true,
         truecolor: false,
-        leftPrompt: '${cwd}${git/worktree}',
+        leftPrompt: '',
         rightPrompt: '${goal}${details}${model}${token_meter/usage}${context}${queued}',
         inputPrompt: '${indicator}',
         inputPlaceholder: 'Describe a task, @ a file, or / for commands',
@@ -271,6 +272,7 @@ describe('TUI config', () => {
       showReasoning: true,
       maxToolOutputLines: 2,
       maxDiffEditLength: 12,
+      gitDiffTimeoutMs: 456,
       maxQuestionOptions: 3,
       maxModelOptions: 4,
       maxResumeOptions: 5,
@@ -292,6 +294,7 @@ describe('TUI config', () => {
       showReasoning: true,
       maxToolOutputLines: 2,
       maxDiffEditLength: 12,
+      gitDiffTimeoutMs: 456,
       maxQuestionOptions: 3,
       maxModelOptions: 4,
       maxResumeOptions: 5,
@@ -308,7 +311,7 @@ describe('TUI config', () => {
       theme: {
         color: false,
         truecolor: true,
-        leftPrompt: '${cwd}${git/worktree}',
+        leftPrompt: '',
         rightPrompt: '${goal}${details}${model}${token_meter/usage}${context}${queued}',
         inputPrompt: '${indicator}',
         inputPlaceholder: 'Describe a task, @ a file, or / for commands',
@@ -2063,7 +2066,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).not.toContain('restored thought')
     expect(result.terminal.output).toContain('restored answer')
     expect(result.terminal.output).toContain('write tests')
-    expect(result.terminal.output).toContain('/opt (tui-staging)')
+    expect(result.terminal.output).not.toContain('/opt (tui-staging)')
     expect(result.terminal.output).toContain('↑1.3k ↓42')
     expect(result.terminal.output).toContain('deepseek-v4-flash [alt+m]')
     expect(result.terminal.output).toContain('› │Describe a task')
@@ -3093,7 +3096,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await dispose(result)
   })
 
-  it('formats large token totals and cwd variants', async () => {
+  it('formats large token totals, hides the default cwd, and supports explicit cwd prompts', async () => {
     const home = homedir()
     const homeResult = await setup({
       cwd: home,
@@ -3102,38 +3105,42 @@ describe('pi-tui chat lifecycle and transcript', () => {
       },
     })
     await vi.waitFor(() => {
-      expect(homeResult.terminal.output).toContain('~ (tui-staging)')
       expect(homeResult.terminal.output).toContain('↑25k ↓10k')
       expect(homeResult.terminal.output).toContain('deepseek-v4-flash [alt+m]')
     })
+    expect(homeResult.terminal.output).not.toContain('~ (tui-staging)')
     await dispose(homeResult)
 
-    const childResult = await setup({ cwd: join(home, 'projects', 'dsh-tui') })
+    const childResult = await setup({
+      config: { theme: { leftPrompt: '${cwd}' } },
+      cwd: join(home, 'projects', 'dsh-tui'),
+    })
     await vi.waitFor(() => {
       expect(childResult.terminal.output).toContain(join('~', 'projects', 'dsh-tui'))
     })
     await dispose(childResult)
 
-    const unsetResult = await setup({ cwd: null })
+    const unsetResult = await setup({ config: { theme: { leftPrompt: '${cwd}' } }, cwd: null })
     await vi.waitFor(() => {
       expect(unsetResult.terminal.output).toContain('cwd unset')
     })
     await dispose(unsetResult)
 
     const homeParent = resolve(home, '..')
-    const parentResult = await setup({ cwd: homeParent })
+    const parentResult = await setup({ config: { theme: { leftPrompt: '${cwd}' } }, cwd: homeParent })
     await vi.waitFor(() => {
       expect(parentResult.terminal.output).toContain(homeParent)
     })
     await dispose(parentResult)
 
-    const outsideResult = await setup({ cwd: '/opt' })
+    const outsideResult = await setup({ config: { theme: { leftPrompt: '${cwd}' } }, cwd: '/opt' })
     await vi.waitFor(() => {
       expect(outsideResult.terminal.output).toContain('/opt')
     })
     await dispose(outsideResult)
 
     const logicalResult = await setup({
+      config: { theme: { leftPrompt: '${cwd}' } },
       cwd: '/w',
       formatCwd: cwd => `logical:${cwd}\x1b`,
     })
@@ -3492,6 +3499,51 @@ describe('pi-tui chat lifecycle and transcript', () => {
       type: 'text',
       text: '@src/index.ts review it',
     })
+
+    await dispose(result)
+  })
+
+  it('renders /diff output and reports its empty, non-worktree, argument, and failure states', async () => {
+    const gitDiff = vi.fn<NonNullable<TuiRuntime['gitDiff']>>(async () => ({
+      isWorktree: true,
+      text: 'diff --git a/readme.md b/readme.md\n--- a/readme.md\n+++ b/readme.md\n@@ -1 +1 @@\n-old\n+new\x1b[31m\n',
+    }))
+    const result = await setup({ cwd: '/workspace/diff', gitDiff })
+    result.terminal.send('/diff')
+    result.terminal.send('\r')
+    await tick()
+
+    expect(gitDiff).toHaveBeenCalledOnce()
+    expect(gitDiff.mock.calls[0]?.[0]).toBe('/workspace/diff')
+    expect(gitDiff.mock.calls[0]?.[1]).toBe(30_000)
+    expect(gitDiff.mock.calls[0]?.[2]).toBeInstanceOf(AbortSignal)
+    expect(result.terminal.output).toContain('Git diff')
+    expect(result.terminal.output).toContain('-old')
+    expect(result.terminal.output).toContain('+new\\x1b[31m')
+
+    result.terminal.send('/diff now')
+    result.terminal.send('\r')
+    await tick()
+    expect(gitDiff).toHaveBeenCalledOnce()
+    expect(result.terminal.output).toContain('Usage: /diff (no arguments)')
+
+    gitDiff.mockResolvedValueOnce({ isWorktree: false, text: '' })
+    result.terminal.send('/diff')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('/diff — not inside a Git worktree.')
+
+    gitDiff.mockResolvedValueOnce({ isWorktree: true, text: '' })
+    result.terminal.send('/diff')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('No changes detected.')
+
+    gitDiff.mockRejectedValueOnce(new Error('git unavailable'))
+    result.terminal.send('/diff')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Failed to compute diff: git unavailable')
 
     await dispose(result)
   })
@@ -7512,15 +7564,14 @@ describe('terminal mounting', () => {
       }
     }
     const terminal = new QueryFailTerminal()
-    // Anchor cwd under $HOME so the prompt renders the `~/` abbreviation
-    // deterministically; process.cwd() is not guaranteed under $HOME in CI.
     const result = await createTuiTestHarness(terminal, vi.fn(), {
       config: { theme: { color: true } },
       cwd: join(homedir(), 'projects', 'dsh-tui'),
     })
     await tick()
-    expect(terminal.output).toContain('\x1b[94m~/')
-    expect(terminal.output).toContain('\x1b[2;39m (tui-staging)')
+    expect(terminal.output).toContain('\x1b[94mDEEPSEEK')
+    expect(terminal.output).toContain('\x1b[2;39mdeepseek-v4-flash')
+    expect(terminal.output).not.toContain('tui-staging')
     await disposeTuiTestHarness(result)
   })
   it('runs /reload against every file-backed loader subtree, reports completion, and rejects re-entry while in flight', async () => {

@@ -2829,6 +2829,8 @@ export interface TuiConfig {
   maxToolOutputLines?: number
   /** Maximum added and removed lines explored while deriving an exact line diff. */
   maxDiffEditLength?: number
+  /** Maximum lifetime in milliseconds of each Git child used by `/diff`. */
+  gitDiffTimeoutMs?: number
   /** Maximum options visible at once in a user-question panel. */
   maxQuestionOptions?: number
   /** Maximum models visible at once in the model selector. */
@@ -2878,7 +2880,7 @@ export interface TuiThemeConfig {
 }
 ```
 
-来源：[`packages/ui/tui/src/config.ts:137`](../packages/ui/tui/src/config.ts)
+来源：[`packages/ui/tui/src/config.ts:141`](../packages/ui/tui/src/config.ts)
 
 <a id="deepseek-aidsh-tui-app"></a>
 

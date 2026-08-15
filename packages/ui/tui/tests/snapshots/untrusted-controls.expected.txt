@@ -56,9 +56,7 @@ buffer
 33| "› Describe a task, @ a file, or / for commands                                                    "
   style 0-0 fg=bright-blue bold
   style 1-45 dim
-34| "/workspace/project (tui-staging)                    ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
-  style 0-17 fg=bright-blue bold
-  style 18-31 dim
+34| "                                                    ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 52-53 dim
   style 56-80 dim
   style 83-87 dim

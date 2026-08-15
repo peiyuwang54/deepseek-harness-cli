@@ -80,6 +80,7 @@ import {
   brandText,
   composerBackground,
   createPalette,
+  highlightMarkdownCode,
   markdownTheme,
   renderPalette,
   selectTheme,
@@ -170,6 +171,7 @@ import {
 import { readTuiLocale, tuiCopy, type TuiLocale } from './chat/language.ts'
 import { latestVisibleAssistantText, osc52ClipboardSequence } from './chat/clipboard.ts'
 import { mcpCommandResult } from './chat/mcp-command.ts'
+import { gitDiff } from './chat/git-diff.ts'
 import { GoalTimingTracker, formatGoalFooterStatus, type GoalFooterState } from './chat/goal-status.ts'
 import type { TuiResumeHost, TuiRuntime } from './runtime.ts'
 import { WorkspaceFileSearch } from './chat/file-autocomplete.ts'
@@ -775,6 +777,17 @@ export function createTuiChat(
     const color = kind === 'error' ? palette.error : kind === 'warning' ? palette.warning : palette.dim
     chat.addChild(new Spacer(1))
     chat.addChild(new Text(color(displayText(message)), 0, 0))
+    trailLiveTurnStatus()
+    requestRender()
+  }
+
+  const appendGitDiff = (source: string): void => {
+    const text = displayText(source.trimEnd())
+    chat.addChild(new Spacer(1))
+    chat.addChild(new Text([
+      palette.accent('Git diff'),
+      ...highlightMarkdownCode(text, 'diff', palette),
+    ].join('\n'), 0, 0))
     trailLiveTurnStatus()
     requestRender()
   }
@@ -1852,6 +1865,20 @@ export function createTuiChat(
     }
   }
 
+  const runDiffCommand = async (rawInput: string, signal: AbortSignal): Promise<CommandResult> => {
+    if (rawInput.trim() !== '') return { kind: 'error', text: 'Usage: /diff (no arguments)' }
+    try {
+      const result = await (runtime.gitDiff ?? gitDiff)(cwd, resolved.gitDiffTimeoutMs, signal)
+      if (!result.isWorktree) return { kind: 'success', text: '/diff — not inside a Git worktree.' }
+      if (result.text.trim() === '') return { kind: 'success', text: 'No changes detected.' }
+      appendGitDiff(result.text)
+      return { kind: 'success' }
+    } catch (error: unknown) {
+      if (signal.aborted) throw error
+      return { kind: 'error', text: `Failed to compute diff: ${errorChain(error)}` }
+    }
+  }
+
   const runExperimentalCommand = (raw: string): CommandResult => {
     const argument = raw.trim().toLowerCase()
     const actions: Record<string, string> = {
@@ -2153,6 +2180,11 @@ export function createTuiChat(
       name: 'copy',
       description: 'Copy the latest assistant response to the terminal clipboard',
       handler: runCopyCommand,
+    })
+    commandCtx.commands.register({
+      name: 'diff',
+      description: 'Show the Git diff, including untracked files',
+      handler: ({ rawInput, signal }) => runDiffCommand(rawInput, signal),
     })
     commandCtx.commands.register({
       name: 'details',

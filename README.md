@@ -36,14 +36,19 @@ Windows:
 powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.ps1 | iex"
 ```
 
-Package managers are also supported:
+You can also install DeepSeek CLI with the following package managers:
 
 ```sh
+# Install using npm
 npm install -g @peiyu_wang/deepseek-harness-cli
+```
+
+```sh
+# Install using Homebrew
 brew install --cask peiyuwang54/dsh/deepseek-harness-cli
 ```
 
-Open a project directory and start the CLI with `deepseek` or its shorter `dsh` alias:
+Then open a project directory and run `deepseek` to get started. The shorter `dsh` alias is also available:
 
 ```sh
 deepseek

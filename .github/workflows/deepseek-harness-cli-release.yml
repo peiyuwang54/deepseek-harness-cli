@@ -185,50 +185,7 @@ jobs:
           set -euo pipefail
           exe="$PWD/dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}"
           if [ ! -e "$exe" ] && [ -e "$exe.exe" ]; then exe="$exe.exe"; fi
-          smoke_home="$RUNNER_TEMP/dsh-web-smoke"
-          smoke_log="$RUNNER_TEMP/dsh-web-smoke.log"
-          smoke_html="$RUNNER_TEMP/dsh-web-smoke.html"
-          mkdir -p "$smoke_home"
-          DSH_HOME="$smoke_home" DSH_TELEMETRY_DISABLED=1 \
-            "$exe" web --host 127.0.0.1 --port 39460 >"$smoke_log" 2>&1 &
-          smoke_pid=$!
-          cleanup() {
-            if [ "$RUNNER_OS" = Windows ]; then
-              taskkill //PID "$smoke_pid" //T //F > /dev/null 2>&1 || true
-            else
-              kill "$smoke_pid" > /dev/null 2>&1 || true
-            fi
-            wait "$smoke_pid" 2>/dev/null || true
-          }
-          trap cleanup EXIT
-          ready=false
-          for _ in $(seq 1 60); do
-            if ! kill -0 "$smoke_pid" 2>/dev/null; then
-              cat "$smoke_log"
-              echo "::error::packaged Web profile exited before it became ready"
-              exit 1
-            fi
-            if curl --connect-timeout 1 --max-time 2 -fsS http://127.0.0.1:39460/ -o "$smoke_html"; then
-              if grep -Fq '<title>DeepSeek Harness</title>' "$smoke_html"; then
-                ready=true
-                break
-              fi
-            fi
-            sleep 0.2
-          done
-          if [ "$ready" != true ]; then
-            cat "$smoke_log"
-            echo "::error::packaged Web profile did not become ready"
-            exit 1
-          fi
-          sleep 2
-          kill -0 "$smoke_pid" 2>/dev/null || {
-            cat "$smoke_log"
-            echo "::error::packaged Web profile exited after its first response"
-            exit 1
-          }
-          curl --connect-timeout 1 --max-time 2 -fsS http://127.0.0.1:39460/ -o "$smoke_html"
-          grep -Fq '<title>DeepSeek Harness</title>' "$smoke_html"
+          DSH_TELEMETRY_DISABLED=1 node scripts/smoke-packaged-web.mjs "$exe" 39460
 
       - name: Check Linux GLIBC requirements
         if: runner.os == 'Linux'

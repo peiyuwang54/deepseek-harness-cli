@@ -85,6 +85,37 @@ beforeEach(async () => {
 })
 
 describe('composing an agent from a preset', () => {
+  it('resolves bare packages from the Loader root when the agent context uses a profile directory', async () => {
+    const install = await mkdtemp(join(tmpdir(), 'dsh-preset-install-'))
+    const profile = await mkdtemp(join(tmpdir(), 'dsh-preset-profile-'))
+    const presetRoot = await mkdtemp(join(tmpdir(), 'dsh-preset-root-'))
+    const plugin = join(install, 'node_modules', 'fixture-host-plugin')
+    await mkdir(plugin, { recursive: true })
+    await writeFile(join(plugin, 'package.json'), JSON.stringify({
+      name: 'fixture-host-plugin',
+      type: 'module',
+      exports: './index.mjs',
+    }))
+    await writeFile(join(plugin, 'index.mjs'), 'export function apply() {}\n')
+    await mkdir(join(presetRoot, 'hosted'))
+    await writeFile(join(presetRoot, 'hosted', COMPOSITION_FILE), '- id: hosted\n  name: fixture-host-plugin\n')
+    const scoped = await harness({
+      default: 'hosted',
+      roots: [{ path: presetRoot, trust: 'user' }],
+      includeUserRoot: false,
+    })
+    scoped.loader.config.baseUrl = pathToFileURL(join(install, 'entry.mjs')).href
+
+    const preset = await scoped.agentPresets.resolve()
+    const agentScope = createScope(scoped, { test: 'host-package' })
+    const profileCtx = agentScope.ctx.extend({ baseUrl: pathToFileURL(profile).href + '/' })
+    try {
+      await mountPreset(profileCtx, preset)
+    } finally {
+      await agentScope.dispose()
+    }
+  })
+
   it('hands an absolute plugin path to Node as a file URL', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-preset-absolute-plugin-'))
     const presetDir = join(root, 'absolute')

@@ -728,7 +728,8 @@ export async function assertEntriesActivated(ctx: Context, binName: string): Pro
  * Boot the Loader against `absoluteConfigPath` and return only after the whole
  * tree settles. Relative entry names resolve against the config directory;
  * bare package names resolve there by default or against an explicit
- * `bareModuleBaseUrl` for closed packaged runtimes. The bootstrap include
+ * `bareModuleBaseUrl` for closed packaged runtimes, including entries a
+ * running plugin adds to the Loader root. The bootstrap include
  * is statically imported and mounted as the `cordis:include` builtin, loading
  * through the ambient module pipeline (vite/tsx/plain ESM). The package build
  * embeds Include while leaving Loader external, so the built include tree and
@@ -747,7 +748,8 @@ export async function assertEntriesActivated(ctx: Context, binName: string): Pro
  * @param prepare - optional host setup run after Loader installation and before any config-tree entry mounts.
  * @param bareModuleBaseUrl - optional installed-host base for bare package
  * names; use it when the host, rather than the configuration project, owns the
- * complete plugin set.
+ * complete plugin set. It also anchors the Loader root used by entries created
+ * at runtime.
  * @returns the root context once every entry has started, or as soon as a
  * surface disposed the tree while startup was still in flight.
  * @throws a labelled error after disposing the partial context — `host
@@ -766,9 +768,12 @@ export async function boot(
   // so its failure is host setup, not the plugin tree.
   let stage = 'host preparation failed'
   try {
-    ctx.baseUrl = pathToFileURL(dirname(absoluteConfigPath)).href + '/'
+    const rootBaseUrl = bareModuleBaseUrl === undefined || isAbsolute(bareModuleBaseUrl)
+      ? pathToFileURL(dirname(bareModuleBaseUrl ?? absoluteConfigPath)).href + '/'
+      : new URL('.', bareModuleBaseUrl).href
+    ctx.baseUrl = rootBaseUrl
     ctx.provide('dshHomePath', dshHomePath)
-    await ctx.plugin(Loader)
+    await ctx.plugin(Loader, { baseUrl: rootBaseUrl })
     await prepare?.(ctx)
     stage = 'plugin tree failed to load'
     await mountRootInclude(ctx, absoluteConfigPath, patches, bareModuleBaseUrl)

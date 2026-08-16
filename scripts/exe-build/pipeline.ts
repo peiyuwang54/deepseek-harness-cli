@@ -1,9 +1,10 @@
 /**
  * Shared single-file executable build pipeline. A product (ExeProduct) supplies
  * its deploy root, entry, and staging layout; ExeBuild then verifies the closure,
- * deploys it, injects pkg assets, and packs each requested target. The staged
- * closure is symlink-free, and whole-tree assets cover Cordis's runtime imports
- * that pkg cannot discover statically.
+ * deploys it, verifies runtime-data asset coverage, injects pkg assets, and
+ * packs each requested target. The staged closure is symlink-free, and
+ * whole-tree assets cover Cordis's runtime imports that pkg cannot discover
+ * statically.
  */
 
 import { spawn } from 'node:child_process'
@@ -12,25 +13,10 @@ import { chmod, copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promise
 import { dirname, join, resolve, sep } from 'node:path'
 
 import { OUT_DIR, PKG_SPEC, Target, productFileName, type BuildCli, type ExeProduct } from './config.ts'
+import { ASSET_GLOBS, collectBundlePatchOverlays, expandGlob, findUncoveredAssets } from './asset-coverage.ts'
 import { copyPackageTree, materializePackageLinks } from './package-tree.ts'
 
 const root = resolve(import.meta.dirname, '..', '..')
-
-/**
- * Whole-tree assets cover Cordis's runtime bare-package imports, which pkg's
- * static analysis cannot see. Package manifests are explicit because bare-name
- * resolution depends on them.
- */
-const ASSET_GLOBS = [
-  'package.json',
-  'node_modules/**/*.js',
-  'node_modules/**/*.cjs',
-  'node_modules/**/*.mjs',
-  'node_modules/**/package.json',
-  'node_modules/**/*.json',
-  'node_modules/**/*.node',
-  'node_modules/**/*.wasm',
-]
 
 function pnpmBin(): string {
   return process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
@@ -160,6 +146,34 @@ class ExeBuild {
       return
     }
     await materializePackageLinks(join(this.staging, 'node_modules'))
+  }
+
+  /**
+   * Verify that every file the composed application reads at runtime is
+   * covered by an asset glob: each staged `dsh.bundle.patch` overlay plus every
+   * file the product's `requiredAssets` globs select. A `requiredAssets` glob
+   * that matches nothing fails here, so an unbuilt input (for example a
+   * frontend dist that a skipped `pnpm run build` never produced) fails the
+   * build instead of the user's first run.
+   */
+  async verifyAssetCoverage(): Promise<void> {
+    if (this.cli.dryRun) {
+      console.log(`${this.product.label}: [dry-run] verify pkg asset coverage for ${this.product.requiredAssets.join(', ') || '(bundle overlays only)'}`)
+      return
+    }
+    const required = new Set(await collectBundlePatchOverlays(this.staging))
+    for (const pattern of this.product.requiredAssets) {
+      const files = expandGlob(this.staging, pattern)
+      if (files.length === 0) {
+        throw new Error(`${this.product.label}: required asset glob ${pattern} matched nothing under ${this.staging}; the staged closure is incomplete.`)
+      }
+      for (const file of files) required.add(file)
+    }
+    const uncovered = findUncoveredAssets(this.staging, [...required])
+    if (uncovered.length > 0) {
+      throw new Error(`${this.product.label}: runtime-read staged files are not covered by pkg assets (add a matching ASSET_GLOBS entry): ${uncovered.join(', ')}.`)
+    }
+    console.log(`${this.product.label}: ${required.size} runtime-read staged files are covered by pkg assets.`)
   }
 
   /** Add the executable entry and pkg assets to the staged manifest. */
@@ -310,6 +324,7 @@ export async function buildExeProduct(product: ExeProduct, cli: BuildCli): Promi
   await pipeline.verifyClosure()
   await pipeline.build()
   await pipeline.deployStaging()
+  await pipeline.verifyAssetCoverage()
   await pipeline.injectPkgConfig()
   const products: string[] = []
   for (const target of cli.targets) products.push(...await pipeline.pack(target))

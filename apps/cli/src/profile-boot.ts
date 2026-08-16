@@ -365,7 +365,7 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
     // The launcher is the only layer that can reconstruct the exact profile,
     // overlays, pristine launch environment, and foreground-process lifetime.
     hostCtx.provide('tuiResumeHost', tuiHandoff)
-  })
+  }, INSTALL_ANCHOR)
   app.current = ctx
   // A surface can dispose the whole tree while boot or this post-boot watcher
   // setup is still in flight — a signal, or a fast one-shot's appExit. Loader
@@ -382,14 +382,20 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
       // disables the shared module-reload `hmr` row (its reload lifecycle is
       // untested), so when the composition leaves no HMR service, mount a
       // watch-only instance with no module roots — cordis.patch.yml edits stay
-      // live on every long-lived surface. A silent skip would break the
-      // documented hot-reload contract. HMR injects the timer service, which a
-      // bare custom profile may not mount either.
+      // live on every long-lived surface. Its base remains the writable profile
+      // directory; the Loader root itself is anchored to the packaged install
+      // so runtime-created bare plugin entries resolve from embedded packages.
+      // A silent skip would break the documented hot-reload contract. HMR
+      // injects the timer service, which a bare custom profile may not mount
+      // either.
       if (ctx.get('hmr') === undefined) {
         if (ctx.get('timer') === undefined) {
           await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-timer' })
         }
-        await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-hmr', config: { root: [] } })
+        await ctx.loader.create({
+          name: '@deepseek-ai/cordis-plugin-hmr',
+          config: { root: [], base: composed.profile.dir },
+        })
       }
       await watchUserPatches(ctx, {
         binName: NAME,

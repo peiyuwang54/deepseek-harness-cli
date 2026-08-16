@@ -25,6 +25,14 @@ const CLI_PRODUCT: ExeProduct = {
   deploySourceNodeModules: 'apps/cli/exe/node_modules',
   deployOnlyDocs: [],
   linuxPtySource: 'packages/subprocess/subprocess-local/node_modules/node-pty/build/Release/pty.node',
+  // Runtime-read data trees the booted profiles read: the shipped
+  // agent-preset root under @deepseek-ai/dsh's own config, and the web
+  // frontend dist the web profile serves.
+  requiredAssets: [
+    'node_modules/@deepseek-ai/dsh/config/**/*',
+    'node_modules/@deepseek-ai/dsh-web-frontend/dist/**/*',
+    'node_modules/@img/sharp-*/lib/**/*',
+  ],
   closureManifest: 'apps/cli/exe/package.json',
   notePath: '.agents/notes/implemented/feature/2026-08-15-dsh-cli-exe-distribution.md',
 }

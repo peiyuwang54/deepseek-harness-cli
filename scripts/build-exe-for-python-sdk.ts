@@ -31,6 +31,9 @@ const SDK_PRODUCT: ExeProduct = {
   deploySourceNodeModules: 'python/sdk-runtime/node_modules',
   deployOnlyDocs: ['README.md', 'README.zh.md', 'README.i18n.yaml'],
   linuxPtySource: 'packages/subprocess/subprocess-local/node_modules/node-pty/build/Release/pty.node',
+  // The JSON-RPC closure composes no profile bundles and ships no config or
+  // frontend trees; only the generic bundle-overlay check applies to it.
+  requiredAssets: [],
   closureManifest: 'python/sdk-runtime/package.json',
   notePath: '.agents/notes/implemented/architecture/2026-07-10-single-file-executable-sdk-runtime-distribution.md',
 }

@@ -50,6 +50,13 @@ export interface ExeProduct {
   readonly deployOnlyDocs: readonly string[]
   /** Host-built node-pty addon staged into Linux closures. */
   readonly linuxPtySource: string
+  /**
+   * Glob patterns, relative to the staging root, selecting files the composed
+   * application reads at runtime. Every match must be covered by an asset glob
+   * and each pattern must match at least one staged file; bundle
+   * `cordis.patch.yml` overlays are verified without being listed here.
+   */
+  readonly requiredAssets: readonly string[]
   /** The closure manifest whose dependencies define the executable. */
   readonly closureManifest: string
   /** Architecture note owning the build route, relative to the repo root. */

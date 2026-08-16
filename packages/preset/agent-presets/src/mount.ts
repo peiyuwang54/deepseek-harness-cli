@@ -338,11 +338,13 @@ export async function mountPreset(agentCtx: Context, preset: AgentPreset): Promi
     )
   }
   const config: Include.Config = { path: pathToFileURL(preset.path).href }
-  // Captured before the subtree exists: the standing scope context still
-  // carries the host composition's base, which is inside the installed
-  // harness and is therefore where a row's package name has to resolve from.
-  /* v8 ignore next -- the Loader sets `baseUrl` on the root before any scoped context derives from it */
-  if (agentCtx.baseUrl !== undefined) harnessBase.set(config, agentCtx.baseUrl)
+  // The Loader root owns the installed package base. A scoped agent context
+  // may instead carry a writable profile directory, which is correct for
+  // profile-local files but cannot resolve packages embedded by a single-file
+  // executable.
+  const loaderBase = agentCtx.get('loader')?.config.baseUrl
+  /* v8 ignore next -- the Loader sets its context base before any preset can mount */
+  if (loaderBase !== undefined) harnessBase.set(config, loaderBase)
   // Before the record this mount is about to add: standing mounts are one per
   // preset and live until whole-tree teardown, so pruning here only sweeps
   // records of torn-down runtimes (tests; an HMR reload of the roster).

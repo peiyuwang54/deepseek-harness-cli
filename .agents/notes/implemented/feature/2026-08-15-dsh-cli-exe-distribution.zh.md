@@ -19,10 +19,17 @@ Python SDK 已经通过 `@yao-pkg/pkg` 的 `--sea` 模式发布单文件可执�
 `scripts/build-exe-for-python-sdk.ts` 被拆分为共享管线与薄产品定义：
 
 - [`scripts/exe-build/config.ts`](../../../../scripts/exe-build/config.ts)——`ExeProduct` / `BuildCli` 产品契约、`DEFAULT_NODE_RANGE = 'node24'` 与 `dist-exe` 输出目录。
-- [`scripts/exe-build/pipeline.ts`](../../../../scripts/exe-build/pipeline.ts)——`ExeBuild` 管线：`--targets` 解析、逐目标的 `pkg --sea` 调用、`ASSET_GLOBS`、`prepareNativePty`、macOS `-spawn-helper` 打包。
+- [`scripts/exe-build/pipeline.ts`](../../../../scripts/exe-build/pipeline.ts)——`ExeBuild` 管线：`--targets` 解析、逐目标的 `pkg --sea` 调用、资产覆盖校验、`prepareNativePty`、macOS `-spawn-helper` 打包。
+- [`scripts/exe-build/asset-coverage.ts`](../../../../scripts/exe-build/asset-coverage.ts)——`ASSET_GLOBS` 与基于它的覆盖检查。
 - [`scripts/build-exe-for-python-sdk.ts`](../../../../scripts/build-exe-for-python-sdk.ts) 与 [`scripts/build-dsh-cli-exe.ts`](../../../../scripts/build-dsh-cli-exe.ts)——产品：Python SDK 运行时与 `deepseek-harness-cli`（`deployFilter: '@deepseek-ai/dsh'`、`entryBin: 'node_modules/@deepseek-ai/dsh/lib/bin.js'`、`outputBasename: 'deepseek-harness-cli'`）。Python 构建的行为不变。
 
 管线在 Windows 上通过 pnpm 的 `.cmd` shim 解析 pnpm。Node 在该平台不能直接执行命令 shim，因此子进程 runner 只对 `.cmd` 启用宿主 shell；所有命令和参数都来自固定的产品配置或经过校验的目标枚举。
+
+pkg 只把匹配 `ASSET_GLOBS` 的文件嵌入可执行文件的 `/snapshot/` 文件系统。除 Cordis 的运行时代码导入外，组合后的应用在启动时还会读取数据文件——每个 bundle 的 `cordis.patch.yml` overlay、`@deepseek-ai/dsh` 随包发布的 `config/agent-presets/` 树、web 前端 dist，以及原生 addon 相邻的共享库——因此通配符同样覆盖它们（`node_modules/**/*.yml`、config 树的 `.md` 文件、`node_modules/@deepseek-ai/dsh-web-frontend/dist/**/*`，以及匹配 `.dylib`、`.so*` 或 `.dll` 的平台库）。管线在暂存后校验覆盖：每个暂存的 `dsh.bundle.patch` overlay 与产品 `requiredAssets` 通配符选中的每个文件都必须命中一条 `ASSET_GLOBS`，且每条 `requiredAssets` 通配符至少命中一个暂存文件，这样被跳过的构建所缺失的输入（例如前端 dist 或 sharp 运行时）会让构建失败，而不是让用户的首次运行失败。
+
+Profile 继续写在可执行文件 snapshot 之外的 `$DSH_HOME`。CLI 把已安装的 `package.json` 锚点传给 app boot：配置中的裸插件名和 Loader 根节点在运行时新增的条目都从嵌入安装中解析，相对配置条目仍在 profile 文件旁解析。只负责配置监听的 HMR 服务显式以可写 profile 目录为 base，因此它的文件监听不会把嵌入 snapshot 目录当作宿主路径。
+
+随包发布的 agent preset 发现逻辑把目录项当作名称，再对拼接后的路径执行 stat，而不依赖 `pkg --sea` 虚拟文件系统不会保留的 `Dirent` 方法。preset 子树在进入可写 profile 上下文前捕获根 Loader 配置的安装 base，因此嵌套的裸包条目仍锚定到嵌入安装。
 
 ### 闭包门禁校验两个部署根
 
@@ -50,7 +57,7 @@ CLI 部署根是 `apps/cli/exe`（`deepseek-harness-cli-exe-pkg`，镜像 SDK �
 [`.github/workflows/deepseek-harness-cli-release.yml`](../../../../.github/workflows/deepseek-harness-cli-release.yml) 在一次运行里构建并发布全部三个通道，由 `deepseek-harness-cli-v*` tag push 或手动 dispatch 触发；手动 dispatch 的可选 `version` 输入覆盖 tag 或 `apps/cli/package.json`：
 
 - **plan** 解析版本并计算五目标矩阵（`node24-linux-x64`→ubuntu-latest、`node24-linux-arm64`→ubuntu-24.04-arm、`node24-macos-arm64`→macos-15、`node24-macos-x64`→macos-15-intel、`node24-win-x64`→windows-2025）。
-- **build** 按目标运行：不可变安装、Linux 上 node-pty manylinux 2.28 重建、`scripts/build-dsh-cli-exe.ts --targets=<target>`、Linux 上 GLIBC ≤ 2.28 检查、macOS 部署目标检查、`--version` 冒烟（须等于发布版本）、上传产物。manylinux 容器按绝对路径挂载 runner 的 Node 工具缓存与 pnpm action 目录，再以源码构建模式重建 `@deepseek-ai/dsh-subprocess-local` 工作区的 `node-pty` 依赖；在容器内重新生成 node-gyp 产物，避免宿主缓存 Makefile 的路径进入 Linux 产物。macOS 检查同时接受 Apple 工具链在不同架构上生成的 `LC_BUILD_VERSION` 与旧式 `LC_VERSION_MIN_MACOSX` load command。
+- **build** 按目标运行：不可变安装、Linux 上 node-pty manylinux 2.28 重建、`scripts/build-dsh-cli-exe.ts --targets=<target>`、Linux 上 GLIBC ≤ 2.28 检查、macOS 部署目标检查、须等于发布版本的 `--version` 冒烟、`tui` 与 `web` 的 profile 组装 dump、必须能提供前端且持续存活的真实 Web 启动、上传产物。真实启动会激活 Loader 树、运行时新增条目、原生 addon 与共享库，这些路径不会由配置 dump 触达。manylinux 容器按绝对路径挂载 runner 的 Node 工具缓存与 pnpm action 目录，再以源码构建模式重建 `@deepseek-ai/dsh-subprocess-local` 工作区的 `node-pty` 依赖；在容器内重新生成 node-gyp 产物，避免宿主缓存 Makefile 的路径进入 Linux 产物。macOS 检查同时接受 Apple 工具链在不同架构上生成的 `LC_BUILD_VERSION` 与旧式 `LC_VERSION_MIN_MACOSX` load command。
 - **package** 构建五个发布 tarball 与 `.sha256` 伴随文件、运行 npm 布局、生成 cask，并把三组产物全部上传。Artifact 根目录保留下游 job 所需的 `dist-release` 与 `dist-npm` 目录内容。
 - **release** 用 `GITHUB_TOKEN` + `contents: write` 创建或刷新 GitHub release；每个 `gh release` 调用都显式指定 `GITHUB_REPOSITORY`，因此无 checkout 的 job 不依赖 Git 仓库探测，并把含预发布标识的版本标记为 prerelease。
 - **npm-publish**（`environment: npm-publish`、`NPM_TOKEN`）在下载大体积包 artifact 前校验 registry 身份，再发布主包与平台包；其 `Release-publish` 并发组与 npm 发布 workflow 共用，因为 dist-tag 是共享的 registry 状态。

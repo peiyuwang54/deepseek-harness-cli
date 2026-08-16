@@ -20,7 +20,7 @@ let staging: string
 const REQUIRED_ASSET_GLOBS = [
   'node_modules/@deepseek-ai/dsh/config/**/*',
   'node_modules/@deepseek-ai/dsh-web-frontend/dist/**/*',
-  'node_modules/@img/sharp-*/lib/**/*',
+  'node_modules/@img/sharp-*/lib/**/*.{node,dylib,so*,dll}',
 ] as const
 
 beforeAll(async () => {

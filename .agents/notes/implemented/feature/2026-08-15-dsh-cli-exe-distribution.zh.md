@@ -25,7 +25,7 @@ Python SDK 已经通过 `@yao-pkg/pkg` 的 `--sea` 模式发布单文件可执�
 
 管线在 Windows 上通过 pnpm 的 `.cmd` shim 解析 pnpm。Node 在该平台不能直接执行命令 shim，因此子进程 runner 只对 `.cmd` 启用宿主 shell；所有命令和参数都来自固定的产品配置或经过校验的目标枚举。
 
-pkg 只把匹配 `ASSET_GLOBS` 的文件嵌入可执行文件的 `/snapshot/` 文件系统。除 Cordis 的运行时代码导入外，组合后的应用在启动时还会读取数据文件——每个 bundle 的 `cordis.patch.yml` overlay、`@deepseek-ai/dsh` 随包发布的 `config/agent-presets/` 树、web 前端 dist，以及原生 addon 相邻的共享库——因此通配符同样覆盖它们（`node_modules/**/*.yml`、config 树的 `.md` 文件、`node_modules/@deepseek-ai/dsh-web-frontend/dist/**/*`，以及匹配 `.dylib`、`.so*` 或 `.dll` 的平台库）。管线在暂存后校验覆盖：每个暂存的 `dsh.bundle.patch` overlay 与产品 `requiredAssets` 通配符选中的每个文件都必须命中一条 `ASSET_GLOBS`，且每条 `requiredAssets` 通配符至少命中一个暂存文件，这样被跳过的构建所缺失的输入（例如前端 dist 或 sharp 运行时）会让构建失败，而不是让用户的首次运行失败。
+pkg 只把匹配 `ASSET_GLOBS` 的文件嵌入可执行文件的 `/snapshot/` 文件系统。除 Cordis 的运行时代码导入外，组合后的应用在启动时还会读取数据文件——每个 bundle 的 `cordis.patch.yml` overlay、`@deepseek-ai/dsh` 随包发布的 `config/agent-presets/` 树、web 前端 dist，以及原生 addon 相邻的共享库——因此通配符同样覆盖它们（`node_modules/**/*.yml`、config 树的 `.md` 文件、`node_modules/@deepseek-ai/dsh-web-frontend/dist/**/*`，以及匹配 `.dylib`、`.so*` 或 `.dll` 的平台库）。sharp 产品要求只选择原生 `.node` 与共享库文件，不选择编译期头文件。管线在暂存后校验覆盖：每个暂存的 `dsh.bundle.patch` overlay 与产品 `requiredAssets` 通配符选中的每个文件都必须命中一条 `ASSET_GLOBS`，且每条 `requiredAssets` 通配符至少命中一个暂存文件，这样被跳过的构建所缺失的输入（例如前端 dist 或 sharp 运行时）会让构建失败，而不是让用户的首次运行失败。
 
 Profile 继续写在可执行文件 snapshot 之外的 `$DSH_HOME`。CLI 把已安装的 `package.json` 锚点传给 app boot：配置中的裸插件名和 Loader 根节点在运行时新增的条目都从嵌入安装中解析，相对配置条目仍在 profile 文件旁解析。只负责配置监听的 HMR 服务显式以可写 profile 目录为 base，因此它的文件监听不会把嵌入 snapshot 目录当作宿主路径。
 

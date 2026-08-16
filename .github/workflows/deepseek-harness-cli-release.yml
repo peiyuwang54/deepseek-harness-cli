@@ -207,7 +207,7 @@ jobs:
               echo "::error::packaged Web profile exited before it became ready"
               exit 1
             fi
-            if curl -fsS http://127.0.0.1:39460/ | grep -q '<title>DeepSeek Harness</title>'; then
+            if curl --connect-timeout 1 --max-time 5 -fsS http://127.0.0.1:39460/ | grep -q '<title>DeepSeek Harness</title>'; then
               ready=true
               break
             fi
@@ -224,7 +224,7 @@ jobs:
             echo "::error::packaged Web profile exited after its first response"
             exit 1
           }
-          curl -fsS http://127.0.0.1:39460/ | grep -q '<title>DeepSeek Harness</title>'
+          curl --connect-timeout 1 --max-time 5 -fsS http://127.0.0.1:39460/ | grep -q '<title>DeepSeek Harness</title>'
 
       - name: Check Linux GLIBC requirements
         if: runner.os == 'Linux'

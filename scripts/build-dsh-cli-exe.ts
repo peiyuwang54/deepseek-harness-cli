@@ -31,7 +31,9 @@ const CLI_PRODUCT: ExeProduct = {
   requiredAssets: [
     'node_modules/@deepseek-ai/dsh/config/**/*',
     'node_modules/@deepseek-ai/dsh-web-frontend/dist/**/*',
-    'node_modules/@img/sharp-*/lib/**/*',
+    // sharp's lib/ tree also contains a compile-time glibconfig.h. Only the
+    // native modules and shared libraries are read after installation.
+    'node_modules/@img/sharp-*/lib/**/*.{node,dylib,so*,dll}',
   ],
   closureManifest: 'apps/cli/exe/package.json',
   notePath: '.agents/notes/implemented/feature/2026-08-15-dsh-cli-exe-distribution.md',

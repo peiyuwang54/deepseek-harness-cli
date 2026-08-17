@@ -1,0 +1,44 @@
+terminal 92x32 buffer=normal length=32 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=active
+title "DSH snapshot"
+cursor visible column=3 viewportRow=14 bufferRow=14
+buffer
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1-2| <blank>
+3| "Turn 1 continues as agent-turn-1. Use /ps or job_output to inspect it; Esc still interrupts "
+  style 0-91 dim
+4| "it.                                                                                         "
+  style 0-2 dim
+5| <blank>
+6| "Background jobs                                                                             "
+  style 0-91 dim
+7| "                                                                                            "
+  style 0-91 dim
+8| "  • agent-turn-1 [agent-turn] running — main-session · turn 1                               "
+  style 0-60 dim
+9| <blank>
+10| "✦ Deep diving (0s • esc to interrupt)"
+  style 0-0 fg=bright-blue
+11-12| <blank>
+13| "                                                                                            "
+  style 0-91 bg=ansi-236
+14| " › │Describe a task, @ a file, or / for commands                                            "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-91 bg=ansi-236
+15| "                                                                                            "
+  style 0-91 bg=ansi-236
+16| "  Enter queues next turn · agent-turn-1 background · Esc interrupt"
+  style 0-65 fg=bright-blue
+17| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 44-45 dim
+  style 48-72 dim
+  style 75-79 dim
+  style 82-91 dim
+18-31| <blank>

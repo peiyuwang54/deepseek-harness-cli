@@ -137,6 +137,7 @@ const CHECKPOINTS = [
   'resume-sessions-all-workspaces',
   'resume-session-id',
   'command-parity',
+  'background-agent-turn',
   'background-job-commands',
   'status-diagnostics',
   'status-diagnostics-narrow',
@@ -2235,6 +2236,24 @@ describe('TUI terminal-state snapshots', () => {
     expect(cancels).toEqual(['Stopped by /clean.'])
     await checkpoint('background-job-commands', harness.terminal, { includeScrollback: true })
     settle({ status: 'killed' })
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0) })
+    await disposeSnapshot(harness)
+  })
+
+  it('moves the live turn behind the composer with Ctrl+B', async () => {
+    const harness = await setupSnapshot({ status: 'running', now: () => 0 }, { columns: 92, rows: 32 })
+    await harness.ctx.plugin(LocalJobRegistry)
+    await harness.ctx.plugin(CommandJobs)
+    await renderAfter(harness, () => { harness.terminal.send('\x02') })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/ps')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('background-agent-turn', harness.terminal, { includeScrollback: true })
+    harness.session.append('turn/end', {
+      turn: 1,
+      reason: { kind: 'completed' },
+    })
     await new Promise<void>((resolve) => { setTimeout(resolve, 0) })
     await disposeSnapshot(harness)
   })

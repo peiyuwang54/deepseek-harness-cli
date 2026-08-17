@@ -17,7 +17,7 @@ import type { ScopeLayer } from '@deepseek-ai/dsh-scope'
 import { deadline, timeoutOf } from '@deepseek-ai/dsh-timeout'
 import { JobRegistry, JobId } from '@deepseek-ai/dsh-jobs'
 import type {
-  JobDoneListener, JobKind, JobOutcome, JobRead, JobSnapshot, JobStart, JobStatus,
+  JobAdoption, JobDoneListener, JobHooks, JobKind, JobOutcome, JobRead, JobSnapshot, JobStart, JobStatus,
   JobsChangedListener,
 } from '@deepseek-ai/dsh-jobs'
 
@@ -129,6 +129,17 @@ export class LocalJobRegistry extends JobRegistry {
   }
 
   start(spec: JobStart): JobId {
+    this.preflight(spec)
+    return this.register(spec, spec.run())
+  }
+
+  adopt(spec: JobAdoption): JobId {
+    this.preflight(spec)
+    return this.register(spec, spec.hooks)
+  }
+
+  /** Validate controller access, identity, ownership, and admission before a start or adoption commits. */
+  private preflight(spec: Pick<JobStart, 'kind' | 'label' | 'outputLimitBytes' | 'owner'>): void {
     if (!this.servesOwner(spec.owner)) {
       throw new Error('background jobs unavailable: no job controller serves this agent (load @deepseek-ai/dsh-tool-jobs in its composition)')
     }
@@ -146,8 +157,13 @@ export class LocalJobRegistry extends JobRegistry {
         `background job limit reached for this owner (limit: ${this.maxConcurrentJobsPerOwner}); use job_kill to stop an unneeded job, wait for it to finish, then retry`,
       )
     }
+  }
 
-    const hooks = spec.run()
+  /** Commit preflighted hooks to the registry; no failable producer step remains. */
+  private register(
+    spec: Pick<JobStart, 'kind' | 'label' | 'outputLimitBytes' | 'owner'>,
+    hooks: JobHooks,
+  ): JobId {
     const count = (this.counters.get(spec.kind) ?? 0) + 1
     this.counters.set(spec.kind, count)
     const id = JobId(`${spec.kind}-${count}`)

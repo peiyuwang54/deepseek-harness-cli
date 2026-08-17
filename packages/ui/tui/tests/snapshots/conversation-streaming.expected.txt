@@ -45,8 +45,8 @@ viewport
   style 48-95 bg=ansi-236
 20| "                                                                                                "
   style 0-95 bg=ansi-236
-21| "  Enter steer · Esc interrupt · Shift+Enter newline"
-  style 0-50 fg=bright-blue
+21| "  Enter steer · Esc interrupt · Shift+Enter newline · Ctrl+B background"
+  style 0-70 fg=bright-blue
 22| "                                                ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 48-49 dim
   style 52-76 dim

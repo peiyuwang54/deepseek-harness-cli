@@ -3,7 +3,7 @@ import { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { JobId, JobRegistry } from '@deepseek-ai/dsh-jobs'
 import type {
-  JobDoneListener, JobRead, JobSnapshot, JobStart, JobsChangedListener,
+  JobAdoption, JobDoneListener, JobRead, JobSnapshot, JobStart, JobsChangedListener,
 } from '@deepseek-ai/dsh-jobs'
 
 /**
@@ -25,6 +25,10 @@ class StubJobRegistry extends JobRegistry {
 
   start(spec: JobStart): JobId {
     spec.run()
+    return JobId(`${spec.kind}-1`)
+  }
+
+  adopt(spec: JobAdoption): JobId {
     return JobId(`${spec.kind}-1`)
   }
 

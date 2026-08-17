@@ -55,6 +55,7 @@
     "@deepseek-ai/dsh-hook-protocol": "workspace:^",
     "@deepseek-ai/dsh-host-plugin-inventory": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@deepseek-ai/dsh-jobs": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/dsh-llm-retry": "workspace:^",
     "@deepseek-ai/dsh-permission-presets": "workspace:^",
@@ -88,6 +89,9 @@
       "optional": true
     },
     "@deepseek-ai/dsh-host-plugin-inventory": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-jobs": {
       "optional": true
     },
     "@deepseek-ai/dsh-permission-presets": {

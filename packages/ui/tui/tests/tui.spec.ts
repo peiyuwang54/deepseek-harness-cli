@@ -31,6 +31,7 @@ import { RetryId } from '@deepseek-ai/dsh-llm-retry'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import { WorkspaceId, type Workspace } from '@deepseek-ai/dsh-workspace'
+import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
 import {
   createTuiChat,
   disposeRootAndExit,
@@ -3183,6 +3184,94 @@ describe('pi-tui chat lifecycle and transcript', () => {
     }
     await tick()
     expect(result.terminal.output).not.toContain('queued')
+
+    await dispose(result)
+  })
+
+  it('withdraws the newest pending steering item when Up recalls it for editing', async () => {
+    const result = await setup({ status: 'running', cwd: '/workspace' })
+    const steer = result.agent.steer.bind(result.agent)
+    result.agent.steer = (message) => {
+      result.agent.inbox.append('next-step', message)
+      steer(message)
+    }
+
+    result.terminal.send('queued draft')
+    result.terminal.send('\r')
+    await tick()
+    const originalId = result.agent.inbox.nextStep[0]?.id
+    expect(originalId).toBeDefined()
+    expect(result.terminal.output).toContain('↳ queued draft')
+
+    result.terminal.output = ''
+    result.terminal.send('\x1b[A')
+    await tick()
+    expect(result.agent.inbox.nextStep).toEqual([])
+    expect(result.terminal.output).toContain('queued draft')
+    expect(result.terminal.output).not.toContain('↳ queued draft')
+
+    result.terminal.send(' revised')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.agent.inbox.nextStep).toHaveLength(1)
+    expect(result.agent.inbox.nextStep[0]?.id).not.toBe(originalId)
+    expect(result.agent.inbox.nextStep[0]?.content).toEqual([
+      { type: 'text', text: 'queued draft revised' },
+    ])
+    expect(result.terminal.output).toContain('↳ queued draft revised')
+
+    await dispose(result)
+  })
+
+  it('adopts the live turn on Ctrl+B and queues new input for the next turn', async () => {
+    const result = await setup({
+      status: 'running',
+      cwd: '/workspace',
+      configureContext: async (ctx) => {
+        await ctx.plugin(SystemPrompt)
+        await ctx.plugin(ToolRegistry)
+        await ctx.plugin(LocalJobRegistry)
+        ctx.jobs.attachController('tui-test')
+      },
+    })
+    const followup = result.agent.followup.bind(result.agent)
+    result.agent.followup = (message) => {
+      result.agent.inbox.append('next-turn', message)
+      followup(message)
+    }
+
+    expect(result.terminal.output).toContain('Ctrl+B background')
+    result.terminal.output = ''
+    result.terminal.send('\x02')
+    await tick()
+    const [job] = result.ctx.jobs.list(result.agent)
+    expect(job).toMatchObject({ kind: 'agent-turn', status: 'running' })
+    expect(result.terminal.output).toContain(`${job!.id} background`)
+    expect(result.terminal.output).toContain('Esc interrupt')
+
+    result.session.append('assistant/chunk', {
+      turn: 1,
+      step: 1,
+      chunk: { type: 'text-delta', index: 0, text: 'background output' },
+    })
+    expect(result.ctx.jobs.read(job!.id, result.agent).text).toBe('background output')
+
+    result.terminal.send('next request')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.agent.inbox.nextTurn.map(message => message.content)).toEqual([
+      [{ type: 'text', text: 'next request' }],
+    ])
+    expect(result.agent.inbox.nextStep).toEqual([])
+
+    result.terminal.send('\x1b')
+    expect(result.agent.cancelled).toContainEqual({ kind: 'user' })
+    result.session.append('turn/end', {
+      turn: 1,
+      reason: { kind: 'aborted', reason: { kind: 'user' } },
+    })
+    await tick()
+    expect(result.ctx.jobs.get(job!.id, result.agent).status).toBe('killed')
 
     await dispose(result)
   })

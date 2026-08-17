@@ -3,7 +3,7 @@ import type { Dict } from '@deepseek-ai/cosmokit'
 import { ModuleLoader, type ModuleJob, type ResolveResult } from '@deepseek-ai/cordis-plugin-loader'
 import type { Include } from '@deepseek-ai/cordis-plugin-include'
 import { FSWatcher, watch, type ChokidarOptions } from 'chokidar'
-import { dirname, relative, resolve } from 'node:path'
+import { dirname, isAbsolute, relative, resolve, win32 } from 'node:path'
 import { realpath, stat } from 'node:fs/promises'
 import { handleError } from './error.ts'
 import type {} from '@deepseek-ai/cordis-plugin-timer'
@@ -83,6 +83,21 @@ async function findWatchRoot(filename: string): Promise<{ filename: string; root
   }
 }
 
+/**
+ * Resolve the HMR working directory from either a filesystem path or a URL.
+ * Windows drive and UNC paths must bypass URL parsing: `new URL('C:\\...')`
+ * treats the drive letter as a non-file scheme, which `fileURLToPath` rejects.
+ * @param base - Configured path or URL, relative to `baseUrl` when omitted or relative.
+ * @param baseUrl - Optional Loader context URL used for relative values.
+ * @returns Absolute filesystem directory used by HMR watchers.
+ */
+export function resolveHmrBaseDir(base: string | undefined, baseUrl?: string | URL): string {
+  if (base !== undefined && (isAbsolute(base) || win32.isAbsolute(base))) {
+    return isAbsolute(base) ? resolve(base) : base
+  }
+  return fileURLToPath(new URL(base || '.', baseUrl))
+}
+
 class Hmr extends Service {
   static inject = ['loader', 'timer']
 
@@ -121,7 +136,7 @@ class Hmr extends Service {
       throw new Error('--expose-internals is required for HMR service')
     }
     this.internal = this.ctx.loader.internal
-    this.baseDir = fileURLToPath(new URL(config.base || '.', ctx.baseUrl))
+    this.baseDir = resolveHmrBaseDir(config.base, ctx.baseUrl)
   }
 
   /**

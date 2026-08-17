@@ -24,7 +24,7 @@ Renderer 默认使用终端原生 inline scrollback。鼠标滚轮只滚动不�
 
 TUI 从追加来源的会话事件重建已恢复历史，渲染 Markdown 响应与 reasoning，将每个工具的 `presentCall` / `presentResult` 意图应用到终端、diff 或通用卡片，把站立的 `todo/write` 计划保留在编辑器上方直至下一个 `turn/start`，并内联展示 `ctx.userQuestions`。Agent 作用域的审批请求使用同一个模态队列，策略与持久审计事件仍由 `ctx.approval` 持有。会话标题、重试、token 用量、上下文压力、模型选择与 compaction 标记都继续投影其所属服务和会话事件；表层替换不会抹掉已经渲染的对话。
 
-Turn 运行时，动态 `正在深度求索 (<elapsed> • Esc 中断)` 行固定在实时对话尾部，并从持久 `turn/start` 计时；turn 结算后该行消失，已完成步骤仍保留分阶段计时摘要。右侧 footer 继续显示 Goal、模型、token、context 与排队会话状态，不再重复运行标签。
+Turn 运行时，动态 `正在深度求索 (<elapsed> • Esc 中断)` 行固定在实时对话尾部，并从持久 `turn/start` 计时；composer footer 另行明示 `Ctrl+B 后台`与 `Esc 中断`。turn 结算后该行消失，已完成步骤仍保留分阶段计时摘要。右侧 footer 继续显示 Goal、模型、token、context 与排队会话状态，不再重复运行标签。
 
 Markdown 响应支持标题、强调、链接、嵌套列表与任务列表、引用、GFM 表格和围栏代码。`diff` 与 `patch` 围栏使用和工具 diff 卡片一致的语义色板区分新增行、删除行、hunk 表头和文件元数据；diff 卡片把同一文件的相邻 hunk 收在单一路径下，并以 `⋯` 分隔。
 
@@ -109,6 +109,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 嵌入方可通过设置 direct renderer 的 `initialSkill` 配置，或在启动上下文上提供 `INITIAL_SKILL_KEY` 来播种会话。聊天就绪后，TUI 会像用户手动键入 `/skill:<name>` 一样自动调用该 skill；若要获得仅限全新会话的行为，嵌入方必须在恢复会话时省略它。随附的 `dsh tui` 启动器不设置初始 skill；未知名称会以通知形式报告。
 
 Reasoning 首次渲染时默认在 `Think` 标题下显示。提交的用户卡片保留在紧凑 transcript 中，注入上下文与 Session 元数据则不占用任何行。展开详情后才会显示上下文来源和完整文本，并移除生产方的 reminder 外框。设置 `mouse: true` 时，footer 的 `▸` 图标可点击并同时展开上下文与工具卡片；Ctrl+O、Ctrl+R 和 `/details` 仍是对应的键盘与命令入口。
+
+Composer 为空时按 Up 会把最新且仍待发的 steering 项视为可编辑草稿：它会从权威 Agent inbox 移除该精确 `MessageId`、恢复原始文本，并让 Enter 以新身份重新提交。已被 claim 或已持久化的历史绝不会被删除；没有可撤回项时，普通历史导航保持不变。持久 turn 运行时，Ctrl+B 会把它显式接管到 `ctx.jobs`，命名为 `agent-turn-N`，不取消也不重启。Composer 会立即把新工作接入 next-turn FIFO；`/ps`、`job_output` 和 `job_kill` 观察同一个任务，Esc 仍会取消该 Agent turn。
 
 ## 配置
 

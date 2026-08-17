@@ -932,6 +932,11 @@
     },
     {
       "doc": "docs/subsystems/jobs.md",
+      "symbol": "JobAdoption",
+      "source": "packages/jobs/jobs/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/jobs.md",
       "symbol": "JobHooks",
       "source": "packages/jobs/jobs/src/types.ts"
     },

@@ -68,6 +68,25 @@ export interface JobStart {
   run(): JobHooks
 }
 
+/**
+ * Existing work promoted into the job registry after controller and owner
+ * preflight. Rejection leaves the work under its original foreground owner;
+ * successful adoption transfers cancellation, settlement, and reads to the
+ * registry without starting a second operation.
+ */
+export interface JobAdoption {
+  /** Producer kind — also the id prefix. */
+  kind: JobKind
+  /** One-line label shown by job controls. */
+  label: string
+  /** Optional UTF-8 byte cap applied by model-facing job controls. */
+  outputLimitBytes?: number
+  /** Exact live Agent whose session owns access and teardown. */
+  owner?: Agent
+  /** Hooks for the operation that is already running. */
+  hooks: JobHooks
+}
+
 /** Hooks through which the runtime controls and observes producer work. */
 export interface JobHooks {
   /**

@@ -9,12 +9,13 @@
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {
-  JobDoneListener, JobId, JobRead, JobSnapshot, JobStart, JobsChangedListener,
+  JobAdoption, JobDoneListener, JobId, JobRead, JobSnapshot, JobStart, JobsChangedListener,
 } from './types.ts'
 
 export { JobId } from './types.ts'
 export type {
   JobDoneListener,
+  JobAdoption,
   JobHooks,
   JobKind,
   JobKindMap,
@@ -51,9 +52,9 @@ declare module '@deepseek-ai/cordis' {
  *   outcome. Completion is announced last, after the record is committed and
  *   every other observer of the settlement has seen it, because a reporter
  *   may open a model turn synchronously.
- * - {@link start} refuses work while no attached job controller serves the
- *   spec's owner, so a producer cannot start work that owner cannot collect
- *   or stop. One registry serves every composition in the process, so this
+ * - {@link start} and {@link adopt} refuse registration while no attached job
+ *   controller serves the spec's owner, so an owner cannot transfer work that
+ *   it cannot collect or stop. One registry serves every composition in the process, so this
  *   question — and completion-listener delivery — is owner-relative rather
  *   than process-wide: registrations made from an unscoped context serve
  *   every owner, and registrations made under an agent composition's scope
@@ -80,6 +81,15 @@ export abstract class JobRegistry extends Service {
    * @returns the registry-issued `<kind>-N` id.
    */
   abstract start(spec: JobStart): JobId
+
+  /**
+   * Preflight and register work that is already running. A rejection leaves
+   * the operation in its original foreground state; success transfers reads,
+   * cancellation, settlement, owner cleanup, and notices to this registry.
+   * @param spec - job identity, owner, and hooks for existing work.
+   * @returns the registry-issued `<kind>-N` id.
+   */
+  abstract adopt(spec: JobAdoption): JobId
 
   /**
    * List caller-owned and unowned jobs in registration order without exposing

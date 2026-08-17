@@ -6,7 +6,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import { bindScopeParent, createScope, scopeOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeKey } from '@deepseek-ai/dsh-scope'
 import { JobId } from '@deepseek-ai/dsh-jobs'
-import type { JobHooks, JobKind, JobOutcome, JobSnapshot, JobStart } from '@deepseek-ai/dsh-jobs'
+import type { JobAdoption, JobHooks, JobKind, JobOutcome, JobSnapshot, JobStart } from '@deepseek-ai/dsh-jobs'
 import LocalJobRegistry, { type Config as JobsConfig } from '@deepseek-ai/dsh-jobs-local'
 
 declare module '@deepseek-ai/dsh-jobs' {
@@ -267,6 +267,39 @@ describe('LocalJobRegistry.start', () => {
     expect(ctx.jobs.start(producer().spec)).toBe('bash-2')
     expect(ctx.jobs.start(producer({ kind: 'subagent' }).spec)).toBe('subagent-1')
     expect(ctx.jobs.start(producer({ kind: 'workflow' }).spec)).toBe('workflow-1')
+  })
+})
+
+describe('LocalJobRegistry.adopt', () => {
+  it('preflights existing work without starting it again, then exposes reads and cancellation', async () => {
+    const ctx = await harness()
+    const p = producer({ readOutput: () => 'live delta' })
+    const adoption: JobAdoption = {
+      kind: p.spec.kind,
+      label: p.spec.label,
+      hooks: p.spec.run(),
+    }
+
+    const id = ctx.jobs.adopt(adoption)
+    expect(id).toBe('bash-1')
+    expect(ctx.jobs.read(id)).toMatchObject({ text: 'live delta', snapshot: { status: 'running' } })
+    expect(ctx.jobs.kill(id, undefined, 'stop adopted work')).toBe('requested')
+    expect(p.cancels).toEqual(['stop adopted work'])
+    p.settle({ status: 'killed' })
+    await tick()
+    expect(ctx.jobs.get(id)).toMatchObject({ status: 'killed', reported: true })
+  })
+
+  it('leaves existing work untouched when no controller serves it', async () => {
+    const ctx = new Context()
+    await ctx.plugin(LocalJobRegistry)
+    const p = producer()
+    const hooks = p.spec.run()
+    expect(() => ctx.jobs.adopt({ kind: 'bash', label: 'already running', hooks }))
+      .toThrow('no job controller serves this agent')
+    expect(p.cancels).toEqual([])
+    expect(ctx.jobs.list()).toEqual([])
+    p.settle({ status: 'completed' })
   })
 })
 

@@ -27,8 +27,8 @@ buffer
   style 48-71 bg=ansi-236
 11| "                                                                        "
   style 0-71 bg=ansi-236
-12| "  Enter steer · Esc interrupt · Shift+Enter newline"
-  style 0-50 fg=bright-blue
+12| "  Enter steer · Esc interrupt · Shift+Enter newline · Ctrl+B background"
+  style 0-70 fg=bright-blue
 13| "                    ▸   deepseek-v4-flash [alt+m]  ↑7.7k ↓32  0% context"
   style 20-21 dim
   style 24-48 dim

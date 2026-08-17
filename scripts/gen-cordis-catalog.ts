@@ -436,6 +436,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   JobRead: 'jobs.md',
   JobSnapshot: 'jobs.md',
   JobStart: 'jobs.md',
+  JobAdoption: 'jobs.md',
   JobsChangedListener: 'jobs.md',
   TokenMeasurement: 'token-meter.md',
   CodeDispatchLog: 'tools.md',

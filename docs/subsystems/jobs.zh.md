@@ -57,6 +57,30 @@ interface JobStart {
 }
 ```
 
+`JobAdoption` 转交已经存在的工作的 hooks。它使用与 `JobStart` 相同的预检，但不包含启动器，因此不会创建重复操作。
+
+```ts type-equiv
+/**
+ * Existing work promoted into the job registry after controller and owner
+ * preflight. Rejection leaves the work under its original foreground owner;
+ * successful adoption transfers cancellation, settlement, and reads to the
+ * registry without starting a second operation.
+ */
+interface JobAdoption {
+  /** Producer kind — also the id prefix. */
+  kind: JobKind
+  /** One-line label shown by job controls. */
+  label: string
+  /** Optional UTF-8 byte cap applied by model-facing job controls. */
+  outputLimitBytes?: number
+  /** Exact live Agent whose session owns access and teardown. */
+  owner?: Agent
+  /** Hooks for the operation that is already running. */
+  hooks: JobHooks
+}
+```
+
+
 `JobHooks.done` 会在生产方释放其资源后 resolve，而不是仅在工作完成时 resolve。可选的 `readOutput` 用来区分会消费输出的流式任务和仅有最终输出的任务。
 
 ```ts type-equiv
@@ -175,7 +199,7 @@ Implementations must honor these semantics:
 - Registrations outlive producer and controller fibers. Owner and service disposal cancel live work and await compliant producers; a throwing teardown cancel force-fails only the record. Teardown cancellation also marks the record reported, because a record its owner is being destroyed for has no reader left.
 - Owned-job access is fenced by the owner's session id. Ids are predictable, so authorization — not secrecy — is the boundary.
 - Settlement is first-wins: one terminal record, released waiters, and one round of contained listener notification, even against a late producer outcome. Completion is announced last, after the record is committed and every other observer of the settlement has seen it, because a reporter may open a model turn synchronously.
-- start refuses work while no attached job controller serves the spec's owner, so a producer cannot start work that owner cannot collect or stop. One registry serves every composition in the process, so this question — and completion-listener delivery — is owner-relative rather than process-wide: registrations made from an unscoped context serve every owner, and registrations made under an agent composition's scope serve exactly the agents composed under it.
+- start and adopt refuse registration while no attached job controller serves the spec's owner, so an owner cannot transfer work that it cannot collect or stop. One registry serves every composition in the process, so this question — and completion-listener delivery — is owner-relative rather than process-wide: registrations made from an unscoped context serve every owner, and registrations made under an agent composition's scope serve exactly the agents composed under it.
 
 ```ts cordis-catalog
 /**
@@ -188,6 +212,15 @@ Implementations must honor these semantics:
  * @returns the registry-issued `<kind>-N` id.
  */
 abstract start(spec: JobStart): JobId
+
+/**
+ * Preflight and register work that is already running. A rejection leaves
+ * the operation in its original foreground state; success transfers reads,
+ * cancellation, settlement, owner cleanup, and notices to this registry.
+ * @param spec - job identity, owner, and hooks for existing work.
+ * @returns the registry-issued `<kind>-N` id.
+ */
+abstract adopt(spec: JobAdoption): JobId
 
 /**
  * List caller-owned and unowned jobs in registration order without exposing
@@ -286,5 +319,5 @@ abstract attachController(name: string): () => void
 
 Types: [Agent](core.md)
 
-Source: [`packages/jobs/jobs/src/index.ts:62`](../../packages/jobs/jobs/src/index.ts)
+Source: [`packages/jobs/jobs/src/index.ts:63`](../../packages/jobs/jobs/src/index.ts)
 <!-- END GENERATED cordis-surface -->

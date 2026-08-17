@@ -38,6 +38,7 @@ import type { TokenUsageProjection } from '@deepseek-ai/dsh-token-meter/client'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type { SessionStatsProjection } from '@deepseek-ai/dsh-session-stats/types'
 import type { CommandResult } from '@deepseek-ai/dsh-commands'
+import type { JobId } from '@deepseek-ai/dsh-jobs'
 import { assertNever, createUserMessage, errorChain } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, MessageId } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-llm-retry'
@@ -97,6 +98,7 @@ import {
 } from './components/theme.ts'
 import type { AccentId, AccentSelection } from './components/theme.ts'
 import { contentText, parseArguments } from './components/content.ts'
+import { agentTurnAdoption } from './chat/background-turn.ts'
 import {
   cacheHitRate,
   formatTokens,
@@ -402,6 +404,16 @@ interface RunningStatus {
   turnStartedAt: number
 }
 
+/** One TUI submission still owned by the live Agent inbox. */
+interface PendingSteering {
+  /** Canonical message identity used to withdraw exactly this queued item. */
+  message: UserMessage
+  /** Original editor text restored for editing instead of reconstructed content. */
+  draft: string
+  /** Paired session-reference snapshot, withdrawn with its readable prompt when still pending. */
+  attachedContext?: UserMessage
+}
+
 /** Width/height adapter for a modal component rendered inside the base TUI flow. */
 class InlineModalComponent extends Container {
   constructor(
@@ -514,6 +526,8 @@ export function createTuiChat(
   let vimState: VimState = 'insert'
   let vimPending = ''
   let activeUserShell: { id: string; controller: AbortController; task?: Promise<void> } | undefined
+  /** Current turn after its foreground presentation was adopted by ctx.jobs. */
+  let backgroundTurn: { turn: number; jobId: JobId } | undefined
   const refreshEditorFooter = (): void => {
     const sidePrefix = isSideConversation ? 'SIDE · Ctrl+C return to parent · ' : ''
     if (activeUserShell !== undefined) {
@@ -531,9 +545,11 @@ export function createTuiChat(
       return
     }
     const mode = keymap === 'vim' ? 'VIM INSERT · ' : ''
-    editor.frameFooter = agent.status === 'running'
-      ? `${sidePrefix}${mode}${tuiCopy(locale).editorRunningFooter}`
-      : `${sidePrefix}${mode}${tuiCopy(locale).editorIdleFooter}`
+    editor.frameFooter = backgroundTurn !== undefined
+      ? `${sidePrefix}${mode}Enter queues next turn · ${backgroundTurn.jobId} background · Esc interrupt`
+      : agent.status === 'running'
+        ? `${sidePrefix}${mode}${tuiCopy(locale).editorRunningFooter} · Ctrl+B background`
+        : `${sidePrefix}${mode}${tuiCopy(locale).editorIdleFooter}`
   }
   refreshEditorFooter()
   const todo = new TodoComponent(palette)
@@ -566,7 +582,7 @@ export function createTuiChat(
   // TUI steering submissions that the inbox has not yet claimed or discarded.
   // Correlation ids avoid guessing whether a running-state submission actually
   // joined steering or fell back to the queued-turn FIFO during turn close.
-  const pendingSteering = new Map<MessageId, UserMessage>()
+  const pendingSteering = new Map<MessageId, PendingSteering>()
   let disposed = false
   let shuttingDown: Promise<void> | undefined
   // Optional: skills mount conditionally, so read the global service store
@@ -1101,18 +1117,19 @@ export function createTuiChat(
   }
 
   const refreshPendingSteering = (): void => {
-    pendingInputPreview.update([...pendingSteering.values()].map(message =>
+    pendingInputPreview.update([...pendingSteering.values()].map(({ message }) =>
       contentText(message.content).trim()))
     refreshStatus()
   }
 
   /** Interrupt the live call while retaining queued steering for the next turn. */
   const interruptActiveTurn = (): void => {
-    const last = [...pendingSteering.values()].at(-1)
-    if (last === undefined) {
+    const pending = [...pendingSteering.values()].at(-1)
+    if (pending === undefined) {
       agent.cancel({ kind: 'user' })
       return
     }
+    const last = pending.message
     agent.cancel({ kind: 'user' }, { keepInbox: true })
     // Moving the final next-step item to next-turn both wakes the post-abort
     // driver and preserves the original batch order: Inbox claims next-step
@@ -1122,8 +1139,64 @@ export function createTuiChat(
       return
     }
     agent.steer(last)
-    pendingSteering.set(last.id, last)
+    pendingSteering.set(last.id, pending)
     refreshPendingSteering()
+  }
+
+  /** Withdraw the newest still-pending steering item into the editor. */
+  const recallPendingSteering = (): boolean => {
+    if (editor.getText() !== '') return false
+    const pending = [...pendingSteering.values()].at(-1)
+    if (pending === undefined || !agent.inbox.remove(pending.message.id)) return false
+    // A session-reference snapshot is part of the same editor submission. It
+    // has a distinct inbox identity, so withdraw it too when it has not crossed
+    // the step boundary; once claimed it is immutable history and remains.
+    if (pending.attachedContext !== undefined) agent.inbox.remove(pending.attachedContext.id)
+    pendingSteering.delete(pending.message.id)
+    refreshPendingSteering()
+    editor.setText(pending.draft)
+    requestRender()
+    return true
+  }
+
+  /** Promote the exact open turn to ctx.jobs without cancelling or restarting it. */
+  const backgroundActiveTurn = (): void => {
+    if (backgroundTurn !== undefined) {
+      appendNotice(`Turn ${backgroundTurn.turn} is already running as ${backgroundTurn.jobId}.`, 'info')
+      return
+    }
+    const jobs = ctx.get('jobs')
+    if (jobs === undefined) {
+      appendNotice('Background jobs are unavailable in this profile.', 'warning')
+      return
+    }
+    const turn = runningStatus?.turn ?? openTurn(agent.session.events)
+    const start = turn === undefined ? undefined : agent.session.events.findLast(event =>
+      event.type === 'turn/start' && event.data.turn === turn)
+    if (turn === undefined || start === undefined) {
+      appendNotice('The active turn has not reached its durable start boundary yet.', 'warning')
+      return
+    }
+    const label = `${sessionTitle ?? agent.id} · turn ${turn}`
+    const adoption = agentTurnAdoption(ctx, agent, turn, start.seq + 1, label)
+    let jobId: JobId
+    try {
+      jobId = jobs.adopt(adoption.spec)
+    } catch (error: unknown) {
+      adoption.abandon()
+      appendNotice(`Cannot background this turn: ${errorChain(error)}`, 'warning')
+      return
+    }
+    backgroundTurn = { turn, jobId }
+    refreshEditorFooter()
+    appendNotice(`Turn ${turn} continues as ${jobId}. Use /ps or job_output to inspect it; Esc still interrupts it.`)
+    requestRender()
+    void adoption.spec.hooks.done.then(() => {
+      if (backgroundTurn?.jobId !== jobId) return
+      backgroundTurn = undefined
+      refreshEditorFooter()
+      requestRender()
+    })
   }
 
   const parsedTool = (event: Extract<SessionEvent, { type: 'tool/call' }>): ToolCardComponent => {
@@ -3200,12 +3273,21 @@ export function createTuiChat(
     ).finally(() => { commandControllers.delete(controller) })
   }
 
-  const dispatchMessage = (content: ContentBlock[], attachedContext?: UserMessage): void => {
+  const dispatchMessage = (content: ContentBlock[], attachedContext?: UserMessage, draft?: string): void => {
     if (disposed) {
       appendNotice(`Agent "${agent.id}" is disposed.`, 'error')
       return
     }
     if (agent.status === 'running') {
+      const open = openTurn(agent.session.events)
+      if (backgroundTurn !== undefined && open === backgroundTurn.turn) {
+        // One Agent executes turns serially. Backgrounding releases the
+        // composer, so new input joins the next-turn FIFO rather than steering
+        // the adopted turn at its next tool boundary.
+        if (attachedContext !== undefined) agent.inject(attachedContext)
+        agent.followup(createUserMessage({ content, source: { kind: 'user' } }))
+        return
+      }
       // Steering is never subject to prompt admission; an attached snapshot
       // drains beside it at the same step boundary through the outbox.
       if (attachedContext !== undefined) {
@@ -3213,7 +3295,11 @@ export function createTuiChat(
       }
       const message = createUserMessage({ content, source: { kind: 'user' } })
       agent.steer(message)
-      pendingSteering.set(message.id, message)
+      pendingSteering.set(message.id, {
+        message,
+        draft: draft ?? contentText(content),
+        ...(attachedContext === undefined ? {} : { attachedContext }),
+      })
       refreshPendingSteering()
       return
     }
@@ -3384,7 +3470,7 @@ export function createTuiChat(
     if (parsed.references.length === 0) {
       editor.addToHistory(text)
       editor.setText('')
-      dispatchMessage([{ type: 'text', text: parsed.text }])
+      dispatchMessage([{ type: 'text', text: parsed.text }], undefined, text)
       return
     }
     const sessionReferences = ctx.get('sessionReferenceResolver')
@@ -3407,7 +3493,7 @@ export function createTuiChat(
       if (editor.getText() === value) editor.setText('')
       // Keep the prepared snapshot and readable prompt on the same synchronous
       // dispatch path; the current runtime has no separate admission waterfall.
-      dispatchMessage(prepared.content, prepared.additionalContext)
+      dispatchMessage(prepared.content, prepared.additionalContext, text)
     }, (error: unknown) => {
       if (!disposed && !controller.signal.aborted) {
         restoreSubmittedInput()
@@ -3489,6 +3575,13 @@ export function createTuiChat(
       return { consume: true }
     }
     if (overlayManager.hasActiveOverlay()) return undefined
+    if (agent.status === 'running' && matchesKey(data, Key.ctrl('b'))) {
+      backgroundActiveTurn()
+      return { consume: true }
+    }
+    if (!editor.isShowingAutocomplete() && matchesKey(data, Key.up) && recallPendingSteering()) {
+      return { consume: true }
+    }
     if (resolved.fullscreen && matchesKey(data, Key.pageUp)) {
       transcriptViewport.page(-1)
       requestRender()
@@ -3690,7 +3783,7 @@ export function createTuiChat(
       for (const id of pendingSteering.keys()) {
         if (!pendingIds.has(id)) pendingSteering.delete(id)
       }
-      pendingInputPreview.update([...pendingSteering.values()].map(message =>
+      pendingInputPreview.update([...pendingSteering.values()].map(({ message }) =>
         contentText(message.content).trim()))
     }
     setStatus(status)

@@ -1,0 +1,78 @@
+# Move a published deepseek-harness-cli version to a dist-tag without rebuilding
+# or republishing its platform payloads. This is used for registry corrections
+# such as promoting a verified prerelease after a failed default publication.
+name: Repair deepseek-harness-cli npm dist-tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Published version, e.g. 0.1.0-rc.8'
+        required: true
+        type: string
+      tag:
+        description: 'npm dist-tag to update, e.g. latest or next'
+        required: true
+        default: latest
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: Release-publish
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: set npm dist-tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: npm-publish
+    env:
+      PACKAGE: '@peiyu_wang/deepseek-harness-cli'
+      VERSION: ${{ inputs.version }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Validate request and publisher identity
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || {
+            echo "::error::invalid npm version: $VERSION"
+            exit 1
+          }
+          [[ "$TAG" =~ ^[a-z0-9][a-z0-9._-]*$ ]] || {
+            echo "::error::invalid npm dist-tag: $TAG"
+            exit 1
+          }
+          npm whoami
+
+      - name: Verify the published version
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          published="$(npm view "$PACKAGE@$VERSION" version --json)"
+          [ "$published" = "\"$VERSION\"" ] || {
+            echo "::error::$PACKAGE@$VERSION is not published"
+            exit 1
+          }
+
+      - name: Update and verify the dist-tag
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          npm dist-tag add "$PACKAGE@$VERSION" "$TAG"
+          actual="$(npm view "$PACKAGE" "dist-tags.$TAG")"
+          [ "$actual" = "$VERSION" ] || {
+            echo "::error::$PACKAGE@$TAG resolved to '$actual', expected '$VERSION'"
+            exit 1
+          }

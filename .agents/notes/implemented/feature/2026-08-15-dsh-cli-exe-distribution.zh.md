@@ -61,6 +61,7 @@ CLI 部署根是 `apps/cli/exe`（`deepseek-harness-cli-exe-pkg`，镜像 SDK �
 - **package** 构建五个发布 tarball 与 `.sha256` 伴随文件、运行 npm 布局、生成 cask，并把三组产物全部上传。Artifact 根目录保留下游 job 所需的 `dist-release` 与 `dist-npm` 目录内容。
 - **release** 用 `GITHUB_TOKEN` + `contents: write` 创建或刷新 GitHub release；每个 `gh release` 调用都显式指定 `GITHUB_REPOSITORY`，因此无 checkout 的 job 不依赖 Git 仓库探测，并把含预发布标识的版本标记为 prerelease。
 - **npm-publish**（`environment: npm-publish`、`NPM_TOKEN`）在下载大体积包 artifact 前校验 registry 身份，再发布主包与平台包；其 `Release-publish` 并发组与 npm 发布 workflow 共用，因为 dist-tag 是共享的 registry 状态。
+- **npm dist-tag 修复**（`.github/workflows/deepseek-harness-cli-npm-dist-tag.yml`）在不重新构建或发布二进制的情况下，把已发布的主包版本移动到指定标签。它校验 semver 与标签、确认版本已存在、与其他 npm 发布串行，并验证 registry 查询结果；这样可以修复过期或无效的默认指针，同时保留预发布版本使用 `next` 的规则。
 - **brew-tap** 用 `HOMEBREW_TAP_TOKEN` clone tap，替换 `Casks/d/deepseek-harness-cli.rb`，仅当文件变化时才提交并 push。
 
 顶层并发以 `github.ref` 为 key 且 `cancel-in-progress: false`，因此同 ref 的重跑排队而非取消；`DSH_TELEMETRY_DISABLED=1` 让 CI 运行不进生产遥测。

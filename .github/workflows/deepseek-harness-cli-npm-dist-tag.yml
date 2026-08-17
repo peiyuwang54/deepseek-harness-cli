@@ -71,8 +71,14 @@ jobs:
         run: |
           set -euo pipefail
           npm dist-tag add "$PACKAGE@$VERSION" "$TAG"
-          actual="$(npm view "$PACKAGE" "dist-tags.$TAG")"
-          [ "$actual" = "$VERSION" ] || {
-            echo "::error::$PACKAGE@$TAG resolved to '$actual', expected '$VERSION'"
-            exit 1
-          }
+          for attempt in 1 2 3 4 5 6; do
+            actual="$(npm view "$PACKAGE" "dist-tags.$TAG" 2>/dev/null || true)"
+            if [ "$actual" = "$VERSION" ]; then
+              echo "$PACKAGE@$TAG now resolves to $VERSION"
+              exit 0
+            fi
+            echo "registry still reports '$actual'; retrying in $((attempt * 5))s"
+            sleep $((attempt * 5))
+          done
+          echo "::error::$PACKAGE@$TAG resolved to '$actual', expected '$VERSION'"
+          exit 1

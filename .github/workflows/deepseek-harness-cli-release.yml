@@ -363,6 +363,13 @@ jobs:
             test -f "dist-npm/platform/${VERSION}-${target}/package.json"
             npm publish "./dist-npm/platform/${VERSION}-${target}" --tag "$target"
           done
+          # Before 1.0.0 every release is a prerelease, so `next` alone would leave the
+          # default pointer on whatever shipped first and `npm install -g` — the README's
+          # quickstart, which resolves `latest` — would serve a stale build forever.
+          if [[ "$main_tag" == next && "$VERSION" == 0.* ]]; then
+            package="$(node -p "require('./dist-npm/main/package.json').name")"
+            npm dist-tag add "$package@$VERSION" latest
+          fi
 
   brew-tap:
     needs: [plan, release]

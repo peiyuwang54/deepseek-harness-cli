@@ -12,6 +12,7 @@
 #   DEEPSEEK_HARNESS_CLI_VERSION / --version   release version (default: newest deepseek-harness-cli-v* release)
 #   DEEPSEEK_HARNESS_CLI_INSTALL_DIR / --to    install directory (default: $HOME/.deepseek-harness-cli)
 #   DEEPSEEK_HARNESS_CLI_BASE_URL              download base for tests or mirrors (default: GitHub)
+#   DEEPSEEK_HARNESS_CLI_RELEASES_URL          release feed used to discover the newest version
 #
 # Integrity is sha256-verified against the sidecar published with the release;
 # signature verification (minisign) is the planned upgrade path.
@@ -19,6 +20,7 @@ set -eu
 
 REPO="peiyuwang54/deepseek-harness-cli"
 BASE_URL="${DEEPSEEK_HARNESS_CLI_BASE_URL:-https://github.com/${REPO}/releases/download}"
+RELEASES_URL="${DEEPSEEK_HARNESS_CLI_RELEASES_URL:-https://github.com/${REPO}/releases.atom}"
 
 usage() {
   cat <<'EOF'
@@ -86,12 +88,25 @@ esac
 VERSION="${VERSION#v}"
 
 if [ -z "$VERSION" ]; then
+  # The atom feed lists releases newest-first, includes prereleases, and is not
+  # subject to the unauthenticated REST rate limit that makes `/releases` return
+  # 403 for shared or CI egress addresses.
   VERSION="$(
-    curl -fsSL "https://api.github.com/repos/${REPO}/releases?per_page=100" \
-      | grep '"tag_name": *"deepseek-harness-cli-v' \
-      | sed -E 's/.*"deepseek-harness-cli-v([^"]+)".*/\1/' \
+    curl -fsSL "$RELEASES_URL" \
+      | tr '<' '\n' \
+      | sed -n 's|.*/releases/tag/deepseek-harness-cli-v\([^"]*\)".*|\1|p' \
       | head -1
   )" || true
+  if [ -z "$VERSION" ]; then
+    # The feed is a fixed-length window, so a CLI release can age out of it once
+    # other tag families publish more recently.
+    VERSION="$(
+      curl -fsSL "https://api.github.com/repos/${REPO}/releases?per_page=100" \
+        | grep '"tag_name": *"deepseek-harness-cli-v' \
+        | sed -E 's/.*"deepseek-harness-cli-v([^"]+)".*/\1/' \
+        | head -1
+    )" || true
+  fi
   if [ -z "$VERSION" ]; then
     echo "deepseek-harness-cli: could not determine the newest release; set DEEPSEEK_HARNESS_CLI_VERSION or --version." >&2
     exit 1

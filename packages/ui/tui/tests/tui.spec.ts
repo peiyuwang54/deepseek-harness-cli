@@ -8429,7 +8429,9 @@ describe('terminal mounting', () => {
     expect(ctx.sessions.get(sideId!)?.header).toMatchObject({ ephemeral: true, parentSession: rootId })
     expect(sidePrompts).toHaveLength(1)
     expect(sidePrompts[0]?.content).toEqual([{ type: 'text', text: 'explain this code' }])
-    expect(terminal.output).toContain('SIDE · Ctrl+C return to parent')
+    // The session enters before its first frame flushes, so wait for the banner rather than
+    // sampling whatever the renderer had emitted when `started` reached 2.
+    await vi.waitFor(() => { expect(terminal.output).toContain('SIDE · Ctrl+C return to parent') })
 
     terminal.send('/rename forbidden')
     terminal.send('\r')

@@ -104,6 +104,21 @@ class MockReleaseServer:
         self.files[f"{stem}.tar.gz"] = tarball
         self.files[f"{stem}.sha256"] = f"{digest}  deepseek-harness-cli-{arch}-{os_name}.tar.gz\n".encode()
 
+    def register_feed(self, versions: list[str]) -> None:
+        """Serve a GitHub-shaped releases atom feed listing `versions` newest-first."""
+        entries = "".join(
+            '<entry><link rel="alternate" type="text/html" '
+            f'href="https://github.com/owner/repo/releases/tag/deepseek-harness-cli-v{version}"/>'
+            f"<title>deepseek-harness-cli-v{version}</title></entry>"
+            for version in versions
+        )
+        feed = f'<?xml version="1.0" encoding="UTF-8"?><feed xmlns="http://www.w3.org/2005/Atom">{entries}</feed>'
+        self.files["/releases.atom"] = feed.encode()
+
+    @property
+    def feed_url(self) -> str:
+        return f"{self.base_url}/releases.atom"
+
     def start(self) -> None:
         self.thread.start()
 
@@ -162,10 +177,14 @@ class InstallerTestCase(unittest.TestCase):
 
     def run_installer(self, *, os_name: str, arch: str, args: tuple[str, ...] = (),
                       extra_env: dict[str, str] | None = None,
-                      use_fake_uname: bool = True, register: bool = True) -> subprocess.CompletedProcess[str]:
+                      use_fake_uname: bool = True, register: bool = True,
+                      pin_version: bool = True) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
         env["DEEPSEEK_HARNESS_CLI_BASE_URL"] = self.server.base_url
-        env["DEEPSEEK_HARNESS_CLI_VERSION"] = VERSION
+        if pin_version:
+            env["DEEPSEEK_HARNESS_CLI_VERSION"] = VERSION
+        else:
+            env.pop("DEEPSEEK_HARNESS_CLI_VERSION", None)
         env["HOME"] = str(self.tmp / "home")
         env["DEEPSEEK_HARNESS_CLI_INSTALL_DIR"] = str(self.tmp / "install")
         env["SHELL"] = "/bin/zsh"
@@ -299,6 +318,39 @@ class InstallerTestCase(unittest.TestCase):
         self.assertEqual(old.read_text(), "#!/bin/sh\necho old-binary\n", "failed install overwrote existing binary")
 
     # --- version and argument handling --------------------------------------
+    def test_resolves_newest_version_from_release_feed(self) -> None:
+        # No pinned version: the installer must discover the newest release itself. It reads the
+        # atom feed rather than the REST API, which returns 403 for rate-limited callers.
+        self.server.register_feed([VERSION, "0.1.0-rc.4"])
+        result = self.run_installer(
+            os_name="macos",
+            arch="arm64",
+            pin_version=False,
+            extra_env={"DEEPSEEK_HARNESS_CLI_RELEASES_URL": self.server.feed_url},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("/releases.atom", self.server.requests)
+        self.assert_installed("macos", self.tmp / "install")
+
+    def test_unresolvable_version_reports_guidance(self) -> None:
+        self.server.register_feed([])
+        result = self.run_installer(
+            os_name="macos",
+            arch="arm64",
+            pin_version=False,
+            register=False,
+            extra_env={
+                "DEEPSEEK_HARNESS_CLI_RELEASES_URL": self.server.feed_url,
+                # Keep the REST fallback offline so the failure path is deterministic; the feed
+                # itself stays reachable on loopback.
+                "http_proxy": "http://127.0.0.1:1",
+                "https_proxy": "http://127.0.0.1:1",
+                "no_proxy": "127.0.0.1,localhost",
+            },
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("could not determine the newest release", result.stderr)
+
     def test_version_flag_with_v_prefix(self) -> None:
         result = self.run_installer(os_name="macos", arch="arm64", args=("--version", f"v{VERSION}"))
         self.assertEqual(result.returncode, 0, result.stderr)

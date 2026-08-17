@@ -9,6 +9,7 @@
 #   -Version / DEEPSEEK_HARNESS_CLI_VERSION
 #   -InstallDir / DEEPSEEK_HARNESS_CLI_INSTALL_DIR
 #   -BaseUrl / DEEPSEEK_HARNESS_CLI_BASE_URL
+#   -ReleasesUrl / DEEPSEEK_HARNESS_CLI_RELEASES_URL
 #
 # Integrity is sha256-verified against the sidecar published with the release.
 # This script never clones the repository.
@@ -18,6 +19,7 @@ param(
     [string]$Version = $env:DEEPSEEK_HARNESS_CLI_VERSION,
     [string]$InstallDir = $env:DEEPSEEK_HARNESS_CLI_INSTALL_DIR,
     [string]$BaseUrl = $env:DEEPSEEK_HARNESS_CLI_BASE_URL,
+    [string]$ReleasesUrl = $env:DEEPSEEK_HARNESS_CLI_RELEASES_URL,
     [switch]$SkipPath
 )
 
@@ -28,6 +30,9 @@ $ProgressPreference = "SilentlyContinue"
 $Repo = "peiyuwang54/deepseek-harness-cli"
 if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
     $BaseUrl = "https://github.com/$Repo/releases/download"
+}
+if ([string]::IsNullOrWhiteSpace($ReleasesUrl)) {
+    $ReleasesUrl = "https://github.com/$Repo/releases.atom"
 }
 if ([string]::IsNullOrWhiteSpace($InstallDir)) {
     $InstallDir = Join-Path $env:USERPROFILE ".deepseek-harness-cli"
@@ -43,16 +48,34 @@ if ($env:PROCESSOR_ARCHITECTURE -ne "AMD64" -and $env:PROCESSOR_ARCHITEW6432 -ne
 }
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases?per_page=100"
-    $match = @(
-        $releases |
-            ForEach-Object { $_.tag_name } |
-            Where-Object { $_ -like "deepseek-harness-cli-v*" }
-    )
-    if ($match.Count -eq 0) {
+    # The atom feed lists releases newest-first, includes prereleases, and is not
+    # subject to the unauthenticated REST rate limit that makes /releases return
+    # 403 for shared or CI egress addresses.
+    $tags = @()
+    try {
+        $feed = [xml](Invoke-WebRequest -Uri $ReleasesUrl -UseBasicParsing).Content
+        $tags = @(
+            $feed.feed.entry |
+                ForEach-Object { ($_.link.href -split '/releases/tag/')[-1] } |
+                Where-Object { $_ -like "deepseek-harness-cli-v*" }
+        )
+    } catch {
+        $tags = @()
+    }
+    if ($tags.Count -eq 0) {
+        # The feed is a fixed-length window, so a CLI release can age out of it
+        # once other tag families publish more recently.
+        $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases?per_page=100"
+        $tags = @(
+            $releases |
+                ForEach-Object { $_.tag_name } |
+                Where-Object { $_ -like "deepseek-harness-cli-v*" }
+        )
+    }
+    if ($tags.Count -eq 0) {
         throw "deepseek-harness-cli: could not determine the newest release; set DEEPSEEK_HARNESS_CLI_VERSION or -Version."
     }
-    $Version = $match[0] -replace '^deepseek-harness-cli-v', ''
+    $Version = $tags[0] -replace '^deepseek-harness-cli-v', ''
 }
 
 $Version = $Version.TrimStart("v")

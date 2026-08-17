@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { existsSync, readFileSync } from 'node:fs'
 import { mkdtemp, mkdir, readFile, rm, writeFile, realpath } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -108,7 +108,9 @@ const RESPONDING_SERVER =
 
 const locJson = () => JSON.stringify({ uri: pathToFileURL(join(ws, 'a.ts')).href, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 3 } } })
 
-describe('LspInstance server-request handling', () => {
+// Each case spawns a real Node fixture server, so the 5s default deadline has no headroom
+// under ordinary parallel load.
+describe('LspInstance server-request handling', { timeout: 30_000 }, () => {
   it('answers workspace/configuration with the static config per item', async () => {
     const instance = makeInstance({ LSP_FAKE_ON_OPEN: 'configuration', LSP_FAKE_DEF: locJson() })
     // The query drives didOpen, which makes the fake emit workspace/configuration; a healthy answer
@@ -132,7 +134,7 @@ describe('LspInstance server-request handling', () => {
   })
 })
 
-describe('LspInstance query and abort', () => {
+describe('LspInstance query and abort', { timeout: 30_000 }, () => {
   it('sends includeDeclaration for references', async () => {
     const instance = makeInstance({ LSP_FAKE_REFS: JSON.stringify([JSON.parse(locJson())]) })
     await expect(run(instance, 'findReferences')).resolves.toMatchObject({ kind: 'locations' })
@@ -170,11 +172,12 @@ describe('LspInstance query and abort', () => {
   it('resolves the cancel grace when the server honors $/cancelRequest', async () => {
     // A server that answers $/cancelRequest by settling the pending request lets the grace race
     // resolve via the request rather than the timeout, so the instance is NOT force-terminated.
+    const received = join(root, 'definition-received')
     const script = 'let b=Buffer.alloc(0),reqId=null;'
       + 'const fr=(o)=>{const x=Buffer.from(JSON.stringify({jsonrpc:"2.0",...o}));return Buffer.concat([Buffer.from(`Content-Length: ${x.length}\\r\\n\\r\\n`),x]);};'
       + 'process.stdin.on("data",c=>{b=Buffer.concat([b,c]);for(;;){const s=b.indexOf("\\r\\n\\r\\n");if(s<0)break;const len=Number(/(\\d+)/.exec(b.toString("ascii",0,s))[1]);if(b.length<s+4+len)break;const m=JSON.parse(b.toString("utf8",s+4,s+4+len));b=b.subarray(s+4+len);'
       + 'if(m.method==="initialize")process.stdout.write(fr({id:m.id,result:{capabilities:{positionEncoding:"utf-16",textDocumentSync:1,definitionProvider:true}}}));'
-      + 'else if(m.method==="textDocument/definition")reqId=m.id;'
+      + `else if(m.method==="textDocument/definition"){reqId=m.id;require("fs").writeFileSync(${JSON.stringify(received)},"1")}`
       + 'else if(m.method==="$/cancelRequest"&&reqId!==null)process.stdout.write(fr({id:reqId,error:{code:-32800,message:"request cancelled"}}));'
       + 'else if(m.method==="shutdown")process.stdout.write(fr({id:m.id,result:null}));'
       + 'else if(m.method==="exit")process.exit(0);'
@@ -182,7 +185,9 @@ describe('LspInstance query and abort', () => {
     const instance = scriptInstance(script, { killGraceMs: 2_000 })
     const controller = new AbortController()
     const pending = run(instance, 'goToDefinition', controller.signal)
-    await new Promise<void>(resolve => setTimeout(resolve, 300))
+    // Wait for the server to hold the request rather than for a fixed duration: a slow spawn or
+    // handshake would otherwise make the abort land on `ready` and tear the instance down.
+    await vi.waitFor(() => { expect(existsSync(received)).toBe(true) }, { timeout: 20_000 })
     controller.abort(new Error('mid-flight'))
     await expect(pending).rejects.toThrow(/mid-flight/)
     // The server acknowledged cancellation within grace, so the instance was not force-killed.
@@ -270,7 +275,7 @@ describe('LspInstance query and abort', () => {
   })
 })
 
-describe('LspInstance disposal', () => {
+describe('LspInstance disposal', { timeout: 30_000 }, () => {
   it('lets a server finish protocol exit before signal escalation', async () => {
     const marker = join(root, 'graceful-exit.log')
     const instance = makeInstance({

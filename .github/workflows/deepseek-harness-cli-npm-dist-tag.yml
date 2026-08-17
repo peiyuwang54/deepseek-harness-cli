@@ -15,6 +15,11 @@ on:
         required: true
         default: latest
         type: string
+      allow_downgrade:
+        description: 'Permit moving the tag to an older version (deliberate rollback)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -33,6 +38,7 @@ jobs:
       PACKAGE: '@peiyu_wang/deepseek-harness-cli'
       VERSION: ${{ inputs.version }}
       TAG: ${{ inputs.tag }}
+      ALLOW_DOWNGRADE: ${{ inputs.allow_downgrade }}
     steps:
       - uses: actions/setup-node@v6
         with:
@@ -64,6 +70,28 @@ jobs:
             echo "::error::$PACKAGE@$VERSION is not published"
             exit 1
           }
+
+      - name: Refuse an accidental downgrade
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          current="$(npm view "$PACKAGE" "dist-tags.$TAG" 2>/dev/null || true)"
+          if [ -z "$current" ] || [ "$current" = "$VERSION" ]; then
+            echo "$PACKAGE@$TAG is unset or already $VERSION; no downgrade check needed"
+            exit 0
+          fi
+          # `semver` sorts ascending, so the last line is the newer of the two.
+          newer="$(npx --yes semver@7 "$current" "$VERSION" | tail -1)"
+          if [ "$newer" = "$VERSION" ]; then
+            echo "moving $PACKAGE@$TAG forward from $current to $VERSION"
+            exit 0
+          fi
+          [ "$ALLOW_DOWNGRADE" = 'true' ] || {
+            echo "::error::refusing to move $PACKAGE@$TAG backwards from $current to $VERSION; rerun with allow_downgrade to roll back deliberately"
+            exit 1
+          }
+          echo "rolling $PACKAGE@$TAG back from $current to $VERSION (allow_downgrade)"
 
       - name: Update and verify the dist-tag
         env:

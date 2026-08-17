@@ -25,7 +25,10 @@ const tsxPackageDirectory = dirname(fileURLToPath(import.meta.resolve('tsx/packa
 const fixtures: string[] = []
 // Multi-worktree cases spawn several Git and Node subprocesses; coverage concurrency can
 // legitimately exceed Vitest's default deadline without changing the installer behavior.
-const MULTI_PROCESS_TEST_TIMEOUT_MS = 20_000
+// Keep this above INSTALL_LOCK_TIMEOUT_MS in scripts/install-lefthook.mjs (30s): the serialized
+// concurrency cases must be able to reach the installer's own lock timeout and report it, rather
+// than have Vitest kill the test first and hide which side actually failed.
+const MULTI_PROCESS_TEST_TIMEOUT_MS = 45_000
 
 interface Fixture {
   container: string
@@ -184,7 +187,9 @@ function installLockPath(fixture: Fixture): string {
 }
 
 async function waitForPath(path: string): Promise<void> {
-  const deadline = Date.now() + 5_000
+  // Bounds a genuinely stuck installer, not a slow one: the marker is written by a spawned Node
+  // process whose startup alone can exceed a few seconds under parallel load.
+  const deadline = Date.now() + 20_000
   while (!existsSync(path)) {
     if (Date.now() >= deadline) throw new Error(`timed out waiting for ${path}`)
     await new Promise(resolveWait => setTimeout(resolveWait, 10))
@@ -211,7 +216,7 @@ function runInstaller(
   })
 }
 
-describe('worktree-local Lefthook installer', { timeout: 15_000 }, () => {
+describe('worktree-local Lefthook installer', { timeout: 30_000 }, () => {
   for (const [label, extraEnv] of [
     ['CI', { CI: 'true' }],
     ['GitHub Actions', { GITHUB_ACTIONS: 'true' }],

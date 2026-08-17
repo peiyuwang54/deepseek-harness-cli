@@ -31,7 +31,9 @@ curl -fsSL <install-url> | sh -s -- --version 0.1.0-rc.5
 The same values are available as environment variables for scripting:
 `DEEPSEEK_HARNESS_CLI_VERSION`, `DEEPSEEK_HARNESS_CLI_INSTALL_DIR`, and
 `DEEPSEEK_HARNESS_CLI_BASE_URL` (the latter lets mirrors or tests point the
-installer at a different download base).
+installer at a different download base). `DEEPSEEK_HARNESS_CLI_RELEASES_URL`
+selects the feed the installer reads to discover the newest release when no
+version is pinned.
 
 ## Integrity
 

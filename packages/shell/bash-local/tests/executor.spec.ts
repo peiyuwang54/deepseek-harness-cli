@@ -55,7 +55,9 @@ describe('LocalBashExecutor.run', () => {
 
   it('defaults cwd to process.cwd()', async () => {
     const { bash } = await setup()
-    const result = await bash.run(bash.resolve({ command: 'pwd' }))
+    // `pwd -P`, not `pwd`: the latter echoes the inherited logical $PWD, which differs from the
+    // symlink-resolved path process.cwd() returns for a checkout under a symlink such as macOS /tmp.
+    const result = await bash.run(bash.resolve({ command: 'pwd -P' }))
     expect(result.stdout.text.trim()).toBe(process.cwd())
   })
 

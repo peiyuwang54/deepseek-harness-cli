@@ -96,7 +96,9 @@ function repositoryState(root: string): Record<string, string> {
   }
 }
 
-describe('change-scope', () => {
+// Every case drives real `git` subprocesses against a fixture repository, which costs seconds per
+// case; Vitest's 5s default leaves no headroom and fails under ordinary parallel load.
+describe('change-scope', { timeout: 30_000 }, () => {
   it('uses an explicit base on a fresh branch without a same-name remote and after its first push', { timeout: 20_000 }, () => {
     const { root } = fixture()
     git(root, ['switch', '-c', 'feature'])

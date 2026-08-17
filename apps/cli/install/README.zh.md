@@ -26,7 +26,7 @@ curl -fsSL <install-url> | sh -s -- --to /usr/local
 curl -fsSL <install-url> | sh -s -- --version 0.1.0-rc.5
 ```
 
-相同的值也可通过环境变量用于脚本化：`DEEPSEEK_HARNESS_CLI_VERSION`、`DEEPSEEK_HARNESS_CLI_INSTALL_DIR` 与 `DEEPSEEK_HARNESS_CLI_BASE_URL`（后者可让镜像或测试把安装器指向不同的下载基地址）。
+相同的值也可通过环境变量用于脚本化：`DEEPSEEK_HARNESS_CLI_VERSION`、`DEEPSEEK_HARNESS_CLI_INSTALL_DIR` 与 `DEEPSEEK_HARNESS_CLI_BASE_URL`（后者可让镜像或测试把安装器指向不同的下载基地址）。`DEEPSEEK_HARNESS_CLI_RELEASES_URL` 用于选择未指定版本时安装器读取的发布源。
 
 ## 完整性
 

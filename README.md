@@ -108,6 +108,13 @@ deepseek doctor --json
 deepseek completion zsh > ~/.zsh/completions/_deepseek
 ```
 
+Inspect and validate a profile's installed plugin bundles without starting it:
+
+```sh
+deepseek plugin --profile tui list
+deepseek plugin --profile tui verify --json
+```
+
 ## What it includes
 
 - Code reading, editing, shell tools, web search, skills, MCP, and subagents.

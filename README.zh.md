@@ -108,6 +108,13 @@ deepseek doctor --json
 deepseek completion zsh > ~/.zsh/completions/_deepseek
 ```
 
+可以在不启动 profile 的情况下查看并验证已安装的插件组合包：
+
+```sh
+deepseek plugin --profile tui list
+deepseek plugin --profile tui verify --json
+```
+
 ## 核心能力
 
 - 代码读取、编辑、Shell、Web 搜索、Skills、MCP 与子代理。

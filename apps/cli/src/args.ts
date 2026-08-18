@@ -103,6 +103,8 @@ Examples:
   dsh --profile tui --resume <session>       arguments after the launcher flags reach the app
   dsh --profile web --help                   the web app's own flags and help
   dsh plugin --profile tui add <package>     install a plugin into the tui profile
+  dsh plugin --profile tui list              inspect installed plugins (no pnpm required)
+  dsh plugin --profile tui verify            validate plugin bundles and patch assets
   deepseek mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
                                              add a shared stdio MCP server
   deepseek doctor                             diagnose the installation without booting a profile
@@ -221,7 +223,7 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
   plugin
     .requiredOption('--profile <name>', 'the profile whose plugins to manage (initialized on first use)')
     .allowUnknownOption()
-    .argument('[args...]', 'pnpm arguments, forwarded verbatim (add <pkg>, remove <pkg>, why <pkg>, ...)')
+    .argument('[args...]', 'list/verify for inspection, or pnpm arguments forwarded verbatim')
     .action((args: string[], options: { profile: string }) => {
       rejectParentOptions('plugin')
       if (options.profile === '') program.error('error: --profile needs a name')

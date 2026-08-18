@@ -76,8 +76,12 @@ deepseek completion bash >> ~/.bash_completion
 
 `dsh plugin --profile <name> <args...>` initializes the profile when missing (shipped template, or `@deepseek-ai/dsh-base` alone for other names), then forwards `<args...>` to `pnpm` with the profile directory as working directory — `add`, `remove`, `why`, `update`, and every other pnpm verb work unchanged; pnpm must be on PATH. Relative path specs (`.`, `../plugin`, and their `file:`/`link:` forms) are anchored to the invoking directory first, so `add .` from a plugin checkout installs that checkout, not the profile. After every successful run, `dsh.profile.bundles` is reconciled against the installed state: each dependency resolving to a package whose manifest declares `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }` joins the layer stack (so an `update` that gains the declaration activates it), a bundle-less dependency stays plain with a one-time warning, and a removed dependency leaves the stack.
 
+`dsh plugin --profile <name> list` inspects installed dependencies without invoking pnpm. `dsh plugin --profile <name> verify` resolves every active bundle, parses its patch file, and checks that bundle declarations and the active layer list agree. Both commands accept `--json` for automation and return nonzero when the profile is missing or invalid.
+
 ```sh
 dsh plugin --profile tui add github:deepseek-harness/turtle-ui
+dsh plugin --profile tui list
+dsh plugin --profile tui verify --json
 dsh plugin --profile tui remove turtle-ui
 dsh --profile tui
 ```

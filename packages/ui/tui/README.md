@@ -116,6 +116,8 @@ Reasoning is visible on first render under the `Think` label. Submitted human ca
 
 An empty-composer Up press treats the newest still-pending steering item as an editable draft: it removes that exact `MessageId` from the authoritative Agent inbox, restores the original text, and lets Enter submit a fresh identity. Already claimed or durable history is never removed, and ordinary history navigation remains unchanged when no pending item can be withdrawn. While a durable turn is live, Ctrl+B explicitly adopts it into `ctx.jobs` as `agent-turn-N` without cancelling or restarting it. The composer immediately accepts new work into the next-turn FIFO, `/ps`, `job_output`, and `job_kill` observe the same job, and Esc continues to cancel the adopted Agent turn.
 
+`/notifications` controls an optional terminal completion bell. `/notifications on|off` persists `ui-notifications.enabled`, while `status` reports the current value. The bell is emitted only when a live turn settles after the terminal owns the UI; it does not add transcript or model-visible content and is disabled by default.
+
 ## Config
 
 `TuiConfig` is the presentation schema accepted by the shipped bundle's `tui-runner` row and by the direct renderer. The direct `@deepseek-ai/dsh-tui` plugin's full `Config` adds `sessionId` and `initialSkill`; the bundle runner deliberately exposes only `TuiConfig`, while `tuiStartup` owns its session identity and the shipped launcher supplies no initial skill.

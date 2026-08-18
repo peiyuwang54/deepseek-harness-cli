@@ -707,6 +707,76 @@ describe('shared settings, appearance, and workspaces', () => {
     await dispose(result)
   })
 
+  it('persists /notifications and rings only when a live turn settles', async () => {
+    const notificationsNamespace = settingsNamespace('ui-notifications')
+    let enabled = false
+    let resultContext: Context | undefined
+    const mutate = vi.fn(async (
+      namespace: string,
+      ops: ReadonlyArray<{ op: string; path: readonly string[]; value?: unknown }>,
+    ) => {
+      const operation = ops[0]
+      if (namespace !== notificationsNamespace || operation?.op !== 'set' || operation.path.join('.') !== 'enabled') return
+      const previous = { enabled }
+      enabled = operation.value === true
+      resultContext?.emit('settings/updated', notificationsNamespace, { enabled }, previous, 'update')
+    })
+    const result = await setup({
+      configureContext: composeFrontDoorServices((ctx) => {
+        resultContext = ctx
+        ctx.provide('settings', {
+          get: (namespace: string) => namespace === notificationsNamespace ? { enabled } : undefined,
+          mutate,
+          describe: () => [],
+          writable: true,
+          prepareDocument: () => Promise.resolve(undefined),
+        } as never)
+      }),
+    })
+
+    result.terminal.output = ''
+    result.terminal.send('/notifications on')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(mutate).toHaveBeenCalledWith(notificationsNamespace, [{
+      op: 'set',
+      path: ['enabled'],
+      value: true,
+    }])
+    expect(result.terminal.output).toContain('Completion notifications: on.')
+
+    result.terminal.output = ''
+    const writeSpy = vi.spyOn(result.terminal, 'write')
+    result.agent.status = 'running'
+    agentEvents(result.ctx, result.agent).emit('agent/status', { status: 'running' })
+    await tick()
+    result.agent.status = 'idle'
+    agentEvents(result.ctx, result.agent).emit('agent/status', { status: 'idle' })
+    await tick()
+    expect(writeSpy).toHaveBeenCalledWith('\x07')
+
+    result.terminal.output = ''
+    writeSpy.mockClear()
+    result.terminal.send('/notifications off')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(result.terminal.output).toContain('Completion notifications: off.')
+    result.terminal.output = ''
+    result.agent.status = 'running'
+    agentEvents(result.ctx, result.agent).emit('agent/status', { status: 'running' })
+    await tick()
+    result.agent.status = 'idle'
+    agentEvents(result.ctx, result.agent).emit('agent/status', { status: 'idle' })
+    await tick()
+    expect(writeSpy).not.toHaveBeenCalledWith('\x07')
+
+    result.terminal.send('/notifications status')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Completion notifications: off.')
+    await dispose(result)
+  })
+
   it('shares /language with the Web locale preference and refreshes terminal chrome', async () => {
     const localeNamespace = settingsNamespace('locale')
     let preference = 'en'

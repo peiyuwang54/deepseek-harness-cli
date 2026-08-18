@@ -56,6 +56,9 @@ const TUI_ACCENT_SETTINGS_NAMESPACE = settingsNamespace('ui-accent')
 /** TUI-owned settings namespace for terminal title and status presentation. */
 const TUI_TERMINAL_SETTINGS_NAMESPACE = settingsNamespace('ui-terminal')
 
+/** TUI-owned settings namespace for optional terminal completion notifications. */
+const TUI_NOTIFICATIONS_SETTINGS_NAMESPACE = settingsNamespace('ui-notifications')
+
 /** Communication styles exposed by the Codex-shaped `/personality` command. */
 const TUI_PERSONALITIES = ['friendly', 'pragmatic'] as const
 
@@ -174,6 +177,11 @@ const TuiPersonalitySettingsSchema: z<{ preference: TuiPersonality }> = z.object
   preference: z.union([...TUI_PERSONALITIES]).default(DEFAULT_TUI_PERSONALITY),
 })
 
+/** Durable terminal notification setting. */
+const TuiNotificationsSettingsSchema: z<{ enabled: boolean }> = z.object({
+  enabled: z.boolean().default(false),
+})
+
 /**
  * Register the TUI-owned accent and terminal-presentation namespaces on the
  * host settings service when one is composed.
@@ -185,6 +193,7 @@ export function registerTuiSettingsNamespaces(ctx: Context, registered?: () => v
     settingsCtx.settings.register(TUI_ACCENT_SETTINGS_NAMESPACE, AccentSettingsSchema)
     settingsCtx.settings.register(TUI_TERMINAL_SETTINGS_NAMESPACE, TerminalPresentationSettingsSchema)
     settingsCtx.settings.register(TUI_PERSONALITY_SETTINGS_NAMESPACE, TuiPersonalitySettingsSchema)
+    settingsCtx.settings.register(TUI_NOTIFICATIONS_SETTINGS_NAMESPACE, TuiNotificationsSettingsSchema)
     registered?.()
   })
 }
@@ -259,6 +268,16 @@ export function readTuiStatusLineItems(settings: SettingsProvider | undefined): 
   return resolveStatusLineItems(settings?.get(TUI_TERMINAL_SETTINGS_NAMESPACE))
 }
 
+/**
+ * Read the persistent terminal-completion notification preference.
+ * @param settings - optional settings provider.
+ * @returns `true` when a completion bell is enabled.
+ */
+export function readTuiNotifications(settings: SettingsProvider | undefined): boolean {
+  const section = settings?.get(TUI_NOTIFICATIONS_SETTINGS_NAMESPACE)
+  return typeof section === 'object' && section !== null && (section as { enabled?: unknown }).enabled === true
+}
+
 /** Narrow an unknown settings value to the shared preference vocabulary. */
 function isTuiThemePreference(value: unknown): value is TuiThemePreference {
   return TUI_THEME_PREFERENCES.some(preference => preference === value)
@@ -308,6 +327,8 @@ export interface SettingsControllerDeps extends ChatChannelDeps, ChannelNotice {
   applyTitle(items: readonly TerminalTitleItem[]): void
   /** Preview or commit footer fields; undefined restores the profile template. */
   applyStatusLine(items: readonly StatusLineItem[] | undefined): void
+  /** Apply the persistent terminal completion-notification preference. */
+  applyNotifications(enabled: boolean): void
 }
 
 /** Terminal Settings and appearance controller. */
@@ -330,6 +351,10 @@ export interface SettingsController {
   queueTitleCommand(raw: string): void
   /** Queue `/statusline`; empty input opens the ordered footer setup dialog. */
   queueStatusLineCommand(raw: string): void
+  /** Queue `/notifications` to inspect or change completion notifications. */
+  queueNotificationsCommand(raw: string): void
+  /** Current completion-notification preference. */
+  notificationsEnabled(): boolean
   /** Close settings-owned overlays during shutdown. */
   clearOverlays(): void
   /** Remove the shared settings listener. */
@@ -362,6 +387,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
   let statusLineOverlay: TuiOverlaySession | undefined
   let titleItems = readTuiTitleItems(ctx.get('settings'))
   let statusLineItems = readTuiStatusLineItems(ctx.get('settings'))
+  let notificationsEnabled = readTuiNotifications(ctx.get('settings'))
   let operations = Promise.resolve()
 
   const settings = (): SettingsProvider | undefined => ctx.get('settings')
@@ -494,6 +520,23 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       : { op: 'set', path: ['statusLineItems'], value: [...nextItems] }])
     statusLineItems = nextItems === undefined ? undefined : [...nextItems]
     deps.applyStatusLine(statusLineItems)
+    return true
+  }
+
+  const commitNotifications = async (enabled: boolean): Promise<boolean> => {
+    const provider = settings()
+    if (provider?.get(TUI_NOTIFICATIONS_SETTINGS_NAMESPACE) === undefined) {
+      deps.appendNotice('Notification settings are unavailable: the ui-notifications namespace is not registered.', 'warning')
+      return false
+    }
+    await provider.mutate(TUI_NOTIFICATIONS_SETTINGS_NAMESPACE, [{
+      op: 'set',
+      path: ['enabled'],
+      value: enabled,
+    }])
+    notificationsEnabled = enabled
+    deps.applyNotifications(enabled)
+    if (!deps.isDisposed()) deps.appendNotice(`Completion notifications: ${enabled ? 'on' : 'off'}.`)
     return true
   }
 
@@ -955,6 +998,19 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     }
   }
 
+  const notificationsCommand = async (raw: string): Promise<void> => {
+    const argument = raw.trim().toLowerCase()
+    if (argument === '' || argument === 'status') {
+      deps.appendNotice(`Completion notifications: ${notificationsEnabled ? 'on' : 'off'}.`)
+      return
+    }
+    if (argument === 'on' || argument === 'off') {
+      await commitNotifications(argument === 'on')
+      return
+    }
+    deps.appendNotice('Usage: /notifications [on|off|status]', 'warning')
+  }
+
   const disposeSettingsUpdates = ctx.on('settings/updated', (namespace, next) => {
     if (typeof next !== 'object' || next === null) return
     if (namespace === TUI_LOCALE_SETTINGS_NAMESPACE) {
@@ -997,6 +1053,13 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       }
       return
     }
+    if (namespace === TUI_NOTIFICATIONS_SETTINGS_NAMESPACE) {
+      const enabled = (next as { enabled?: unknown }).enabled === true
+      if (enabled === notificationsEnabled) return
+      notificationsEnabled = enabled
+      deps.applyNotifications(enabled)
+      return
+    }
     if (namespace !== TUI_THEME_SETTINGS_NAMESPACE) return
     const preference = (next as { preference?: unknown }).preference
     if (!isTuiThemePreference(preference) || preference === themePreference) return
@@ -1008,6 +1071,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     themePreference: () => themePreference,
     locale: () => locale,
     personality: () => personality,
+    notificationsEnabled: () => notificationsEnabled,
     queueThemeCommand(raw): void {
       operations = operations.then(() => themeCommand(raw)).catch((error: unknown) => {
         if (!deps.isDisposed()) deps.appendNotice(`Theme command failed: ${String(error)}`, 'error')
@@ -1036,6 +1100,11 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
     queueStatusLineCommand(raw): void {
       operations = operations.then(() => statusLineCommand(raw)).catch((error: unknown) => {
         if (!deps.isDisposed()) deps.appendNotice(`Status line command failed: ${String(error)}`, 'error')
+      })
+    },
+    queueNotificationsCommand(raw): void {
+      operations = operations.then(() => notificationsCommand(raw)).catch((error: unknown) => {
+        if (!deps.isDisposed()) deps.appendNotice(`Notification command failed: ${String(error)}`, 'error')
       })
     },
     clearOverlays(): void {

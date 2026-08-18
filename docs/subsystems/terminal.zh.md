@@ -205,7 +205,7 @@ The concrete provider retains pi-tui, focus, and terminal lifecycle state. Plugi
 abstract openOverlay(request: TuiOverlayRequest): TuiOverlaySession
 ```
 
-Source: [`packages/ui/tui/src/index.ts:371`](../../packages/ui/tui/src/index.ts)
+Source: [`packages/ui/tui/src/index.ts:372`](../../packages/ui/tui/src/index.ts)
 
 <a id="ctxtuiprompt--tuipromptservice"></a>
 

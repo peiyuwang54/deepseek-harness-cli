@@ -62,6 +62,8 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/statusline` 配置紧凑 footer。不带参数时会打开有序多选对话框：Up/Down 选择行，Left/Right 调整顺序，Space 切换并实时预览，Enter 持久化 `ui-terminal.statusLineItems`，Escape 恢复之前的 footer。可选字段包括 Goal、详情、运行状态、模型、推理强度、token 与上下文用量、排队工作、preset、权限、工作区、Git 分支、Session 标题和 Session id；暂不可用的值会被省略。`/statusline status`、`/statusline off`、`/statusline reset` 与 `/statusline set <item> ...` 支持脚本调用。Reset 会恢复当前 profile 的 `theme.rightPrompt`，不会生成第二套默认值。
 
+`/notifications` 控制可选的终端完成提示音。`/notifications on|off` 持久化 `ui-notifications.enabled`，`status` 报告当前值。仅当终端已接管界面且一个正在运行的轮次结束时才发出提示音；它不会写入 transcript 或模型可见内容，默认关闭。
+
 `/init` 会安排一个普通用户轮次：先检查仓库，仅当当前目录不存在 `AGENTS.md` 时才创建简洁且基于事实的版本。`/review [instructions]` 会安排一次不修改文件的审查，覆盖 workspace 中已跟踪与未跟踪的改动，并按问题严重程度输出。两条命令都要求 agent 处于 idle，其提示词会走普通的持久 user-message 路径，不会绕过 agent loop。
 
 共享的 [`dsh-command-jobs`](../../jobs/command-jobs/README.md) 插件会贡献 `/ps`、`/stop` 与别名 `/clean`。`/ps` 在不消费输出的前提下列出本会话中处于运行或停止中状态的通用后台任务；`/stop` 与 `/clean` 请求取消全部运行中任务，并保持已经处于停止中状态的任务不变。

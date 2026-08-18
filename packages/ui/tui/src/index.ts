@@ -188,6 +188,7 @@ import {
 import {
   createSettingsController,
   readTuiAccent,
+  readTuiNotifications,
   readTuiStatusLineItems,
   readTuiTitleItems,
   readTuiThemePreference,
@@ -478,6 +479,7 @@ export function createTuiChat(
   const transcriptEvents = (): SessionEvent[] => agent.session.events.filter(isVisibleTranscriptEvent)
   let themePreference = readTuiThemePreference(ctx.get('settings'))
   let accent: AccentSelection = readTuiAccent(ctx.get('settings'))
+  let notificationsEnabled = readTuiNotifications(ctx.get('settings'))
   let titleItems = readTuiTitleItems(ctx.get('settings'))
   let statusLineItems = readTuiStatusLineItems(ctx.get('settings'))
   let locale = readTuiLocale(ctx.get('settings'))
@@ -1090,6 +1092,7 @@ export function createTuiChat(
 
   const setStatus = (status: AgentStatus): void => {
     const priorTurn = runningStatus?.turn
+    const wasRunning = runningStatus !== undefined
     clearTurnStatus()
     editor.borderColor = status === 'running' ? text => palette.accent(text) : text => palette.dim(text)
     editor.hint = palette.dim(displayInlineText(inputPlaceholder()))
@@ -1110,6 +1113,8 @@ export function createTuiChat(
       // Initial replay suppresses an orphaned idle `step/start`. If that same
       // Agent becomes live, restore the pre-token response/timing row now.
       attachStreaming()
+    } else if (wasRunning && notificationsEnabled && terminalOwned) {
+      runtime.terminal.write('\x07')
     }
     requestRender()
   }
@@ -1957,6 +1962,9 @@ export function createTuiChat(
     isDisposed,
     applyTheme: applyThemePreference,
     applyAccent,
+    applyNotifications: (enabled) => {
+      notificationsEnabled = enabled
+    },
     applyLocale,
     applyTitle: (items) => {
       titleItems = [...items]
@@ -3392,6 +3400,15 @@ export function createTuiChat(
       input: { hint: '[status|reset|off|set <items...>]' },
       handler: ({ rawInput }) => {
         settingsController.queueStatusLineCommand(rawInput)
+        return { kind: 'success' }
+      },
+    })
+    commandCtx.commands.register({
+      name: 'notifications',
+      description: 'Enable or disable a terminal bell when a turn completes',
+      input: { hint: '[on|off|status]' },
+      handler: ({ rawInput }) => {
+        settingsController.queueNotificationsCommand(rawInput)
         return { kind: 'success' }
       },
     })

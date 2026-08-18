@@ -108,6 +108,8 @@ deepseek doctor --json
 deepseek completion zsh > ~/.zsh/completions/_deepseek
 ```
 
+`doctor` 还会检查随附的 profile overlay 与预置目录、可选 Web 前端资产、安装渠道、沙箱执行器、真彩色、鼠标输入和剪贴板支持。主机能力检查是警告；缺少运行时资产或 Node 版本不受支持会阻断启动。
+
 可以在不启动 profile 的情况下查看并验证已安装的插件组合包：
 
 ```sh

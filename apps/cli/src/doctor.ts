@@ -1,6 +1,7 @@
 /** Boot-free installation and environment diagnostics for the CLI. */
 
 import { accessSync, constants, existsSync, readFileSync, statSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { platform as hostPlatform, release } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -143,7 +144,60 @@ function checkAssets(assetRoot: string): DoctorCheck {
   if (missing.length > 0) {
     return check('assets', 'fail', 'runtime assets are incomplete', missing.join(', '))
   }
-  return check('assets', 'pass', 'runtime assets are present', assetRoot)
+  // Executable releases run from a pkg snapshot.  JavaScript can be present
+  // while profile assembly still fails if non-code overlay files were not
+  // embedded; check every shipped profile bundle explicitly.
+  const bundles = ['dsh-base', 'dsh-tui-app', 'dsh-headless', 'dsh-web-app']
+  const missingOverlays = bundles
+    .map(name => join(assetRoot, 'node_modules', '@deepseek-ai', name, 'cordis.patch.yml'))
+    .filter(filename => !existsSync(filename))
+  if (missingOverlays.length > 0) {
+    return check('assets', 'fail', 'runtime profile assets are incomplete', missingOverlays.map(filename => filename.replace(`${assetRoot}/`, '')).join(', '))
+  }
+  const frontend = join(assetRoot, 'node_modules', '@deepseek-ai', 'dsh-web-frontend', 'dist', 'index.html')
+  if (!existsSync(frontend)) {
+    // The terminal and headless profiles do not need the browser dist, so a
+    // source install remains usable; web users still receive an actionable
+    // warning instead of a false healthy result.
+    return check('assets', 'warn', 'runtime profile overlays are present; web frontend dist is missing', frontend)
+  }
+  return check('assets', 'pass', 'runtime overlays, presets, and web assets are present', assetRoot)
+}
+
+function commandAvailable(command: string, env: NodeJS.ProcessEnv): boolean {
+  const result = spawnSync(command, ['--version'], { env, stdio: 'ignore', windowsHide: true })
+  return result.error === undefined && result.status === 0
+}
+
+function checkSandbox(env: NodeJS.ProcessEnv, platform: string): DoctorCheck {
+  // A launcher can report the selected runner explicitly.  This is useful for
+  // packaged binaries where the profile is not booted by doctor.  Otherwise
+  // probe the host runner without claiming that one arbitrary command was
+  // actually confined.
+  if (env.DSH_SANDBOX_ENFORCEMENT === 'active') {
+    return check('sandbox', 'pass', 'sandbox enforcement is reported active by the launcher')
+  }
+  const runner = platform === 'darwin'
+    ? 'sandbox-exec'
+    : platform === 'win32'
+      ? 'icacls'
+      : 'bwrap'
+  if (commandAvailable(runner, env)) {
+    return check('sandbox', 'warn', `sandbox runner ${runner} is available`, 'doctor cannot prove per-call confinement without booting a profile')
+  }
+  return check('sandbox', 'warn', 'no host sandbox runner was detected', 'the selected profile may use a deny-only or unconfined executor')
+}
+
+function checkInstallation(assetRoot: string, env: NodeJS.ProcessEnv): DoctorCheck {
+  const explicit = env.DSH_INSTALL_CHANNEL?.trim()
+  if (explicit !== undefined && explicit.length > 0) {
+    return check('installation', 'pass', `installation channel: ${explicit}`, assetRoot)
+  }
+  const packageManager = env.npm_config_user_agent
+  if (packageManager?.startsWith('npm/')) return check('installation', 'pass', 'installation channel appears to be npm', assetRoot)
+  if (assetRoot.includes(`${join('node_modules', '@peiyu_wang')}`)) return check('installation', 'pass', 'installation channel appears to be npm', assetRoot)
+  if (assetRoot.includes('.deepseek-harness-cli')) return check('installation', 'pass', 'installation channel appears to be the standalone installer', assetRoot)
+  return check('installation', 'warn', 'installation channel could not be identified', 'set DSH_INSTALL_CHANNEL for packaged deployments')
 }
 
 function checkTerminal(
@@ -155,6 +209,26 @@ function checkTerminal(
   const color = env.COLORTERM?.toLowerCase()
   if (color !== 'truecolor' && color !== '24bit') return check('terminal', 'warn', 'terminal truecolor is not advertised', 'set COLORTERM=truecolor or use a terminal with truecolor support')
   return check('terminal', 'pass', 'interactive terminal and truecolor support detected')
+}
+
+function checkTerminalInput(env: NodeJS.ProcessEnv, stdoutIsTTY: boolean): DoctorCheck {
+  if (!stdoutIsTTY) return check('mouse', 'warn', 'mouse reporting is unavailable without an interactive terminal')
+  const terminal = env.TERM_PROGRAM ?? env.TERM ?? ''
+  if (terminal === '' || terminal === 'dumb') return check('mouse', 'warn', 'terminal mouse reporting is not identifiable', 'keyboard scrolling remains available')
+  return check('mouse', 'pass', 'interactive terminal input is available', terminal)
+}
+
+function checkClipboard(env: NodeJS.ProcessEnv, platform: string): DoctorCheck {
+  const command = platform === 'darwin'
+    ? 'pbcopy'
+    : platform === 'win32'
+      ? 'clip'
+      : env.WAYLAND_DISPLAY !== undefined
+        ? 'wl-copy'
+        : 'xclip'
+  return commandAvailable(command, env)
+    ? check('clipboard', 'pass', `clipboard command ${command} is available`)
+    : check('clipboard', 'warn', `clipboard command ${command} was not found`, 'copy and paste shortcuts may be unavailable')
 }
 
 function buildReport(options: DoctorCommandOptions): DoctorReport {
@@ -173,7 +247,12 @@ function buildReport(options: DoctorCommandOptions): DoctorReport {
   checks.push(checkCredentials(home, env))
   checks.push(checkMcp(home))
   checks.push(checkAssets(assetRoot))
+  checks.push(checkInstallation(assetRoot, env))
+  const platform = options.platform ?? hostPlatform()
+  checks.push(checkSandbox(env, platform))
   checks.push(checkTerminal(env, options.stdinIsTTY ?? process.stdin.isTTY, options.stdoutIsTTY ?? process.stdout.isTTY))
+  checks.push(checkTerminalInput(env, options.stdoutIsTTY ?? process.stdout.isTTY))
+  checks.push(checkClipboard(env, platform))
   return {
     version: readPackageVersion(assetRoot),
     checks,

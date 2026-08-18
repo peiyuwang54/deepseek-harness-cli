@@ -12,6 +12,10 @@ function fixture(): { home: string; assetRoot: string; cwd: string } {
   const cwd = join(root, 'workspace')
   mkdirSync(home, { recursive: true })
   mkdirSync(join(assetRoot, 'config', 'agent-presets'), { recursive: true })
+  for (const bundle of ['dsh-base', 'dsh-tui-app', 'dsh-headless', 'dsh-web-app']) {
+    mkdirSync(join(assetRoot, 'node_modules', '@deepseek-ai', bundle), { recursive: true })
+    writeFileSync(join(assetRoot, 'node_modules', '@deepseek-ai', bundle, 'cordis.patch.yml'), '[]\n')
+  }
   mkdirSync(cwd)
   writeFileSync(join(assetRoot, 'package.json'), JSON.stringify({ version: '0.1.0-test' }))
   return { home, assetRoot, cwd }

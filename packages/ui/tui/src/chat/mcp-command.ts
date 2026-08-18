@@ -13,7 +13,7 @@ import type { McpToolGroup } from './mcp-tools.ts'
 
 type VisibleTool = Pick<ToolSchema, 'name' | 'description' | 'parameters'>
 
-const USAGE = 'Usage: /mcp [list|ls|desc|verbose|schema|reload|resources|prompts] [server] [uri|prompt]'
+const USAGE = 'Usage: /mcp [list|ls|tools|desc|verbose|schema|reload|resources|prompts] [server] [uri|prompt]'
 
 type McpServer = McpToolGroup<VisibleTool>
 
@@ -40,7 +40,7 @@ function parseArguments(rawInput: string): { readonly view: McpView; readonly se
   if (tokens.length === 0) return { view: 'list' }
   const [rawCommand, server, target] = tokens
   const command = rawCommand?.toLowerCase()
-  const view = command === 'list' || command === 'ls'
+  const view = command === 'list' || command === 'ls' || command === 'tools'
     ? 'list'
     : command === 'desc' || command === 'verbose'
       ? 'desc'

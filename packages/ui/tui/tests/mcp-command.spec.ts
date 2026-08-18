@@ -19,6 +19,13 @@ describe('mcp command', () => {
     })
   })
 
+  it('accepts tools as an explicit alias for the default list view', () => {
+    const tools = [
+      { name: 'mcp__github__search', description: 'Search repositories', parameters: {} },
+    ]
+    expect(mcpCommandResult('tools', tools)).toEqual(mcpCommandResult('', tools))
+  })
+
   it('adds normalized descriptions in desc and legacy verbose modes', () => {
     const tools = [
       { name: 'mcp__github__search', description: 'Search\n  repositories', parameters: {} },
@@ -70,11 +77,11 @@ describe('mcp command', () => {
     })
     expect(mcpCommandResult('details', [])).toEqual({
       kind: 'error',
-      text: 'Usage: /mcp [list|ls|desc|verbose|schema|reload|resources|prompts] [server] [uri|prompt]',
+      text: 'Usage: /mcp [list|ls|tools|desc|verbose|schema|reload|resources|prompts] [server] [uri|prompt]',
     })
     expect(mcpCommandResult('schema github extra', [])).toEqual({
       kind: 'error',
-      text: 'Usage: /mcp [list|ls|desc|verbose|schema|reload|resources|prompts] [server] [uri|prompt]',
+      text: 'Usage: /mcp [list|ls|tools|desc|verbose|schema|reload|resources|prompts] [server] [uri|prompt]',
     })
   })
 

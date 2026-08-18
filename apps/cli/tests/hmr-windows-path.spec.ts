@@ -17,4 +17,11 @@ describe('HMR base path resolution', () => {
     expect(resolveHmrBaseDir('profiles/tui', 'file:///tmp/dsh/'))
       .toBe('/tmp/dsh/profiles/tui')
   })
+
+  it('resolves a relative root when the embedded loader anchor is a Windows path', () => {
+    expect(resolveHmrBaseDir(undefined, String.raw`C:\snapshot\deepseek-harness-cli\dist-exe\.staging\cli`))
+      .toBe(String.raw`C:\snapshot\deepseek-harness-cli\dist-exe\.staging\cli`)
+    expect(resolveHmrBaseDir('profiles/tui', String.raw`C:\snapshot\deepseek-harness-cli\dist-exe\.staging\cli`))
+      .toBe(String.raw`C:\snapshot\deepseek-harness-cli\dist-exe\.staging\cli\profiles\tui`)
+  })
 })

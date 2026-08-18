@@ -95,6 +95,15 @@ export function resolveHmrBaseDir(base: string | undefined, baseUrl?: string | U
   if (base !== undefined && (isAbsolute(base) || win32.isAbsolute(base))) {
     return isAbsolute(base) ? resolve(base) : base
   }
+  // Embedded runtimes can expose `import.meta.url`/the loader anchor as a
+  // native Windows path instead of a file URL. Resolve relative HMR roots
+  // directly against that path; `new URL('C:\\...', ...)` treats the drive
+  // letter as a non-file scheme and `fileURLToPath()` rejects it.
+  if (typeof baseUrl === 'string' && (isAbsolute(baseUrl) || win32.isAbsolute(baseUrl))) {
+    return isAbsolute(baseUrl)
+      ? resolve(baseUrl, base || '.')
+      : win32.resolve(baseUrl, base || '.')
+  }
   return fileURLToPath(new URL(base || '.', baseUrl))
 }
 

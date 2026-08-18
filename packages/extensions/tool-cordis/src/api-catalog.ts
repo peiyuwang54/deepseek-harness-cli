@@ -1822,6 +1822,49 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'subagentWorktrees',
+    summary: 'Host capability used by in-process providers to create and clean isolated checkouts.',
+    description: 'Host capability used by in-process providers to create and clean isolated checkouts.',
+    methods: [
+      {
+        signature: 'create(request: SubagentWorktreeCreateRequest): Promise<SubagentWorktreeRecord>',
+        description: 'Create one isolated checkout and persist its record.',
+        parameters: [{ name: 'request', description: 'the child identity, parent workspace, and cancellation signal.' }],
+        returns: 'the durable checkout record.',
+      },
+      {
+        signature: 'get(id: string): Promise<SubagentWorktreeRecord | undefined>',
+        description: 'Read one persisted record.',
+        parameters: [{ name: 'id', description: 'the child session id.' }],
+        returns: 'the record, or `undefined` when no record exists.',
+      },
+      {
+        signature: 'list(): Promise<SubagentWorktreeRecord[]>',
+        description: 'List persisted records.',
+        parameters: [],
+        returns: 'all records in stable id order.',
+      },
+      {
+        signature: 'status(id: string, signal?: AbortSignal): Promise<string>',
+        description: 'Show the Git status of one checkout.',
+        parameters: [{ name: 'id', description: 'the child session id.' }, { name: 'signal', description: 'optional cancellation signal for the Git command.' }],
+        returns: 'the porcelain Git status text.',
+      },
+      {
+        signature: 'merge(id: string, targetCwd: string, signal?: AbortSignal): Promise<void>',
+        description: 'Merge a branch into an explicitly selected target checkout.',
+        parameters: [{ name: 'id', description: 'the child session id whose branch is merged.' }, { name: 'targetCwd', description: 'the clean checkout that receives the merge.' }, { name: 'signal', description: 'optional cancellation signal for the Git command.' }],
+        returns: 'a promise that fulfills after the merge completes.',
+      },
+      {
+        signature: 'discard(id: string, force?: boolean, signal?: AbortSignal): Promise<void>',
+        description: 'Remove a checkout and its branch.',
+        parameters: [{ name: 'id', description: 'the child session id to remove.' }, { name: 'force', description: 'whether to remove a checkout with uncommitted changes.' }, { name: 'signal', description: 'optional cancellation signal for the Git command.' }],
+        returns: 'a promise that fulfills after removal completes.',
+      },
+    ],
+  },
+  {
     key: 'subprocess',
     summary: 'Abstract subprocess service.',
     description: 'Abstract subprocess service. Subclass, implement spawn, and load the subclass as a plugin — it registers as `ctx.subprocess` (one implementation per context; loading a second throws, which is cordis\' standard duplicate-service behavior).\n\nImplementations must honor these semantics:\n\n- Executable paths belong to one execution world shared with the mounted filesystem provider.\n- spawn returns immediately with a live handle; `done` resolves at process close with exit facts and rejects only for spawn-level failures.\n- Collect-mode readers are offset-based and non-consuming, so independent readers never consume one another\'s output; lossy reads report truncation and the spill file holding the complete stream when one exists. Piped streams are handed to the caller raw and never buffered here.\n- SubprocessHandle.terminate (and the spec\'s abort signal) escalates SIGTERM→grace→SIGKILL — the only termination verb — tree-scoped on every platform. SubprocessHandle.waitForExit observes whole-tree liveness, so a consumer-owned teardown ladder can hold each tier on real quiescence.\n- Disposal of the service terminates all still-running managed processes and awaits their exit.\n- spawnTerminal owns terminal allocation, text transport, foreground groups, signalling, and whole-session quiescence behind one awaited termination method; readiness and persistent-shell policy stay in the PTY consumer. Its output stream ends after queued terminal output when the top-level process exits.',
@@ -4439,7 +4482,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SubagentCapabilities',
-    declaration: 'export interface SubagentCapabilities {\n    readonly outputSchema: boolean;\n    readonly depthLimit: boolean;\n    readonly toolFilter: boolean;\n    readonly persona: boolean;\n}',
+    declaration: 'export interface SubagentCapabilities {\n    readonly outputSchema: boolean;\n    readonly depthLimit: boolean;\n    readonly toolFilter: boolean;\n    readonly persona: boolean;\n    readonly worktree?: boolean;\n}',
   },
   {
     name: 'SubagentDescendantListEntry',
@@ -4475,7 +4518,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SubagentRun',
-    declaration: 'export interface SubagentRun {\n    readonly id: SessionId;\n    readonly localAgent: Agent | undefined;\n    readonly result: Promise<SubagentResult>;\n    dispose(): Promise<void>;\n}',
+    declaration: 'export interface SubagentRun {\n    readonly id: SessionId;\n    readonly localAgent: Agent | undefined;\n    readonly worktree?: SubagentWorktreeRecord;\n    readonly result: Promise<SubagentResult>;\n    dispose(): Promise<void>;\n}',
   },
   {
     name: 'SubagentRunEndInfo',
@@ -4495,7 +4538,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SubagentStartRequest',
-    declaration: 'export interface SubagentStartRequest {\n    readonly label?: string;\n    readonly prompt: ContentBlock[];\n    readonly parent: Agent;\n    readonly signal: AbortSignal;\n    readonly agentOptions?: AgentOptions;\n    readonly outputSchema?: ObjectJsonSchema;\n    readonly maxDepth?: number;\n    readonly toolFilter?: ToolRestriction;\n    readonly persona?: string;\n}',
+    declaration: 'export interface SubagentStartRequest {\n    readonly label?: string;\n    readonly prompt: ContentBlock[];\n    readonly parent: Agent;\n    readonly signal: AbortSignal;\n    readonly agentOptions?: AgentOptions;\n    readonly outputSchema?: ObjectJsonSchema;\n    readonly maxDepth?: number;\n    readonly toolFilter?: ToolRestriction;\n    readonly persona?: string;\n    readonly worktree?: SubagentWorktreeMode;\n}',
   },
   {
     name: 'SubagentStopReason',
@@ -4504,6 +4547,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SubagentStopReasonMap',
     declaration: 'export interface SubagentStopReasonMap {\n    completed: \'completed\';\n    aborted: \'aborted\';\n    error: \'error\';\n    \'max-tokens\': \'max-tokens\';\n    refusal: \'refusal\';\n}',
+  },
+  {
+    name: 'SubagentWorktreeCreateRequest',
+    declaration: 'export interface SubagentWorktreeCreateRequest {\n    readonly id: string;\n    readonly parentCwd: string;\n    readonly signal: AbortSignal;\n}',
+  },
+  {
+    name: 'SubagentWorktreeMode',
+    declaration: 'export type SubagentWorktreeMode = \'isolated\';',
+  },
+  {
+    name: 'SubagentWorktreeRecord',
+    declaration: 'export interface SubagentWorktreeRecord {\n    readonly id: string;\n    readonly parentCwd: string;\n    readonly path: string;\n    readonly branch: string;\n    readonly createdAt: number;\n}',
   },
   {
     name: 'SubprocessCollect',

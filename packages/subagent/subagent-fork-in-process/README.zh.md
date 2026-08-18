@@ -14,9 +14,9 @@ subagent 启动时，父 agent 当前的工具调用轮次仍未结束：其日�
 
 ## 启动与能力
 
-`start(request)` 将已完成轮次的初始内容传给 [`startInProcessRun`](../subagent-in-process-driver/README.md)，并等待子 agent 发布。共享驱动器负责取消、深度、定制、结果读取和 dispose（资源释放）。
+`start(request)` 将已完成轮次的初始内容传给 [`startInProcessRun`](../subagent-in-process-driver/README.md)，并等待子 agent 发布。共享驱动器负责取消、深度、定制、结果读取和 dispose（资源释放）。设置 `worktree: 'isolated'` 时，带初始内容的子 agent 会通过 `ctx.subagentWorktrees` 保留在持久化 Git 检出目录中。
 
-fork 声明 `{ outputSchema: true, depthLimit: true, toolFilter: true, persona: true }`，与 spawn 相同。
+fork 声明 `{ outputSchema: true, depthLimit: true, toolFilter: true, persona: true, worktree: true }`，与 spawn 相同。
 
 ## 配置
 

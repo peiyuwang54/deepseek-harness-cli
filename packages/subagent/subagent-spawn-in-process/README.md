@@ -6,13 +6,13 @@ The spawn provider creates a fresh child `Agent` in the current process. The chi
 
 ## Behavior
 
-`start(request)` delegates to [`startInProcessRun`](../subagent-in-process-driver/README.md) with no seed and awaits publication before returning. The child receives parent working-directory/session lineage and inherits the parent model unless overridden, but starts with an empty conversation.
+`start(request)` delegates to [`startInProcessRun`](../subagent-in-process-driver/README.md) with no seed and awaits publication before returning. The child receives parent working-directory/session lineage and inherits the parent model unless overridden, but starts with an empty conversation. Setting `worktree: 'isolated'` gives the child a persistent Git checkout through `ctx.subagentWorktrees`.
 
 The shared driver owns depth checking, persona and tool-filter setup, structured output, required-signal cancellation, one-shot execution, result reading, and quiescent disposal. A startup rejection leaves no published child; provider unload after fulfillment does not revoke the holder-owned run.
 
 ## Capabilities
 
-Spawn advertises `{ outputSchema: true, depthLimit: true, toolFilter: true, persona: true }` because it controls the child's creation window and can enforce all four features.
+Spawn advertises `{ outputSchema: true, depthLimit: true, toolFilter: true, persona: true, worktree: true }` because it controls the child's creation window and can enforce all five features.
 
 ## Config
 

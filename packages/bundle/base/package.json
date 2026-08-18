@@ -88,6 +88,7 @@
     "@deepseek-ai/dsh-spill-local": "workspace:^",
     "@deepseek-ai/dsh-spill-policy": "workspace:^",
     "@deepseek-ai/dsh-subagent": "workspace:^",
+    "@deepseek-ai/dsh-subagent-worktree": "workspace:^",
     "@deepseek-ai/dsh-subagent-fork-in-process": "workspace:^",
     "@deepseek-ai/dsh-subagent-spawn-in-process": "workspace:^",
     "@deepseek-ai/dsh-subprocess-local": "workspace:^",

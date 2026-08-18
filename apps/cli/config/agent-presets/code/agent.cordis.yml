@@ -198,6 +198,15 @@
         toolName: subagent_fork
         backgroundMode: continuable
 
+    - id: tool-subagent-worktree
+      name: '@deepseek-ai/dsh-tool-subagent'
+      config:
+        provider: spawn
+        toolName: subagent_worktree
+        enableRunInBackground: false
+        worktree: isolated
+        maxDepth: 3
+
     # Product providers are host-plane singletons. Copy this preset, then
     # remove `disabled` from either ordinary tool row to expose that product
     # only to agents composed from the copy.

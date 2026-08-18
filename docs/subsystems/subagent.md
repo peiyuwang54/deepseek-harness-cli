@@ -4,7 +4,7 @@ English | [中文](subagent.zh.md)
 
 The subagent seam lets an agent delegate work to a child agent. Like [bash](shell.md), it is **one optional capability**, not part of the agent loop, so its types live here rather than in [core.md](core.md). It differs from the other capability seams because **multiple provider implementations coexist** in one context, registered by name (`ctx.subagents`), while bash allows only one executor. Its registry follows the [LLM adapter registry](llm-streaming.md), not the single-service bash executor.
 
-Service Definition: [dsh-subagent](../../packages/subagent/subagent) (`ctx.subagents` + the vocabulary below). Service Providers are sibling packages (`dsh-subagent-spawn-in-process`, `-fork`, `-acp`, `-codex`, `-claude-code`, `-dsh-sdk`); the model-facing Consumers are [dsh-tool-subagent](../../packages/subagent/tool-subagent) (per-provider delegation), [dsh-tool-subagent-control](../../packages/subagent/tool-subagent-control) (the optional global `send_message`, `interrupt_agent`, and `list_agents` controls), and [dsh-tool-subagent-report](../../packages/subagent/tool-subagent-report) (the optional child-scoped `report` return channel). The same `ctx.subagents` service owns continuable-child orchestration through an internal activation manager and read-only child and descendant discovery straight from the session store and optional session persistence. Product-provider rationale lives in [the Codex and Claude Code Agent Note](../../.agents/notes/implemented/feature/2026-08-04-claude-code-and-codex-subagent-backends.md); common-seam rationale lives in [the subagent Agent Note](../../.agents/notes/implemented/feature/2026-06-21-subagent-capability-seam.md), [the continuable subagents Agent Note](../../.agents/notes/implemented/feature/2026-07-28-continuable-subagent-conversations.md), [the report-tool Agent Note](../../.agents/notes/implemented/feature/2026-07-30-continuable-subagent-report-tool.md), [the durable catalog Agent Note](../../.agents/notes/implemented/feature/2026-07-22-durable-subagent-catalog-and-list-agents.md), [the list-identity-projection Agent Note](../../.agents/notes/implemented/architecture/2026-08-06-subagent-list-identity-projection.md), and [the merged-service Agent Note](../../.agents/notes/implemented/simplification/2026-07-26-merge-subagent-control-service.md).
+Service Definition: [dsh-subagent](../../packages/subagent/subagent) (`ctx.subagents` + the vocabulary below). Service Providers are sibling packages (`dsh-subagent-spawn-in-process`, `-fork`, `-acp`, `-codex`, `-claude-code`, `-dsh-sdk`); [dsh-subagent-worktree](../../packages/subagent/subagent-worktree) supplies the host Git checkout manager used by isolated in-process children. The model-facing Consumers are [dsh-tool-subagent](../../packages/subagent/tool-subagent) (per-provider delegation), [dsh-tool-subagent-control](../../packages/subagent/tool-subagent-control) (the optional global `send_message`, `interrupt_agent`, and `list_agents` controls), and [dsh-tool-subagent-report](../../packages/subagent/tool-subagent-report) (the optional child-scoped `report` return channel). The same `ctx.subagents` service owns continuable-child orchestration through an internal activation manager and read-only child and descendant discovery straight from the session store and optional session persistence. Product-provider rationale lives in [the Codex and Claude Code Agent Note](../../.agents/notes/implemented/feature/2026-08-04-claude-code-and-codex-subagent-backends.md); common-seam rationale lives in [the subagent Agent Note](../../.agents/notes/implemented/feature/2026-06-21-subagent-capability-seam.md), [the continuable subagents Agent Note](../../.agents/notes/implemented/feature/2026-07-28-continuable-subagent-conversations.md), [the report-tool Agent Note](../../.agents/notes/implemented/feature/2026-07-30-continuable-subagent-report-tool.md), [the durable catalog Agent Note](../../.agents/notes/implemented/feature/2026-07-22-durable-subagent-catalog-and-list-agents.md), [the list-identity-projection Agent Note](../../.agents/notes/implemented/architecture/2026-08-06-subagent-list-identity-projection.md), [the merged-service Agent Note](../../.agents/notes/implemented/simplification/2026-07-26-merge-subagent-control-service.md), and [the isolated worktree Agent Note](../../.agents/notes/implemented/feature/2026-08-18-subagent-worktree-isolation.md).
 
 Sources: [`packages/subagent/subagent/src/types.ts`](../../packages/subagent/subagent/src/types.ts), [`packages/subagent/subagent/src/index.ts`](../../packages/subagent/subagent/src/index.ts), and [`packages/subagent/subagent/src/continuation.ts`](../../packages/subagent/subagent/src/continuation.ts)
 
@@ -29,12 +29,13 @@ interface SubagentCapabilities {
   readonly depthLimit: boolean
   readonly toolFilter: boolean
   readonly persona: boolean
+  readonly worktree?: boolean
 }
 ```
 
 ## The one-shot start request
 
-The tool layer builds this request from the model input and its own config; the service validates it against the named provider before `start`. Required `parent` supplies the session cwd, lineage, and delegation depth. Optional output schema, depth, tool filter, and persona require matching capability flags. Unsupported schemas fail at start; in-process backends scope filters and personas to child creation and implement the supported object-rooted schema with a forced capture tool.
+The tool layer builds this request from the model input and its own config; the service validates it against the named provider before `start`. Required `parent` supplies the session cwd, lineage, and delegation depth. Optional output schema, depth, tool filter, persona, and isolated worktree require matching capability flags. Unsupported schemas fail at start; in-process backends scope filters and personas to child creation, and an isolated one-shot child receives a persistent Git checkout as its session cwd.
 
 ```ts type-equiv
 /**
@@ -93,6 +94,8 @@ interface SubagentStartRequest {
    * persona (strict `{{…}}` interpolation against the registered variables).
    */
   readonly persona?: string
+  /** Create the child in a dedicated Git worktree. Requires the provider's `worktree` capability. */
+  readonly worktree?: SubagentWorktreeMode
 }
 ```
 
@@ -385,6 +388,8 @@ interface SubagentRun {
    * implication beyond the run's ordinary {@link dispose} contract.
    */
   readonly localAgent: Agent | undefined
+  /** Isolated checkout retained for an explicit merge or discard operation. */
+  readonly worktree?: SubagentWorktreeRecord
   /**
    * Resolves with the child's terminal {@link SubagentResult} when the run
    * settles. Does NOT reject on a child-level failure — a model/transport
@@ -646,7 +651,63 @@ async start(name: string, request: SubagentStartRequest): Promise<SubagentRun>
 
 Types: [Agent](core.md) · [ContentBlock](llm-streaming.md) · [MessageId](llm-streaming.md) · [SessionId](core.md)
 
-Source: [`packages/subagent/subagent/src/index.ts:171`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:177`](../../packages/subagent/subagent/src/index.ts)
+
+<a id="ctxsubagentworktrees--subagentworktreemanager"></a>
+
+### `ctx.subagentWorktrees` — `SubagentWorktreeManager`
+
+Host capability used by in-process providers to create and clean isolated checkouts.
+
+```ts cordis-catalog
+/**
+ * Create one isolated checkout and persist its record.
+ * @param request - the child identity, parent workspace, and cancellation signal.
+ * @returns the durable checkout record.
+ */
+create(request: SubagentWorktreeCreateRequest): Promise<SubagentWorktreeRecord>
+
+/**
+ * Read one persisted record.
+ * @param id - the child session id.
+ * @returns the record, or `undefined` when no record exists.
+ */
+get(id: string): Promise<SubagentWorktreeRecord | undefined>
+
+/**
+ * List persisted records.
+ * @returns all records in stable id order.
+ */
+list(): Promise<SubagentWorktreeRecord[]>
+
+/**
+ * Show the Git status of one checkout.
+ * @param id - the child session id.
+ * @param signal - optional cancellation signal for the Git command.
+ * @returns the porcelain Git status text.
+ */
+status(id: string, signal?: AbortSignal): Promise<string>
+
+/**
+ * Merge a branch into an explicitly selected target checkout.
+ * @param id - the child session id whose branch is merged.
+ * @param targetCwd - the clean checkout that receives the merge.
+ * @param signal - optional cancellation signal for the Git command.
+ * @returns a promise that fulfills after the merge completes.
+ */
+merge(id: string, targetCwd: string, signal?: AbortSignal): Promise<void>
+
+/**
+ * Remove a checkout and its branch.
+ * @param id - the child session id to remove.
+ * @param force - whether to remove a checkout with uncommitted changes.
+ * @param signal - optional cancellation signal for the Git command.
+ * @returns a promise that fulfills after removal completes.
+ */
+discard(id: string, force?: boolean, signal?: AbortSignal): Promise<void>
+```
+
+Source: [`packages/subagent/subagent/src/types.ts:44`](../../packages/subagent/subagent/src/types.ts)
 
 <a id="subagent-events"></a>
 
@@ -672,7 +733,7 @@ A published child settled. Scope-filtered dispatch uses the same delegating pare
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/subagent/subagent/src/index.ts:166`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:172`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagentprovider-added--emit"></a>
 
@@ -689,7 +750,7 @@ A provider became resolvable in the registry.
 'subagent/provider-added'(provider: SubagentProvider): void
 ```
 
-Source: [`packages/subagent/subagent/src/index.ts:140`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:146`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagentprovider-removed--emit"></a>
 
@@ -706,7 +767,7 @@ A provider left the registry. Accepted runs remain holder-owned.
 'subagent/provider-removed'(name: string): void
 ```
 
-Source: [`packages/subagent/subagent/src/index.ts:146`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:152`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagentstart--emit"></a>
 
@@ -730,5 +791,5 @@ A provider established a published child. For in-process providers, `ctx.agents.
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/subagent/subagent/src/index.ts:157`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:163`](../../packages/subagent/subagent/src/index.ts)
 <!-- END GENERATED cordis-surface -->

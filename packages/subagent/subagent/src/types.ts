@@ -16,6 +16,77 @@ import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
 import type { ObjectJsonSchema, ToolRestriction } from '@deepseek-ai/dsh-tools'
 import type { SubagentDescriptorData } from './descriptor.ts'
 
+/** A persistent checkout owned by one isolated subagent. */
+export interface SubagentWorktreeRecord {
+  /** Child session id that owns the branch. */
+  readonly id: string
+  /** Parent checkout used to resolve the repository and branch. */
+  readonly parentCwd: string
+  /** Absolute isolated checkout path. */
+  readonly path: string
+  /** Branch created for this child. */
+  readonly branch: string
+  /** Creation timestamp in milliseconds since the Unix epoch. */
+  readonly createdAt: number
+}
+
+/** Request passed to the host worktree manager before child publication. */
+export interface SubagentWorktreeCreateRequest {
+  /** Child session id reserved by the subagent provider. */
+  readonly id: string
+  /** Parent session workspace. */
+  readonly parentCwd: string
+  /** Cancellation owned by child creation. */
+  readonly signal: AbortSignal
+}
+
+/** Host capability used by in-process providers to create and clean isolated checkouts. */
+export interface SubagentWorktreeManager {
+  /**
+   * Create one isolated checkout and persist its record.
+   * @param request - the child identity, parent workspace, and cancellation signal.
+   * @returns the durable checkout record.
+   */
+  create(request: SubagentWorktreeCreateRequest): Promise<SubagentWorktreeRecord>
+  /**
+   * Read one persisted record.
+   * @param id - the child session id.
+   * @returns the record, or `undefined` when no record exists.
+   */
+  get(id: string): Promise<SubagentWorktreeRecord | undefined>
+  /**
+   * List persisted records.
+   * @returns all records in stable id order.
+   */
+  list(): Promise<SubagentWorktreeRecord[]>
+  /**
+   * Show the Git status of one checkout.
+   * @param id - the child session id.
+   * @param signal - optional cancellation signal for the Git command.
+   * @returns the porcelain Git status text.
+   */
+  status(id: string, signal?: AbortSignal): Promise<string>
+  /**
+   * Merge a branch into an explicitly selected target checkout.
+   * @param id - the child session id whose branch is merged.
+   * @param targetCwd - the clean checkout that receives the merge.
+   * @param signal - optional cancellation signal for the Git command.
+   * @returns a promise that fulfills after the merge completes.
+   */
+  merge(id: string, targetCwd: string, signal?: AbortSignal): Promise<void>
+  /**
+   * Remove a checkout and its branch.
+   * @param id - the child session id to remove.
+   * @param force - whether to remove a checkout with uncommitted changes.
+   * @param signal - optional cancellation signal for the Git command.
+   * @returns a promise that fulfills after removal completes.
+   */
+  discard(id: string, force?: boolean, signal?: AbortSignal): Promise<void>
+}
+
+/** The worktree mode requested by an execution-oriented child. */
+export type SubagentWorktreeMode = 'isolated'
+
 /** Identifies one accepted subagent run across its lifecycle event pair. */
 export type SubagentRunId = Branded<'SubagentRunId'>
 
@@ -88,6 +159,7 @@ export interface SubagentCapabilities {
   readonly depthLimit: boolean
   readonly toolFilter: boolean
   readonly persona: boolean
+  readonly worktree?: boolean
 }
 
 /**
@@ -146,6 +218,8 @@ export interface SubagentStartRequest {
    * persona (strict `{{…}}` interpolation against the registered variables).
    */
   readonly persona?: string
+  /** Create the child in a dedicated Git worktree. Requires the provider's `worktree` capability. */
+  readonly worktree?: SubagentWorktreeMode
 }
 
 /**
@@ -259,6 +333,8 @@ export interface SubagentRun {
    * implication beyond the run's ordinary {@link dispose} contract.
    */
   readonly localAgent: Agent | undefined
+  /** Isolated checkout retained for an explicit merge or discard operation. */
+  readonly worktree?: SubagentWorktreeRecord
   /**
    * Resolves with the child's terminal {@link SubagentResult} when the run
    * settles. Does NOT reject on a child-level failure — a model/transport

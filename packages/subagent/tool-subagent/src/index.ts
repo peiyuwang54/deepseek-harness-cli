@@ -76,6 +76,8 @@ export interface Config {
    * budget belongs to the child runtime or its own deployment.
    */
   maxDepth?: number | 'provider-managed'
+  /** Run one-shot children in a persistent Git worktree. Continuable mode rejects this option. */
+  worktree?: 'isolated'
 }
 
 export const Config: z<Config> = z.object({
@@ -96,6 +98,7 @@ export const Config: z<Config> = z.object({
     deny: z.array(z.string()).default(undefined as unknown as string[]),
   }).default(undefined as unknown as { allow: string[]; deny: string[] }),
   maxDepth: z.union([z.natural().max(Number.MAX_SAFE_INTEGER), z.const('provider-managed' as const)]).default(3),
+  worktree: z.const('isolated' as const),
 })
 
 /** Render text blocks from the canonical JSON block array without trusting arbitrary values. */
@@ -274,6 +277,9 @@ export function apply(ctx: Context, config: Config): void {
   }
   const backgroundEnabled = config.enableRunInBackground !== false
   const continuable = (config.backgroundMode ?? 'one-shot') === 'continuable'
+  if (continuable && config.worktree !== undefined) {
+    throw new Error('tool-subagent: worktree isolation is available for one-shot children only')
+  }
   const toolName = config.toolName ?? 'subagent'
   // Mirror provider lifecycle because sibling load order and HMR replacement
   // can change provider availability while this fiber remains active.
@@ -382,6 +388,7 @@ export function apply(ctx: Context, config: Config): void {
           ...config.persona !== undefined ? { persona: config.persona } : {},
           ...config.toolFilter !== undefined ? { toolFilter: config.toolFilter } : {},
           ...maxDepth !== undefined ? { maxDepth } : {},
+          ...config.worktree !== undefined ? { worktree: config.worktree } : {},
         }
 
         const runSpec = resolveDelegationRun(args, { backgroundEnabled, continuable })

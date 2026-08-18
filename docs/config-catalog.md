@@ -2199,6 +2199,22 @@ export interface Config {
 
 Source: [`packages/subagent/subagent-spawn-in-process/src/index.ts:25`](../packages/subagent/subagent-spawn-in-process/src/index.ts)
 
+<a id="deepseek-aidsh-subagent-worktree"></a>
+
+## `@deepseek-ai/dsh-subagent-worktree`
+
+```ts config-catalog
+/** Configuration for the persistent worktree store. */
+export interface Config {
+  /** Directory containing one record and checkout per isolated child. */
+  root?: string
+  /** Maximum number of worktree creation operations in flight. */
+  maxConcurrent?: number
+}
+```
+
+Source: [`packages/subagent/subagent-worktree/src/index.ts:27`](../packages/subagent/subagent-worktree/src/index.ts)
+
 <a id="deepseek-aidsh-subprocess-e2b"></a>
 
 ## `@deepseek-ai/dsh-subprocess-e2b`
@@ -2645,6 +2661,8 @@ export interface Config {
    * budget belongs to the child runtime or its own deployment.
    */
   maxDepth?: number | 'provider-managed'
+  /** Run one-shot children in a persistent Git worktree. Continuable mode rejects this option. */
+  worktree?: 'isolated'
 }
 ```
 

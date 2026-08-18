@@ -33,6 +33,7 @@ import type {
   SubagentResult,
   SubagentRun,
   SubagentStopReason,
+  SubagentWorktreeRecord,
 } from '@deepseek-ai/dsh-subagent'
 import {
   attachStructuredRuntime,
@@ -118,6 +119,15 @@ export async function startInProcessRun(
   // parent's future.
   const inherited = captureDelegatedPolicyOverrides(parent)
 
+  let worktree: SubagentWorktreeRecord | undefined
+  if (request.worktree === 'isolated') {
+    const manager = parent.ctx.get('subagentWorktrees')
+    if (manager === undefined) throw new Error('isolated subagent worktree support is unavailable')
+    const parentCwd = parent.session.header.cwd
+    if (parentCwd === undefined) throw new Error('isolated subagent worktrees require a parent workspace')
+    worktree = await manager.create({ id: childId, parentCwd, signal: request.signal })
+  }
+
   let structured: StructuredAttachment | undefined
   const setup = (childCtx: Context): void => {
     appendDelegatedPolicyOverrides((childCtx.agent as Agent).session, inherited)
@@ -131,22 +141,31 @@ export async function startInProcessRun(
     attachDescriptorAppend(childCtx, request.descriptor)
   }
 
-  const handle = await parent.ctx.agents.create({
-    sessionId: childId,
-    meta: childSessionMeta(parent, childDepth, activationBoundary),
-    ...seed !== undefined ? { seed } : {},
-    agentOptions: resolveChildAgentOptions(parent, request.agentOptions, childDepth),
-    signal: request.signal,
-    setup,
-  })
-  return drivePublishedRun(
-    handle,
-    request.signal,
-    request.prompt,
-    childId,
-    activationBoundary,
-    structured,
-  )
+  try {
+    const handle = await parent.ctx.agents.create({
+      sessionId: childId,
+      meta: childSessionMeta(parent, childDepth, activationBoundary, worktree?.path),
+      ...seed !== undefined ? { seed } : {},
+      agentOptions: resolveChildAgentOptions(parent, request.agentOptions, childDepth),
+      signal: request.signal,
+      setup,
+    })
+    return drivePublishedRun(
+      handle,
+      request.signal,
+      request.prompt,
+      childId,
+      activationBoundary,
+      structured,
+      worktree,
+    )
+  } catch (error) {
+    if (worktree !== undefined) {
+      const manager = parent.ctx.get('subagentWorktrees')
+      await manager?.discard(worktree.id, true).catch(() => undefined)
+    }
+    throw error
+  }
 }
 
 /**
@@ -160,6 +179,7 @@ function drivePublishedRun(
   childId: SessionId,
   boundary: number,
   structured: StructuredAttachment | undefined,
+  worktree: SubagentWorktreeRecord | undefined,
 ): SubagentRun {
   const child = handle.agent
   const flags = { cancelled: false }
@@ -193,6 +213,7 @@ function drivePublishedRun(
   return {
     id: childId,
     localAgent: child,
+    ...worktree === undefined ? {} : { worktree },
     result,
     async dispose(): Promise<void> {
       signal.removeEventListener('abort', onAbort)

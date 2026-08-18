@@ -515,6 +515,15 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Providers implement transports; the service also owns optional Activation-based continuation orchestration, tool-subagent selects one-shot or continuable delegation, tool-subagent-control delivers follow-ups, and tool-ralph requires one fresh structured-output route.',
   },
   {
+    key: 'subagentWorktrees',
+    pkg: 'subagent-worktree',
+    title: 'Isolated Git worktree manager',
+    mode: 'seam',
+    implementations: [],
+    consumers: ['subagent-in-process-driver', 'tui'],
+    note: 'The host-side manager creates durable child branches and checkouts; in-process coding children use the checkout as their session cwd, while the TUI exposes explicit status, merge, and discard controls.',
+  },
+  {
     key: 'jobs',
     pkg: 'jobs',
     title: 'Background job registry',

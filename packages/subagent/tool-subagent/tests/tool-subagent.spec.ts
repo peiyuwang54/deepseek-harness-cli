@@ -83,6 +83,15 @@ describe('dsh-tool-subagent', () => {
     )
   })
 
+  it('rejects worktree isolation for continuable children', async () => {
+    await expect(setup({
+      provider: 'mock',
+      backgroundMode: 'continuable',
+      maxDepth: 'provider-managed',
+      worktree: 'isolated',
+    })).rejects.toThrow('worktree isolation is available for one-shot children only')
+  })
+
   it('registers a `subagent` tool that delegates to the configured provider and returns its output', async () => {
     const ctx = await setup({ provider: 'mock' }, { reply: 'child says hi' })
     const result = await callSubagent(ctx, { description: 'do a thing', prompt: 'go research X' })
@@ -625,14 +634,14 @@ describe('dsh-tool-subagent', () => {
   })
 
   it('passes persona/toolFilter/maxDepth config through to the start request', async () => {
-    let seen: { persona?: string; toolFilter?: unknown; maxDepth?: number } | undefined
+    let seen: { persona?: string; toolFilter?: unknown; maxDepth?: number; worktree?: 'isolated' } | undefined
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(SubagentRuntime)
     ctx.subagents.registerProvider({
       name: 'capture2',
-      capabilities: { outputSchema: false, depthLimit: true, toolFilter: true, persona: true },
+      capabilities: { outputSchema: false, depthLimit: true, toolFilter: true, persona: true, worktree: true },
       inheritsParentContext: false,
       start: async (request) => {
         seen = request
@@ -649,12 +658,14 @@ describe('dsh-tool-subagent', () => {
       persona: 'You are the child.',
       toolFilter: { deny: ['subagent'] },
       maxDepth: 2,
+      worktree: 'isolated',
     })
 
     await callSubagent(ctx, { description: 'd', prompt: 'p' })
     expect(seen?.persona).toBe('You are the child.')
     expect(seen?.toolFilter).toMatchObject({ deny: ['subagent'] })
     expect(seen?.maxDepth).toBe(2)
+    expect(seen?.worktree).toBe('isolated')
   })
 
   it.each([

@@ -1599,6 +1599,9 @@ importers:
       '@deepseek-ai/dsh-subagent-spawn-in-process':
         specifier: workspace:^
         version: link:../../subagent/subagent-spawn-in-process
+      '@deepseek-ai/dsh-subagent-worktree':
+        specifier: workspace:^
+        version: link:../../subagent/subagent-worktree
       '@deepseek-ai/dsh-subprocess-local':
         specifier: workspace:^
         version: link:../../subprocess/subprocess-local
@@ -7899,6 +7902,9 @@ importers:
 
   packages/subagent/subagent-spawn-in-process:
     dependencies:
+      '@deepseek-ai/dsh-subagent-worktree':
+        specifier: workspace:^
+        version: link:../subagent-worktree
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
@@ -7948,6 +7954,28 @@ importers:
       '@deepseek-ai/dsh-tool-subagent':
         specifier: workspace:^
         version: link:../tool-subagent
+
+  packages/subagent/subagent-worktree:
+    dependencies:
+      '@deepseek-ai/dsh-native-command':
+        specifier: workspace:^
+        version: link:../../util/native-command
+      '@deepseek-ai/dsh-subagent':
+        specifier: workspace:^
+        version: link:../subagent
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:^
+        version: link:../../core/session
 
   packages/subagent/tool-subagent:
     dependencies:

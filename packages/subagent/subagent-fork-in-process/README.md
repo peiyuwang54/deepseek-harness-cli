@@ -14,9 +14,9 @@ The seed transfers conversation history only. The child still receives a fresh f
 
 ## Start and capabilities
 
-`start(request)` passes the completed-turn seed to [`startInProcessRun`](../subagent-in-process-driver/README.md) and awaits child publication. The shared driver owns cancellation, depth, customization, result reading, and disposal.
+`start(request)` passes the completed-turn seed to [`startInProcessRun`](../subagent-in-process-driver/README.md) and awaits child publication. The shared driver owns cancellation, depth, customization, result reading, and disposal. Setting `worktree: 'isolated'` keeps the seeded child in a persistent Git checkout through `ctx.subagentWorktrees`.
 
-Fork advertises `{ outputSchema: true, depthLimit: true, toolFilter: true, persona: true }`, identical to spawn.
+Fork advertises `{ outputSchema: true, depthLimit: true, toolFilter: true, persona: true, worktree: true }`, identical to spawn.
 
 ## Config
 

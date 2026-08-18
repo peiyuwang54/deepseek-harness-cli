@@ -48,6 +48,7 @@ import type {
   SubagentRunEndInfo,
   SubagentRunInfo,
   SubagentStartRequest,
+  SubagentWorktreeManager,
 } from './types.ts'
 import { SubagentError } from './error.ts'
 import { assertSubagentMaxDepth } from './depth.ts'
@@ -82,6 +83,10 @@ export type {
   SubagentStartRequest,
   SubagentStopReason,
   SubagentStopReasonMap,
+  SubagentWorktreeCreateRequest,
+  SubagentWorktreeManager,
+  SubagentWorktreeMode,
+  SubagentWorktreeRecord,
 } from './types.ts'
 export {
   foldSubagentDescriptor,
@@ -129,6 +134,7 @@ export type { SubagentIdentityProjection, SubagentTimingProjection } from './pro
 declare module '@deepseek-ai/cordis' {
   interface Context {
     subagents: SubagentRuntime
+    subagentWorktrees: SubagentWorktreeManager
   }
 
   interface Events {
@@ -484,6 +490,7 @@ export class SubagentRuntime extends Service {
       { when: request.maxDepth !== undefined, cap: 'depthLimit' },
       { when: request.toolFilter !== undefined, cap: 'toolFilter' },
       { when: request.persona !== undefined, cap: 'persona' },
+      { when: request.worktree !== undefined, cap: 'worktree' },
     ]
     for (const { when, cap } of needs) {
       if (when && !provider.capabilities[cap]) {

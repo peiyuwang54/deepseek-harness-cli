@@ -316,6 +316,12 @@
     - id: subagent
       name: '@deepseek-ai/dsh-subagent'
 
+    - id: subagent-worktree
+      name: '@deepseek-ai/dsh-subagent-worktree'
+      config:
+        root: !!js dshHomePath('subagent-worktrees')
+        maxConcurrent: 4
+
     - id: subagent-spawn-in-process
       name: '@deepseek-ai/dsh-subagent-spawn-in-process'
       config:

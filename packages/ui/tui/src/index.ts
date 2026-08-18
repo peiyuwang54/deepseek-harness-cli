@@ -2554,8 +2554,67 @@ export function createTuiChat(
     }, currentSessionId)
   }
 
+  const runWorktreeCommand = async (raw: string): Promise<void> => {
+    const manager = ctx.get('subagentWorktrees')
+    if (manager === undefined) {
+      appendNotice('Subagent worktrees are unavailable in this profile.', 'warning')
+      return
+    }
+    const words = raw.trim().split(/\s+/).filter(Boolean)
+    const operation = words[0] ?? 'list'
+    if (operation === 'list') {
+      if (words.length !== 1) throw new Error('Usage: /subagents worktree list')
+      const records = await manager.list()
+      if (records.length === 0) {
+        appendNotice('No isolated subagent worktrees.')
+        return
+      }
+      const rows = await Promise.all(records.map(async (record) => {
+        const status = await manager.status(record.id, agentNavigationAbort.signal)
+        return `${record.id} · ${record.branch}\n  ${record.path}\n  ${status}`
+      }))
+      appendNotice(rows.join('\n'))
+      return
+    }
+    if (operation === 'status') {
+      if (words.length !== 2) throw new Error('Usage: /subagents worktree status <id>')
+      const id = words[1]
+      if (id === undefined) throw new Error('Usage: /subagents worktree status <id>')
+      appendNotice(await manager.status(id, agentNavigationAbort.signal))
+      return
+    }
+    if (operation === 'merge') {
+      if (words.length > 3 || words.length < 2) throw new Error('Usage: /subagents worktree merge <id> [target]')
+      const id = words[1]
+      if (id === undefined) throw new Error('Usage: /subagents worktree merge <id> [target]')
+      const target = words[2] ?? (agent.session.header.cwd ?? process.cwd())
+      await manager.merge(id, target, agentNavigationAbort.signal)
+      appendNotice(`Merged subagent worktree ${id} into ${target}.`)
+      return
+    }
+    if (operation === 'discard') {
+      if (words.length < 2 || words.length > 3) throw new Error('Usage: /subagents worktree discard <id> [--force]')
+      const id = words[1]
+      if (id === undefined) throw new Error('Usage: /subagents worktree discard <id> [--force]')
+      const force = words[2] === '--force'
+      if (words.length === 3 && !force) throw new Error('Usage: /subagents worktree discard <id> [--force]')
+      await manager.discard(id, force, agentNavigationAbort.signal)
+      appendNotice(`Discarded subagent worktree ${id}.`)
+      return
+    }
+    throw new Error('Usage: /subagents worktree [list|status <id>|merge <id> [target]|discard <id> [--force]]')
+  }
+
   const runAgentCommand = (command: 'agent' | 'subagents', raw: string): CommandResult => {
-    if (raw.trim() !== '') return { kind: 'error', text: `Usage: /${command} (no arguments)` }
+    const input = raw.trim()
+    if (command === 'subagents' && (input === 'worktree' || input.startsWith('worktree ') || input === 'worktrees' || input.startsWith('worktrees '))) {
+      const worktreeInput = input.replace(/^worktrees?\b\s*/, '')
+      commandHubOperations = commandHubOperations.then(() => runWorktreeCommand(worktreeInput)).catch((error: unknown) => {
+        if (!disposed && !agentNavigationAbort.signal.aborted) appendNotice(`Could not manage subagent worktree: ${errorChain(error)}`, 'error')
+      })
+      return { kind: 'success' }
+    }
+    if (input !== '') return { kind: 'error', text: `Usage: /${command} (no arguments)` }
     commandHubOperations = commandHubOperations.then(showAgentPicker).catch((error: unknown) => {
       if (!disposed && !agentNavigationAbort.signal.aborted) {
         appendNotice(`Could not read subagents: ${errorChain(error)}`, 'error')
@@ -3037,7 +3096,8 @@ export function createTuiChat(
     })
     commandCtx.commands.register({
       name: 'subagents',
-      description: 'Switch the active agent thread',
+      description: 'Switch agent threads or manage isolated worktrees',
+      input: { hint: '[worktree [list|status|merge|discard]]' },
       handler: ({ rawInput }) => runAgentCommand('subagents', rawInput),
     })
     commandCtx.commands.register({

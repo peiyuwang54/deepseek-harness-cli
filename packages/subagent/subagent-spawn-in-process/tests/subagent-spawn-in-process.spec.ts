@@ -1,4 +1,7 @@
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { Context, symbols, type EffectMeta } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
@@ -13,6 +16,8 @@ import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
 import SubagentRuntime, { type SubagentStartRequest } from '@deepseek-ai/dsh-subagent'
 import { MockAdapter, maxTokensResponse, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import * as spawn from '../src/index.ts'
+import WorktreeService from '@deepseek-ai/dsh-subagent-worktree'
+import { runNativeCommand } from '@deepseek-ai/dsh-native-command'
 import { STRUCTURED_OUTPUT_TOOL } from '@deepseek-ai/dsh-subagent-in-process-driver'
 import { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
 
@@ -32,7 +37,7 @@ async function mountInvariants(ctx: Context): Promise<void> {
  * The parent is a real config agent; the spawn provider creates a real child
  * agent on the same context and we assert its output.
  */
-async function setup(script: Script) {
+async function setup(script: Script, cwd?: string) {
   const ctx = new Context()
   const adapter = new MockAdapter(script)
   await mountAgentLoopTestDependencies(ctx)
@@ -41,7 +46,7 @@ async function setup(script: Script) {
   await ctx.plugin(SubagentRuntime)
   await ctx.plugin(spawn, { providerName: 'spawn' })
   ctx.llm.registerAdapter(['mock'], adapter)
-  const parent = ctx.agentLoop.create(SessionId('parent'), { provider: 'mock', model: 'mock' })
+  const parent = ctx.agentLoop.create(SessionId('parent'), { provider: 'mock', model: 'mock' }, cwd === undefined ? undefined : { cwd })
   return { ctx, parent, adapter }
 }
 
@@ -65,6 +70,58 @@ function disposeChildLifecycle(parent: Agent): void {
 }
 
 describe('dsh-subagent-spawn-in-process', () => {
+  it('rejects isolated children when the host has no worktree manager', async () => {
+    const { ctx, parent } = await setup([textResponse('unused')], '/tmp/parent-workspace')
+    await expect(start(ctx, 'spawn', {
+      prompt: [{ type: 'text', text: 'isolate' }],
+      parent,
+      worktree: 'isolated',
+    })).rejects.toThrow('isolated subagent worktree support is unavailable')
+    await ctx.fiber.dispose()
+  })
+
+  it('rejects isolated children when the parent has no workspace', async () => {
+    const { ctx, parent } = await setup([textResponse('unused')])
+    const root = await mkdtemp(join(tmpdir(), 'dsh-spawn-worktree-root-'))
+    try {
+      await ctx.plugin(WorktreeService, { root })
+      await expect(start(ctx, 'spawn', {
+        prompt: [{ type: 'text', text: 'isolate' }],
+        parent,
+        worktree: 'isolated',
+      })).rejects.toThrow('isolated subagent worktrees require a parent workspace')
+    } finally {
+      await ctx.fiber.dispose()
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('publishes an isolated child in a dedicated Git worktree', async () => {
+    const repo = await mkdtemp(join(tmpdir(), 'dsh-spawn-worktree-repo-'))
+    const root = await mkdtemp(join(tmpdir(), 'dsh-spawn-worktree-root-'))
+    const signal = new AbortController().signal
+    const runGit = (args: readonly string[]) => runNativeCommand('git', ['-C', repo, ...args], signal)
+    await runGit(['init', '-q'])
+    await writeFile(join(repo, 'README.md'), 'base\n')
+    await runGit(['add', 'README.md'])
+    await runNativeCommand('git', ['-C', repo, '-c', 'user.name=dsh-test', '-c', 'user.email=dsh@example.test', 'commit', '-qm', 'base'], signal)
+    const { ctx, parent } = await setup([textResponse('child answer')], repo)
+    await ctx.plugin(WorktreeService, { root, maxConcurrent: 1 })
+    try {
+      const run = await start(ctx, 'spawn', { prompt: [{ type: 'text', text: 'edit in isolation' }], parent, worktree: 'isolated' })
+      expect(run.worktree?.path).toBe(join(root, String(run.id), 'tree'))
+      const result = await run.result
+      expect(text(result.output)).toBe('child answer')
+      expect(ctx.agents.get(run.id)?.session.header.cwd).toBe(run.worktree?.path)
+      await run.dispose()
+      expect(await ctx.get('subagentWorktrees')?.list()).toHaveLength(1)
+    } finally {
+      await ctx.fiber.dispose()
+      await rm(repo, { recursive: true, force: true })
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   it('runs a fresh child to completion and returns its final assistant output', async () => {
     // One model call for the child: a plain text answer.
     const { ctx, parent } = await setup([textResponse('child answer')])
@@ -285,7 +342,7 @@ describe('dsh-subagent-spawn-in-process', () => {
   it('advertises every start-time capability (depthLimit, outputSchema, toolFilter, persona)', async () => {
     const { ctx } = await setup([])
     const provider = ctx.subagents.getProvider('spawn')!
-    expect(provider.capabilities).toEqual({ outputSchema: true, depthLimit: true, toolFilter: true, persona: true })
+    expect(provider.capabilities).toEqual({ outputSchema: true, depthLimit: true, toolFilter: true, persona: true, worktree: true })
   })
 
   it('unregisters the provider when its fiber is disposed (HMR safety)', async () => {

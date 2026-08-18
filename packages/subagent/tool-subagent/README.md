@@ -26,6 +26,7 @@ A foreground call passes the execution signal through startup and execution, awa
 | `persona` | Per-child persona; requires provider `persona` capability. |
 | `toolFilter` | Per-child global-tool restriction; requires `toolFilter` capability. |
 | `maxDepth` | Absolute delegation-depth cap, default `3` (`0` forbids delegation); a numeric cap requires the `depthLimit` capability and fails the mount without it. `'provider-managed'` sends no cap for an out-of-process provider whose budget belongs to the child harness. The tool stays visible at the cap; each attempted start checks the calling agent's current depth and returns an errored tool result when rejected. |
+| `worktree` | Set to `isolated` for a one-shot in-process child in a persistent Git worktree. Continuable instances reject this option; the checkout remains for explicit host-side merge or discard. |
 
 ## Concurrency
 

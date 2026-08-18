@@ -4,7 +4,7 @@
 
 subagent seam 让一个 agent（智能体）将工作委派给子 agent。与 [bash](shell.md) 一样，它是**一项可选能力**，不属于 agent loop（智能体循环），因此其类型定义在此而非 [core.md](core.md) 中。它不同于其他能力 seam，因为**同一上下文中可共存多个提供方实现**，并按名称注册（`ctx.subagents`），而 bash 只允许一个执行器。该注册表遵循 [LLM（大语言模型）适配器注册表](llm-streaming.md)，而非单服务的 bash 执行器。
 
-Service Definition：[dsh-subagent](../../packages/subagent/subagent)（`ctx.subagents` + 下文词汇）。Service Provider 是六个兄弟包：`dsh-subagent-spawn-in-process`、`-fork`、`-acp`、`-codex`、`-claude-code`、`-dsh-sdk`；面向模型的 Consumer 包括 [dsh-tool-subagent](../../packages/subagent/tool-subagent)（按提供方委派）、[dsh-tool-subagent-control](../../packages/subagent/tool-subagent-control)（可选的全局 `send_message`、`interrupt_agent` 与 `list_agents` 控制工具）和 [dsh-tool-subagent-report](../../packages/subagent/tool-subagent-report)（可选的 child 作用域 `report` 返回通道）。同一个 `ctx.subagents` 服务通过内部激活管理器负责可继续子 agent 编排，并直接基于会话存储和可选的会话持久化提供只读的 child 与后代发现。产品提供方设计理由见 [Codex 与 Claude Code Agent Note](../../.agents/notes/implemented/feature/2026-08-04-claude-code-and-codex-subagent-backends.md)；通用 seam 的设计理由见 [subagent Agent Note](../../.agents/notes/implemented/feature/2026-06-21-subagent-capability-seam.md)、[可继续 subagent Agent Note](../../.agents/notes/implemented/feature/2026-07-28-continuable-subagent-conversations.md)、[report 工具 Agent Note](../../.agents/notes/implemented/feature/2026-07-30-continuable-subagent-report-tool.md)、[持久化目录 Agent Note](../../.agents/notes/implemented/feature/2026-07-22-durable-subagent-catalog-and-list-agents.md)、[列表身份投影 Agent Note](../../.agents/notes/implemented/architecture/2026-08-06-subagent-list-identity-projection.md)和[服务合并 Agent Note](../../.agents/notes/implemented/simplification/2026-07-26-merge-subagent-control-service.md)。
+Service Definition：[dsh-subagent](../../packages/subagent/subagent)（`ctx.subagents` + 下文词汇）。Service Provider 是六个兄弟包：`dsh-subagent-spawn-in-process`、`-fork`、`-acp`、`-codex`、`-claude-code`、`-dsh-sdk`；[dsh-subagent-worktree](../../packages/subagent/subagent-worktree) 提供隔离进程内 child 使用的主机 Git 检出管理器；面向模型的 Consumer 包括 [dsh-tool-subagent](../../packages/subagent/tool-subagent)（按提供方委派）、[dsh-tool-subagent-control](../../packages/subagent/tool-subagent-control)（可选的全局 `send_message`、`interrupt_agent` 与 `list_agents` 控制工具）和 [dsh-tool-subagent-report](../../packages/subagent/tool-subagent-report)（可选的 child 作用域 `report` 返回通道）。同一个 `ctx.subagents` 服务通过内部激活管理器负责可继续子 agent 编排，并直接基于会话存储和可选的会话持久化提供只读的 child 与后代发现。产品提供方设计理由见 [Codex 与 Claude Code Agent Note](../../.agents/notes/implemented/feature/2026-08-04-claude-code-and-codex-subagent-backends.md)；通用 seam 的设计理由见 [subagent Agent Note](../../.agents/notes/implemented/feature/2026-06-21-subagent-capability-seam.md)、[可继续 subagent Agent Note](../../.agents/notes/implemented/feature/2026-07-28-continuable-subagent-conversations.md)、[report 工具 Agent Note](../../.agents/notes/implemented/feature/2026-07-30-continuable-subagent-report-tool.md)、[持久化目录 Agent Note](../../.agents/notes/implemented/feature/2026-07-22-durable-subagent-catalog-and-list-agents.md)、[列表身份投影 Agent Note](../../.agents/notes/implemented/architecture/2026-08-06-subagent-list-identity-projection.md)、[服务合并 Agent Note](../../.agents/notes/implemented/simplification/2026-07-26-merge-subagent-control-service.md)和[隔离 worktree Agent Note](../../.agents/notes/implemented/feature/2026-08-18-subagent-worktree-isolation.md)。
 
 源码：[`packages/subagent/subagent/src/types.ts`](../../packages/subagent/subagent/src/types.ts)、[`packages/subagent/subagent/src/index.ts`](../../packages/subagent/subagent/src/index.ts)和 [`packages/subagent/subagent/src/continuation.ts`](../../packages/subagent/subagent/src/continuation.ts)
 
@@ -29,12 +29,13 @@ interface SubagentCapabilities {
   readonly depthLimit: boolean
   readonly toolFilter: boolean
   readonly persona: boolean
+  readonly worktree?: boolean
 }
 ```
 
 ## 单次启动请求
 
-工具层根据模型输入和自身配置构建此请求；服务在 `start` 之前针对指定提供方进行校验。必填的 `parent` 提供会话 cwd、谱系与委派深度。可选的 output schema、depth、工具过滤器和 persona 需要对应的能力 flag 匹配。不支持的 schema 在启动时即失败；进程内后端将 filter 和 persona 的作用域限定在子 agent 创建阶段，并通过强制 capture 工具实现所支持的 object-rooted schema。
+工具层根据模型输入和自身配置构建此请求；服务在 `start` 之前针对指定提供方进行校验。必填的 `parent` 提供会话 cwd、谱系与委派深度。可选的 output schema、depth、工具过滤器、persona 和隔离 worktree 需要对应的能力 flag 匹配。不支持的 schema 在启动时即失败；进程内后端将 filter 和 persona 的作用域限定在子 agent 创建阶段，隔离的一次性 child 会将持久 Git 检出目录设为会话 cwd。
 
 ```ts type-equiv
 /**
@@ -93,6 +94,8 @@ interface SubagentStartRequest {
    * persona (strict `{{…}}` interpolation against the registered variables).
    */
   readonly persona?: string
+  /** Create the child in a dedicated Git worktree. Requires the provider's `worktree` capability. */
+  readonly worktree?: SubagentWorktreeMode
 }
 ```
 
@@ -385,6 +388,8 @@ interface SubagentRun {
    * implication beyond the run's ordinary {@link dispose} contract.
    */
   readonly localAgent: Agent | undefined
+  /** Isolated checkout retained for an explicit merge or discard operation. */
+  readonly worktree?: SubagentWorktreeRecord
   /**
    * Resolves with the child's terminal {@link SubagentResult} when the run
    * settles. Does NOT reject on a child-level failure — a model/transport
@@ -648,7 +653,63 @@ async start(name: string, request: SubagentStartRequest): Promise<SubagentRun>
 
 Types: [Agent](core.md) · [ContentBlock](llm-streaming.md) · [MessageId](llm-streaming.md) · [SessionId](core.md)
 
-Source: [`packages/subagent/subagent/src/index.ts:171`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:177`](../../packages/subagent/subagent/src/index.ts)
+
+<a id="ctxsubagentworktrees--subagentworktreemanager"></a>
+
+### `ctx.subagentWorktrees` — `SubagentWorktreeManager`
+
+Host capability used by in-process providers to create and clean isolated checkouts.
+
+```ts cordis-catalog
+/**
+ * Create one isolated checkout and persist its record.
+ * @param request - the child identity, parent workspace, and cancellation signal.
+ * @returns the durable checkout record.
+ */
+create(request: SubagentWorktreeCreateRequest): Promise<SubagentWorktreeRecord>
+
+/**
+ * Read one persisted record.
+ * @param id - the child session id.
+ * @returns the record, or `undefined` when no record exists.
+ */
+get(id: string): Promise<SubagentWorktreeRecord | undefined>
+
+/**
+ * List persisted records.
+ * @returns all records in stable id order.
+ */
+list(): Promise<SubagentWorktreeRecord[]>
+
+/**
+ * Show the Git status of one checkout.
+ * @param id - the child session id.
+ * @param signal - optional cancellation signal for the Git command.
+ * @returns the porcelain Git status text.
+ */
+status(id: string, signal?: AbortSignal): Promise<string>
+
+/**
+ * Merge a branch into an explicitly selected target checkout.
+ * @param id - the child session id whose branch is merged.
+ * @param targetCwd - the clean checkout that receives the merge.
+ * @param signal - optional cancellation signal for the Git command.
+ * @returns a promise that fulfills after the merge completes.
+ */
+merge(id: string, targetCwd: string, signal?: AbortSignal): Promise<void>
+
+/**
+ * Remove a checkout and its branch.
+ * @param id - the child session id to remove.
+ * @param force - whether to remove a checkout with uncommitted changes.
+ * @param signal - optional cancellation signal for the Git command.
+ * @returns a promise that fulfills after removal completes.
+ */
+discard(id: string, force?: boolean, signal?: AbortSignal): Promise<void>
+```
+
+Source: [`packages/subagent/subagent/src/types.ts:44`](../../packages/subagent/subagent/src/types.ts)
 
 <a id="subagent-events"></a>
 
@@ -674,7 +735,7 @@ A published child settled. Scope-filtered dispatch uses the same delegating pare
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/subagent/subagent/src/index.ts:166`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:172`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagentprovider-added--emit"></a>
 
@@ -691,7 +752,7 @@ A provider became resolvable in the registry.
 'subagent/provider-added'(provider: SubagentProvider): void
 ```
 
-Source: [`packages/subagent/subagent/src/index.ts:140`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:146`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagentprovider-removed--emit"></a>
 
@@ -708,7 +769,7 @@ A provider left the registry. Accepted runs remain holder-owned.
 'subagent/provider-removed'(name: string): void
 ```
 
-Source: [`packages/subagent/subagent/src/index.ts:146`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:152`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagentstart--emit"></a>
 
@@ -732,5 +793,5 @@ A provider established a published child. For in-process providers, `ctx.agents.
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/subagent/subagent/src/index.ts:157`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:163`](../../packages/subagent/subagent/src/index.ts)
 <!-- END GENERATED cordis-surface -->

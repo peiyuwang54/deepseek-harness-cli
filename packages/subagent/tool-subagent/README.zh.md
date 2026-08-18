@@ -26,6 +26,7 @@
 | `persona` | 每个子 agent 独立的 persona；要求提供方具备 `persona` 能力。 |
 | `toolFilter` | 每个子 agent 独立的全局工具限制；要求提供方具备 `toolFilter` 能力。 |
 | `maxDepth` | 绝对委派深度上限，默认 `3`（`0` 禁止委派）；数值上限要求 `depthLimit` 能力，缺失时挂载失败。对于预算由子 harness 拥有的进程外提供方，`'provider-managed'` 不发送上限。工具在达到上限时仍然可见；每次尝试启动都会检查调用 agent 的当前深度，被拒绝时返回出错的工具结果。 |
+| `worktree` | 设为 `isolated` 时，一次性进程内 child 会在持久 Git worktree 中运行。可继续实例会拒绝此选项；检出目录会保留，等待主机明确合并或丢弃。 |
 
 ## 并发
 

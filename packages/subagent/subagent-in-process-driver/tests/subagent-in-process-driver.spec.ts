@@ -10,6 +10,7 @@ import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
 import * as AgentInvariant from '@deepseek-ai/dsh-agent/invariant'
 import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
 import SubagentRuntime, { snapshotSubagentDescriptor } from '@deepseek-ai/dsh-subagent'
+import type { SubagentWorktreeManager } from '@deepseek-ai/dsh-subagent'
 import { defineContentToolFixture } from '@deepseek-ai/dsh-tools'
 import { maxTokensResponse, MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import { startInProcessRun } from '../src/index.ts'
@@ -346,6 +347,42 @@ describe('startInProcessRun', () => {
     }, {})).rejects.toThrow('unknown global tool')
     expect(ctx.agents.list()).toHaveLength(beforeAgents)
     expect(ctx.sessions.list()).toHaveLength(beforeSessions)
+  })
+
+  it('discards an isolated worktree when child publication fails', async () => {
+    const { ctx, parent } = await setup([])
+    const discarded: string[] = []
+    const manager = {
+      create: async (request: { id: string; parentCwd: string; signal: AbortSignal }) => ({
+        id: request.id,
+        parentCwd: request.parentCwd,
+        path: `/tmp/dsh-worktree/${request.id}/tree`,
+        branch: `dsh/subagent/${request.id}`,
+        createdAt: Date.now(),
+      }),
+      discard: async (id: string) => {
+        discarded.push(id)
+        throw new Error('discard failed')
+      },
+    } as unknown as SubagentWorktreeManager
+    const workspaceParent = ctx.agentLoop.create(SessionId('worktree-parent'), parent.options, { cwd: '/workspace' })
+    const parentWithFailedCreate = {
+      options: workspaceParent.options,
+      session: workspaceParent.session,
+      ctx: {
+        get: (key: string) => key === 'subagentWorktrees' ? manager : undefined,
+        agents: {
+          create: async () => { throw new Error('child publication failed') },
+        },
+      },
+    } as unknown as Agent
+
+    await expect(startInProcessRun({
+      ...request(workspaceParent),
+      parent: parentWithFailedCreate,
+      worktree: 'isolated',
+    }, {})).rejects.toThrow('child publication failed')
+    expect(discarded).toHaveLength(1)
   })
 
   it('treats abort after factory publication as a cancelled run with an id', async () => {

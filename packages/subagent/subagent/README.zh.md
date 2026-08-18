@@ -15,7 +15,7 @@ subagent seam 允许一个 agent（智能体）通过具名提供方把工作委
 | `registerProvider(provider)` | 按名称注册一个可信的同进程实现。注册受 effect 作用域约束；移除注册会阻止新的启动，但不会撤销已返回给调用方的运行。重复名称会明确报错。 |
 | `getProvider(name)` | 返回提供方；不存在时返回 `undefined`。 |
 | `list()` | 按插入顺序返回提供方名称。 |
-| `start(name, request)` | 校验普通调用方请求，解析其已分离的 `one-shot` 描述符，然后等待提供方发布真正的一次性子 agent。兑现时返回由持有方拥有的 `SubagentRun`；如果调用被拒绝，提供方已经清理所有尚未发布的启动资源。发布后的轮次故障或基础设施故障则通过该 run 结算。可继续子 agent 绝不通过此操作进入。 |
+| `start(name, request)` | 校验普通调用方请求，解析其已分离的 `one-shot` 描述符，然后等待提供方发布真正的一次性子 agent。兑现时返回由持有方拥有的 `SubagentRun`；如果调用被拒绝，提供方已经清理所有尚未发布的启动资源。发布后的轮次故障或基础设施故障则通过该 run 结算。进程内请求使用 `worktree: 'isolated'` 时，会以持久 Git 检出目录作为 child 会话 cwd 发布。可继续子 agent 绝不通过此操作进入。 |
 | `startContinuable(spec)` | 建立一个持久化的可继续子 agent，并投递其初始提示词。子 agent 的 inbox 一接受该提示词，调用就会兑现为 `{ childId, messageId }`，无需等待轮次开始，也无需等待消息写入会话日志。在此之前发生的任何失败都会使调用被拒绝，不返回任何 id，并完全回滚该子 agent。要求 `ctx.agents`、会话持久化以及具备 `prepareContinuable` 能力的提供方。 |
 | `followup(parent, childId, content, { source, signal })` | 将来自确切在线直接父级的一条后续消息作为子 agent 的下一个 FIFO 轮次投递，术语与 `Agent.followup()` 一致，并返回被接受的 `MessageId`。驻留中的子 agent 由其 inbox 直接接受（唤醒处于 waiting 的 Activation）；不驻留的则从其持久化会话冷恢复。要求 `ctx.agents`；冷恢复还要求会话持久化。 |
 | `interrupt(targetSessionId, authority)` | 凭人类出示的持久化父级地址 `{ kind: 'user', parentSessionId }`，或确切在线的祖先 Agent `{ kind: 'ancestor', agent }` 进行授权，中断一个在线可继续子级的当前轮次。准入判定同步完成，但取消异步生效：该操作发出 `Agent.cancel(cause, { keepInbox: true })` 后立即返回，不等待目标观察到信号。尚未领取的待处理 inbox 工作、Activation 和已发布的后代均会保留；已经领取到被中断轮次中的工作不会重新入队。目标不存在时视为已接受的空操作；错误的父级地址，或陈旧、指向自身、并非祖先的调用方，会以 `UNAUTHORIZED` 被拒绝。 |
@@ -39,6 +39,7 @@ subagent seam 允许一个 agent（智能体）通过具名提供方把工作委
 - `depthLimit`：强制执行 `maxDepth`；
 - `toolFilter`：应用请求的子 agent 工具限制；
 - `persona`：应用每个子 agent 独立的 persona。
+- `worktree`：为隔离的一次性子 agent 创建持久 Git 检出目录。
 
 每个进程内子 agent 都通过一次 `applyChildComposition(childCtx, parent, composition)` 调用完成组装：先加入父级的 agent-preset 组合，再应用子 agent 自己的 persona 和工具限制。加入父级组合正是子 agent 获得能力的途径：所有面向模型的行都位于 agent 平面，完全没有加入任何组合的子 agent 抵达模型时会看到空的工具注册表（见 [`dsh-agent-presets`](../../preset/agent-presets/README.md)）。将父级作为参数是刻意设计：这让“组装子 agent 却不做该加入”在各调用点无法表达，而这正是这一次调用所要杜绝的缺陷。未组装 preset roster 的部署不加入任何组合、也不需要加入；其面向模型的行位于宿主组合中，子 agent 已能通过工具注册表的全局层解析到它们。
 
@@ -54,7 +55,7 @@ subagent seam 允许一个 agent（智能体）通过具名提供方把工作委
 
 该 seam 拥有 Service Provider 和 Consumer 共享的深度词汇：`AgentOptions.subagentDepth` 声明、`assertSubagentMaxDepth` 和 `delegationDepthOf(agent)`。持久化的 `SessionHeader.delegationDepth` 具有权威性且单调：运行时选项可以增大委派深度，但绝不能将其降到这个下界以下，因此恢复后的子 agent 不会被重新计为顶层。
 
-`inheritsParentContext` 只用于描述，不能强制执行。它仅说明子 agent 是否能看到父级已完成的对话历史（`fork` 可以；`spawn` 和各进程外一次性提供方不可以），不表示是否继承工具、服务或权限。
+`inheritsParentContext` 只用于描述，不能强制执行。它仅说明子 agent 是否能看到父级已完成的对话历史（`fork` 可以；`spawn` 和各进程外一次性提供方不可以），不表示是否继承工具、服务或权限。可选的 `dsh-subagent-worktree` 服务为进程内一次性提供方创建隔离 Git 检出目录；`SubagentRun.dispose()` 后 worktree 仍会保留，直到主机明确合并或丢弃。
 
 ## 委派策略
 
@@ -151,4 +152,5 @@ You are a delegated subagent: your permission scope was fixed when you were star
 - **驻留仅限进程内**：Activation inbox 与所有权图不会在两个 harness 进程之间协调；对单个持久化存储的并发访问仍然需要持久化邮箱和跨进程租约协议。
 - **不回放已接受但未记录的消息**：只有写入子 agent 会话日志的消息才能连同提供该消息的来源一起重建。崩溃可能丢失从未写入日志、已被接受的初始提示词或后续消息；此后一条经授权的消息可以冷恢复该子 agent，但丢失的消息不会自动回放。
 - **没有持久化的上报 mailbox**：上报需要在线直接父级，提供的是接受标识，不保证恰好一次投递，也不提供已读回执。
+- **不会自动重建可继续 child 的 worktree**：隔离 worktree 只提供给一次性执行工具；可继续 child 保留现有会话 cwd，冷恢复时不会自动重建缺失的检出目录。
 - **生命周期事件只供观察**：影响运行的 `subagent/end` 延续或决策接口仍需等待具体消费方。

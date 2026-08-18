@@ -14,6 +14,8 @@ const HEADER_NAME_PATTERN = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u
 const USAGE = `Usage:
   deepseek mcp [list]
   deepseek mcp get <name>
+  deepseek mcp enable <name>
+  deepseek mcp disable <name>
   deepseek mcp add <name> [--env KEY[=SOURCE]] [--cwd PATH] [--timeout-ms N] [--fail-on-startup-error] -- <command> [args...]
   deepseek mcp add <name> --url <http(s)://...> [--header NAME=SOURCE] [--timeout-ms N] [--fail-on-startup-error]
   deepseek mcp remove <name>
@@ -21,6 +23,8 @@ const USAGE = `Usage:
 Environment and header options store variable references, never secret values.`
 
 interface StoredBaseServer {
+  /** Whether this catalog entry is projected into profile composition. */
+  readonly enabled?: boolean
   readonly timeoutMs?: number
   readonly failOnStartupError?: boolean
 }
@@ -112,12 +116,13 @@ function parseServer(name: string, value: unknown): StoredMcpServer {
   if (!isRecord(value)) throw new Error(`MCP server ${JSON.stringify(name)} must be an object`)
   const transport = value.transport
   if (transport === 'stdio') {
-    assertKeys(value, new Set(['transport', 'command', 'args', 'env', 'cwd', 'timeoutMs', 'failOnStartupError']), `MCP server ${JSON.stringify(name)}`)
+    assertKeys(value, new Set(['transport', 'command', 'args', 'env', 'cwd', 'enabled', 'timeoutMs', 'failOnStartupError']), `MCP server ${JSON.stringify(name)}`)
     if (!Array.isArray(value.args) || value.args.some(argument => typeof argument !== 'string')) {
       throw new Error(`MCP server ${JSON.stringify(name)}.args must be an array of strings`)
     }
     const env = referenceMap(value.env, `MCP server ${JSON.stringify(name)}.env`, ENV_NAME_PATTERN)
     const cwd = value.cwd === undefined ? undefined : requiredString(value.cwd, `MCP server ${JSON.stringify(name)}.cwd`)
+    const enabled = optionalBoolean(value.enabled, `MCP server ${JSON.stringify(name)}.enabled`)
     const timeoutMs = optionalTimeout(value.timeoutMs, `MCP server ${JSON.stringify(name)}.timeoutMs`)
     const failOnStartupError = optionalBoolean(value.failOnStartupError, `MCP server ${JSON.stringify(name)}.failOnStartupError`)
     return {
@@ -126,21 +131,24 @@ function parseServer(name: string, value: unknown): StoredMcpServer {
       args: value.args as string[],
       ...(env === undefined ? {} : { env }),
       ...(cwd === undefined ? {} : { cwd }),
+      ...(enabled === undefined ? {} : { enabled }),
       ...(timeoutMs === undefined ? {} : { timeoutMs }),
       ...(failOnStartupError === undefined ? {} : { failOnStartupError }),
     }
   }
   if (transport === 'streamable-http') {
-    assertKeys(value, new Set(['transport', 'url', 'headers', 'timeoutMs', 'failOnStartupError']), `MCP server ${JSON.stringify(name)}`)
+    assertKeys(value, new Set(['transport', 'url', 'headers', 'enabled', 'timeoutMs', 'failOnStartupError']), `MCP server ${JSON.stringify(name)}`)
     const url = requiredString(value.url, `MCP server ${JSON.stringify(name)}.url`)
     validateHttpUrl(url)
     const headers = referenceMap(value.headers, `MCP server ${JSON.stringify(name)}.headers`, HEADER_NAME_PATTERN)
+    const enabled = optionalBoolean(value.enabled, `MCP server ${JSON.stringify(name)}.enabled`)
     const timeoutMs = optionalTimeout(value.timeoutMs, `MCP server ${JSON.stringify(name)}.timeoutMs`)
     const failOnStartupError = optionalBoolean(value.failOnStartupError, `MCP server ${JSON.stringify(name)}.failOnStartupError`)
     return {
       transport,
       url,
       ...(headers === undefined ? {} : { headers }),
+      ...(enabled === undefined ? {} : { enabled }),
       ...(timeoutMs === undefined ? {} : { timeoutMs }),
       ...(failOnStartupError === undefined ? {} : { failOnStartupError }),
     }
@@ -295,7 +303,7 @@ function formatServer(name: string, server: StoredMcpServer, detailed: boolean):
   const endpoint = server.transport === 'stdio'
     ? [server.command, ...server.args].map(argument => JSON.stringify(argument)).join(' ')
     : server.url
-  const rows = [`- ${name} · ${server.transport} · ${endpoint}`]
+  const rows = [`- ${name} · ${server.transport} · ${endpoint}${server.enabled === false ? ' · disabled' : ''}`]
   if (!detailed) return rows
   if (server.transport === 'stdio') {
     if (server.cwd !== undefined) rows.push(`  cwd: ${server.cwd}`)
@@ -364,6 +372,7 @@ function projectManagedMcpPatches(
 ): PatchOptions[] {
   const config = readConfig(filename)
   const rows = Object.entries(config.servers)
+    .filter(([, server]) => server.enabled !== false)
     .toSorted(([left], [right]) => left.localeCompare(right))
     .map(([name, server]) => ({
       id: `managed-mcp-${name}`,
@@ -419,6 +428,19 @@ export async function runMcp(args: readonly string[], options: McpCommandOptions
       const server = readConfig(filename).servers[name]
       if (server === undefined) throw new Error(`MCP server ${JSON.stringify(name)} is not configured`)
       stdout(`${formatServer(name, server, true).join('\n')}\n`)
+      return 0
+    }
+    if (command === 'enable' || command === 'disable') {
+      const name = args[1]
+      if (name === undefined || args.length !== 2) throw new Error(`${command} needs exactly one server name`)
+      await mutateConfig(filename, (config) => {
+        const server = config.servers[name]
+        if (server === undefined) throw new Error(`MCP server ${JSON.stringify(name)} is not configured`)
+        const enabled = command === 'enable'
+        if (server.enabled === enabled || (enabled && server.enabled === undefined)) return config
+        return { version: CONFIG_VERSION, servers: { ...config.servers, [name]: { ...server, enabled } } }
+      })
+      stdout(`${command === 'enable' ? 'Enabled' : 'Disabled'} MCP server ${JSON.stringify(name)}. Restart DeepSeek CLI to apply it.\n`)
       return 0
     }
     if (command === 'add') {

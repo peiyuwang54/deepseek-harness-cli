@@ -7,7 +7,14 @@ import McpRegistry, {
 
 function runtime(
   name: string,
-  options: { state?: McpConnectionStatus['state']; reload?: () => Promise<boolean> } = {},
+  options: {
+    state?: McpConnectionStatus['state']
+    reload?: () => Promise<boolean>
+    resources?: McpServerRuntime['resources']
+    prompts?: McpServerRuntime['prompts']
+    readResource?: McpServerRuntime['readResource']
+    getPrompt?: McpServerRuntime['getPrompt']
+  } = {},
 ): McpServerRuntime {
   return {
     name,
@@ -19,6 +26,10 @@ function runtime(
       maxReconnectAttempts: 10,
     }),
     reload: options.reload ?? (async () => true),
+    ...options.resources === undefined ? {} : { resources: options.resources },
+    ...options.prompts === undefined ? {} : { prompts: options.prompts },
+    ...options.readResource === undefined ? {} : { readResource: options.readResource },
+    ...options.getPrompt === undefined ? {} : { getPrompt: options.getPrompt },
   }
 }
 
@@ -86,5 +97,24 @@ describe('McpRegistry', () => {
     ])
     expect(reload).toHaveBeenCalledOnce()
     await expect(ctx.mcp.reload('missing')).rejects.toThrow('unknown server "missing"')
+  })
+
+  it('discovers resources and prompts through the owning runtime', async () => {
+    const ctx = new Context()
+    await ctx.plugin(McpRegistry)
+    ctx.mcp.register(runtime('docs', {
+      resources: async () => ({ resources: [{ uri: 'file:///README.md', name: 'README' }], templates: [] }),
+      prompts: async () => ({ prompts: [{ name: 'summarize' }] }),
+      readResource: async () => [{ uri: 'file:///README.md', text: 'hello' }],
+      getPrompt: async () => ({ messages: [{ role: 'user', content: 'hello' }] }),
+    }))
+
+    await expect(ctx.mcp.resources()).resolves.toEqual([{
+      name: 'docs', resources: [{ uri: 'file:///README.md', name: 'README' }], templates: [],
+    }])
+    await expect(ctx.mcp.prompts('docs')).resolves.toEqual([{ name: 'docs', prompts: [{ name: 'summarize' }] }])
+    await expect(ctx.mcp.readResource('docs', 'file:///README.md')).resolves.toEqual([{ uri: 'file:///README.md', text: 'hello' }])
+    await expect(ctx.mcp.getPrompt('docs', 'summarize')).resolves.toEqual({ messages: [{ role: 'user', content: 'hello' }] })
+    await expect(ctx.mcp.resources('missing')).rejects.toThrow('unknown server "missing"')
   })
 })

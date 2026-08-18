@@ -107,6 +107,26 @@ describe('MCP CLI management', () => {
     expect(JSON.stringify(managedMcpDumpPatches(path))).not.toContain('Bearer secret')
   })
 
+  it('toggles a server without persisting credentials or changing its identity', async () => {
+    const path = await configPath()
+    const output = capture(path)
+    expect(await runMcp(['add', 'local', '--', 'node', 'server.js'], output.options)).toBe(0)
+    expect(await runMcp(['disable', 'local'], output.options)).toBe(0)
+    expect(output.stdout.at(-1)).toContain('Disabled MCP server "local"')
+    expect(managedMcpPatches(path, {})).toEqual([])
+    expect(await runMcp(['list'], output.options)).toBe(0)
+    expect(output.stdout.at(-1)).toContain('- local · stdio · "node" "server.js" · disabled')
+
+    expect(await runMcp(['enable', 'local'], output.options)).toBe(0)
+    expect(managedMcpPatches(path, {})).toEqual([{
+      insert: [{
+        id: 'managed-mcp-local',
+        name: '@deepseek-ai/dsh-mcp-client',
+        config: { transport: 'stdio', serverName: 'local', command: 'node', args: ['server.js'], env: {}, cwd: '' },
+      }],
+    }])
+  })
+
   it('fails closed for invalid commands, duplicate names, malformed durable data, and missing references', async () => {
     const path = await configPath()
     const output = capture(path)

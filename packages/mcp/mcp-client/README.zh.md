@@ -75,10 +75,24 @@ MCP 客户端桥接插件：连接外部 [Model Context Protocol](https://modelc
 
 | 服务 | 用途 |
 |---|---|
-| `ctx.mcp` | 注册连接状态与立即重载控制 |
+| `ctx.mcp` | 注册连接状态、重载控制，并发现 Resources／Prompts |
 | `ctx.tools` | 注册／注销 MCP 工具 |
 
 ## 模型体验
+
+### 已发现的 MCP 能力
+
+#### 模型看到的内容
+
+面向人的消费方可以通过 `ctx.mcp.resources()`、`ctx.mcp.readResource()`、`ctx.mcp.prompts()` 与 `ctx.mcp.getPrompt()` 使用 Resources、URI 模板和 Prompts。TUI 提供 `/mcp resources [server] [uri]` 与 `/mcp prompts [server] [prompt]`；它们不会自动注册为模型工具。
+
+#### Token 影响
+
+能力发现和 TUI 输出位于模型请求之外，因此列出或读取能力不会增加 token，除非其他消费方明确把内容注入请求。
+
+#### KV Cache 影响
+
+面向人的能力目录不会改变模型请求前缀，也不会使 KV-cache 条目失效。
 
 ### 已发现的 MCP 工具
 
@@ -110,7 +124,7 @@ MCP 客户端桥接插件：连接外部 [Model Context Protocol](https://modelc
 
 ## 已知限制与暂缓事项
 
-- **只桥接 MCP 的工具能力**：资源和提示词没有 harness 消费接口，暂缓实现。
+- **OAuth 授权仍由传输层负责**：桥接器接受已配置的 header，不持久化 token，也不会打开浏览器授权流程。
 - **启动超时继承自 MCP SDK**：DSH 尚未公开连接／发现超时。每次 initialize 请求或分页 `tools/list` 请求都使用 SDK 默认的 60 秒，因此在初始同步完成期间，无响应的 server 或 cursor chain 可能同时延迟激活与 teardown。
 - **重连在传输关闭时触发**：崩溃的 stdio 子进程会触发重连；Streamable HTTP 失败通过每次请求以及 SDK 传输自身的 SSE（Server-Sent Events）流恢复机制暴露，因此不可达的 HTTP 服务器会按调用重试，而非由 supervisor 重新 spawn。
 - **Native 非文本渲染有损**：图片、音频与资源载荷在模型上下文中会变成占位符，即使执行局部的规范值保留了其 JSON 块。更丰富的 Native 多媒体投影暂缓实现。

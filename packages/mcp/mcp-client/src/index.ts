@@ -148,6 +148,10 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
     transport: config.transport,
     status: () => connection.current?.status() ?? pendingStatus,
     reload: async () => await connection.current?.reload() ?? false,
+    resources: async () => await connection.current?.resources() ?? { resources: [], templates: [] },
+    prompts: async () => await connection.current?.prompts() ?? { prompts: [] },
+    readResource: async uri => await connection.current?.readResource(uri) ?? [],
+    getPrompt: async (prompt, arguments_) => await connection.current?.getPrompt(prompt, arguments_) ?? { messages: [] },
   })
 
   // The supervisor owns the client/transport generations, the reconnect

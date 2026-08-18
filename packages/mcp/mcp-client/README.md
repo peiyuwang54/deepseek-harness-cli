@@ -75,10 +75,24 @@ Every MCP tool has two names: the raw MCP name (sent on the wire in `tools/call`
 
 | Service | Usage |
 |---|---|
-| `ctx.mcp` | Register connection status and immediate reload control |
+| `ctx.mcp` | Register connection status, reload control, and Resource/Prompt discovery |
 | `ctx.tools` | Register/unregister MCP tools |
 
 ## Model Experience
+
+### Discovered MCP capabilities
+
+#### What the model sees
+
+Resources, URI templates, and prompts are exposed to human-facing consumers through `ctx.mcp.resources()`, `ctx.mcp.readResource()`, `ctx.mcp.prompts()`, and `ctx.mcp.getPrompt()`. The TUI exposes them as `/mcp resources [server] [uri]` and `/mcp prompts [server] [prompt]`; they are not automatically registered as model tools.
+
+#### Token effect
+
+Capability discovery and TUI output stay outside the model request, so listing or reading a capability adds no tokens unless another consumer explicitly injects its content.
+
+#### KV Cache effect
+
+The human-facing capability catalog does not change the model request prefix or invalidate KV-cache entries.
 
 ### Discovered MCP tools
 
@@ -110,7 +124,7 @@ Append-only; newly visible content follows the reusable request prefix and does 
 
 ## Known Limitations and Deferred Work
 
-- **Tools are the only bridged MCP capability** — Resources and Prompts have no harness consumer and are deferred.
+- **OAuth authorization remains transport-owned** — the bridge accepts configured headers and does not persist tokens or open a browser authorization flow.
 - **Startup timeout is inherited from the MCP SDK** — DSH does not yet expose a connection/discovery timeout. Each initialize or paginated `tools/list` request uses the SDK's 60-second default, so an unresponsive server or cursor chain can delay both activation and teardown while the initial synchronization settles.
 - **Reconnect triggers on transport close** — a crashed stdio child fires it; Streamable HTTP failures surface per request and through the SDK transport's own SSE-stream recovery, so an unreachable HTTP server is retried per call rather than respawned by the supervisor.
 - **Native non-text rendering is lossy** — image, audio, and resource payloads become placeholders in model context even though the execution-local canonical value preserves their JSON blocks. Richer Native multimedia projection is deferred.

@@ -13,13 +13,30 @@ import type { Config } from '@deepseek-ai/dsh-mcp-client'
 
 // vi.mock factories are hoisted above every import/const, so the mock fns and
 // class must be created inside vi.hoisted to exist when the factories run.
-const { mockConnect, mockClose, mockListTools, mockCallTool, mockSetNotificationHandler, MockClient } = vi.hoisted(() => {
+const {
+  mockConnect,
+  mockClose,
+  mockListTools,
+  mockCallTool,
+  mockListResources,
+  mockListResourceTemplates,
+  mockListPrompts,
+  mockReadResource,
+  mockGetPrompt,
+  mockSetNotificationHandler,
+  MockClient,
+} = vi.hoisted(() => {
   const mockConnect = vi.fn<() => Promise<void>>()
   const mockClose = vi.fn<() => Promise<void>>()
   const mockListTools = vi.fn<(_params?: Record<string, unknown>) => Promise<unknown>>()
   const mockCallTool = vi.fn<(
     _params?: Record<string, unknown>, _compatibilitySchema?: unknown, _options?: unknown,
   ) => Promise<unknown>>()
+  const mockListResources = vi.fn<(_params?: Record<string, unknown>) => Promise<unknown>>()
+  const mockListResourceTemplates = vi.fn<(_params?: Record<string, unknown>) => Promise<unknown>>()
+  const mockListPrompts = vi.fn<(_params?: Record<string, unknown>) => Promise<unknown>>()
+  const mockReadResource = vi.fn<(_params: Record<string, unknown>) => Promise<unknown>>()
+  const mockGetPrompt = vi.fn<(_params: Record<string, unknown>) => Promise<unknown>>()
   const mockSetNotificationHandler = vi.fn()
   const mockRequest = vi.fn(async (
     request: { method: string; params?: Record<string, unknown> },
@@ -35,10 +52,27 @@ const { mockConnect, mockClose, mockListTools, mockCallTool, mockSetNotification
     close = mockClose
     listTools = mockListTools
     callTool = mockCallTool
+    listResources = mockListResources
+    listResourceTemplates = mockListResourceTemplates
+    listPrompts = mockListPrompts
+    readResource = mockReadResource
+    getPrompt = mockGetPrompt
     request = mockRequest
     setNotificationHandler = mockSetNotificationHandler
   }
-  return { mockConnect, mockClose, mockListTools, mockCallTool, mockSetNotificationHandler, MockClient }
+  return {
+    mockConnect,
+    mockClose,
+    mockListTools,
+    mockCallTool,
+    mockListResources,
+    mockListResourceTemplates,
+    mockListPrompts,
+    mockReadResource,
+    mockGetPrompt,
+    mockSetNotificationHandler,
+    MockClient,
+  }
 })
 
 vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
@@ -170,6 +204,11 @@ describe('apply (plugin lifecycle)', () => {
       nextCursor: undefined,
     })
     mockCallTool.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] })
+    mockListResources.mockResolvedValue({ resources: [{ uri: 'file:///README.md', name: 'README' }], nextCursor: undefined })
+    mockListResourceTemplates.mockResolvedValue({ resourceTemplates: [], nextCursor: undefined })
+    mockListPrompts.mockResolvedValue({ prompts: [{ name: 'summarize' }], nextCursor: undefined })
+    mockReadResource.mockResolvedValue({ contents: [{ uri: 'file:///README.md', text: 'hello', mimeType: 'text/plain' }] })
+    mockGetPrompt.mockResolvedValue({ messages: [{ role: 'user', content: { type: 'text', text: 'hello' } }] })
     ctx = await mountRegistry()
   })
 
@@ -181,6 +220,26 @@ describe('apply (plugin lifecycle)', () => {
     expect(mockSetNotificationHandler).toHaveBeenCalled()
     expect(ctx.tools.get('mcp__srv__remote')).toBeDefined()
     expect(ctx.tools.get('remote')).toBeUndefined()
+  })
+
+  it('exposes Resources and Prompts through the runtime registry without registering model tools', async () => {
+    await apply(ctx, stdioConfig)
+
+    await expect(ctx.mcp.resources('srv')).resolves.toEqual([{
+      name: 'srv',
+      resources: [{ uri: 'file:///README.md', name: 'README' }],
+      templates: [],
+    }])
+    await expect(ctx.mcp.prompts('srv')).resolves.toEqual([{
+      name: 'srv',
+      prompts: [{ name: 'summarize' }],
+    }])
+    await expect(ctx.mcp.readResource('srv', 'file:///README.md')).resolves.toEqual([
+      { uri: 'file:///README.md', mimeType: 'text/plain', text: 'hello' },
+    ])
+    await expect(ctx.mcp.getPrompt('srv', 'summarize')).resolves.toEqual({
+      messages: [{ role: 'user', content: { type: 'text', text: 'hello' } }],
+    })
   })
 
   it('keeps the Cordis plugin loading until initial discovery publishes its tools', async () => {

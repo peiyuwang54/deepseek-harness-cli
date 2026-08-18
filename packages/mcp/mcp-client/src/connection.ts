@@ -18,7 +18,13 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js'
 import type { Context } from '@deepseek-ai/cordis'
-import type { McpConnectionStatus } from '@deepseek-ai/dsh-mcp'
+import type {
+  McpConnectionStatus,
+  McpPromptCatalog,
+  McpPromptExpansion,
+  McpResourceCatalog,
+  McpResourceContent,
+} from '@deepseek-ai/dsh-mcp'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { createTransport } from './transport.ts'
 import { syncTools } from './tools.ts'
@@ -112,6 +118,14 @@ export interface ConnectionHandle {
    * @returns whether the immediate connection and tool synchronization succeeded.
    */
   reload(): Promise<boolean>
+  /** Discover MCP resources and URI templates from the current generation. */
+  resources(): Promise<McpResourceCatalog>
+  /** Discover MCP prompts from the current generation. */
+  prompts(): Promise<McpPromptCatalog>
+  /** Read one resource URI from the current generation. */
+  readResource(uri: string): Promise<readonly McpResourceContent[]>
+  /** Expand one prompt with optional string arguments. */
+  getPrompt(name: string, arguments_?: Readonly<Record<string, string>>): Promise<McpPromptExpansion>
   /**
    * Stop reconnection, close the live client, wait for the in-flight attempt
    * and queued tool syncs to quiesce, then unregister every tool this server
@@ -373,6 +387,111 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     return outcome.error === undefined
   }
 
+  /** Run one MCP capability request against the current connected generation. */
+  async function withClient<T>(operation: (current: Client) => Promise<T>): Promise<T> {
+    const current = client
+    if (current === undefined) throw new Error(`${label}: server is not connected`)
+    return await operation(current)
+  }
+
+  /** Drain one paginated resource list without retaining SDK response objects. */
+  async function resources(): Promise<McpResourceCatalog> {
+    return await withClient(async (current) => {
+      const resources: McpResourceCatalog['resources'][number][] = []
+      let cursor: string | undefined
+      do {
+        const response = await current.listResources(
+          cursor === undefined ? undefined : { cursor },
+          { timeout: config.toolCallTimeoutMs },
+        )
+        resources.push(...response.resources.map(resource => ({
+          uri: resource.uri,
+          name: resource.name,
+          ...(resource.title === undefined ? {} : { title: resource.title }),
+          ...(resource.description === undefined ? {} : { description: resource.description }),
+          ...(resource.mimeType === undefined ? {} : { mimeType: resource.mimeType }),
+          ...(resource.size === undefined ? {} : { size: resource.size }),
+        })))
+        cursor = response.nextCursor
+      } while (cursor !== undefined)
+
+      const templates: McpResourceCatalog['templates'][number][] = []
+      cursor = undefined
+      do {
+        const response = await current.listResourceTemplates(
+          cursor === undefined ? undefined : { cursor },
+          { timeout: config.toolCallTimeoutMs },
+        )
+        templates.push(...response.resourceTemplates.map(template => ({
+          uriTemplate: template.uriTemplate,
+          name: template.name,
+          ...(template.title === undefined ? {} : { title: template.title }),
+          ...(template.description === undefined ? {} : { description: template.description }),
+          ...(template.mimeType === undefined ? {} : { mimeType: template.mimeType }),
+        })))
+        cursor = response.nextCursor
+      } while (cursor !== undefined)
+      return { resources, templates }
+    })
+  }
+
+  /** Drain one paginated prompt list without retaining SDK response objects. */
+  async function prompts(): Promise<McpPromptCatalog> {
+    return await withClient(async (current) => {
+      const prompts: McpPromptCatalog['prompts'][number][] = []
+      let cursor: string | undefined
+      do {
+        const response = await current.listPrompts(
+          cursor === undefined ? undefined : { cursor },
+          { timeout: config.toolCallTimeoutMs },
+        )
+        prompts.push(...response.prompts.map(prompt => ({
+          name: prompt.name,
+          ...(prompt.title === undefined ? {} : { title: prompt.title }),
+          ...(prompt.description === undefined ? {} : { description: prompt.description }),
+          ...(prompt.arguments === undefined ? {} : {
+            arguments: prompt.arguments.map(argument => ({
+              name: argument.name,
+              ...(argument.description === undefined ? {} : { description: argument.description }),
+              ...(argument.required === undefined ? {} : { required: argument.required }),
+            })),
+          }),
+        })))
+        cursor = response.nextCursor
+      } while (cursor !== undefined)
+      return { prompts }
+    })
+  }
+
+  /** Read one URI and preserve text/blob payloads while dropping SDK metadata. */
+  async function readResource(uri: string): Promise<readonly McpResourceContent[]> {
+    return await withClient(async (current) => {
+      const response = await current.readResource(
+        { uri },
+        { timeout: config.toolCallTimeoutMs },
+      )
+      return response.contents.map(content => ({
+        uri: content.uri,
+        ...(content.mimeType === undefined ? {} : { mimeType: content.mimeType }),
+        ...'text' in content ? { text: content.text } : { blob: content.blob },
+      }))
+    })
+  }
+
+  /** Expand one named prompt with string arguments. */
+  async function getPrompt(name: string, arguments_: Readonly<Record<string, string>> = {}): Promise<McpPromptExpansion> {
+    return await withClient(async (current) => {
+      const response = await current.getPrompt(
+        { name, arguments: arguments_ },
+        { timeout: config.toolCallTimeoutMs },
+      )
+      return {
+        ...(response.description === undefined ? {} : { description: response.description }),
+        messages: response.messages.map(message => ({ role: message.role, content: message.content })),
+      }
+    })
+  }
+
   return {
     ready,
     status(): McpConnectionStatus {
@@ -393,6 +512,10 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
         if (reloadInFlight === operation) reloadInFlight = undefined
       }
     },
+    resources,
+    prompts,
+    readResource,
+    getPrompt,
     async dispose(): Promise<void> {
       disposed = true
       cancelReconnectTimer()

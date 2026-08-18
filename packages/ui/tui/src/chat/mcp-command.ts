@@ -2,19 +2,30 @@
 
 import type { CommandResult } from '@deepseek-ai/dsh-commands'
 import type { ToolSchema } from '@deepseek-ai/dsh-llm'
-import type { McpRegistry, McpServerStatus } from '@deepseek-ai/dsh-mcp'
+import type {
+  McpRegistry,
+  McpServerPromptCatalog,
+  McpServerResourceCatalog,
+  McpServerStatus,
+} from '@deepseek-ai/dsh-mcp'
 import { groupMcpTools } from './mcp-tools.ts'
 import type { McpToolGroup } from './mcp-tools.ts'
 
 type VisibleTool = Pick<ToolSchema, 'name' | 'description' | 'parameters'>
 
-const USAGE = 'Usage: /mcp [list|ls|desc|verbose|schema|reload] [server]'
+const USAGE = 'Usage: /mcp [list|ls|desc|verbose|schema|reload|resources|prompts] [server] [uri|prompt]'
 
 type McpServer = McpToolGroup<VisibleTool>
 
-type McpView = 'list' | 'desc' | 'schema' | 'reload'
+type McpView = 'list' | 'desc' | 'schema' | 'reload' | 'resources' | 'prompts'
 
-type McpRuntimeView = Pick<McpRegistry, 'list' | 'reload'>
+interface McpCapabilityArguments {
+  readonly view: 'resources' | 'prompts'
+  readonly server?: string
+  readonly target?: string
+}
+
+type McpRuntimeView = Pick<McpRegistry, 'list' | 'reload'> & Partial<Pick<McpRegistry, 'resources' | 'prompts' | 'readResource' | 'getPrompt'>>
 
 /** Runtime and turn state needed by the mutating MCP command variant. */
 export interface McpCommandOptions {
@@ -24,11 +35,10 @@ export interface McpCommandOptions {
   readonly busyAgentStatus?: string
 }
 
-function parseArguments(rawInput: string): { readonly view: McpView; readonly server?: string } | undefined {
+function parseArguments(rawInput: string): { readonly view: McpView; readonly server?: string; readonly target?: string } | undefined {
   const tokens = rawInput.trim().split(/\s+/u).filter(Boolean)
   if (tokens.length === 0) return { view: 'list' }
-  if (tokens.length > 2) return undefined
-  const [rawCommand, server] = tokens
+  const [rawCommand, server, target] = tokens
   const command = rawCommand?.toLowerCase()
   const view = command === 'list' || command === 'ls'
     ? 'list'
@@ -38,12 +48,28 @@ function parseArguments(rawInput: string): { readonly view: McpView; readonly se
         ? 'schema'
         : command === 'reload'
           ? 'reload'
-          : undefined
-  return view === undefined ? undefined : { view, ...(server === undefined ? {} : { server }) }
+          : command === 'resources' || command === 'resource'
+            ? 'resources'
+            : command === 'prompts' || command === 'prompt'
+              ? 'prompts'
+              : undefined
+  if (view !== 'resources' && view !== 'prompts' && tokens.length > 2) return undefined
+  if ((view === 'resources' || view === 'prompts') && tokens.length > 3) return undefined
+  return view === undefined ? undefined : {
+    view,
+    ...(server === undefined ? {} : { server }),
+    ...(target === undefined ? {} : { target }),
+  }
 }
 
 function normalizedDescription(description: string): string {
   return description.replace(/\s+/gu, ' ').trim() || 'No description'
+}
+
+function formatPromptContent(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (content === null || typeof content !== 'object') return String(content)
+  return JSON.stringify(content)
 }
 
 function toolRow(tool: VisibleTool, view: Exclude<McpView, 'reload'>): string[] {
@@ -107,6 +133,72 @@ async function reloadResult(
   }
 }
 
+function resourceCatalogText(catalogs: readonly McpServerResourceCatalog[]): string {
+  const resourceCount = catalogs.reduce((sum, catalog) => sum + catalog.resources.length, 0)
+  const templateCount = catalogs.reduce((sum, catalog) => sum + catalog.templates.length, 0)
+  return [
+    `MCP resources (${countLabel(catalogs.length, 'server')} · ${countLabel(resourceCount, 'resource')} · ${countLabel(templateCount, 'template')})`,
+    ...catalogs.flatMap(catalog => [
+      `- ${catalog.name} · ${countLabel(catalog.resources.length, 'resource')} · ${countLabel(catalog.templates.length, 'template')}`,
+      ...catalog.resources.map(resource => `  - ${resource.name} · ${resource.uri}${resource.description === undefined ? '' : ` — ${normalizedDescription(resource.description)}`}`),
+      ...catalog.templates.map(template => `  - ${template.name} · ${template.uriTemplate}${template.description === undefined ? '' : ` — ${normalizedDescription(template.description)}`}`),
+    ]),
+  ].join('\n')
+}
+
+function promptCatalogText(catalogs: readonly McpServerPromptCatalog[]): string {
+  const promptCount = catalogs.reduce((sum, catalog) => sum + catalog.prompts.length, 0)
+  return [
+    `MCP prompts (${countLabel(catalogs.length, 'server')} · ${countLabel(promptCount, 'prompt')})`,
+    ...catalogs.flatMap(catalog => [
+      `- ${catalog.name} · ${countLabel(catalog.prompts.length, 'prompt')}`,
+      ...catalog.prompts.map(prompt => `  - ${prompt.name}${prompt.description === undefined ? '' : ` — ${normalizedDescription(prompt.description)}`}`),
+    ]),
+  ].join('\n')
+}
+
+async function capabilityResult(
+  arguments_: McpCapabilityArguments,
+  runtime: McpRuntimeView | undefined,
+): Promise<CommandResult> {
+  if (runtime === undefined) return { kind: 'error', text: `/mcp ${arguments_.view} needs the MCP runtime service.` }
+  try {
+    if (arguments_.view === 'resources') {
+      if (arguments_.target !== undefined) {
+        if (arguments_.server === undefined) return { kind: 'error', text: USAGE }
+        if (runtime.readResource === undefined) return { kind: 'error', text: '/mcp resources needs a runtime that supports resource reads.' }
+        const contents = await runtime.readResource(arguments_.server, arguments_.target)
+        return {
+          kind: 'success',
+          text: [
+            `MCP resource ${arguments_.server}:${arguments_.target} (${countLabel(contents.length, 'item')})`,
+            ...contents.map(content => `- ${content.uri} · ${content.mimeType ?? (content.text === undefined ? 'binary' : 'text')} · ${content.text ?? '<base64 data>'}`),
+          ].join('\n'),
+        }
+      }
+      if (runtime.resources === undefined) return { kind: 'error', text: '/mcp resources needs a runtime that supports resources.' }
+      return { kind: 'success', text: resourceCatalogText(await runtime.resources(arguments_.server)) }
+    }
+    if (arguments_.target !== undefined) {
+      if (arguments_.server === undefined) return { kind: 'error', text: USAGE }
+      if (runtime.getPrompt === undefined) return { kind: 'error', text: '/mcp prompts needs a runtime that supports prompt expansion.' }
+      const expansion = await runtime.getPrompt(arguments_.server, arguments_.target)
+      return {
+        kind: 'success',
+        text: [
+          `MCP prompt ${arguments_.server}:${arguments_.target} (${countLabel(expansion.messages.length, 'message')})`,
+          ...(expansion.description === undefined ? [] : [expansion.description]),
+          ...expansion.messages.map(message => `- ${message.role}: ${formatPromptContent(message.content)}`),
+        ].join('\n'),
+      }
+    }
+    if (runtime.prompts === undefined) return { kind: 'error', text: '/mcp prompts needs a runtime that supports prompts.' }
+    return { kind: 'success', text: promptCatalogText(await runtime.prompts(arguments_.server)) }
+  } catch (error) {
+    return { kind: 'error', text: error instanceof Error ? error.message : String(error) }
+  }
+}
+
 /**
  * Render the current Agent's MCP-qualified tool catalog without exposing
  * unrelated registered tools.
@@ -122,6 +214,13 @@ export function mcpCommandResult(
 ): CommandResult | Promise<CommandResult> {
   const arguments_ = parseArguments(rawInput)
   if (arguments_ === undefined) return { kind: 'error', text: USAGE }
+  if (arguments_.view === 'resources' || arguments_.view === 'prompts') {
+    return capabilityResult({
+      view: arguments_.view,
+      ...(arguments_.server === undefined ? {} : { server: arguments_.server }),
+      ...(arguments_.target === undefined ? {} : { target: arguments_.target }),
+    }, options.runtime)
+  }
   if (arguments_.view === 'reload') {
     return reloadResult(arguments_.server, options.runtime, options.busyAgentStatus)
   }

@@ -41,7 +41,38 @@ list(): McpServerStatus[]
  * @returns Stable-name results after all immediate attempts settle.
  */
 async reload(name?: string): Promise<McpReloadResult[]>
+
+/**
+ * Discover resources and URI templates for one server or every active server.
+ * @param name - Exact server namespace, or omission to select every server.
+ * @returns Stable-name catalogs containing resources and URI templates.
+ */
+async resources(name?: string): Promise<McpServerResourceCatalog[]>
+
+/**
+ * Discover prompts for one server or every active server.
+ * @param name - Exact server namespace, or omission to select every server.
+ * @returns Stable-name catalogs containing prompt definitions.
+ */
+async prompts(name?: string): Promise<McpServerPromptCatalog[]>
+
+/**
+ * Read one resource from a named active server.
+ * @param name - Exact server namespace.
+ * @param uri - Concrete resource URI to read.
+ * @returns Text or base64 content returned by the server.
+ */
+async readResource(name: string, uri: string): Promise<readonly McpResourceContent[]>
+
+/**
+ * Expand one prompt from a named active server.
+ * @param name - Exact server namespace.
+ * @param prompt - Prompt name advertised by the server.
+ * @param arguments_ - String arguments passed to the prompt.
+ * @returns Messages and optional description returned by the server.
+ */
+async getPrompt( name: string, prompt: string, arguments_: Readonly<Record<string, string>> = {}, ): Promise<McpPromptExpansion>
 ```
 
-Source: [`packages/mcp/mcp/src/index.ts:71`](../../packages/mcp/mcp/src/index.ts)
+Source: [`packages/mcp/mcp/src/index.ts:154`](../../packages/mcp/mcp/src/index.ts)
 <!-- END GENERATED cordis-surface -->

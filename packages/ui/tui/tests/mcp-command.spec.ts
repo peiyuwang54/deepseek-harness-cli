@@ -70,11 +70,11 @@ describe('mcp command', () => {
     })
     expect(mcpCommandResult('details', [])).toEqual({
       kind: 'error',
-      text: 'Usage: /mcp [list|ls|desc|verbose|schema|reload] [server]',
+      text: 'Usage: /mcp [list|ls|desc|verbose|schema|reload|resources|prompts] [server] [uri|prompt]',
     })
     expect(mcpCommandResult('schema github extra', [])).toEqual({
       kind: 'error',
-      text: 'Usage: /mcp [list|ls|desc|verbose|schema|reload] [server]',
+      text: 'Usage: /mcp [list|ls|desc|verbose|schema|reload|resources|prompts] [server] [uri|prompt]',
     })
   })
 
@@ -134,6 +134,55 @@ describe('mcp command', () => {
     await expect(mcpCommandResult('reload', [])).resolves.toEqual({
       kind: 'error',
       text: '/mcp reload needs the MCP runtime service.',
+    })
+  })
+
+  it('lists MCP resources and prompts and can inspect one item', async () => {
+    const runtime = {
+      list: () => [],
+      reload: async () => [],
+      resources: async (name?: string) => [{
+        name: name ?? 'docs',
+        resources: [{ uri: 'file:///README.md', name: 'README', description: 'Project docs' }],
+        templates: [{ uriTemplate: 'file:///{path}', name: 'file' }],
+      }],
+      prompts: async (name?: string) => [{
+        name: name ?? 'docs',
+        prompts: [{ name: 'summarize', description: 'Summarize a file' }],
+      }],
+      readResource: async () => [{ uri: 'file:///README.md', mimeType: 'text/plain', text: 'hello' }],
+      getPrompt: async () => ({ messages: [{ role: 'user' as const, content: { type: 'text', text: 'hi' } }] }),
+    }
+    await expect(mcpCommandResult('resources docs', [], { runtime })).resolves.toEqual({
+      kind: 'success',
+      text: [
+        'MCP resources (1 server · 1 resource · 1 template)',
+        '- docs · 1 resource · 1 template',
+        '  - README · file:///README.md — Project docs',
+        '  - file · file:///{path}',
+      ].join('\n'),
+    })
+    await expect(mcpCommandResult('resources docs file:///README.md', [], { runtime })).resolves.toEqual({
+      kind: 'success',
+      text: [
+        'MCP resource docs:file:///README.md (1 item)',
+        '- file:///README.md · text/plain · hello',
+      ].join('\n'),
+    })
+    await expect(mcpCommandResult('prompts docs', [], { runtime })).resolves.toEqual({
+      kind: 'success',
+      text: [
+        'MCP prompts (1 server · 1 prompt)',
+        '- docs · 1 prompt',
+        '  - summarize — Summarize a file',
+      ].join('\n'),
+    })
+    await expect(mcpCommandResult('prompts docs summarize', [], { runtime })).resolves.toEqual({
+      kind: 'success',
+      text: [
+        'MCP prompt docs:summarize (1 message)',
+        '- user: {"type":"text","text":"hi"}',
+      ].join('\n'),
     })
   })
 })

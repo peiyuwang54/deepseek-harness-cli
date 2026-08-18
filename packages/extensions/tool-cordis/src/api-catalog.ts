@@ -992,6 +992,30 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'name', description: 'Exact server namespace, or omission to select every server.' }],
         returns: 'Stable-name results after all immediate attempts settle.',
       },
+      {
+        signature: 'async resources(name?: string): Promise<McpServerResourceCatalog[]>',
+        description: 'Discover resources and URI templates for one server or every active server.',
+        parameters: [{ name: 'name', description: 'Exact server namespace, or omission to select every server.' }],
+        returns: 'Stable-name catalogs containing resources and URI templates.',
+      },
+      {
+        signature: 'async prompts(name?: string): Promise<McpServerPromptCatalog[]>',
+        description: 'Discover prompts for one server or every active server.',
+        parameters: [{ name: 'name', description: 'Exact server namespace, or omission to select every server.' }],
+        returns: 'Stable-name catalogs containing prompt definitions.',
+      },
+      {
+        signature: 'async readResource(name: string, uri: string): Promise<readonly McpResourceContent[]>',
+        description: 'Read one resource from a named active server.',
+        parameters: [{ name: 'name', description: 'Exact server namespace.' }, { name: 'uri', description: 'Concrete resource URI to read.' }],
+        returns: 'Text or base64 content returned by the server.',
+      },
+      {
+        signature: 'async getPrompt( name: string, prompt: string, arguments_: Readonly<Record<string, string>> = {}, ): Promise<McpPromptExpansion>',
+        description: 'Expand one prompt from a named active server.',
+        parameters: [{ name: 'name', description: 'Exact server namespace.' }, { name: 'prompt', description: 'Prompt name advertised by the server.' }, { name: 'arguments_', description: 'String arguments passed to the prompt.' }],
+        returns: 'Messages and optional description returned by the server.',
+      },
     ],
   },
   {
@@ -3610,12 +3634,56 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface McpConnectionStatus {\n    readonly state: McpConnectionState;\n    readonly toolCount: number;\n    readonly reconnectAttempt: number;\n    readonly maxReconnectAttempts: number;\n}',
   },
   {
+    name: 'McpPrompt',
+    declaration: 'export interface McpPrompt {\n    readonly name: string;\n    readonly title?: string;\n    readonly description?: string;\n    readonly arguments?: readonly McpPromptArgument[];\n}',
+  },
+  {
+    name: 'McpPromptArgument',
+    declaration: 'export interface McpPromptArgument {\n    readonly name: string;\n    readonly description?: string;\n    readonly required?: boolean;\n}',
+  },
+  {
+    name: 'McpPromptCatalog',
+    declaration: 'export interface McpPromptCatalog {\n    readonly prompts: readonly McpPrompt[];\n}',
+  },
+  {
+    name: 'McpPromptExpansion',
+    declaration: 'export interface McpPromptExpansion {\n    readonly description?: string;\n    readonly messages: readonly McpPromptMessage[];\n}',
+  },
+  {
+    name: 'McpPromptMessage',
+    declaration: 'export interface McpPromptMessage {\n    readonly role: \'user\' | \'assistant\';\n    readonly content: unknown;\n}',
+  },
+  {
     name: 'McpReloadResult',
     declaration: 'export interface McpReloadResult {\n    readonly name: string;\n    readonly reloaded: boolean;\n    readonly status: McpServerStatus;\n}',
   },
   {
+    name: 'McpResource',
+    declaration: 'export interface McpResource {\n    readonly uri: string;\n    readonly name: string;\n    readonly title?: string;\n    readonly description?: string;\n    readonly mimeType?: string;\n    readonly size?: number;\n}',
+  },
+  {
+    name: 'McpResourceCatalog',
+    declaration: 'export interface McpResourceCatalog {\n    readonly resources: readonly McpResource[];\n    readonly templates: readonly McpResourceTemplate[];\n}',
+  },
+  {
+    name: 'McpResourceContent',
+    declaration: 'export interface McpResourceContent {\n    readonly uri: string;\n    readonly mimeType?: string;\n    readonly text?: string;\n    readonly blob?: string;\n}',
+  },
+  {
+    name: 'McpResourceTemplate',
+    declaration: 'export interface McpResourceTemplate {\n    readonly uriTemplate: string;\n    readonly name: string;\n    readonly title?: string;\n    readonly description?: string;\n    readonly mimeType?: string;\n}',
+  },
+  {
+    name: 'McpServerPromptCatalog',
+    declaration: 'export interface McpServerPromptCatalog extends McpPromptCatalog {\n    readonly name: string;\n}',
+  },
+  {
+    name: 'McpServerResourceCatalog',
+    declaration: 'export interface McpServerResourceCatalog extends McpResourceCatalog {\n    readonly name: string;\n}',
+  },
+  {
     name: 'McpServerRuntime',
-    declaration: 'export interface McpServerRuntime {\n    readonly name: string;\n    readonly transport: McpTransport;\n    readonly status: () => McpConnectionStatus;\n    readonly reload: () => Promise<boolean>;\n}',
+    declaration: 'export interface McpServerRuntime {\n    readonly name: string;\n    readonly transport: McpTransport;\n    readonly status: () => McpConnectionStatus;\n    readonly reload: () => Promise<boolean>;\n    readonly resources?: () => Promise<McpResourceCatalog>;\n    readonly prompts?: () => Promise<McpPromptCatalog>;\n    readonly readResource?: (uri: string) => Promise<readonly McpResourceContent[]>;\n    readonly getPrompt?: (name: string, arguments_?: Readonly<Record<string, string>>) => Promise<McpPromptExpansion>;\n}',
   },
   {
     name: 'McpServerStatus',

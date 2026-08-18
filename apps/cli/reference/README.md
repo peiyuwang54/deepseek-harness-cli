@@ -41,7 +41,7 @@ dsh --profile web --patch ./extra.yml --dump-config
 
 ## MCP server management
 
-`deepseek mcp` manages the version-0 user catalog at `$DSH_HOME/mcp.json`; the same commands are available through `dsh mcp`. `list` is the default, `get <name>` shows one server without resolving secrets, `add` accepts either a stdio command after `--` or one `--url`, and `remove <name>` deletes it. Writes use a cross-process lock plus atomic replacement and set the file mode to `0600` where the platform supports POSIX permissions.
+`deepseek mcp` manages the version-0 user catalog at `$DSH_HOME/mcp.json`; the same commands are available through `dsh mcp`. `list` is the default, `get <name>` shows one server without resolving secrets, `enable <name>` and `disable <name>` change whether the entry is projected into shipped profiles, `add` accepts either a stdio command after `--` or one `--url`, and `remove <name>` deletes it. Writes use a cross-process lock plus atomic replacement and set the file mode to `0600` where the platform supports POSIX permissions.
 
 ```sh
 deepseek mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
@@ -54,7 +54,7 @@ deepseek mcp remove filesystem
 
 `--env KEY` forwards the same-named launch environment variable; `--env KEY=SOURCE` maps another source variable into the server process. HTTP `--header NAME=SOURCE` follows the same reference model. The catalog stores only source names and resolves them when a shipped profile starts; an unset source fails startup before the server connects. Embedded URL credentials are rejected. Config dumps print `<environment:SOURCE>` rather than the resolved value.
 
-Managed servers load only into the three shipped app profiles and require a restart after add or remove. Custom profiles retain full ownership of their composition and can insert `@deepseek-ai/dsh-mcp-client` through ordinary patches. A stdio server command executes as trusted local code outside the agent sandbox; install and review it before enabling it. Inside the TUI, `/mcp`, `/mcp desc`, and `/mcp schema` combine live connection state with the scoped tools that each server published. `/mcp reload [server]` reconnects one current instance or all of them while every live Agent is idle; it does not reread the managed catalog.
+Managed servers load only into the three shipped app profiles and require a restart after add, remove, enable, or disable. Custom profiles retain full ownership of their composition and can insert `@deepseek-ai/dsh-mcp-client` through ordinary patches. A stdio server command executes as trusted local code outside the agent sandbox; install and review it before enabling it. Inside the TUI, `/mcp`, `/mcp desc`, and `/mcp schema` combine live connection state with the scoped tools that each server published; `/mcp resources [server] [uri]` and `/mcp prompts [server] [prompt]` inspect MCP Resources and Prompts. `/mcp reload [server]` reconnects one current instance or all of them while every live Agent is idle; it does not reread the managed catalog.
 
 ## Plugin management
 

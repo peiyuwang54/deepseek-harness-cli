@@ -30,6 +30,81 @@ export interface McpConnectionStatus {
   readonly maxReconnectAttempts: number
 }
 
+/** MCP resource advertised by one connected server. */
+export interface McpResource {
+  readonly uri: string
+  readonly name: string
+  readonly title?: string
+  readonly description?: string
+  readonly mimeType?: string
+  readonly size?: number
+}
+
+/** URI template advertised by one connected server. */
+export interface McpResourceTemplate {
+  readonly uriTemplate: string
+  readonly name: string
+  readonly title?: string
+  readonly description?: string
+  readonly mimeType?: string
+}
+
+/** Prompt definition advertised by one connected server. */
+export interface McpPrompt {
+  readonly name: string
+  readonly title?: string
+  readonly description?: string
+  readonly arguments?: readonly McpPromptArgument[]
+}
+
+/** One optional argument accepted by an MCP prompt. */
+export interface McpPromptArgument {
+  readonly name: string
+  readonly description?: string
+  readonly required?: boolean
+}
+
+/** Resource and URI-template discovery result for one server. */
+export interface McpResourceCatalog {
+  readonly resources: readonly McpResource[]
+  readonly templates: readonly McpResourceTemplate[]
+}
+
+/** Prompt discovery result for one server. */
+export interface McpPromptCatalog {
+  readonly prompts: readonly McpPrompt[]
+}
+
+/** Content returned by an MCP `resources/read` request. */
+export interface McpResourceContent {
+  readonly uri: string
+  readonly mimeType?: string
+  readonly text?: string
+  readonly blob?: string
+}
+
+/** Prompt message returned by an MCP `prompts/get` request. */
+export interface McpPromptMessage {
+  readonly role: 'user' | 'assistant'
+  readonly content: unknown
+}
+
+/** Result returned by an MCP `prompts/get` request. */
+export interface McpPromptExpansion {
+  readonly description?: string
+  readonly messages: readonly McpPromptMessage[]
+}
+
+/** Discovery result tagged with the server that produced it. */
+export interface McpServerResourceCatalog extends McpResourceCatalog {
+  readonly name: string
+}
+
+/** Prompt discovery result tagged with the server that produced it. */
+export interface McpServerPromptCatalog extends McpPromptCatalog {
+  readonly name: string
+}
+
 /** Immutable server snapshot returned by {@link McpRegistry.list}. */
 export interface McpServerStatus extends McpConnectionStatus {
   /** Stable server namespace. */
@@ -48,6 +123,14 @@ export interface McpServerRuntime {
   readonly status: () => McpConnectionStatus
   /** Close any current generation and make one immediate connection attempt. */
   readonly reload: () => Promise<boolean>
+  /** Discover resources and URI templates, if this server advertises them. */
+  readonly resources?: () => Promise<McpResourceCatalog>
+  /** Discover prompts, if this server advertises them. */
+  readonly prompts?: () => Promise<McpPromptCatalog>
+  /** Read one concrete resource URI. */
+  readonly readResource?: (uri: string) => Promise<readonly McpResourceContent[]>
+  /** Expand one named prompt with optional string arguments. */
+  readonly getPrompt?: (name: string, arguments_?: Readonly<Record<string, string>>) => Promise<McpPromptExpansion>
 }
 
 /** Result of one server selected by {@link McpRegistry.reload}. */
@@ -81,8 +164,7 @@ export class McpRegistry extends Service {
    * @returns The exact effect disposer that removes this server.
    */
   register(server: McpServerRuntime): () => void {
-    // oxlint-disable-next-line typescript/no-misused-promises -- synchronous cleanup; direct return preserves disposer identity
-    return this.ctx.effect(() => {
+    const dispose = this.ctx.effect(() => {
       if (this.servers.has(server.name)) {
         throw new Error(`mcp: server "${server.name}" is already registered`)
       }
@@ -91,6 +173,7 @@ export class McpRegistry extends Service {
         if (this.servers.get(server.name) === server) this.servers.delete(server.name)
       }
     }, 'mcp.register()')
+    return () => { void dispose() }
   }
 
   /**
@@ -125,11 +208,75 @@ export class McpRegistry extends Service {
     return results.toSorted((left, right) => left.name.localeCompare(right.name))
   }
 
+  /**
+   * Discover resources and URI templates for one server or every active server.
+   * @param name - Exact server namespace, or omission to select every server.
+   * @returns Stable-name catalogs containing resources and URI templates.
+   */
+  async resources(name?: string): Promise<McpServerResourceCatalog[]> {
+    const selected = this.select(name)
+    const results = await Promise.all(selected.map(async (server) => {
+      if (server.resources === undefined) throw new Error(`mcp: server "${server.name}" does not expose resources`)
+      const catalog = await server.resources()
+      return { name: server.name, resources: catalog.resources, templates: catalog.templates }
+    }))
+    return results.toSorted((left, right) => left.name.localeCompare(right.name))
+  }
+
+  /**
+   * Discover prompts for one server or every active server.
+   * @param name - Exact server namespace, or omission to select every server.
+   * @returns Stable-name catalogs containing prompt definitions.
+   */
+  async prompts(name?: string): Promise<McpServerPromptCatalog[]> {
+    const selected = this.select(name)
+    const results = await Promise.all(selected.map(async (server) => {
+      if (server.prompts === undefined) throw new Error(`mcp: server "${server.name}" does not expose prompts`)
+      const catalog = await server.prompts()
+      return { name: server.name, prompts: catalog.prompts }
+    }))
+    return results.toSorted((left, right) => left.name.localeCompare(right.name))
+  }
+
+  /**
+   * Read one resource from a named active server.
+   * @param name - Exact server namespace.
+   * @param uri - Concrete resource URI to read.
+   * @returns Text or base64 content returned by the server.
+   */
+  async readResource(name: string, uri: string): Promise<readonly McpResourceContent[]> {
+    const server = this.require(name)
+    if (server.readResource === undefined) throw new Error(`mcp: server "${name}" does not expose resources`)
+    return await server.readResource(uri)
+  }
+
+  /**
+   * Expand one prompt from a named active server.
+   * @param name - Exact server namespace.
+   * @param prompt - Prompt name advertised by the server.
+   * @param arguments_ - String arguments passed to the prompt.
+   * @returns Messages and optional description returned by the server.
+   */
+  async getPrompt(
+    name: string,
+    prompt: string,
+    arguments_: Readonly<Record<string, string>> = {},
+  ): Promise<McpPromptExpansion> {
+    const server = this.require(name)
+    if (server.getPrompt === undefined) throw new Error(`mcp: server "${name}" does not expose prompts`)
+    return await server.getPrompt(prompt, arguments_)
+  }
+
   /** Return one active server or fail the human-addressed operation loudly. */
   private require(name: string): McpServerRuntime {
     const server = this.servers.get(name)
     if (server === undefined) throw new Error(`mcp: unknown server "${name}"`)
     return server
+  }
+
+  /** Select active runtimes while keeping unknown names loud. */
+  private select(name: string | undefined): McpServerRuntime[] {
+    return name === undefined ? [...this.servers.values()] : [this.require(name)]
   }
 
   /** Copy a provider status while pinning registry-owned identity fields. */

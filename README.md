@@ -78,6 +78,17 @@ deepseek --yolo
 
 `--yolo` is dangerous. Use it only in an isolated environment. Use `/permissions` to change the current session safely.
 
+### MCP servers
+
+```sh
+deepseek mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
+deepseek mcp add remote --url https://example.com/mcp --header Authorization=MCP_TOKEN
+deepseek mcp list
+deepseek mcp remove filesystem
+```
+
+`--env KEY[=SOURCE]` and `--header NAME=SOURCE` save environment-variable references, not secret values. Restart the CLI after a change, then use `/mcp`, `/mcp desc`, or `/mcp schema` to inspect the tools visible to the current session.
+
 ## What it includes
 
 - Code reading, editing, shell tools, web search, skills, MCP, and subagents.

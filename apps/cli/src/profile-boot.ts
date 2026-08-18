@@ -1,7 +1,8 @@
 /**
  * Shared profile boot for every `dsh` surface: resolve the profile, stack its
- * patch layers (bundle layers in `dsh.profile.bundles` order, the profile's
- * own `cordis.patch.yml`, `--patch` overlays, the telemetry switch), mount the
+ * patch layers (bundle layers in `dsh.profile.bundles` order, managed MCP
+ * servers, the profile's own `cordis.patch.yml`, `--patch` overlays, and the
+ * telemetry switch), mount the
  * tree over the profile's empty root config, keep the profile patch layer
  * live, and wire fail-loud plus bounded shutdown.
  *
@@ -45,6 +46,7 @@ import {
   type TuiConfigLayerDiagnostic,
 } from '@deepseek-ai/dsh-tui'
 import { createProcessShutdown, type ProcessShutdown } from './process-shutdown.ts'
+import { managedMcpPatches, mcpConfigPath } from './mcp.ts'
 import { createTuiProcessHandoff } from './tui-handoff.ts'
 
 const NAME = 'dsh'
@@ -67,6 +69,16 @@ export function shippedProfileTemplate(name: string): readonly string[] | undefi
 }
 
 /**
+ * Project the managed MCP catalog only into product-shipped app profiles.
+ * Custom profiles keep complete ownership of their plugin composition.
+ * @param name - profile name.
+ * @returns Managed MCP insertions for a shipped profile.
+ */
+function profileMcpPatches(name: string): PatchOptions[] {
+  return shippedProfileTemplate(name) === undefined ? [] : managedMcpPatches()
+}
+
+/**
  * The home-level user patch layer (`$DSH_HOME/cordis.patch.yml`), applied
  * over every profile's own layer. Resolved per call, not at module load:
  * `$DSH_HOME` may be set by the test or launcher after import.
@@ -84,8 +96,9 @@ const TELEMETRY_ROW_ID = 'session-telemetry-otel'
 
 /** The empty root entry list every profile tree patches over. */
 const PROFILE_ROOT_CONFIG = `# dsh profile root — an empty entry list. The tree is composed as patches:
-# each bundle in package.json's dsh.profile.bundles, then cordis.patch.yml, then any
-# --patch overlays. Edit cordis.patch.yml, not this file.
+# each bundle in package.json's dsh.profile.bundles, managed MCP servers for a
+# shipped profile, then cordis.patch.yml and any --patch overlays.
+# Edit cordis.patch.yml, not this file.
 []
 `
 
@@ -135,14 +148,16 @@ export function prepareProfile(name: string, userLayer = true): Profile {
 /** One profile's patch layers (application order) and the row index of its pre-flag composition. */
 interface ComposedProfile {
   profile: Profile
-  /** Bundle layers concatenated — the part below the user layers on a live reload. */
+  /** Bundle layers concatenated below the managed and user layers. */
   bundlePatches: PatchOptions[]
+  /** User-managed MCP servers, projected as ordinary plugin insertions. */
+  mcpPatches: PatchOptions[]
   /** The home-level user layer (`$DSH_HOME/cordis.patch.yml`), applied after the profile's own. */
   homePatches: PatchOptions[]
   /** Layers above the user layers on a live reload: `--patch` overlays and the telemetry switch. */
   overlays: PatchOptions[]
   /**
-   * id → row of the composed tree (bundles + user layers + overlays), for the
+   * id → row of the composed tree (bundles + managed MCP + user layers + overlays), for the
    * launcher's own row checks.
    */
   rows: ReadonlyMap<string, EntryOptions>
@@ -156,6 +171,7 @@ interface ComposedProfile {
 function allPatches(composed: ComposedProfile): PatchOptions[] {
   return [
     ...composed.bundlePatches,
+    ...composed.mcpPatches,
     ...composed.profile.patches,
     ...composed.homePatches,
     ...composed.overlays,
@@ -165,9 +181,10 @@ function allPatches(composed: ComposedProfile): PatchOptions[] {
 /**
  * Load `name` and compose its effective patch stack: bundle layers in
  * `dsh.profile.bundles` order (the base bundle gates the shell stacks by
- * platform on its own rows), the profile's user layer, the home-level user
- * layer (`$DSH_HOME/cordis.patch.yml` — machine-local preferences that apply
- * to every profile, so it outranks the per-profile layer), `--patch` overlays,
+ * platform on its own rows), managed MCP servers for shipped profiles, the
+ * profile's user layer, the home-level user layer
+ * (`$DSH_HOME/cordis.patch.yml` — machine-local preferences that apply to
+ * every profile, so it outranks the per-profile layer), `--patch` overlays,
  * then the telemetry switch.
  * @param name - the profile name.
  * @param patchFiles - `--patch` overlay paths, in argv order.
@@ -179,10 +196,11 @@ function composeProfile(
 ): ComposedProfile {
   const profile = prepareProfile(name)
   const homePatches = loadOptionalPatches(NAME, homePatchPath()) ?? []
+  const mcpPatches = profileMcpPatches(name)
   const overlays = patchFiles.flatMap(file => loadOverlayPatches(NAME, resolve(file)))
   const bundlePatches = profile.layers.flatMap(layer => layer.patches)
   const rows = new Map<string, EntryOptions>()
-  for (const row of composeEntries([bundlePatches, profile.patches, homePatches, overlays])) {
+  for (const row of composeEntries([bundlePatches, mcpPatches, profile.patches, homePatches, overlays])) {
     if (typeof row.id === 'string') rows.set(row.id, row)
   }
   const composedOverlays = [...overlays]
@@ -205,6 +223,7 @@ function composeProfile(
   return {
     profile,
     bundlePatches,
+    mcpPatches,
     homePatches,
     overlays: composedOverlays,
     rows,
@@ -220,12 +239,16 @@ function configDiagnostics(
   patchFiles: readonly string[],
 ): TuiConfigDiagnostics {
   const homePatchFile = homePatchPath()
+  const managedMcpFile = mcpConfigPath()
   const layers: TuiConfigLayerDiagnostic[] = [
     ...composed.profile.layers.map(layer => ({
       kind: 'bundle' as const,
       label: layer.packageName,
       path: layer.patchPath,
     })),
+    ...composed.mcpPatches.length > 0 && existsSync(managedMcpFile)
+      ? [{ kind: 'home' as const, label: 'managed MCP servers', path: managedMcpFile }]
+      : [],
     {
       kind: 'profile',
       label: `profile ${composed.profile.name}`,
@@ -343,6 +366,7 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
   // removing the override could never revert the row to the bundle default.
   const composeLive = (): PatchOptions[] => structuredClone([
     ...composed.bundlePatches,
+    ...profileMcpPatches(options.profile),
     ...loadOptionalPatches(NAME, composed.profile.patchPath) ?? [],
     ...loadOptionalPatches(NAME, homePatchPath()) ?? [],
     ...composed.overlays,

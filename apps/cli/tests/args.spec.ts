@@ -73,6 +73,17 @@ describe('parseDshArgs', () => {
       .toEqual({ mode: 'plugin', profile: 'tui', args: ['add', '--save-dev', 'x'] })
   })
 
+  it('routes boot-free MCP management arguments verbatim', () => {
+    expect(parse(['mcp'])).toEqual({ mode: 'mcp', args: [] })
+    expect(parse(['mcp', 'list'])).toEqual({ mode: 'mcp', args: ['list'] })
+    expect(parse(['mcp', '--help'])).toEqual({ mode: 'mcp', args: ['--help'] })
+    expect(parse(['mcp', 'add', 'filesystem', '--env', 'TOKEN=GITHUB_TOKEN', '--', 'npx', '-y', 'server']))
+      .toEqual({
+        mode: 'mcp',
+        args: ['add', 'filesystem', '--env', 'TOKEN=GITHUB_TOKEN', '--', 'npx', '-y', 'server'],
+      })
+  })
+
   it('routes profile and shipped-alias config dumps', () => {
     expect(parse(['--dump-config']))
       .toEqual({ mode: 'dump-config', profile: 'tui', defaultOnly: false, patches: [] })
@@ -131,6 +142,7 @@ describe('parseDshArgs', () => {
     expect(exitCode(['plugin', '--profile', 'tui'])).toBe(1) // nothing to forward
     expect(exitCode(['plugin', '--profile', ''])).toBe(1)
     expect(exitCode(['--profile', 'x', 'plugin', 'add', 'y'])).toBe(1)
+    expect(exitCode(['--profile', 'x', 'mcp', 'list'])).toBe(1)
   })
 
   it('keeps the launcher help discoverable at the bare front door', () => {

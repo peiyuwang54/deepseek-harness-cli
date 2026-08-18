@@ -26,7 +26,7 @@ MCP Client only (no server side — ACP already covers the "expose harness as an
 
 ### Plugin shape
 
-Namespace plugin (named exports `name`/`inject`/`Config`/`apply`, no `export default`). `inject: ['tools']`. Each MCP server is one plugin instance in `cordis.yml` — the same package loaded N times with different configs, like `dsh-tool-subagent`.
+Namespace plugin (named exports `name`/`inject`/`Config`/`apply`, no `export default`). `inject: ['tools']`. Each MCP server is one plugin instance in the composed Cordis tree — the same package loaded N times with different configs, like `dsh-tool-subagent`. An instance may come from an authored patch or from the [managed MCP server catalog](2026-08-18-managed-mcp-server-catalog.md).
 
 ### Configuration
 
@@ -83,7 +83,7 @@ The model sees `mcp__github__create_issue`, `mcp__github__search_code`, `mcp__we
 
 ### Lifecycle
 
-Boot-time from `cordis.yml`. HMR (`@cordisjs/plugin-hmr`) provides hot-swap: editing the yml entry triggers dispose of the old instance (disconnects, unregisters tools) and creation of a new one (connects, discovers, registers). No runtime-dynamic API for now. Public names are pure functions of `(serverName, rawName)`, so an HMR swap that keeps `serverName` recreates identical model-facing names — session history and permission rules stay valid — and adding or removing an unrelated server never renames an existing tool.
+Every instance enters through Cordis at boot. HMR (`@cordisjs/plugin-hmr`) provides hot-swap for authored YAML: editing the entry triggers dispose of the old instance (disconnects, unregisters tools) and creation of a new one (connects, discovers, registers). Managed-catalog changes require a process restart. There is no runtime-dynamic API. Public names are pure functions of `(serverName, rawName)`, so an HMR swap that keeps `serverName` recreates identical model-facing names — session history and permission rules stay valid — and adding or removing an unrelated server never renames an existing tool.
 
 ### Tool discovery and registration
 
@@ -199,10 +199,10 @@ Coverage is named per tier; each behavior lives at the cheapest tier that can ex
 
 ## Consequences
 
-- A `cordis.yml` entry per MCP server is the entire integration cost: `serverName: filesystem` + a stdio command (or a Streamable HTTP URL) puts `mcp__filesystem__read_file` in the model's tool list, callable, with the raw `read_file` on the wire.
+- One plugin instance per MCP server is the entire integration cost: the managed CLI or an authored Cordis entry combines `serverName: filesystem` with a stdio command or Streamable HTTP URL, putting `mcp__filesystem__read_file` in the model's tool list while keeping raw `read_file` on the wire.
 - Public names are part of session history and permission/configuration APIs; the naming algorithm is a v1 contract pinned by tests, and changing it after release is a breaking change.
 - The `mcp__<serverName>__` qualifier costs tokens on every name. Accepted: descriptions and JSON schemas dominate tool-definition tokens, and the qualifier buys stable identity, collision isolation, and MCP-wide policy shapes (`mcp__*`, `mcp__github__*`).
 - **MCP SDK stability**: the `@modelcontextprotocol/sdk` is still evolving; breaking changes require updating the bridge. The version is pinned, and the SDK is widely adopted (Claude Desktop, Cursor, VS Code) so breaking changes are unlikely to be silent.
 - **Tool schema quality**: MCP servers may expose poorly-described tools (vague descriptions, incomplete JSON schemas). The harness passes them through as-is — garbage-in-garbage-out; that is the server author's responsibility, not the bridge's.
 - **Stdio process management**: a misbehaving MCP server that ignores signals could wedge dispose. The Cordis fiber disposal has bounded quiescence; a stuck transport eventually times out at the framework level.
-- Crash recovery is automatic within the [reconnect budget](2026-08-06-mcp-client-auto-reconnect.md); manual reload remains the path after exhaustion or with `reconnect.enabled: false`.
+- Crash recovery is automatic within the [reconnect budget](2026-08-06-mcp-client-auto-reconnect.md); restart or an authored-profile HMR edit is the recovery path after exhaustion or with `reconnect.enabled: false`.

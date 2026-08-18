@@ -10,8 +10,8 @@
  * `dsh --profile tui --resume abc` boots the tui profile with `--resume abc`,
  * and `dsh --profile web -h` prints the web app's help, not this one's.
  *
- * `web`, `tui`, and `exec` are shipped aliases for their matching profiles; `plugin`
- * manages a profile's plugin dependencies by forwarding to pnpm.
+ * `web`, `tui`, and `exec` are shipped aliases for their matching profiles;
+ * `plugin` manages profile dependencies and `mcp` manages shared MCP servers.
  * @module @deepseek-ai/dsh/args
  */
 
@@ -44,8 +44,15 @@ interface PluginInvocation {
   args: string[]
 }
 
+/** Manage the user-level MCP server catalog without booting a profile. */
+interface McpInvocation {
+  mode: 'mcp'
+  /** Arguments after `mcp`, parsed by the boot-free MCP manager. */
+  args: string[]
+}
+
 /** The resolved `dsh` invocation. Help, version, and errors exit inside {@link parseDshArgs}. */
-export type DshInvocation = ProfileInvocation | DumpConfigInvocation | PluginInvocation
+export type DshInvocation = ProfileInvocation | DumpConfigInvocation | PluginInvocation | McpInvocation
 
 /** Launcher flags shared by the default command and shipped profile aliases. */
 interface BootOptions {
@@ -75,6 +82,8 @@ Examples:
   dsh --profile tui --resume <session>       arguments after the launcher flags reach the app
   dsh --profile web --help                   the web app's own flags and help
   dsh plugin --profile tui add <package>     install a plugin into the tui profile
+  deepseek mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
+                                             add a shared stdio MCP server
 `
 
 /**
@@ -195,6 +204,16 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
       if (options.profile === '') program.error('error: --profile needs a name')
       if (args.length === 0) program.error('error: plugin needs pnpm arguments to forward (e.g. add <package>)')
       resolved = { mode: 'plugin', profile: options.profile, args }
+    })
+
+  program.command('mcp')
+    .description('manage MCP servers shared by the shipped CLI profiles')
+    .helpOption(false)
+    .allowUnknownOption()
+    .argument('[args...]', 'list, get <name>, add <name> [options] -- <command>, or remove <name>')
+    .action((args: string[]) => {
+      rejectParentOptions('mcp')
+      resolved = { mode: 'mcp', args }
     })
 
   try {

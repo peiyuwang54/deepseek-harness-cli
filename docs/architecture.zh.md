@@ -24,7 +24,7 @@
 
 [`dsh-base`](../packages/bundle/base/README.md) 是每个 profile 的第一层：模型适配器、工具、持久化、沙箱与审批策略、设置、凭据、遥测。[`dsh-web-app`](../packages/bundle/web-app/README.md) 增加浏览器应用；[`dsh-headless`](../packages/bundle/headless/README.md) 增加一次性运行器，且完全不带服务器。
 
-各层按此顺序应用在空条目列表之上：先按 profile 列出的顺序应用每个组合包，然后是 profile 的 `cordis.patch.yml`，然后是 home 级的那份，最后是任意 `--patch` overlay。一条 patch 按 id 定位某个条目并替换其整个 config，或插入新条目。
+各层按此顺序应用在空条目列表之上：先按 profile 列出的顺序应用每个组合包；然后是随附应用 profile 从 `$DSH_HOME/mcp.json` 取得的受管 MCP 行；接着是 profile 的 `cordis.patch.yml` 和 home 级的那份；最后是任意 `--patch` overlay。一条 patch 按 id 定位某个条目并替换其整个 config，或插入新条目。
 
 要查看你的机器实际启动的配置树：
 

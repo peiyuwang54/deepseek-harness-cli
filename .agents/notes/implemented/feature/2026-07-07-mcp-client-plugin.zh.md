@@ -26,7 +26,7 @@ harness 此前无法消费 MCP（Model Context Protocol）生态中的工具。M
 
 ### 插件形态
 
-命名空间插件（具名导出 `name`/`inject`/`Config`/`apply`，无 `export default`）。`inject: ['tools']`。每个 MCP 服务器对应 `cordis.yml` 中的一个插件实例——同一个包以不同配置加载 N 次，与 `dsh-tool-subagent` 相同。
+命名空间插件（具名导出 `name`/`inject`/`Config`/`apply`，无 `export default`）。`inject: ['tools']`。每个 MCP 服务器对应组合后 Cordis 树中的一个插件实例——同一个包以不同配置加载 N 次，与 `dsh-tool-subagent` 相同。实例可以来自手写 patch，也可以来自[受管 MCP 服务器 catalog](2026-08-18-managed-mcp-server-catalog.md)。
 
 ### 配置
 
@@ -83,7 +83,7 @@ type Config = StdioConfig | StreamableHttpConfig
 
 ### 生命周期
 
-启动时从 `cordis.yml` 加载。HMR（热模块替换）（`@cordisjs/plugin-hmr`）提供热替换：编辑 yml 条目触发旧实例的 dispose（资源释放）（断开连接、注销工具），并创建新实例（连接、发现、注册）。目前不提供运行时动态 API。公开名称是 `(serverName, rawName)` 的纯函数，因此保持 `serverName` 不变的 HMR 替换会重建完全相同的模型可见名称——会话历史和权限规则保持有效——而添加或移除不相关的服务器永远不会重命名已有工具。
+每个实例都在启动时通过 Cordis 进入。HMR（热模块替换）（`@cordisjs/plugin-hmr`）为手写 YAML 提供热替换：编辑条目会触发旧实例的 dispose（资源释放）（断开连接、注销工具），并创建新实例（连接、发现、注册）。受管 catalog 的修改需要重启进程。目前不提供运行时动态 API。公开名称是 `(serverName, rawName)` 的纯函数，因此保持 `serverName` 不变的 HMR 替换会重建完全相同的模型可见名称——会话历史和权限规则保持有效——而添加或移除不相关的服务器永远不会重命名已有工具。
 
 ### 工具发现与注册
 
@@ -199,10 +199,10 @@ v1 否决。它能防止跨服务器冲突，但无法将 MCP 注册与原生 ha
 
 ## 后果
 
-- 每个 MCP 服务器只需 `cordis.yml` 中的一条配置即完成集成：`serverName: filesystem` 加一条 stdio 命令（或一个 Streamable HTTP URL），就能将 `mcp__filesystem__read_file` 放入模型的工具列表，可调用，协议上使用原始的 `read_file`。
+- 每个 MCP 服务器只需一个插件实例即完成集成：受管 CLI 或手写 Cordis 条目把 `serverName: filesystem` 与一条 stdio 命令或 Streamable HTTP URL 组合，即可将 `mcp__filesystem__read_file` 放入模型工具列表，同时在协议上保留原始的 `read_file`。
 - 公开名称是会话历史和权限/配置 API 的一部分；命名算法是由测试固定的 v1 约定，发布后变更即为破坏性变更。
 - `mcp__<serverName>__` 限定符在每个名称上消耗 token。已接受：描述和 JSON Schema 在工具定义 token 中占主导，而限定符换来了稳定标识、冲突隔离和 MCP 全局策略匹配模式（`mcp__*`、`mcp__github__*`）。
 - **MCP SDK 稳定性**：`@modelcontextprotocol/sdk` 仍在演进中；破坏性变更需要更新桥接。版本已固定，且该 SDK 被广泛采用（Claude Desktop、Cursor、VS Code），因此破坏性变更不太可能悄然发生。
 - **工具 schema 质量**：MCP 服务器可能暴露描述不佳的工具（模糊的描述、不完整的 JSON Schema）。harness 原样透传——垃圾进垃圾出；这是服务器作者的责任，不是桥接的。
 - **Stdio 进程管理**：行为异常的 MCP 服务器如果忽略信号，可能卡住 dispose。Cordis fiber 的 dispose 具有有界的完全停稳过程；卡住的传输层最终会在框架层面超时。
-- 崩溃恢复在[重连预算](2026-08-06-mcp-client-auto-reconnect.md)内自动进行；耗尽后或配置 `reconnect.enabled: false` 时回退为手动重新加载。
+- 崩溃恢复在[重连预算](2026-08-06-mcp-client-auto-reconnect.md)内自动进行；耗尽后或配置 `reconnect.enabled: false` 时，通过重启或手写 profile 的 HMR 编辑恢复。

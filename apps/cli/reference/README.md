@@ -2,11 +2,11 @@
 
 English | [中文](README.zh.md)
 
-This reference defines the profile, shipped-alias, plugin-management, and config-dump command modes. Argv is parsed once through [`src/args.ts`](../src/args.ts), and [`src/bin.ts`](../src/bin.ts) dynamically imports only the selected runner.
+This reference defines the profile, shipped-alias, MCP-management, plugin-management, and config-dump command modes. Argv is parsed once through [`src/args.ts`](../src/args.ts), and [`src/bin.ts`](../src/bin.ts) dynamically imports only the selected runner.
 
 ## Profile boot
 
-`dsh --profile <name>` boots the profile at `$DSH_HOME/profiles/<name>`. The effective tree is composed over an empty root by applying, in order: each bundle patch named in the profile manifest's `dsh.profile.bundles` list, the profile's own `cordis.patch.yml`, the home-level `$DSH_HOME/cordis.patch.yml` (machine-local preferences shared by every profile, so it outranks the per-profile layer), and each `--patch <path>` overlay in argv order. Later layers win per row; a patch replaces the targeted row's complete `config` value rather than deep-merging keys, and may insert new rows. A parse, schema, resolution, or plugin boot failure is reported and exits nonzero. SIGINT and SIGTERM dispose the mounted root before exit.
+`dsh --profile <name>` boots the profile at `$DSH_HOME/profiles/<name>`. The effective tree is composed over an empty root by applying, in order: each bundle patch named in the profile manifest's `dsh.profile.bundles` list; MCP server rows projected from `$DSH_HOME/mcp.json` for the shipped `web`, `tui`, and `headless` profiles; the profile's own `cordis.patch.yml`; the home-level `$DSH_HOME/cordis.patch.yml` (machine-local preferences shared by every profile, so it outranks the per-profile layer); and each `--patch <path>` overlay in argv order. Later layers win per row; a patch replaces the targeted row's complete `config` value rather than deep-merging keys, and may insert new rows. A parse, schema, resolution, or plugin boot failure is reported and exits nonzero. SIGINT and SIGTERM dispose the mounted root before exit.
 
 Bundle names resolve from the dsh installation first, then from the profile directory. In-box bundles (`@deepseek-ai/dsh-base`, `@deepseek-ai/dsh-web-app`, `@deepseek-ai/dsh-tui-app`, `@deepseek-ai/dsh-headless`) therefore always come from the same installation as the running `dsh`; out-of-tree bundles come from the profile's pnpm-managed `node_modules`. A bare plugin `name` in any patch row resolves through the profile directory's Node parent-walk, which reaches the maintained installation fallback `$DSH_HOME/profiles/node_modules` (one symlink per package the installation's app and bundles depend on, healed on every launch).
 
@@ -18,7 +18,7 @@ The launcher's flags come first and end at the first token it does not recognize
 
 A composition mounts once. An ordinary plugin injects `cmdlineArgs`, parses this app's arguments, and provides what it resolved as a service; each row configured from flags injects that service, and Loader waits for it before evaluating the row's config (`port: !!js ctx.webStartup.port ?? 3080`). A flag therefore beats the value written beside it. This precedence requires the row to retain that expression; a user patch that replaces the whole `config` with literals removes the runtime read. Help and rejected arguments request exit — nonzero for a rejection, 0 for help — without activating rows that depend on the provider's service. A live `cordis.patch.yml` edit re-evaluates expressions against services that are still up, so it cannot reset a served port.
 
-Launcher flags must come before app arguments, and the launcher's parser consumes one `--`: an app argument that must arrive as a literal `--` needs `-- --`. A first app argument equal to `web`, `tui`, or `plugin` selects that subcommand instead. `ctx.cmdlineArgs.get()` is a shared immutable read: multiple plugins may parse the same snapshot, while a profile with no reader ignores its app arguments.
+Launcher flags must come before app arguments, and the launcher's parser consumes one `--`: an app argument that must arrive as a literal `--` needs `-- --`. A first app argument equal to `web`, `tui`, `mcp`, or `plugin` selects that subcommand instead. `ctx.cmdlineArgs.get()` is a shared immutable read: multiple plugins may parse the same snapshot, while a profile with no reader ignores its app arguments.
 
 The shipped apps own these command lines:
 
@@ -37,7 +37,24 @@ dsh --profile web --dump-default-config
 dsh --profile web --patch ./extra.yml --dump-config
 ```
 
-`--dump-default-config` prints only the bundle layers; `--dump-config` adds the profile's `cordis.patch.yml`, the home-level `$DSH_HOME/cordis.patch.yml`, and `--patch` overlays. Both print comments naming the file that supplied each row and every overlay that changed it; `!!js` expressions remain unevaluated, and unmatched patch targets are reported on stderr. A dump never runs app command-line providers, so it shows the composed tree before any app argument is resolved and rejects an invocation that carries app arguments.
+`--dump-default-config` prints only the bundle layers; `--dump-config` adds managed MCP rows, the profile's `cordis.patch.yml`, the home-level `$DSH_HOME/cordis.patch.yml`, and `--patch` overlays. Both print comments naming the file that supplied each row and every overlay that changed it; `!!js` expressions remain unevaluated, managed MCP environment references remain redacted as source names, and unmatched patch targets are reported on stderr. A dump never runs app command-line providers, so it shows the composed tree before any app argument is resolved and rejects an invocation that carries app arguments.
+
+## MCP server management
+
+`deepseek mcp` manages the version-0 user catalog at `$DSH_HOME/mcp.json`; the same commands are available through `dsh mcp`. `list` is the default, `get <name>` shows one server without resolving secrets, `add` accepts either a stdio command after `--` or one `--url`, and `remove <name>` deletes it. Writes use a cross-process lock plus atomic replacement and set the file mode to `0600` where the platform supports POSIX permissions.
+
+```sh
+deepseek mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
+deepseek mcp add github --env GITHUB_TOKEN -- npx -y @modelcontextprotocol/server-github
+deepseek mcp add remote --url https://example.com/mcp --header Authorization=MCP_TOKEN
+deepseek mcp list
+deepseek mcp get remote
+deepseek mcp remove filesystem
+```
+
+`--env KEY` forwards the same-named launch environment variable; `--env KEY=SOURCE` maps another source variable into the server process. HTTP `--header NAME=SOURCE` follows the same reference model. The catalog stores only source names and resolves them when a shipped profile starts; an unset source fails startup before the server connects. Embedded URL credentials are rejected. Config dumps print `<environment:SOURCE>` rather than the resolved value.
+
+Managed servers load only into the three shipped app profiles and require a restart after add or remove. Custom profiles retain full ownership of their composition and can insert `@deepseek-ai/dsh-mcp-client` through ordinary patches. A stdio server command executes as trusted local code outside the agent sandbox; install and review it before enabling it. Inside the TUI, `/mcp`, `/mcp desc`, and `/mcp schema` inspect the scoped tools that connected servers published.
 
 ## Plugin management
 
@@ -93,7 +110,7 @@ The base bundle mounts the native DeepSeek adapter, the dormant pi-ai multi-prov
 
 Session telemetry stays local by default. `DSH_TELEMETRY_MODE=FULL` streams every projected session event as OTLP/HTTP logs, while `DSH_TELEMETRY_MODE=FEEDBACK_ONLY` uploads a session-log suffix only when feedback is recorded. `DSH_TELEMETRY_OTLP_URL` selects another collector, and any non-empty `DSH_TELEMETRY_DISABLED` remains an authoritative hard opt-out. The shipped base has no telemetry redaction rule, so explicitly enabled exports can contain message text, tool arguments and results, and workspace paths; the [default-off Agent Note](../../../.agents/notes/implemented/feature/2026-08-10-telemetry-default-off.md) owns that deployment decision.
 
-Install external plugin bundles through `dsh plugin --profile <name> add <package-or-git-spec>`. The installed package owns its dependencies and contributes its declared `cordis.patch.yml` layer. The CLI also ships `@deepseek-ai/dsh-mcp-client` as a dependency for patch layers, but no MCP server is enabled by default because each server command is trusted executable code outside the agent sandbox.
+Install external plugin bundles through `dsh plugin --profile <name> add <package-or-git-spec>`. The installed package owns its dependencies and contributes its declared `cordis.patch.yml` layer. The CLI ships `@deepseek-ai/dsh-mcp-client` for both the managed catalog and explicit patch layers; no server is enabled by default.
 
 ## Source execution
 

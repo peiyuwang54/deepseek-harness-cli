@@ -78,6 +78,17 @@ deepseek --yolo
 
 `--yolo` 风险很高，只能在隔离环境中使用。运行中请用 `/permissions` 安全切换当前会话。
 
+### MCP 服务器
+
+```sh
+deepseek mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
+deepseek mcp add remote --url https://example.com/mcp --header Authorization=MCP_TOKEN
+deepseek mcp list
+deepseek mcp remove filesystem
+```
+
+`--env KEY[=SOURCE]` 与 `--header NAME=SOURCE` 保存环境变量引用，而不是密钥值。修改后请重启 CLI，再使用 `/mcp`、`/mcp desc` 或 `/mcp schema` 检查当前会话可见的工具。
+
 ## 核心能力
 
 - 代码读取、编辑、Shell、Web 搜索、Skills、MCP 与子代理。

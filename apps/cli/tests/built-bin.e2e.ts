@@ -1101,6 +1101,43 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-client-(?!(?:ui-theme|locale)')/)
     }, 30_000)
 
+    it('manages shared MCP servers and redacts their environment references in config dumps', async () => {
+      const added = await runBuiltBin([
+        'mcp', 'add', 'remote', '--url', 'https://example.com/mcp', '--header', 'Authorization=AUTH_TOKEN',
+      ], { DSH_HOME: home })
+      expect(added.code, added.stderr).toBe(0)
+      expect(added.stdout).toContain('Added MCP server "remote"')
+      const stored = readFileSync(join(home, 'mcp.json'), 'utf8')
+      expect(stored).toContain('"Authorization": "AUTH_TOKEN"')
+      expect(stored).not.toContain('actual-secret')
+
+      const dump = await runBuiltBin(
+        ['tui', '--dump-config'],
+        { DSH_HOME: home, AUTH_TOKEN: 'actual-secret' },
+      )
+      expect(dump.code, dump.stderr).toBe(0)
+      expect(dump.stdout).toContain('# == ' + join(home, 'mcp.json'))
+      expect(dump.stdout).toContain('id: managed-mcp-remote')
+      expect(dump.stdout).toContain('<environment:AUTH_TOKEN>')
+      expect(dump.stdout).not.toContain('actual-secret')
+
+      const defaultDump = await runBuiltBin(['tui', '--dump-default-config'], { DSH_HOME: home })
+      expect(defaultDump.code, defaultDump.stderr).toBe(0)
+      expect(defaultDump.stdout).not.toContain('managed-mcp-remote')
+
+      const customDir = join(home, 'profiles', 'custom')
+      mkdirSync(customDir, { recursive: true })
+      writeFileSync(join(customDir, 'package.json'), JSON.stringify({
+        name: 'dsh-profile-custom',
+        private: true,
+        dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
+      }))
+      writeFileSync(join(customDir, 'cordis.patch.yml'), '[]\n')
+      const customDump = await runBuiltBin(['--profile', 'custom', '--dump-config'], { DSH_HOME: home })
+      expect(customDump.code, customDump.stderr).toBe(0)
+      expect(customDump.stdout).not.toContain('managed-mcp-remote')
+    }, 30_000)
+
     it('composes the profile user layer and a --patch overlay in order', async () => {
       // Auto-init the web profile first, then write its user layer.
       const init = await runBuiltBin(['--profile', 'web', '--dump-default-config'], { DSH_HOME: home })

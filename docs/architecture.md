@@ -24,7 +24,7 @@ Each declares itself in its own `package.json` under a `dsh` field: `dsh.profile
 
 [`dsh-base`](../packages/bundle/base/README.md) is the first layer of every profile: model adapters, tools, persistence, sandbox and approval policy, settings, credentials, telemetry. [`dsh-web-app`](../packages/bundle/web-app/README.md) adds the browser application; [`dsh-headless`](../packages/bundle/headless/README.md) adds a one-shot runner with no server at all.
 
-Layers apply to an empty entry list in this order: each bundle in the profile's listed order, then the profile's `cordis.patch.yml`, then the home-level one, then any `--patch` overlay. A patch targets a row by id and replaces its whole config, or inserts new rows.
+Layers apply to an empty entry list in this order: each bundle in the profile's listed order; managed MCP rows from `$DSH_HOME/mcp.json` for shipped app profiles; the profile's `cordis.patch.yml`; the home-level one; then any `--patch` overlay. A patch targets a row by id and replaces its whole config, or inserts new rows.
 
 To see the tree your machine actually boots:
 

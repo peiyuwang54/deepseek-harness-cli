@@ -50,6 +50,11 @@ switch (invocation.mode) {
     process.exit(runPlugin(invocation.profile, invocation.args))
     break
   }
+  case 'mcp': {
+    const { runMcp } = await import('./mcp.ts')
+    process.exit(await runMcp(invocation.args))
+    break
+  }
   case 'dump-config': {
     const { runDumpConfig } = await import('./dump-config.ts')
     runDumpConfig(invocation.profile, invocation.defaultOnly, invocation.patches)

@@ -1,8 +1,8 @@
 /**
  * Config-dump entry for `dsh --profile <name> --dump-config`: compose the
  * profile's patch layers through the include plugin's patch algorithm without
- * booting or evaluating `!!js`, with one source layer per bundle, the
- * profile's own patch file, and each `--patch` overlay.
+ * booting or evaluating `!!js`, with one source layer per bundle, redacted
+ * managed MCP rows, the profile's own patch file, and each `--patch` overlay.
  * @module @deepseek-ai/dsh/dump-config
  */
 
@@ -14,7 +14,8 @@ import {
   renderConfigDump,
   type ConfigDumpLayer,
 } from '@deepseek-ai/dsh-app-boot'
-import { homePatchPath, prepareProfile, PROFILE_ROOT_FILENAME } from './profile-boot.ts'
+import { managedMcpDumpPatches, mcpConfigPath } from './mcp.ts'
+import { homePatchPath, prepareProfile, PROFILE_ROOT_FILENAME, shippedProfileTemplate } from './profile-boot.ts'
 
 const NAME = 'dsh'
 
@@ -34,6 +35,8 @@ export function runDumpConfig(profile: string, defaultOnly: boolean, patches: re
     patches: layer.patches,
   }))
   if (!defaultOnly) {
+    const mcpPatches = shippedProfileTemplate(profile) === undefined ? [] : managedMcpDumpPatches()
+    if (mcpPatches.length > 0) layers.push({ label: mcpConfigPath(), patches: mcpPatches })
     if (existsSync(loaded.patchPath)) {
       layers.push({ label: loaded.patchPath, patches: loaded.patches })
     }

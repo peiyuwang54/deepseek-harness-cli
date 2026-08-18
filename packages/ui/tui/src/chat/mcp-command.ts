@@ -13,11 +13,11 @@ import type { McpToolGroup } from './mcp-tools.ts'
 
 type VisibleTool = Pick<ToolSchema, 'name' | 'description' | 'parameters'>
 
-const USAGE = 'Usage: /mcp [list|ls|tools|desc|verbose|schema|reload|resources|prompts] [server] [uri|prompt]'
+const USAGE = 'Usage: /mcp [list|ls|tools|desc|verbose|schema|reload|auth|resources|prompts] [server] [uri|prompt]'
 
 type McpServer = McpToolGroup<VisibleTool>
 
-type McpView = 'list' | 'desc' | 'schema' | 'reload' | 'resources' | 'prompts'
+type McpView = 'list' | 'desc' | 'schema' | 'reload' | 'auth' | 'resources' | 'prompts'
 
 interface McpCapabilityArguments {
   readonly view: 'resources' | 'prompts'
@@ -48,11 +48,13 @@ function parseArguments(rawInput: string): { readonly view: McpView; readonly se
         ? 'schema'
         : command === 'reload'
           ? 'reload'
-          : command === 'resources' || command === 'resource'
-            ? 'resources'
-            : command === 'prompts' || command === 'prompt'
-              ? 'prompts'
-              : undefined
+          : command === 'auth'
+            ? 'auth'
+            : command === 'resources' || command === 'resource'
+              ? 'resources'
+              : command === 'prompts' || command === 'prompt'
+                ? 'prompts'
+                : undefined
   if (view !== 'resources' && view !== 'prompts' && tokens.length > 2) return undefined
   if ((view === 'resources' || view === 'prompts') && tokens.length > 3) return undefined
   return view === undefined ? undefined : {
@@ -64,6 +66,14 @@ function parseArguments(rawInput: string): { readonly view: McpView; readonly se
 
 function normalizedDescription(description: string): string {
   return description.replace(/\s+/gu, ' ').trim() || 'No description'
+}
+
+function authResult(server: string | undefined): CommandResult {
+  if (server === undefined) return { kind: 'error', text: USAGE }
+  return {
+    kind: 'success',
+    text: [`MCP OAuth for ${server}`, `Run: deepseek mcp auth ${server}`, 'The browser callback and token storage are handled by the boot-free MCP manager.'].join('\n'),
+  }
 }
 
 function formatPromptContent(content: unknown): string {
@@ -221,6 +231,7 @@ export function mcpCommandResult(
       ...(arguments_.target === undefined ? {} : { target: arguments_.target }),
     }, options.runtime)
   }
+  if (arguments_.view === 'auth') return authResult(arguments_.server)
   if (arguments_.view === 'reload') {
     return reloadResult(arguments_.server, options.runtime, options.busyAgentStatus)
   }

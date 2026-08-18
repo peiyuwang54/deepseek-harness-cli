@@ -27,6 +27,14 @@ MCP 客户端桥接插件：连接外部 [Model Context Protocol](https://modelc
     url: http://localhost:3000/mcp
     headers:
       Authorization: !!js '`Bearer ${process.env.MCP_TOKEN}`'
+
+- id: mcp-oauth
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: hosted
+    transport: streamable-http
+    url: https://mcp.example.com/mcp
+    oauthStatePath: /Users/me/.deepseek-harness/mcp-auth/hosted.json
 ```
 
 模型会看到 `mcp__github__create_issue`、`mcp__web__search` 等工具，这与 Claude Code 和 Codex 使用的服务器限定形状相同。HMR（热模块替换）支持热替换：编辑配置项会触发断开 + 重新连接，无需重启进程；`serverName` 不变时会生成完全相同的工具名称。
@@ -43,6 +51,8 @@ MCP 客户端桥接插件：连接外部 [Model Context Protocol](https://modelc
 | `cwd` | stdio | 否 | 子进程工作目录 |
 | `url` | http | 是 | MCP 服务器 URL |
 | `headers` | http | 否 | 额外标头（例如认证 token） |
+| `oauthStatePath` | http | 否 | 保存 MCP OAuth 注册、PKCE、发现结果和 token 的私有文件 |
+| `oauthRedirectUrl` | http | 否 | OAuth 回调 URL（默认使用 DeepSeek loopback 回调） |
 | `toolCallTimeoutMs` | 两者 | 否 | 每次 `callTool` 调用的超时（默认 60000） |
 | `failOnStartupError` | 两者 | 否 | 初始连接或工具同步失败时拒绝插件激活（默认 `false`） |
 | `reconnect.enabled` | 两者 | 否 | 连接丢失后自动重新连接（默认 `true`） |
@@ -70,6 +80,7 @@ MCP 客户端桥接插件：连接外部 [Model Context Protocol](https://modelc
 - 重连按中断预算控制：连续失败达到 `reconnect.maxAttempts` 次后，该服务器的工具会被注销，重连停止，直到手动重载服务器、HMR 替换或重启 Host。连接存活超过 `maxDelayMs` 会重置预算，因此偶尔崩溃的服务器可以无限恢复，而崩溃循环的服务器——即使短暂连接成功——仍会耗尽上限而非永远重启。
 - 重连状态在日志中对用户可见：reconnecting（warn，含尝试次数和延迟）、recovered（info）、最终失败和 disabled-loss（error）。dispose（资源释放）会取消任何待执行的重连。设置 `reconnect.enabled: false` 时，连接丢失后工具保持注册但调用失败，直到重载——即手动恢复行为。
 - `ctx.mcp.reload(name?)` 会取消待执行的退避，通过同一有界屏障关闭当前世代，等待工具同步静止，再立即尝试建立一个替代世代。同一服务器的并发请求会共享这次替换。立即尝试失败后会恢复使用已配置的自动重连策略。
+- 配置 `oauthStatePath` 的 Streamable HTTP server 使用 MCP SDK OAuth provider。首次运行 `deepseek mcp auth <name>` 会注册客户端，在浏览器中完成 PKCE 授权，并以 `0600` 权限保存 token；后续连接会刷新已保存的 token，且不会把 token 写入 `mcp.json` 或 session log。
 
 ## 消费的服务
 
@@ -124,7 +135,7 @@ MCP 客户端桥接插件：连接外部 [Model Context Protocol](https://modelc
 
 ## 已知限制与暂缓事项
 
-- **OAuth 授权仍由传输层负责**：桥接器接受已配置的 header，不持久化 token，也不会打开浏览器授权流程。
+- **OAuth 需要显式 CLI 流程**：普通 profile 启动不会打开浏览器。请运行 `deepseek mcp auth <name>` 使用 loopback 回调；不可达或无交互环境应改用已配置的 header。
 - **启动超时继承自 MCP SDK**：DSH 尚未公开连接／发现超时。每次 initialize 请求或分页 `tools/list` 请求都使用 SDK 默认的 60 秒，因此在初始同步完成期间，无响应的 server 或 cursor chain 可能同时延迟激活与 teardown。
 - **重连在传输关闭时触发**：崩溃的 stdio 子进程会触发重连；Streamable HTTP 失败通过每次请求以及 SDK 传输自身的 SSE（Server-Sent Events）流恢复机制暴露，因此不可达的 HTTP 服务器会按调用重试，而非由 supervisor 重新 spawn。
 - **Native 非文本渲染有损**：图片、音频与资源载荷在模型上下文中会变成占位符，即使执行局部的规范值保留了其 JSON 块。更丰富的 Native 多媒体投影暂缓实现。

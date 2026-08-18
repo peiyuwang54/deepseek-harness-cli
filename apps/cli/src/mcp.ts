@@ -1,10 +1,17 @@
 /** User-level MCP server management and profile patch projection. */
 
+import { createServer } from 'node:http'
 import { mkdirSync, readFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import {
+  DEFAULT_OAUTH_REDIRECT_URL,
+  createPersistentOAuthClientProvider,
+} from '@deepseek-ai/dsh-mcp-client'
+import { auth } from '@modelcontextprotocol/sdk/client/auth.js'
 
 const CONFIG_VERSION = 0
 const MCP_CONFIG_FILENAME = 'mcp.json'
@@ -16,6 +23,7 @@ const USAGE = `Usage:
   deepseek mcp get <name>
   deepseek mcp enable <name>
   deepseek mcp disable <name>
+  deepseek mcp auth <name> [--scope SCOPE] [--code CODE] [--no-open]
   deepseek mcp add <name> [--env KEY[=SOURCE]] [--cwd PATH] [--timeout-ms N] [--fail-on-startup-error] -- <command> [args...]
   deepseek mcp add <name> --url <http(s)://...> [--header NAME=SOURCE] [--timeout-ms N] [--fail-on-startup-error]
   deepseek mcp remove <name>
@@ -41,6 +49,12 @@ interface StoredHttpServer extends StoredBaseServer {
   readonly transport: 'streamable-http'
   readonly url: string
   readonly headers?: Readonly<Record<string, string>>
+  readonly oauth?: StoredOAuthConfig
+}
+
+interface StoredOAuthConfig {
+  readonly statePath: string
+  readonly redirectUrl: string
 }
 
 type StoredMcpServer = StoredStdioServer | StoredHttpServer
@@ -60,6 +74,10 @@ export interface McpCommandOptions {
   readonly stdout?: (text: string) => void
   /** Receive usage and validation diagnostics. */
   readonly stderr?: (text: string) => void
+  /** Open OAuth authorization URLs in the system browser; defaults to true. */
+  readonly openBrowser?: boolean
+  /** Maximum time to wait for a loopback OAuth callback; defaults to five minutes. */
+  readonly oauthTimeoutMs?: number
 }
 
 interface ParsedAdd {
@@ -92,6 +110,16 @@ function optionalTimeout(value: unknown, label: string): number | undefined {
   if (value === undefined) return undefined
   if (!Number.isSafeInteger(value) || (value as number) <= 0) throw new Error(`${label} must be a positive integer`)
   return value as number
+}
+
+function parseOAuthConfig(name: string, value: unknown): StoredOAuthConfig | undefined {
+  if (value === undefined) return undefined
+  if (!isRecord(value)) throw new Error(`MCP server ${JSON.stringify(name)}.oauth must be an object`)
+  assertKeys(value, new Set(['statePath', 'redirectUrl']), `MCP server ${JSON.stringify(name)}.oauth`)
+  const statePath = requiredString(value.statePath, `MCP server ${JSON.stringify(name)}.oauth.statePath`)
+  const redirectUrl = requiredString(value.redirectUrl, `MCP server ${JSON.stringify(name)}.oauth.redirectUrl`)
+  validateHttpUrl(redirectUrl)
+  return { statePath, redirectUrl }
 }
 
 function referenceMap(
@@ -137,17 +165,19 @@ function parseServer(name: string, value: unknown): StoredMcpServer {
     }
   }
   if (transport === 'streamable-http') {
-    assertKeys(value, new Set(['transport', 'url', 'headers', 'enabled', 'timeoutMs', 'failOnStartupError']), `MCP server ${JSON.stringify(name)}`)
+    assertKeys(value, new Set(['transport', 'url', 'headers', 'oauth', 'enabled', 'timeoutMs', 'failOnStartupError']), `MCP server ${JSON.stringify(name)}`)
     const url = requiredString(value.url, `MCP server ${JSON.stringify(name)}.url`)
     validateHttpUrl(url)
     const headers = referenceMap(value.headers, `MCP server ${JSON.stringify(name)}.headers`, HEADER_NAME_PATTERN)
     const enabled = optionalBoolean(value.enabled, `MCP server ${JSON.stringify(name)}.enabled`)
     const timeoutMs = optionalTimeout(value.timeoutMs, `MCP server ${JSON.stringify(name)}.timeoutMs`)
     const failOnStartupError = optionalBoolean(value.failOnStartupError, `MCP server ${JSON.stringify(name)}.failOnStartupError`)
+    const oauth = parseOAuthConfig(name, value.oauth)
     return {
       transport,
       url,
       ...(headers === undefined ? {} : { headers }),
+      ...(oauth === undefined ? {} : { oauth }),
       ...(enabled === undefined ? {} : { enabled }),
       ...(timeoutMs === undefined ? {} : { timeoutMs }),
       ...(failOnStartupError === undefined ? {} : { failOnStartupError }),
@@ -219,6 +249,128 @@ function parsePositiveInteger(raw: string, flag: string): number {
   const value = Number(raw)
   if (!Number.isSafeInteger(value)) throw new Error(`${flag} exceeds the safe integer range`)
   return value
+}
+
+function oauthStatePath(filename: string, name: string): string {
+  return resolve(dirname(filename), 'mcp-auth', `${name}.json`)
+}
+
+interface ParsedAuth {
+  readonly name: string
+  readonly scope?: string
+  readonly code?: string
+  readonly noOpen: boolean
+}
+
+function parseAuth(args: readonly string[]): ParsedAuth {
+  const name = args[1]
+  if (name === undefined) throw new Error('auth needs a server name')
+  validateServerName(name)
+  let scope: string | undefined
+  let code: string | undefined
+  let noOpen = false
+  for (let index = 2; index < args.length; index += 1) {
+    const argument = args[index]
+    if (argument === '--scope') {
+      scope = valueAfter(args, index, '--scope')
+      index += 1
+    } else if (argument === '--code') {
+      code = valueAfter(args, index, '--code')
+      index += 1
+    } else if (argument === '--no-open') {
+      noOpen = true
+    } else {
+      throw new Error(`unknown auth option ${JSON.stringify(argument)}`)
+    }
+  }
+  return {
+    name,
+    ...(scope === undefined ? {} : { scope }),
+    ...(code === undefined ? {} : { code }),
+    noOpen,
+  }
+}
+
+function openAuthorizationUrl(url: URL): void {
+  const command = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'cmd' : 'xdg-open'
+  const args = process.platform === 'win32' ? ['/c', 'start', '', url.toString()] : [url.toString()]
+  try {
+    const child = spawn(command, args, { detached: true, stdio: 'ignore' })
+    child.once('error', () => {})
+    child.unref()
+  } catch {
+    // The URL is always printed, so a missing desktop opener is recoverable.
+  }
+}
+
+interface OAuthCallbackWait {
+  readonly server: ReturnType<typeof createServer>
+  readonly code: Promise<string>
+}
+
+async function startOAuthCallback(
+  redirectUrl: string,
+  expectedState: () => string,
+  timeoutMs: number,
+): Promise<OAuthCallbackWait> {
+  const target = new URL(redirectUrl)
+  if (target.protocol !== 'http:' || (target.hostname !== '127.0.0.1' && target.hostname !== 'localhost')) {
+    throw new Error('MCP OAuth callback requires an http loopback redirect URL')
+  }
+  const finish = Promise.withResolvers<string>()
+  const server = createServer((request, response) => {
+    const requestUrl = new URL(request.url ?? '/', target.origin)
+    if (request.method !== 'GET' || requestUrl.pathname !== target.pathname) {
+      response.statusCode = 404
+      response.end('Not found')
+      return
+    }
+    const error = requestUrl.searchParams.get('error')
+    if (error !== null) {
+      response.statusCode = 400
+      response.end('DeepSeek MCP authorization was denied. You may close this tab.')
+      finish.reject(new Error(`MCP OAuth authorization failed: ${error}`))
+      return
+    }
+    const code = requestUrl.searchParams.get('code')
+    if (code === null || code.length === 0) {
+      response.statusCode = 400
+      response.end('Missing authorization code. You may close this tab.')
+      return
+    }
+    const callbackState = requestUrl.searchParams.get('state')
+    if (callbackState === null || callbackState !== expectedState()) {
+      response.statusCode = 400
+      response.end('OAuth state mismatch. You may close this tab.')
+      finish.reject(new Error('MCP OAuth callback state did not match the authorization request'))
+      return
+    }
+    response.statusCode = 200
+    response.setHeader('content-type', 'text/plain; charset=utf-8')
+    response.end('DeepSeek MCP authorization received. You may close this tab.')
+    finish.resolve(code)
+  })
+  const timer = setTimeout(() => {
+    finish.reject(new Error(`MCP OAuth callback timed out after ${String(timeoutMs)}ms`))
+  }, timeoutMs)
+  await new Promise<void>((resolveListen, rejectListen) => {
+    server.once('error', rejectListen)
+    server.listen(Number(target.port), target.hostname, () => {
+      server.removeListener('error', rejectListen)
+      resolveListen()
+    })
+  }).catch((error: unknown) => {
+    clearTimeout(timer)
+    try { server.close() } catch { /* the server did not finish listening */ }
+    throw new Error(`could not listen for MCP OAuth callback on ${target.host}`, { cause: error })
+  })
+  const code = finish.promise.finally(() => { clearTimeout(timer) })
+  return { server, code }
+}
+
+async function closeOAuthCallback(server: ReturnType<typeof createServer>): Promise<void> {
+  if (!server.listening) return
+  await new Promise<void>((resolveClose) => { server.close(() => { resolveClose() }) })
 }
 
 function valueAfter(args: readonly string[], index: number, flag: string): string {
@@ -310,6 +462,7 @@ function formatServer(name: string, server: StoredMcpServer, detailed: boolean):
     for (const [target, source] of Object.entries(server.env ?? {})) rows.push(`  env: ${target} <- $${source}`)
   } else {
     for (const [target, source] of Object.entries(server.headers ?? {})) rows.push(`  header: ${target} <- $${source}`)
+    if (server.oauth !== undefined) rows.push(`  oauth: ${server.oauth.redirectUrl}`)
   }
   rows.push(`  timeout: ${String(server.timeoutMs ?? 60_000)}ms`)
   rows.push(`  fail on startup error: ${String(server.failOnStartupError ?? false)}`)
@@ -393,11 +546,81 @@ function projectManagedMcpPatches(
           serverName: name,
           url: server.url,
           headers: resolveReferences(server.headers, environment, name, 'header', redact),
+          ...(server.oauth === undefined ? {} : {
+            oauthStatePath: server.oauth.statePath,
+            oauthRedirectUrl: server.oauth.redirectUrl,
+          }),
           ...(server.timeoutMs === undefined ? {} : { toolCallTimeoutMs: server.timeoutMs }),
           ...(server.failOnStartupError === undefined ? {} : { failOnStartupError: server.failOnStartupError }),
         },
     }))
   return rows.length === 0 ? [] : [{ insert: rows }]
+}
+
+async function runMcpAuth(
+  args: readonly string[],
+  filename: string,
+  options: McpCommandOptions,
+  stdout: (text: string) => void,
+): Promise<number> {
+  const parsed = parseAuth(args)
+  const config = readConfig(filename)
+  const server = config.servers[parsed.name]
+  if (server === undefined) throw new Error(`MCP server ${JSON.stringify(parsed.name)} is not configured`)
+  if (server.transport !== 'streamable-http') throw new Error('MCP OAuth is available only for streamable-http servers')
+  const statePath = server.oauth?.statePath ?? oauthStatePath(filename, parsed.name)
+  const redirectUrl = server.oauth?.redirectUrl ?? DEFAULT_OAUTH_REDIRECT_URL
+  if (server.oauth === undefined) {
+    await mutateConfig(filename, (current) => {
+      const currentServer = current.servers[parsed.name]
+      if (currentServer === undefined || currentServer.transport !== 'streamable-http') {
+        throw new Error(`MCP server ${JSON.stringify(parsed.name)} is not configured as streamable-http`)
+      }
+      return {
+        version: CONFIG_VERSION,
+        servers: {
+          ...current.servers,
+          [parsed.name]: { ...currentServer, oauth: { statePath, redirectUrl } },
+        },
+      }
+    })
+  }
+
+  let authorizationUrl: URL | undefined
+  const provider = createPersistentOAuthClientProvider({
+    statePath,
+    redirectUrl,
+    onAuthorizationUrl: (url) => { authorizationUrl = url },
+  })
+  const serverUrl = server.url
+  let callback: OAuthCallbackWait | undefined
+  try {
+    if (parsed.code === undefined) {
+      callback = await startOAuthCallback(redirectUrl, () => provider.state(), options.oauthTimeoutMs ?? 300_000)
+    }
+    const firstResult = await auth(provider, {
+      serverUrl,
+      ...(parsed.scope === undefined ? {} : { scope: parsed.scope }),
+    })
+    if (firstResult === 'AUTHORIZED') {
+      stdout(`Authorized MCP server ${JSON.stringify(parsed.name)}.\n`)
+      return 0
+    }
+    if (authorizationUrl === undefined) throw new Error('MCP OAuth did not provide an authorization URL')
+    const shouldOpen = options.openBrowser !== false && !parsed.noOpen && parsed.code === undefined
+    stdout(`Open this MCP authorization URL${shouldOpen ? ' (opening it in your browser)' : ''}:\n${authorizationUrl.toString()}\n`)
+    if (shouldOpen) openAuthorizationUrl(authorizationUrl)
+    const code = parsed.code ?? await (callback as OAuthCallbackWait).code
+    await auth(provider, {
+      serverUrl,
+      authorizationCode: code,
+      ...(parsed.scope === undefined ? {} : { scope: parsed.scope }),
+    })
+    stdout(`Authorized MCP server ${JSON.stringify(parsed.name)}. Tokens are stored in the user MCP credential file.\n`)
+    return 0
+  } finally {
+    if (callback !== undefined) await closeOAuthCallback(callback.server)
+  }
 }
 
 /**
@@ -442,6 +665,9 @@ export async function runMcp(args: readonly string[], options: McpCommandOptions
       })
       stdout(`${command === 'enable' ? 'Enabled' : 'Disabled'} MCP server ${JSON.stringify(name)}. Restart DeepSeek CLI to apply it.\n`)
       return 0
+    }
+    if (command === 'auth') {
+      return await runMcpAuth(args, filename, options, stdout)
     }
     if (command === 'add') {
       const parsed = parseAdd(args, options.cwd ?? process.cwd())

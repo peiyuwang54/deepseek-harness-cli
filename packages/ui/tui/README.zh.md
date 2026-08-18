@@ -72,7 +72,7 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/model off`、`/model high` 与 `/model max` 会直接选择当前路由公布的对应推理强度。不可用的等级只会报告 catalog 限制，不会改变选择。
 
-`/mcp [list|tools|desc|schema] [server]` 会把当前 Agent 作用域工具注册表中可见的 MCP 限定工具按服务器归组。`list` 是默认视图，`tools` 是显式别名，`desc` 会补充经规整的描述，`schema` 会继续补充参数 schema；可选的服务器 id 可缩小任一视图。`ls` 是 `list` 的别名，`verbose` 则继续作为 `desc` 的别名。该命令不会暴露无关工具，也不会推断工具注册表不持有的服务器连接状态。
+`/mcp [list|tools|desc|schema|auth] [server]` 会把当前 Agent 作用域工具注册表中可见的 MCP 限定工具按服务器归组。`list` 是默认视图，`tools` 是显式别名，`desc` 会补充经规整的描述，`schema` 会继续补充参数 schema；可选的服务器 id 可缩小任一视图。`ls` 是 `list` 的别名，`verbose` 则继续作为 `desc` 的别名。`/mcp auth <server>` 会提示使用无 profile 启动的 `deepseek mcp auth <server>` 浏览器 OAuth 流程。该命令不会暴露无关工具，也不会推断工具注册表不持有的服务器连接状态。
 
 `/memories [verbose]` 会以只读方式展示当前 Agent 可见的 Memory MCP 能力。它按 MCP server id 中的 `memory`、`memorix` 或 `engram` 识别并归组工具；`verbose` 还会输出经规整的工具描述。DeepSeek Harness 不内置记忆存储，因此使用、生成、保留与重置仍由已配置的 provider 持有。可选 provider 见 [`examples/mcp-memory`](../../../examples/mcp-memory/README.md)。
 

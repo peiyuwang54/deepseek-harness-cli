@@ -26,6 +26,17 @@ describe('mcp command', () => {
     expect(mcpCommandResult('tools', tools)).toEqual(mcpCommandResult('', tools))
   })
 
+  it('points chat users to the boot-free OAuth command', () => {
+    expect(mcpCommandResult('auth remote', [])).toEqual({
+      kind: 'success',
+      text: [
+        'MCP OAuth for remote',
+        'Run: deepseek mcp auth remote',
+        'The browser callback and token storage are handled by the boot-free MCP manager.',
+      ].join('\n'),
+    })
+  })
+
   it('adds normalized descriptions in desc and legacy verbose modes', () => {
     const tools = [
       { name: 'mcp__github__search', description: 'Search\n  repositories', parameters: {} },
@@ -77,11 +88,11 @@ describe('mcp command', () => {
     })
     expect(mcpCommandResult('details', [])).toEqual({
       kind: 'error',
-      text: 'Usage: /mcp [list|ls|tools|desc|verbose|schema|reload|resources|prompts] [server] [uri|prompt]',
+      text: 'Usage: /mcp [list|ls|tools|desc|verbose|schema|reload|auth|resources|prompts] [server] [uri|prompt]',
     })
     expect(mcpCommandResult('schema github extra', [])).toEqual({
       kind: 'error',
-      text: 'Usage: /mcp [list|ls|tools|desc|verbose|schema|reload|resources|prompts] [server] [uri|prompt]',
+      text: 'Usage: /mcp [list|ls|tools|desc|verbose|schema|reload|auth|resources|prompts] [server] [uri|prompt]',
     })
   })
 

@@ -1,8 +1,11 @@
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { managedMcpDumpPatches, managedMcpPatches, runMcp } from '../src/mcp.ts'
+
+const authMock = vi.hoisted(() => vi.fn())
+vi.mock('@modelcontextprotocol/sdk/client/auth.js', () => ({ auth: authMock }))
 
 const roots: string[] = []
 
@@ -34,6 +37,8 @@ function capture(path: string, cwd = '/workspace'): {
 afterEach(async () => {
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
 })
+
+beforeEach(() => { authMock.mockReset() })
 
 describe('MCP CLI management', () => {
   it('adds, inspects, projects, and removes a stdio server without persisting a secret', async () => {
@@ -105,6 +110,38 @@ describe('MCP CLI management', () => {
     }])
     expect(JSON.stringify(managedMcpDumpPatches(path))).toContain('<environment:AUTH_TOKEN>')
     expect(JSON.stringify(managedMcpDumpPatches(path))).not.toContain('Bearer secret')
+  })
+
+  it('runs the explicit HTTP OAuth flow and persists only its state path in the catalog', async () => {
+    const path = await configPath()
+    const output = capture(path)
+    expect(await runMcp(['add', 'remote', '--url', 'https://example.com/mcp'], output.options)).toBe(0)
+    authMock
+      .mockImplementationOnce(async (provider: { redirectToAuthorization: (url: URL) => Promise<void> }) => {
+        await provider.redirectToAuthorization(new URL('https://example.com/authorize?state=test'))
+        return 'REDIRECT'
+      })
+      .mockResolvedValueOnce('AUTHORIZED')
+
+    expect(await runMcp(['auth', 'remote', '--code', 'manual-code', '--no-open'], output.options)).toBe(0)
+    expect(authMock).toHaveBeenCalledTimes(2)
+    expect(authMock.mock.calls[1]?.[1]).toEqual(expect.objectContaining({
+      serverUrl: 'https://example.com/mcp',
+      authorizationCode: 'manual-code',
+    }))
+    const stored = await readFile(path, 'utf8')
+    expect(stored).toContain('"oauth"')
+    expect(stored).toContain('"statePath":')
+    expect(stored).not.toContain('manual-code')
+    expect(output.stdout.at(-1)).toContain('Authorized MCP server "remote"')
+  })
+
+  it('rejects OAuth for stdio servers before contacting the SDK', async () => {
+    const path = await configPath()
+    const output = capture(path)
+    expect(await runMcp(['add', 'local', '--', 'node', 'server.js'], output.options)).toBe(0)
+    expect(await runMcp(['auth', 'local'], output.options)).toBe(1)
+    expect(authMock).not.toHaveBeenCalled()
   })
 
   it('toggles a server without persisting credentials or changing its identity', async () => {

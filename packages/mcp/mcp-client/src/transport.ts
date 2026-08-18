@@ -10,6 +10,7 @@ import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
+import { createPersistentOAuthClientProvider } from './oauth.ts'
 import type { Config } from './index.ts'
 
 /**
@@ -44,7 +45,15 @@ export function createTransport(config: Config): Transport {
       // object, so the cast records only that widening.
       return new StreamableHTTPClientTransport(
         new URL(config.url),
-        { requestInit: { headers: config.headers } },
+        {
+          requestInit: { headers: config.headers },
+          ...(config.oauthStatePath === undefined ? {} : {
+            authProvider: createPersistentOAuthClientProvider({
+              statePath: config.oauthStatePath,
+              ...(config.oauthRedirectUrl === undefined ? {} : { redirectUrl: config.oauthRedirectUrl }),
+            }),
+          }),
+        },
       ) as Transport
   }
 }

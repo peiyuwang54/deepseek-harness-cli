@@ -27,6 +27,14 @@ One plugin instance per MCP server in `cordis.yml`:
     url: http://localhost:3000/mcp
     headers:
       Authorization: !!js '`Bearer ${process.env.MCP_TOKEN}`'
+
+- id: mcp-oauth
+  name: '@deepseek-ai/dsh-mcp-client'
+  config:
+    serverName: hosted
+    transport: streamable-http
+    url: https://mcp.example.com/mcp
+    oauthStatePath: /Users/me/.deepseek-harness/mcp-auth/hosted.json
 ```
 
 The model sees `mcp__github__create_issue`, `mcp__web__search`, … — the same server-qualified shape Claude Code and Codex use. HMR hot-swaps: editing the entry triggers disconnect + reconnect without process restart; an unchanged `serverName` reproduces identical tool names.
@@ -43,6 +51,8 @@ The model sees `mcp__github__create_issue`, `mcp__web__search`, … — the same
 | `cwd` | stdio | no | Working directory for the child process |
 | `url` | http | yes | MCP server URL |
 | `headers` | http | no | Extra headers (e.g. auth tokens) |
+| `oauthStatePath` | http | no | Private file for MCP OAuth registration, PKCE, discovery, and tokens |
+| `oauthRedirectUrl` | http | no | OAuth callback URL (defaults to the DeepSeek loopback callback) |
 | `toolCallTimeoutMs` | both | no | Timeout per `callTool` invocation (default 60000) |
 | `failOnStartupError` | both | no | Reject plugin activation when initial connection or tool synchronization fails (default `false`) |
 | `reconnect.enabled` | both | no | Reconnect automatically after a lost connection (default `true`) |
@@ -70,6 +80,7 @@ Every MCP tool has two names: the raw MCP name (sent on the wire in `tools/call`
 - Reconnection is budgeted per outage: after `reconnect.maxAttempts` consecutive failures the server's tools are unregistered and reconnection stops until a manual server reload, HMR replacement, or Host restart. A connection that survives past `maxDelayMs` resets the budget, so an occasionally-crashing server recovers indefinitely while a crash-looping one — even with briefly successful connects — still exhausts the cap instead of restarting forever.
 - Reconnect states are user-visible in logs: reconnecting (warn, with attempt count and delay), recovered (info), final failure and disabled-loss (error). Disposal cancels any pending reconnect. With `reconnect.enabled: false`, a lost connection keeps tools registered but failing until a reload — the manual-recovery behavior.
 - `ctx.mcp.reload(name?)` cancels pending backoff, closes the current generation through the same bounded barrier, waits for tool synchronization to quiesce, and makes one immediate replacement attempt. Concurrent requests for one server share that replacement. A failed immediate attempt resumes the configured automatic reconnect policy.
+- Streamable HTTP servers with `oauthStatePath` use the MCP SDK OAuth provider. Run `deepseek mcp auth <name>` once to register the client, complete PKCE authorization in a browser, and store the token with mode `0600`; later connections refresh the saved token without putting it in `mcp.json` or the session log.
 
 ## Services consumed
 
@@ -124,7 +135,7 @@ Append-only; newly visible content follows the reusable request prefix and does 
 
 ## Known Limitations and Deferred Work
 
-- **OAuth authorization remains transport-owned** — the bridge accepts configured headers and does not persist tokens or open a browser authorization flow.
+- **OAuth requires the explicit CLI flow** — normal profile startup never opens a browser. Run `deepseek mcp auth <name>` for the loopback callback; an unreachable or non-interactive environment should use a configured header instead.
 - **Startup timeout is inherited from the MCP SDK** — DSH does not yet expose a connection/discovery timeout. Each initialize or paginated `tools/list` request uses the SDK's 60-second default, so an unresponsive server or cursor chain can delay both activation and teardown while the initial synchronization settles.
 - **Reconnect triggers on transport close** — a crashed stdio child fires it; Streamable HTTP failures surface per request and through the SDK transport's own SSE-stream recovery, so an unreachable HTTP server is retried per call rather than respawned by the supervisor.
 - **Native non-text rendering is lossy** — image, audio, and resource payloads become placeholders in model context even though the execution-local canonical value preserves their JSON blocks. Richer Native multimedia projection is deferred.

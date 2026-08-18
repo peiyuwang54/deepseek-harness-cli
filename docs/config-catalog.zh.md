@@ -1253,6 +1253,10 @@ export interface StreamableHttpConfig {
   url: string
   /** Additional headers attached to MCP requests. */
   headers: Record<string, string>
+  /** File-backed MCP OAuth state; presence enables the SDK OAuth provider. */
+  oauthStatePath?: string
+  /** Callback URL used by the configured OAuth client. */
+  oauthRedirectUrl?: string
   /** Per-tool-call timeout in milliseconds. */
   toolCallTimeoutMs: number
   /** Fail plugin activation when the initial connection or tool synchronization fails. */

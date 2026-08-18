@@ -24,6 +24,12 @@ import type {} from '@deepseek-ai/dsh-tools'
 
 export type { McpResult } from './tools.ts'
 export type { ReconnectConfig, ResolvedReconnectPolicy } from './connection.ts'
+export {
+  DEFAULT_OAUTH_REDIRECT_URL,
+  PersistentOAuthClientProvider,
+  createPersistentOAuthClientProvider,
+} from './oauth.ts'
+export type { PersistentOAuthClientProviderOptions } from './oauth.ts'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'mcp-client'
@@ -79,6 +85,10 @@ export interface StreamableHttpConfig {
   url: string
   /** Additional headers attached to MCP requests. */
   headers: Record<string, string>
+  /** File-backed MCP OAuth state; presence enables the SDK OAuth provider. */
+  oauthStatePath?: string
+  /** Callback URL used by the configured OAuth client. */
+  oauthRedirectUrl?: string
   /** Per-tool-call timeout in milliseconds. */
   toolCallTimeoutMs: number
   /** Fail plugin activation when the initial connection or tool synchronization fails. */
@@ -114,6 +124,8 @@ export const Config = z.union([
     serverName: z.string().required().pattern(SERVER_NAME_PATTERN),
     url: z.string().required(),
     headers: z.dict(String).default({}),
+    oauthStatePath: z.union([z.string(), z.const(undefined)]),
+    oauthRedirectUrl: z.union([z.string(), z.const(undefined)]),
     toolCallTimeoutMs: z.number().default(DEFAULT_TOOL_CALL_TIMEOUT_MS),
     failOnStartupError: z.boolean().default(false),
     reconnect: Reconnect,

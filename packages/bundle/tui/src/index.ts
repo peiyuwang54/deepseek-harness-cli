@@ -118,7 +118,7 @@ async function startAgent(ctx: Context, startup: import('./startup.ts').TuiStart
   if (agents === undefined || defaultModel === undefined || presets === undefined
     || permissions === undefined || sandboxPolicy === undefined) return
 
-  const { identity, permissionMode, additionalWritableRoots } = startup
+  const { identity, permissionMode, permissionPolicy, additionalWritableRoots } = startup
 
   const selection = defaultModel.currentSelection()
   let disposeBootstrapSelection: (() => void) | undefined
@@ -132,7 +132,10 @@ async function startAgent(ctx: Context, startup: import('./startup.ts').TuiStart
     if (additionalWritableRoots.length > 0) {
       sandboxPolicy.addWritableRoots(agent.session, additionalWritableRoots)
     }
-    if (permissionMode === 'default') return
+    if (permissionMode === 'default') {
+      if (permissionPolicy !== undefined) permissions.setPolicy(agent.session, permissionPolicy)
+      return
+    }
     const target = permissionMode === 'yolo'
       ? permissions.fullAccessPreset
       : permissions.fullAutoPreset

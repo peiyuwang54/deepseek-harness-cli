@@ -42,6 +42,7 @@ interface BenchOptions {
     fullAccessPreset?: string
     fullAutoPreset?: string
     set(session: Session, preset: string): void
+    setPolicy(session: Session, policy: NonNullable<HeadlessStartupValues['permissionPolicy']>): void
   }
   saveImages?: (inputs: readonly SaveImageAttachment[]) => Promise<readonly ImageAttachmentRef[]>
   addWritableRoots?: (session: Session, roots: readonly string[]) => string[]
@@ -54,7 +55,10 @@ function provideRunnerServices(ctx: Context, options: BenchOptions = {}): void {
     resolve: () => Promise.resolve({ id: 'standard' }),
     mount: () => Promise.resolve({ id: 'standard' }),
   } as never)
-  ctx.provide('permissionPresets', options.permissionPresets ?? {} as never)
+  ctx.provide('permissionPresets', options.permissionPresets ?? {
+    set: () => {},
+    setPolicy: () => {},
+  } as never)
   ctx.provide('sandboxPolicy', {
     addWritableRoots: options.addWritableRoots ?? (() => []),
   } as never)
@@ -319,12 +323,37 @@ describe('headless runner', () => {
         fullAccessPreset: 'danger-full-access',
         fullAutoPreset: 'full-auto',
         set: (session, selected) => void applied.push({ session, preset: selected }),
+        setPolicy: () => {},
       },
     })
     expect(await test.run()).toMatchObject({ code: 0 })
     expect(applied).toHaveLength(1)
     expect(applied[0]?.preset).toBe(preset)
     expect(applied[0]?.session.id).toBe(test.calls.create[0]?.sessionId)
+    await test.ctx.fiber.dispose()
+  })
+
+  it('pins independent permission knobs before sending the task', async () => {
+    const applied: Array<{
+      session: Session
+      policy: NonNullable<HeadlessStartupValues['permissionPolicy']>
+    }> = []
+    const test = await bench({
+      afterPrompt(session, message) { appendTurn(session, 1, message, 'policy', true) },
+    }, {
+      startup: {
+        ...DEFAULT_STARTUP,
+        permissionPolicy: { sandbox: 'read-only', approval: 'never' },
+      },
+      permissionPresets: {
+        set: () => {},
+        setPolicy: (session, policy) => void applied.push({ session, policy }),
+      },
+    })
+    expect(await test.run()).toMatchObject({ code: 0, out: 'policy\n' })
+    expect(applied).toHaveLength(1)
+    expect(applied[0]?.session.id).toBe(test.calls.create[0]?.sessionId)
+    expect(applied[0]?.policy).toEqual({ sandbox: 'read-only', approval: 'never' })
     await test.ctx.fiber.dispose()
   })
 

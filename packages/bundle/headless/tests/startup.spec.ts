@@ -142,6 +142,26 @@ describe('headless command-line provider', () => {
     expect(task?.additionalWritableRoots).toEqual(['../shared', '/tmp/cache'])
   })
 
+  it('resolves independent sandbox and approval selections', async () => {
+    const { task, observed } = await bootStartup([
+      '--sandbox', 'read-only', '--ask-for-approval', 'never', 'inspect',
+    ])
+    expect(task).toMatchObject({
+      task: 'inspect',
+      permissionMode: 'default',
+      permissionPolicy: { sandbox: 'read-only', approval: 'never' },
+    })
+    expect(observed.exits).toEqual([])
+  })
+
+  it('lets resume-subcommand permission knobs override parent values', async () => {
+    const { task } = await bootStartup([
+      '--sandbox', 'workspace-write', 'resume', '--last',
+      '--sandbox', 'read-only', '--ask-for-approval', 'ask', 'continue',
+    ])
+    expect(task?.permissionPolicy).toEqual({ sandbox: 'read-only', approval: 'ask' })
+  })
+
   it.each([{ args: [] }, { args: ['   '] }])('rejects an invocation with no non-whitespace task ($args)', async ({ args }) => {
     const { task, observed } = await bootStartup(args)
     expect(observed.out).toContain('a task is required')
@@ -154,6 +174,8 @@ describe('headless command-line provider', () => {
     const { task, observed } = await bootStartup(['--help'])
     expect(observed.out).toContain('deepseek exec')
     expect(observed.out).toContain('--add-dir <dir>')
+    expect(observed.out).toContain('--sandbox <mode>')
+    expect(observed.out).toContain('--ask-for-approval <policy>')
     expect(task).toBeUndefined()
     expect(observed.runnerConfig).toBeUndefined()
     expect(observed.exits).toEqual([0])
@@ -163,6 +185,10 @@ describe('headless command-line provider', () => {
     {
       args: ['--full-auto', '--yolo', 'task'],
       message: '--full-auto and --yolo are mutually exclusive',
+    },
+    {
+      args: ['--yolo', '--ask-for-approval', 'ask', 'task'],
+      message: 'cannot be combined with --sandbox or --ask-for-approval',
     },
     {
       args: ['--ephemeral', 'resume', '--last', 'task'],
@@ -185,6 +211,13 @@ describe('headless command-line provider', () => {
     expect(observed.out).toContain(message)
     expect(task).toBeUndefined()
     expect(observed.runnerConfig).toBeUndefined()
+    expect(observed.exits).toEqual([1])
+  })
+
+  it('rejects an unknown approval policy', async () => {
+    const { task, observed } = await bootStartup(['--ask-for-approval', 'sometimes', 'task'])
+    expect(observed.out).toContain('Allowed choices are')
+    expect(task).toBeUndefined()
     expect(observed.exits).toEqual([1])
   })
 })

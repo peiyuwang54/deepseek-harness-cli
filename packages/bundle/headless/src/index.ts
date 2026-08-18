@@ -178,10 +178,18 @@ async function resumeSessionId(ctx: Context, startup: HeadlessStartupValues): Pr
 }
 
 /** Apply a startup permission shortcut inside unpublished Agent setup. */
-function installPermission(ctx: Context, agent: Agent, mode: HeadlessPermissionMode): void {
-  if (mode === 'default') return
+function installPermission(
+  ctx: Context,
+  agent: Agent,
+  mode: HeadlessPermissionMode,
+  policy: HeadlessStartupValues['permissionPolicy'],
+): void {
   const permissions = ctx.get('permissionPresets')
   if (permissions === undefined) throw new Error('exec permission flags require permission presets')
+  if (mode === 'default') {
+    if (policy !== undefined) permissions.setPolicy(agent.session, policy)
+    return
+  }
   const target = mode === 'yolo' ? permissions.fullAccessPreset : permissions.fullAutoPreset
   if (target === undefined) {
     throw new Error(mode === 'yolo'
@@ -213,7 +221,7 @@ async function prepareAgent(
     if (startup.additionalWritableRoots.length > 0) {
       ctx.sandboxPolicy.addWritableRoots(agent.session, startup.additionalWritableRoots)
     }
-    installPermission(ctx, agent, startup.permissionMode)
+    installPermission(ctx, agent, startup.permissionMode, startup.permissionPolicy)
     await presets.mount(agentCtx, resolveSessionPreset(agent.session))
     if (schema !== undefined) structured = attachStructuredRuntime(agentCtx, schema)
   }

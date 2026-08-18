@@ -482,6 +482,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   WorkflowRun: 'workflow.md',
   PresetOption: 'permission-presets.md',
   PresetSpec: 'permission-presets.md',
+  PermissionPolicySelection: 'permission-presets.md',
   InvariantInstaller: 'invariants.md',
   WebRoute: 'web-server.md',
   StorageBackend: 'storage.md',

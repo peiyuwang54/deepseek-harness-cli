@@ -25,10 +25,10 @@ The shipped apps own these command lines:
 | Profile | Arguments |
 |---|---|
 | `web` | `--host`, `--port`, repeatable `--trusted-host` |
-| `tui` | `--resume <session>`, `--full-auto`, `--yolo`, `--dangerously-bypass-approvals-and-sandbox` |
-| `headless` | task text; `--json`, `--ephemeral`, repeatable `--image`, `--output-schema`, `--output-last-message`, permission shortcuts, and `resume` |
+| `tui` | `--resume <session>`, repeatable `--add-dir`, `--sandbox`, `--ask-for-approval`, and permission shortcuts |
+| `headless` | task text; `--json`, `--ephemeral`, repeatable `--image`/`--add-dir`, output controls, exact permission controls, shortcuts, and `resume` |
 
-The `deepseek exec "run the tests"` alias creates one persisted Agent and prints its final result; `dsh --profile headless` remains the profile-level spelling. `--json` emits JSONL lifecycle events. Repeatable `--image` admits local PNG, JPEG, WebP, or GIF inputs, `--output-schema` requires schema-valid structured output, and `--output-last-message` saves the result. `resume <id>` continues an exact Session, while `resume --last` selects the newest Session in the current workspace unless `--all` is present. `--ephemeral` applies only to fresh runs. Permission shortcuts match the terminal command. The runner waits for quiescence and flushes before output, exits 0 only for completed valid results, mounts no ApiProxy, Host, HTTP server, Web runtime, or browser client, and opens no listening port. The [headless bundle README](../../../packages/bundle/headless/README.md) owns the output and failure contracts.
+The `deepseek exec "run the tests"` alias creates one persisted Agent and prints its final result; `dsh --profile headless` remains the profile-level spelling. `--json` emits JSONL lifecycle events. Repeatable `--image` admits local PNG, JPEG, WebP, or GIF inputs, `--output-schema` requires schema-valid structured output, and `--output-last-message` saves the result. `resume <id>` continues an exact Session, while `resume --last` selects the newest Session in the current workspace unless `--all` is present. `--ephemeral` applies only to fresh runs. Permission controls and shortcuts match the terminal command. The runner waits for quiescence and flushes before output, exits 0 only for completed valid results, mounts no ApiProxy, Host, HTTP server, Web runtime, or browser client, and opens no listening port. The [headless bundle README](../../../packages/bundle/headless/README.md) owns the output and failure contracts.
 
 Inspect the composed tree without booting it:
 
@@ -70,11 +70,12 @@ Git-hosted plugins that ship sources build during install through their `prepare
 
 ## Terminal front door
 
-Bare `deepseek` selects the shipped `tui` profile; `dsh tui` remains the compatibility spelling. Its startup provider owns `--resume <session>`, `--full-auto`, `--yolo`, the official long unrestricted alias, and app help. `--full-auto` selects workspace confinement with approval prompts disabled; wider actions are denied. Both unrestricted spellings disable confinement and approval prompts. Help is available without a TTY; a successful run requires interactive stdin and stdout and fails before the terminal runner activates when either side is a pipe. After Loader settlement, the runner creates a fresh persisted root Agent or resumes the requested identity through `ctx.agents`, pins any requested permission preset during unpublished setup, installs the default model selection, and mounts the process TUI onto that root. The profile mounts no Host, HTTP server, Web runtime, or browser client.
+Bare `deepseek` selects the shipped `tui` profile; `dsh tui` remains the compatibility spelling. Its startup provider owns `--resume <session>`, repeatable `--add-dir`, `--sandbox`, `--ask-for-approval`, the permission shortcuts, and app help. `--sandbox` accepts `read-only`, `workspace-write`, or `danger-full-access`; `--ask-for-approval` accepts `ask` or `never`. `--full-auto` selects workspace confinement with approval prompts disabled; both unrestricted spellings disable confinement and approval prompts. Exact controls cannot be combined with shortcuts. Help is available without a TTY; a successful run requires interactive stdin and stdout and fails before the terminal runner activates when either side is a pipe. After Loader settlement, the runner creates a fresh persisted root Agent or resumes the requested identity through `ctx.agents`, writes requested permission controls during unpublished setup, installs the default model selection, and mounts the process TUI onto that root. The profile mounts no Host, HTTP server, Web runtime, or browser client.
 
 ```sh
 deepseek
 deepseek --resume <session>
+deepseek --sandbox read-only --ask-for-approval ask
 deepseek --full-auto
 deepseek --yolo
 deepseek --dangerously-bypass-approvals-and-sandbox
@@ -100,7 +101,7 @@ Process shutdown gives the plugin tree up to five seconds to dispose. The first 
 
 All modes treat the invoking directory as the default workspace root, load applicable `AGENTS.md` or `CLAUDE.md` instructions with a 65,536-byte render budget, and use an in-memory SQLite session content index. Every profile boot watches valid edits of both `cordis.patch.yml` layers (profile and home) and reapplies them transactionally; a one-shot surface exits through its bounded shutdown, which disposes the watchers.
 
-New sessions default to the `workspace-write` permission preset. Bash and filesystem mutations are restricted to the session workspace and platform temporary roots; reads, network access, and process visibility are not confined. `deepseek --full-auto` pins `workspace-write` + `never`; `deepseek --yolo` and its long alias pin the configured full-access/no-approval preset before publication. No session-level startup shortcut is registered; use `/permissions` for live changes. `DSH_PERMISSION_MODE` changes the process fallback. Stored General-settings permissions affect later Web sessions, not an already-open one.
+New sessions default to the `workspace-write` permission preset. Bash and filesystem mutations are restricted to the session workspace and platform temporary roots; reads, network access, and process visibility are not confined. `--sandbox` and `--ask-for-approval` write independent durable knobs; if their pair matches no named preset, `/permissions` reports `custom`. `deepseek --full-auto` pins `workspace-write` + `never`; `deepseek --yolo` and its long alias pin the configured full-access/no-approval preset before publication. No session-level startup shortcut is registered; use `/permissions` for live changes. `DSH_PERMISSION_MODE` changes the process fallback. Stored General-settings permissions affect later Web sessions, not an already-open one.
 
 `DSH_TOOLS_MODE` selects `native`, `code`, or `both` for the process; another value fails at boot. The shipped `minimal` agent preset keeps that deployment presentation, fixes the complete system prompt to `You are a helpful software engineer assistant.`, and composes only persistent `bash` plus `str_replace_editor`. Select 极简模式 when creating a Web session; every other prompt section and model-facing plugin remains absent from that agent while the shared browser, workspace, persistence, sandbox, and permission host stays in place.
 

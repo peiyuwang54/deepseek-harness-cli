@@ -6,9 +6,14 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 import type { Context } from '@deepseek-ai/cordis'
 import { parseCmdline } from '@deepseek-ai/dsh-cmdline'
+import {
+  APPROVAL_POLICIES,
+  SANDBOX_MODES,
+  type PermissionPolicySelection,
+} from '@deepseek-ai/dsh-permission-presets'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import {
   MAIN_SESSION_ID_KEY,
@@ -31,6 +36,8 @@ export interface TuiStartupValues {
   readonly identity: MainSessionIdentity
   /** Permission shortcut to pin before Agent publication. */
   readonly permissionMode: 'default' | 'full-auto' | 'yolo'
+  /** Independently selected permission knobs, mutually exclusive with shortcuts. */
+  readonly permissionPolicy?: PermissionPolicySelection
   /** Workspace-relative or absolute directories added to workspace-write. */
   readonly additionalWritableRoots: readonly string[]
 }
@@ -60,6 +67,8 @@ interface TuiOptions {
   dangerouslyBypassApprovalsAndSandbox?: boolean
   fullAuto?: boolean
   addDir?: string[]
+  sandbox?: PermissionPolicySelection['sandbox']
+  askForApproval?: PermissionPolicySelection['approval']
 }
 
 /** Repeatable single-directory collector. */
@@ -79,11 +88,14 @@ function tuiCommand(): Command {
     .option('--yolo', 'DANGEROUS: start with full file access and no approval prompts')
     .option('--dangerously-bypass-approvals-and-sandbox', 'alias of --yolo')
     .option('--add-dir <dir>', 'add a writable directory alongside the workspace (repeatable)', collect)
+    .addOption(new Option('-s, --sandbox <mode>', 'select the file sandbox mode').choices([...SANDBOX_MODES]))
+    .addOption(new Option('-a, --ask-for-approval <policy>', 'select approval prompting').choices([...APPROVAL_POLICIES]))
     .addHelpText('after', `
 Examples:
   deepseek                              start a fresh session
   deepseek --resume <session>           resume a persisted session
   deepseek --full-auto                  run autonomously inside the workspace
+  deepseek --sandbox read-only          deny file writes until the mode changes
   deepseek --add-dir ../shared          add another workspace-write root
   deepseek --yolo                       start unrestricted without approval prompts
 `)
@@ -98,13 +110,19 @@ Examples:
 export function apply(ctx: Context): void {
   const program = tuiCommand()
   program.action(() => {
-    const { resume, yolo, dangerouslyBypassApprovalsAndSandbox, fullAuto, addDir } = program.opts<TuiOptions>()
+    const {
+      resume, yolo, dangerouslyBypassApprovalsAndSandbox, fullAuto, addDir,
+      sandbox, askForApproval,
+    } = program.opts<TuiOptions>()
     if (resume !== undefined && resume.trim() === '') {
       program.error('error: --resume needs a non-empty session id')
     }
     const unrestricted = yolo === true || dangerouslyBypassApprovalsAndSandbox === true
     if (unrestricted && fullAuto === true) {
       program.error('error: --full-auto and --yolo are mutually exclusive')
+    }
+    if ((unrestricted || fullAuto === true) && (sandbox !== undefined || askForApproval !== undefined)) {
+      program.error('error: --full-auto and --yolo cannot be combined with --sandbox or --ask-for-approval')
     }
     if (internals.stdin.isTTY !== true || internals.stdout.isTTY !== true) {
       program.error('error: deepseek requires interactive stdin and stdout TTYs; use --profile headless for pipes and automation')
@@ -119,6 +137,12 @@ export function apply(ctx: Context): void {
     ctx.provide(TUI_STARTUP_SERVICE, {
       identity,
       permissionMode: unrestricted ? 'yolo' : fullAuto === true ? 'full-auto' : 'default',
+      ...sandbox === undefined && askForApproval === undefined ? {} : {
+        permissionPolicy: {
+          ...sandbox === undefined ? {} : { sandbox },
+          ...askForApproval === undefined ? {} : { approval: askForApproval },
+        },
+      },
       additionalWritableRoots: addDir ?? [],
     } satisfies TuiStartupValues)
   })

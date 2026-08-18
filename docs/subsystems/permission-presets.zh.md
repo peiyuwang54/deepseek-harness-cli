@@ -25,6 +25,16 @@ interface PresetSpec {
 ```
 
 ```ts type-equiv
+/** Independently selected startup permission knobs. */
+interface PermissionPolicySelection {
+  /** Sandbox mode to pin; omitted to retain the session's effective mode. */
+  sandbox?: SandboxMode
+  /** Approval policy to pin; omitted to retain the session's effective policy. */
+  approval?: ApprovalPolicy
+}
+```
+
+```ts type-equiv
 /** The {@link PermissionPresetService} config: preset table and composition default. */
 interface Config {
   /**
@@ -65,6 +75,8 @@ interface PresetOption {
 ## 切换与 `permission/preset` 事件
 
 `set(session, name)` 解析预设（未知名称抛出异常），在 `name` 尚不是生效预设时追加一条仅记日志的 `permission/preset` 事件，然后通过各旋钮自己的 setter（[dsh-sandbox-policy](../../packages/sandbox/sandbox-policy) 的 `setSandboxMode` 与 [dsh-user-approval](../../packages/interaction/user-approval) 的 `setApprovalPolicy`）写入，且仅当该 knob的生效值发生变化时才写。同一轮次内，选择事件先于旋钮事件出现；重新选择当前生效的预设则什么都不追加。
+
+`setPolicy(session, selection)` 通过相同 setter 独立应用任一调节项，并且不记录具名 preset 选择。结果组合匹配表项时仍会推导为该表项，否则 `current()` 报告 `custom`。这是 `--sandbox` 与 `--ask-for-approval` 使用的启动写入路径。
 
 `permission/preset` 是持久、仅记日志的用户意图：它不进入模型 transcript（文本记录），模型可见的后果由 knob 事件经各自消费方承担；它存在是为了在两个预设共享同一个旋钮组合时，让 `current()` 仍能保住用户选择的究竟是哪一个预设；`effectivePermissionPreset(events)` 折叠最后一条，回放不需要任何追赶状态。完整事件声明见[持久化日志事件目录](../persistence-catalog.md)；方法签名见生成的[服务目录](#ctxpermissionpresets--permissionpresetservice)。
 
@@ -124,9 +136,18 @@ optionOf(name: string): PresetOption
  * @param name - the preset to switch to; unknown names throw.
  */
 set(session: Session, name: string): void
+
+/**
+ * Apply independently selected permission knobs without claiming a named
+ * preset. The derived current value still resolves to a matching preset when
+ * the resulting pair exists in the table, otherwise it becomes `custom`.
+ * @param session - Session receiving the startup policy.
+ * @param selection - Explicit knobs; omitted fields retain their effective values.
+ */
+setPolicy(session: Session, selection: PermissionPolicySelection): void
 ```
 
 Types: [Session](session.md) · [SessionEvent](session.md)
 
-Source: [`packages/interaction/permission-presets/src/index.ts:160`](../../packages/interaction/permission-presets/src/index.ts)
+Source: [`packages/interaction/permission-presets/src/index.ts:171`](../../packages/interaction/permission-presets/src/index.ts)
 <!-- END GENERATED cordis-surface -->

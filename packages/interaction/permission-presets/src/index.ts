@@ -27,6 +27,9 @@ import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-commands'
 import type { PermissionSelect, PresetOption } from './types.ts'
 
+export { SANDBOX_MODES } from '@deepseek-ai/dsh-sandbox-policy'
+export { APPROVAL_POLICIES } from '@deepseek-ai/dsh-user-approval'
+
 // The `permissions` projection-key declaration lives in src/types.ts (its one
 // home); this re-export projects the type face onto the package root AND
 // keeps the module edge in the emitted index.d.ts, so aggregate programs
@@ -61,6 +64,14 @@ export interface PresetSpec {
   name?: string
   /** One user-facing sentence on what the preset means; omitted when not configured. */
   description?: string
+}
+
+/** Independently selected startup permission knobs. */
+export interface PermissionPolicySelection {
+  /** Sandbox mode to pin; omitted to retain the session's effective mode. */
+  sandbox?: SandboxMode
+  /** Approval policy to pin; omitted to retain the session's effective policy. */
+  approval?: ApprovalPolicy
 }
 
 /**
@@ -402,6 +413,25 @@ export class PermissionPresetService extends Service {
    */
   set(session: Session, name: string): void {
     this.apply(session, name, (policy) =>{  setApprovalPolicy(session, policy) })
+  }
+
+  /**
+   * Apply independently selected permission knobs without claiming a named
+   * preset. The derived current value still resolves to a matching preset when
+   * the resulting pair exists in the table, otherwise it becomes `custom`.
+   * @param session - Session receiving the startup policy.
+   * @param selection - Explicit knobs; omitted fields retain their effective values.
+   */
+  setPolicy(session: Session, selection: PermissionPolicySelection): void {
+    const events = session.events
+    if (selection.sandbox !== undefined
+      && selection.sandbox !== (effectiveSandboxMode(events) ?? this.ctx.shell.sandboxMode)) {
+      setSandboxMode(session, selection.sandbox)
+    }
+    if (selection.approval !== undefined
+      && selection.approval !== (effectiveApprovalPolicy(events) ?? this.ctx.approval.config.policy ?? 'ask')) {
+      setApprovalPolicy(session, selection.approval)
+    }
   }
 
   /** Apply one preset with the caller-selected live or initialization policy writer. */

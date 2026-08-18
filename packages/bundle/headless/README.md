@@ -13,6 +13,7 @@ deepseek exec --image screenshot.png "fix this UI"
 deepseek exec --output-schema result.schema.json "analyze"
 deepseek exec --output-last-message result.txt "summarize"
 deepseek exec --add-dir ../shared "update both projects"
+deepseek exec --sandbox read-only --ask-for-approval ask "inspect safely"
 deepseek exec resume <session-id> "continue"
 deepseek exec resume --last "continue"
 ```
@@ -23,7 +24,7 @@ deepseek exec resume --last "continue"
 
 Repeat `--image` to attach ordered PNG, JPEG, WebP, or GIF files. The attachment service validates and stores every image before the user message enters the Session.
 
-`resume <session-id>` continues an exact persisted Session. `resume --last` selects the newest Session created in the current directory; add `--all` to consider other workspaces. Repeat `--add-dir` to add existing writable directories relative to the session cwd; the complete root set is durable, so resumed sessions retain earlier roots and may add more. `--ephemeral` prevents persistence for a fresh run and cannot be combined with resume. `--full-auto`, `--yolo`, and `--dangerously-bypass-approvals-and-sandbox` use the same permission presets as the terminal command.
+`resume <session-id>` continues an exact persisted Session. `resume --last` selects the newest Session created in the current directory; add `--all` to consider other workspaces. Repeat `--add-dir` to add existing writable directories relative to the session cwd; the complete root set is durable, so resumed sessions retain earlier roots and may add more. `--ephemeral` prevents persistence for a fresh run and cannot be combined with resume. `--sandbox` accepts `read-only`, `workspace-write`, or `danger-full-access`; `--ask-for-approval` accepts `ask` or `never`. These independent controls write the canonical session policy before the task runs and cannot be combined with the `--full-auto`, `--yolo`, or `--dangerously-bypass-approvals-and-sandbox` shortcuts.
 
 ## Execution
 

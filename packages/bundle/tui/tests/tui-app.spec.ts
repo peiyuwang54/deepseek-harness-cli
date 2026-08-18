@@ -37,6 +37,7 @@ function bench(
   fullAccessPreset: string | null = 'danger-full-access',
   fullAutoPreset: string | null = 'full-auto',
   additionalWritableRoots: readonly string[] = [],
+  permissionPolicy?: TuiStartupValues['permissionPolicy'],
 ) {
   const ctx = new Context()
   contexts.push(ctx)
@@ -78,7 +79,12 @@ function bench(
     return { agent: {}, dispose: async () => {} }
   })
   ctx.provide('appExit', code => void exits.push(code))
-  ctx.provide('tuiStartup', { identity, permissionMode, additionalWritableRoots })
+  ctx.provide('tuiStartup', {
+    identity,
+    permissionMode,
+    additionalWritableRoots,
+    ...permissionPolicy === undefined ? {} : { permissionPolicy },
+  })
   ctx.provide('agentDefaultModel', {
     currentSelection: () => ({ provider: 'provider-a', model: 'model-a' }),
   } as never)
@@ -95,10 +101,14 @@ function bench(
   const setPermission = vi.fn((_session: Session, name: string) => {
     order.push(`permission:${name}`)
   })
+  const setPermissionPolicy = vi.fn((_session: Session, policy: object) => {
+    order.push(`policy:${JSON.stringify(policy)}`)
+  })
   ctx.provide('permissionPresets', {
     fullAccessPreset: fullAccessPreset ?? undefined,
     fullAutoPreset: fullAutoPreset ?? undefined,
     set: setPermission,
+    setPolicy: setPermissionPolicy,
   } as never)
   ctx.provide('sandboxPolicy', {
     addWritableRoots: (_session: Session, roots: readonly string[]) => {
@@ -108,7 +118,10 @@ function bench(
   } as never)
   ctx.provide('agents', { create, resume } as never)
   internals.mount = (_ctx, config) => { order.push(`mount:${config.sessionId}`) }
-  return { ctx, order, exits, create, resume, mounted, resolved, setPermission }
+  return {
+    ctx, order, exits, create, resume, mounted, resolved,
+    setPermission, setPermissionPolicy,
+  }
 }
 
 describe('tui runner', () => {
@@ -211,6 +224,29 @@ describe('tui runner', () => {
       'roots:../shared,/tmp/cache',
       'preset:standard',
       'mount:multi-root-main',
+    ])
+  })
+
+  it('applies independent permission knobs before mounting the session preset', async () => {
+    const test = bench(
+      { id: SessionId('policy-main'), resume: false },
+      {},
+      'default',
+      'danger-full-access',
+      'full-auto',
+      [],
+      { sandbox: 'read-only', approval: 'never' },
+    )
+    apply(test.ctx, {})
+    await tick()
+    expect(test.setPermissionPolicy).toHaveBeenCalledWith(expect.any(Session), {
+      sandbox: 'read-only', approval: 'never',
+    })
+    expect(test.order).toEqual([
+      'create',
+      'policy:{"sandbox":"read-only","approval":"never"}',
+      'preset:standard',
+      'mount:policy-main',
     ])
   })
 

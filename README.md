@@ -74,9 +74,11 @@ For automation, set `DEEPSEEK_API_KEY` before launch (`$env:DEEPSEEK_API_KEY="yo
 deepseek
 deepseek --full-auto
 deepseek --yolo
+deepseek --sandbox read-only --ask-for-approval ask
+deepseek exec --sandbox workspace-write --ask-for-approval never "review this repository"
 ```
 
-`--yolo` is dangerous. Use it only in an isolated environment. Use `/permissions` to change the current session safely.
+Use `--sandbox` to select `read-only`, `workspace-write`, or `danger-full-access`; use `--ask-for-approval` to select `ask` or `never`. The explicit controls persist with the session and cannot be combined with `--full-auto` or `--yolo`. `--yolo` is dangerous and belongs only in an isolated environment. Use `/permissions` to switch to a named preset during a session.
 
 Add another writable project directory while keeping `workspace-write` confinement:
 

@@ -5,9 +5,14 @@
  * @module @deepseek-ai/dsh-headless/startup
  */
 
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 import type { Context } from '@deepseek-ai/cordis'
 import { parseCmdline } from '@deepseek-ai/dsh-cmdline'
+import {
+  APPROVAL_POLICIES,
+  SANDBOX_MODES,
+  type PermissionPolicySelection,
+} from '@deepseek-ai/dsh-permission-presets'
 
 /** Stable Cordis plugin name. */
 export const name = 'headless-startup'
@@ -49,6 +54,8 @@ export interface HeadlessStartupValues {
   resume?: HeadlessResumeSelection
   /** Startup permission behavior. */
   permissionMode: HeadlessPermissionMode
+  /** Independently selected permission knobs, mutually exclusive with shortcuts. */
+  permissionPolicy?: PermissionPolicySelection
   /** Workspace-relative or absolute directories added to workspace-write. */
   additionalWritableRoots: string[]
 }
@@ -70,6 +77,8 @@ interface CommonOptions {
   yolo?: boolean
   dangerouslyBypassApprovalsAndSandbox?: boolean
   addDir?: string[]
+  sandbox?: PermissionPolicySelection['sandbox']
+  askForApproval?: PermissionPolicySelection['approval']
 }
 
 /** Repeatable option collector that never consumes a later positional. */
@@ -87,12 +96,16 @@ function addCommonOptions(command: Command): Command {
     .option('--yolo', 'run unrestricted without approval prompts')
     .option('--dangerously-bypass-approvals-and-sandbox', 'alias for --yolo')
     .option('--add-dir <dir>', 'add a writable directory alongside the workspace (repeatable)', collect)
+    .addOption(new Option('-s, --sandbox <mode>', 'select the file sandbox mode').choices([...SANDBOX_MODES]))
+    .addOption(new Option('-a, --ask-for-approval <policy>', 'select approval prompting').choices([...APPROVAL_POLICIES]))
 }
 
 /** Merge options accepted before and after the `resume` subcommand. */
 function commonOptions(parent: CommonOptions, child: CommonOptions = {}): CommonOptions {
   const outputSchema = child.outputSchema ?? parent.outputSchema
   const outputLastMessage = child.outputLastMessage ?? parent.outputLastMessage
+  const sandbox = child.sandbox ?? parent.sandbox
+  const askForApproval = child.askForApproval ?? parent.askForApproval
   return {
     json: parent.json === true || child.json === true,
     ephemeral: parent.ephemeral === true || child.ephemeral === true,
@@ -105,6 +118,8 @@ function commonOptions(parent: CommonOptions, child: CommonOptions = {}): Common
       parent.dangerouslyBypassApprovalsAndSandbox === true
       || child.dangerouslyBypassApprovalsAndSandbox === true,
     addDir: [...(parent.addDir ?? []), ...(child.addDir ?? [])],
+    ...sandbox === undefined ? {} : { sandbox },
+    ...askForApproval === undefined ? {} : { askForApproval },
   }
 }
 
@@ -113,6 +128,10 @@ function permissionMode(program: Command, options: CommonOptions): HeadlessPermi
   const yolo = options.yolo === true || options.dangerouslyBypassApprovalsAndSandbox === true
   if (options.fullAuto === true && yolo) {
     program.error('error: --full-auto and --yolo are mutually exclusive')
+  }
+  if ((options.fullAuto === true || yolo)
+    && (options.sandbox !== undefined || options.askForApproval !== undefined)) {
+    program.error('error: --full-auto and --yolo cannot be combined with --sandbox or --ask-for-approval')
   }
   return yolo ? 'yolo' : options.fullAuto === true ? 'full-auto' : 'default'
 }
@@ -131,6 +150,7 @@ function startupValues(
   if (resume !== undefined && options.ephemeral === true) {
     program.error('error: --ephemeral cannot be used with exec resume')
   }
+  const mode = permissionMode(program, options)
   return {
     task,
     json: options.json === true,
@@ -139,7 +159,13 @@ function startupValues(
     ...options.outputSchema === undefined ? {} : { outputSchema: options.outputSchema },
     ...options.outputLastMessage === undefined ? {} : { outputLastMessage: options.outputLastMessage },
     ...resume === undefined ? {} : { resume },
-    permissionMode: permissionMode(program, options),
+    permissionMode: mode,
+    ...options.sandbox === undefined && options.askForApproval === undefined ? {} : {
+      permissionPolicy: {
+        ...options.sandbox === undefined ? {} : { sandbox: options.sandbox },
+        ...options.askForApproval === undefined ? {} : { approval: options.askForApproval },
+      },
+    },
     additionalWritableRoots: options.addDir ?? [],
   }
 }

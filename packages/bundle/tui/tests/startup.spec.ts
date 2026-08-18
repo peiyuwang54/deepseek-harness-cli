@@ -75,6 +75,17 @@ describe('tui command-line provider', () => {
     expect(observed).toEqual({ exits: [], output: '' })
   })
 
+  it('publishes independent sandbox and approval selections', () => {
+    const { observed, startup } = parse([
+      '--sandbox', 'read-only', '--ask-for-approval', 'never',
+    ])
+    expect(startup).toMatchObject({
+      permissionMode: 'default',
+      permissionPolicy: { sandbox: 'read-only', approval: 'never' },
+    })
+    expect(observed).toEqual({ exits: [], output: '' })
+  })
+
   it('publishes unrestricted startup intent for the yolo flag', () => {
     const { observed, startup } = parse(['--yolo'])
     expect(startup).toMatchObject({
@@ -103,6 +114,20 @@ describe('tui command-line provider', () => {
     expect(observed.output).toContain('mutually exclusive')
   })
 
+  it('rejects combining a permission shortcut with an independent knob', () => {
+    const { observed, startup } = parse(['--full-auto', '--sandbox', 'read-only'])
+    expect(startup).toBeUndefined()
+    expect(observed.exits).toEqual([1])
+    expect(observed.output).toContain('cannot be combined')
+  })
+
+  it('rejects an unknown sandbox mode', () => {
+    const { observed, startup } = parse(['--sandbox', 'unknown'])
+    expect(startup).toBeUndefined()
+    expect(observed.exits).toEqual([1])
+    expect(observed.output).toContain('Allowed choices are')
+  })
+
   it('prints help without requiring a TTY and leaves the runner pending', () => {
     const { observed, startup } = parse(['--help'], false)
     expect(startup).toBeUndefined()
@@ -110,6 +135,8 @@ describe('tui command-line provider', () => {
     expect(observed.output).toContain('Usage: deepseek')
     expect(observed.output).toContain('--resume <session>')
     expect(observed.output).toContain('--add-dir <dir>')
+    expect(observed.output).toContain('--sandbox <mode>')
+    expect(observed.output).toContain('--ask-for-approval <policy>')
     expect(observed.output).toContain('--full-auto')
     expect(observed.output).toContain('--yolo')
     expect(observed.output).toContain('--dangerously-bypass-approvals-and-sandbox')

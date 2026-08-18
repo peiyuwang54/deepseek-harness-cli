@@ -252,5 +252,5 @@ Source: [`packages/ui/tui/src/prompt.ts:104`](../../packages/ui/tui/src/prompt.t
 
 Immutable process-local values shared by the terminal runner.
 
-Source: [`packages/bundle/tui/src/startup.ts:29`](../../packages/bundle/tui/src/startup.ts)
+Source: [`packages/bundle/tui/src/startup.ts:34`](../../packages/bundle/tui/src/startup.ts)
 <!-- END GENERATED cordis-surface -->

@@ -761,6 +761,11 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [],
       },
       {
+        signature: 'permissionPolicy?: PermissionPolicySelection',
+        description: 'Independently selected permission knobs, mutually exclusive with shortcuts.',
+        parameters: [],
+      },
+      {
         signature: 'additionalWritableRoots: string[]',
         description: 'Workspace-relative or absolute directories added to workspace-write.',
         parameters: [],
@@ -1049,6 +1054,11 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         signature: 'set(session: Session, name: string): void',
         description: 'Record a changed preset, then update each changed knob through its own setter. Selecting the effective preset again appends nothing.',
         parameters: [{ name: 'session', description: 'the session the switch belongs to.' }, { name: 'name', description: 'the preset to switch to; unknown names throw.' }],
+      },
+      {
+        signature: 'setPolicy(session: Session, selection: PermissionPolicySelection): void',
+        description: 'Apply independently selected permission knobs without claiming a named preset. The derived current value still resolves to a matching preset when the resulting pair exists in the table, otherwise it becomes `custom`.',
+        parameters: [{ name: 'session', description: 'Session receiving the startup policy.' }, { name: 'selection', description: 'Explicit knobs; omitted fields retain their effective values.' }],
       },
     ],
   },
@@ -2115,6 +2125,11 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       {
         signature: 'readonly permissionMode: \'default\' | \'full-auto\' | \'yolo\'',
         description: 'Permission shortcut to pin before Agent publication.',
+        parameters: [],
+      },
+      {
+        signature: 'readonly permissionPolicy?: PermissionPolicySelection',
+        description: 'Independently selected permission knobs, mutually exclusive with shortcuts.',
         parameters: [],
       },
       {
@@ -3721,6 +3736,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'OneShotSubagentDescriptorData',
     declaration: 'export interface OneShotSubagentDescriptorData extends SubagentDescriptorBase {\n    readonly mode: \'one-shot\';\n    readonly label?: string;\n}',
+  },
+  {
+    name: 'PermissionPolicySelection',
+    declaration: 'export interface PermissionPolicySelection {\n    sandbox?: SandboxMode;\n    approval?: ApprovalPolicy;\n}',
   },
   {
     name: 'PermissionSelect',

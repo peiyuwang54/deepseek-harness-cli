@@ -25,6 +25,16 @@ interface PresetSpec {
 ```
 
 ```ts type-equiv
+/** Independently selected startup permission knobs. */
+interface PermissionPolicySelection {
+  /** Sandbox mode to pin; omitted to retain the session's effective mode. */
+  sandbox?: SandboxMode
+  /** Approval policy to pin; omitted to retain the session's effective policy. */
+  approval?: ApprovalPolicy
+}
+```
+
+```ts type-equiv
 /** The {@link PermissionPresetService} config: preset table and composition default. */
 interface Config {
   /**
@@ -65,6 +75,8 @@ interface PresetOption {
 ## Switching and the `permission/preset` event
 
 `set(session, name)` resolves the preset (unknown names throw), appends a log-only `permission/preset` event unless `name` is already the effective preset, then writes each knob through its own setter — `setSandboxMode` from [dsh-sandbox-policy](../../packages/sandbox/sandbox-policy) and `setApprovalPolicy` from [dsh-user-approval](../../packages/interaction/user-approval) — only when that knob's effective value changes. The selection event precedes the knob events in the same turn, and re-selecting the effective preset appends nothing at all.
+
+`setPolicy(session, selection)` applies either knob independently through the same setters and records no named preset selection. The resulting pair still derives to a table entry when it matches one; otherwise `current()` reports `custom`. This is the startup write path for `--sandbox` and `--ask-for-approval`.
 
 `permission/preset` is durable, log-only user intent: it stays out of the model transcript (the knob events own the model-visible consequences through their consumers), and it exists so `current()` can preserve WHICH preset the user chose when two presets share a bundle; `effectivePermissionPreset(events)` folds the last one, and replay needs no catch-up state. The complete event declaration is in the [persistence log event catalog](../persistence-catalog.md); the method signatures are in the generated [service catalog](#ctxpermissionpresets--permissionpresetservice).
 
@@ -124,9 +136,18 @@ optionOf(name: string): PresetOption
  * @param name - the preset to switch to; unknown names throw.
  */
 set(session: Session, name: string): void
+
+/**
+ * Apply independently selected permission knobs without claiming a named
+ * preset. The derived current value still resolves to a matching preset when
+ * the resulting pair exists in the table, otherwise it becomes `custom`.
+ * @param session - Session receiving the startup policy.
+ * @param selection - Explicit knobs; omitted fields retain their effective values.
+ */
+setPolicy(session: Session, selection: PermissionPolicySelection): void
 ```
 
 Types: [Session](session.md) · [SessionEvent](session.md)
 
-Source: [`packages/interaction/permission-presets/src/index.ts:160`](../../packages/interaction/permission-presets/src/index.ts)
+Source: [`packages/interaction/permission-presets/src/index.ts:171`](../../packages/interaction/permission-presets/src/index.ts)
 <!-- END GENERATED cordis-surface -->

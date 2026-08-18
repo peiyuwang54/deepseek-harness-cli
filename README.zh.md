@@ -74,9 +74,11 @@ deepseek exec resume --last "continue"
 deepseek
 deepseek --full-auto
 deepseek --yolo
+deepseek --sandbox read-only --ask-for-approval ask
+deepseek exec --sandbox workspace-write --ask-for-approval never "review this repository"
 ```
 
-`--yolo` 风险很高，只能在隔离环境中使用。运行中请用 `/permissions` 安全切换当前会话。
+`--sandbox` 可选择 `read-only`、`workspace-write` 或 `danger-full-access`，`--ask-for-approval` 可选择 `ask` 或 `never`。显式控制会随 Session 持久化，且不能与 `--full-auto` 或 `--yolo` 组合。`--yolo` 风险很高，只能在隔离环境中使用。运行中可用 `/permissions` 切换到具名 preset。
 
 在保持 `workspace-write` 限制的同时，可添加其他可写项目目录：
 

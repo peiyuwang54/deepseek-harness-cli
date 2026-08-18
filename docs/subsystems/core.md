@@ -728,7 +728,7 @@ Source: [`packages/core/agent/src/index.ts:258`](../../packages/core/agent/src/i
 
 Immutable parsed command-line values consumed by one non-interactive run.
 
-Source: [`packages/bundle/headless/src/startup.ts:35`](../../packages/bundle/headless/src/startup.ts)
+Source: [`packages/bundle/headless/src/startup.ts:40`](../../packages/bundle/headless/src/startup.ts)
 
 <a id="agent-events"></a>
 

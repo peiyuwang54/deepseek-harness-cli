@@ -25,10 +25,10 @@
 | Profile | 参数 |
 |---|---|
 | `web` | `--host`、`--port`、可重复的 `--trusted-host` |
-| `tui` | `--resume <session>`、`--full-auto`、`--yolo`、`--dangerously-bypass-approvals-and-sandbox` |
-| `headless` | 任务文本；`--json`、`--ephemeral`、可重复的 `--image`、`--output-schema`、`--output-last-message`、权限快捷参数与 `resume` |
+| `tui` | `--resume <session>`、可重复的 `--add-dir`、`--sandbox`、`--ask-for-approval` 和权限快捷参数 |
+| `headless` | 任务文本；`--json`、`--ephemeral`、可重复的 `--image`／`--add-dir`、输出控制、精确权限控制、快捷参数与 `resume` |
 
-`deepseek exec "run the tests"` 别名会创建一个持久化 Agent（智能体）并打印最终结果；`dsh --profile headless` 保留为 profile 层写法。`--json` 发出 JSONL 生命周期事件；可重复的 `--image` 接收本地 PNG、JPEG、WebP 或 GIF 输入；`--output-schema` 要求符合 Schema 的结构化输出；`--output-last-message` 保存最终结果。`resume <id>` 继续指定 Session，`resume --last` 默认选择当前工作区中最新的 Session，添加 `--all` 后会考虑所有工作区。`--ephemeral` 只适用于新运行，权限快捷参数与终端命令一致。Runner 会等待完全停稳并在输出前执行 flush，仅在得到已完成且有效的结果时以 0 退出；它不挂载 ApiProxy、Host、HTTP 服务器、Web 运行时或浏览器客户端，也不打开监听端口。输出与失败约定由 [headless 组合包 README](../../../packages/bundle/headless/README.md)负责。
+`deepseek exec "run the tests"` 别名会创建一个持久化 Agent（智能体）并打印最终结果；`dsh --profile headless` 保留为 profile 层写法。`--json` 发出 JSONL 生命周期事件；可重复的 `--image` 接收本地 PNG、JPEG、WebP 或 GIF 输入；`--output-schema` 要求符合 Schema 的结构化输出；`--output-last-message` 保存最终结果。`resume <id>` 继续指定 Session，`resume --last` 默认选择当前工作区中最新的 Session，添加 `--all` 后会考虑所有工作区。`--ephemeral` 只适用于新运行，权限控制和快捷参数与终端命令一致。Runner 会等待完全停稳并在输出前执行 flush，仅在得到已完成且有效的结果时以 0 退出；它不挂载 ApiProxy、Host、HTTP 服务器、Web 运行时或浏览器客户端，也不打开监听端口。输出与失败约定由 [headless 组合包 README](../../../packages/bundle/headless/README.md)负责。
 
 可在不启动的情况下检查组合出的配置树：
 
@@ -70,11 +70,12 @@ dsh --profile tui
 
 ## 终端入口
 
-裸 `deepseek` 会选择随附的 `tui` profile，`dsh tui` 保留为兼容写法。Startup 提供方持有 `--resume <session>`、`--full-auto`、`--yolo`、官方长形式无限制别名与应用帮助。`--full-auto` 会关闭审批提示但保留工作区限制，越界操作会被拒绝；两种无限制写法会同时关闭限制与审批提示。帮助信息不要求 TTY；成功运行则要求 stdin 与 stdout 均为交互式终端，任一侧为管道时都会在终端 runner 激活前失败。Loader 结算后，runner 通过 `ctx.agents` 创建新的持久化根 Agent 或恢复指定身份，在未发布的 setup 阶段固定请求的权限 preset 并安装默认模型选择，再把进程 TUI 挂载到该根 Agent。此 profile 不挂载 Host、HTTP server、Web runtime 或浏览器 client。
+裸 `deepseek` 会选择随附的 `tui` profile，`dsh tui` 保留为兼容写法。Startup 提供方持有 `--resume <session>`、可重复的 `--add-dir`、`--sandbox`、`--ask-for-approval`、权限快捷参数与应用帮助。`--sandbox` 接受 `read-only`、`workspace-write` 或 `danger-full-access`，`--ask-for-approval` 接受 `ask` 或 `never`。`--full-auto` 会关闭审批提示但保留工作区限制，两种无限制写法会同时关闭限制与审批提示。精确控制不能与快捷参数组合。帮助信息不要求 TTY；成功运行则要求 stdin 与 stdout 均为交互式终端，任一侧为管道时都会在终端 runner 激活前失败。Loader 结算后，runner 通过 `ctx.agents` 创建新的持久化根 Agent 或恢复指定身份，在未发布的 setup 阶段写入请求的权限控制并安装默认模型选择，再把进程 TUI 挂载到该根 Agent。此 profile 不挂载 Host、HTTP server、Web runtime 或浏览器 client。
 
 ```sh
 deepseek
 deepseek --resume <session>
+deepseek --sandbox read-only --ask-for-approval ask
 deepseek --full-auto
 deepseek --yolo
 deepseek --dangerously-bypass-approvals-and-sandbox
@@ -100,7 +101,7 @@ dsh web --help
 
 所有模式都将运行命令时所在的目录作为默认 workspace 根目录，以 65,536 字节渲染预算加载适用的 `AGENTS.md` 或 `CLAUDE.md` 指令，并使用内存 SQLite 会话内容索引。每次启动 profile 时，系统都会监视 profile 与 home 两个 `cordis.patch.yml` 配置层的有效变更，并以事务方式重新应用；一次性运行模式通过有界关闭流程退出，该流程会先 dispose 监视器。
 
-新会话默认使用 `workspace-write` 权限预设。Bash 和文件系统修改仅限于会话 workspace 与平台临时根目录；读取、网络访问和进程可见性不受限制。`deepseek --full-auto` 会固定 `workspace-write` + `never`；`deepseek --yolo` 及其长别名会在发布前固定配置的 full-access／no-approval preset。会话内不会注册启动快捷命令，运行中请用 `/permissions` 切换。`DSH_PERMISSION_MODE` 更改进程后备值。General settings 中存储的权限影响后续 Web 会话，不改变已打开的会话。
+新会话默认使用 `workspace-write` 权限预设。Bash 和文件系统修改仅限于会话 workspace 与平台临时根目录；读取、网络访问和进程可见性不受限制。`--sandbox` 与 `--ask-for-approval` 写入独立的持久调节项；如果二者的组合没有匹配的具名 preset，`/permissions` 会报告 `custom`。`deepseek --full-auto` 会固定 `workspace-write` + `never`；`deepseek --yolo` 及其长别名会在发布前固定配置的 full-access／no-approval preset。会话内不会注册启动快捷命令，运行中请用 `/permissions` 切换。`DSH_PERMISSION_MODE` 更改进程后备值。General settings 中存储的权限影响后续 Web 会话，不改变已打开的会话。
 
 `DSH_TOOLS_MODE` 为进程选择 `native`、`code` 或 `both`；其他值会导致启动失败。随附的 `minimal` agent preset 会保留该部署的呈现方式，将完整系统提示词固定为 `You are a helpful software engineer assistant.`，并且仅组合持久 `bash` 和 `str_replace_editor`。创建 Web 会话时请选择极简模式；该 agent 不包含任何其他提示词段落或面向模型的插件，而共享的浏览器、workspace、持久化、沙箱与权限宿主保持不变。
 

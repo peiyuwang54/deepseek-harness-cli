@@ -24,6 +24,9 @@
       "path": "../../core/session"
     },
     {
+      "path": "../../interaction/permission-presets"
+    },
+    {
       "path": "../../sandbox/sandbox-policy"
     },
     {

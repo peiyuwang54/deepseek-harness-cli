@@ -106,6 +106,19 @@ describe('PermissionPresetService', () => {
     expect(() => ctx.permissionPresets.resolve(CUSTOM_PRESET)).toThrow(/unknown preset/)
   })
 
+  it('sets independent startup knobs and derives either a preset or custom', async () => {
+    const ctx = await mounted()
+    const session = freshSession('sess-policy')
+
+    ctx.permissionPresets.setPolicy(session, { sandbox: 'read-only' })
+    expect(ctx.permissionPresets.current(session.events)).toBe(CUSTOM_PRESET)
+    expect(session.events.at(-1)).toMatchObject({ type: 'sandbox/mode', data: { mode: 'read-only' } })
+
+    ctx.permissionPresets.setPolicy(session, { sandbox: 'workspace-write', approval: 'never' })
+    expect(ctx.permissionPresets.current(session.events)).toBe('full-auto')
+    expect(session.events.slice(-2).map(event => event.type)).toEqual(['sandbox/mode', 'approval/policy'])
+  })
+
   it('composition defaults outside the table still derive custom when an explicit new-session default is configured', async () => {
     const ctx = await mounted({
       approvalDefault: 'never',

@@ -1,36 +1,38 @@
 terminal 92x32 buffer=normal length=32 base=0 viewport=0
 lifecycle started=1 stopped=0 progress=inactive
 title "DSH snapshot"
-cursor visible column=3 viewportRow=8 bufferRow=8
+cursor visible column=3 viewportRow=9 bufferRow=9
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
 1| <blank>
-2| "MCP tools visible to this session (2)                                                       "
+2| "MCP servers visible to this session (1 server · 1 tool)                                     "
   style 0-91 dim
-3| "- mcp__filesystem__read_file — Read a remote file                                           "
+3| "- github · 1 tool                                                                           "
   style 0-91 dim
-4| "- mcp__github__search — Search GitHub repositories                                          "
-  style 0-49 dim
-5-6| <blank>
-7| "                                                                                            "
+4| "  - mcp__github__search — Search GitHub repositories                                        "
+  style 0-91 dim
+5| "    schema: {\"query\":{\"type\":\"string\"}}                                                     "
+  style 0-38 dim
+6-7| <blank>
+8| "                                                                                            "
   style 0-91 bg=ansi-236
-8| " › │Describe a task, @ a file, or / for commands                                            "
+9| " › │Describe a task, @ a file, or / for commands                                            "
   style 0-0 bg=ansi-236
   style 1-1 fg=bright-blue bg=ansi-236 bold
   style 2-2 bg=ansi-236 dim
   style 3-3 bg=ansi-236
   style 4-47 bg=ansi-236 dim
   style 48-91 bg=ansi-236
-9| "                                                                                            "
+10| "                                                                                            "
   style 0-91 bg=ansi-236
-10| "  Enter send · Shift+Enter newline · / commands"
+11| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-11| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+12| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 44-45 dim
   style 48-72 dim
   style 75-79 dim
   style 82-91 dim
-12-31| <blank>
+13-31| <blank>

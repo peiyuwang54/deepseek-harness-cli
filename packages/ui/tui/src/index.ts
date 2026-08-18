@@ -2983,8 +2983,8 @@ export function createTuiChat(
     })
     commandCtx.commands.register({
       name: 'mcp',
-      description: 'List MCP tools visible to this session',
-      input: { hint: '[verbose]' },
+      description: 'Inspect MCP servers and tools visible to this session',
+      input: { hint: '[list|desc|schema] [server]' },
       handler: ({ rawInput }) => mcpCommandResult(rawInput, agent.ctx.tools.schemas(agent)),
     })
     commandCtx.commands.register({

@@ -58,7 +58,7 @@ Ctrl+G 会通过用户的 `VISUAL` 或 `EDITOR` 命令编辑当前 composer 草�
 
 直接调用 `/model off`、`/model high` 或 `/model max` 会复用当前路由公布的推理强度 catalog。不可用的等级会被拒绝，且不改变选择。
 
-`/mcp [verbose]` 只投影当前 Agent 作用域工具视图中的 MCP 限定 schema。该投影会报告公开名称与可选描述，不会声称工具注册表无法判定的连接状态。
+`/mcp [list|desc|schema] [server]` 只投影当前 Agent 作用域工具视图中的 MCP 限定 schema。它会按服务器归组稳定的公开工具名；描述视图与参数 schema 视图会逐级展示更多发现数据，可选的服务器 id 可过滤任一视图。`ls` 是 `list` 的别名，`verbose` 则继续作为 `desc` 的别名。该投影不会声称工具注册表无法判定的连接状态。
 
 `/memories [verbose]` 会把同一份作用域工具视图缩小到 server id 能识别为 `memory`、`memorix` 或 `engram` 的 MCP 工具，再按 provider 归组可见工具。该命令为只读，不会推断已存数据、启用记忆使用或提供破坏性重置。Harness 没有内置记忆存储；provider 配置与所有数据生命周期操作都留在该 TUI projection 之外。
 

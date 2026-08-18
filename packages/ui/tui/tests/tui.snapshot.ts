@@ -1545,7 +1545,7 @@ describe('TUI terminal-state snapshots', () => {
           execute: async () => null,
         },
         github: {
-          name: 'mcp__github__search', description: 'Search GitHub repositories', parameters: {}, output,
+          name: 'mcp__github__search', description: 'Search GitHub repositories', parameters: { query: { type: 'string' } }, output,
           execute: async () => null,
         },
         filesystem: {
@@ -1555,7 +1555,7 @@ describe('TUI terminal-state snapshots', () => {
       },
     }, { columns: 92, rows: 32 })
     await renderAfter(harness, () => {
-      harness.terminal.send('/mcp verbose')
+      harness.terminal.send('/mcp schema github')
       harness.terminal.send('\r')
     })
     await checkpoint('mcp-tools', harness.terminal, { includeScrollback: true })

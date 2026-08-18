@@ -75,8 +75,8 @@ buffer
   style 0-91 dim
 35| "language                                                                                    "
   style 0-7 dim
-36| "/mcp [verbose] — List MCP tools visible to this session                                     "
-  style 0-54 dim
+36| "/mcp [list|desc|schema] [server] — Inspect MCP servers and tools visible to this session    "
+  style 0-87 dim
 37| "/memories [verbose] — Inspect Memory MCP capabilities visible to this session               "
   style 0-76 dim
 38| "/mention [path] — Insert a workspace file reference into the composer                       "

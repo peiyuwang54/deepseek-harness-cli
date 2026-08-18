@@ -4,41 +4,77 @@ import { mcpCommandResult } from '../src/chat/mcp-command.ts'
 describe('mcp command', () => {
   it('lists only MCP-qualified tools in stable order', () => {
     expect(mcpCommandResult('', [
-      { name: 'read', description: 'Local file reader' },
-      { name: 'mcp__github__search', description: 'Search repositories' },
-      { name: 'mcp__filesystem__read_file', description: 'Read remote files' },
+      { name: 'read', description: 'Local file reader', parameters: {} },
+      { name: 'mcp__github__search', description: 'Search repositories', parameters: { query: { type: 'string' } } },
+      { name: 'mcp__filesystem__read_file', description: 'Read remote files', parameters: { path: { type: 'string' } } },
     ])).toEqual({
       kind: 'success',
       text: [
-        'MCP tools visible to this session (2)',
-        '- mcp__filesystem__read_file',
-        '- mcp__github__search',
+        'MCP servers visible to this session (2 servers · 2 tools)',
+        '- filesystem · 1 tool',
+        '  - mcp__filesystem__read_file',
+        '- github · 1 tool',
+        '  - mcp__github__search',
       ].join('\n'),
     })
   })
 
-  it('adds normalized descriptions in verbose mode', () => {
-    expect(mcpCommandResult(' VeRbOsE ', [
-      { name: 'mcp__github__search', description: 'Search\n  repositories' },
-      { name: 'mcp__empty__tool', description: '  ' },
+  it('adds normalized descriptions in desc and legacy verbose modes', () => {
+    const tools = [
+      { name: 'mcp__github__search', description: 'Search\n  repositories', parameters: {} },
+      { name: 'mcp__empty__tool', description: '  ', parameters: {} },
+    ]
+    const expected = {
+      kind: 'success',
+      text: [
+        'MCP servers visible to this session (2 servers · 2 tools)',
+        '- empty · 1 tool',
+        '  - mcp__empty__tool — No description',
+        '- github · 1 tool',
+        '  - mcp__github__search — Search repositories',
+      ].join('\n'),
+    }
+    expect(mcpCommandResult(' DeSc ', tools)).toEqual(expected)
+    expect(mcpCommandResult(' VeRbOsE ', tools)).toEqual(expected)
+  })
+
+  it('filters one server and prints tool parameter schemas', () => {
+    expect(mcpCommandResult('schema GitHub', [
+      { name: 'mcp__filesystem__read_file', description: 'Read remote files', parameters: {} },
+      { name: 'mcp__GitHub__search', description: 'Search repositories', parameters: { query: { type: 'string' } } },
+      { name: 'mcp__GitHub__issues', description: 'List issues', parameters: {} },
     ])).toEqual({
       kind: 'success',
       text: [
-        'MCP tools visible to this session (2)',
-        '- mcp__empty__tool — No description',
-        '- mcp__github__search — Search repositories',
+        'MCP servers visible to this session (1 server · 2 tools)',
+        '- GitHub · 2 tools',
+        '  - mcp__GitHub__issues — List issues',
+        '    schema: {}',
+        '  - mcp__GitHub__search — Search repositories',
+        '    schema: {"query":{"type":"string"}}',
       ].join('\n'),
     })
   })
 
-  it('reports absence and rejects unknown arguments', () => {
+  it('reports absence, missing filters, malformed names, and unknown arguments', () => {
     expect(mcpCommandResult('', [])).toEqual({
       kind: 'success',
       text: 'No MCP tools are available to this session.',
     })
+    expect(mcpCommandResult('list missing', [
+      { name: 'mcp____invalid', description: '', parameters: {} },
+      { name: 'mcp__github__search', description: '', parameters: {} },
+    ])).toEqual({
+      kind: 'success',
+      text: 'MCP server "missing" is not visible to this session.',
+    })
     expect(mcpCommandResult('details', [])).toEqual({
       kind: 'error',
-      text: 'Usage: /mcp [verbose]',
+      text: 'Usage: /mcp [list|ls|desc|verbose|schema] [server]',
+    })
+    expect(mcpCommandResult('schema github extra', [])).toEqual({
+      kind: 'error',
+      text: 'Usage: /mcp [list|ls|desc|verbose|schema] [server]',
     })
   })
 })

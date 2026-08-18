@@ -58,7 +58,7 @@ The shipped presentation defaults to inline terminal scrollback. The terminal ow
 
 Direct `/model off`, `/model high`, and `/model max` reuse the current route's advertised reasoning-effort catalog. An unavailable level is rejected without changing the selection.
 
-`/mcp [verbose]` projects only MCP-qualified schemas from the current Agent's scoped tool view. The projection reports public names and optional descriptions without claiming connection status that the tool registry cannot determine.
+`/mcp [list|desc|schema] [server]` projects only MCP-qualified schemas from the current Agent's scoped tool view. It groups stable public tool names by server; description and parameter-schema views expose progressively more discovery data, and an optional server id filters any view. `ls` aliases `list`, while `verbose` remains an alias of `desc`. The projection does not claim connection status that the tool registry cannot determine.
 
 `/memories [verbose]` narrows that same scoped tool view to MCP server ids identifying `memory`, `memorix`, or `engram`, then groups the visible tools by provider. The command is read-only and does not infer stored data, enable memory use, or offer destructive reset. The Harness has no built-in memory store; provider configuration and every data lifecycle operation remain outside this TUI projection.
 

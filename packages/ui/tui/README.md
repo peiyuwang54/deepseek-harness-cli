@@ -70,7 +70,7 @@ The shared [`dsh-command-jobs`](../../jobs/command-jobs/README.md) plugin contri
 
 `/model off`, `/model high`, and `/model max` directly select that advertised effort for the current route. An unavailable level reports the catalog limitation without changing the selection.
 
-`/mcp [verbose]` lists the MCP-qualified tools visible through the current Agent's scoped tool registry. The default view prints stable public tool names; `verbose` also prints their normalized descriptions. It does not expose unrelated tools or infer server connection state that the tool registry does not own.
+`/mcp [list|desc|schema] [server]` groups the MCP-qualified tools visible through the current Agent's scoped tool registry. `list` is the default, `desc` includes normalized descriptions, and `schema` adds parameter schemas; the optional server id narrows any view. `ls` aliases `list`, and `verbose` remains an alias of `desc`. The command does not expose unrelated tools or infer server connection state that the tool registry does not own.
 
 `/memories [verbose]` gives a read-only view of Memory MCP capabilities visible to the current Agent. It groups tools whose MCP server id identifies `memory`, `memorix`, or `engram`; `verbose` includes normalized tool descriptions. DeepSeek Harness does not ship a built-in memory store, so use, generation, retention, and reset remain owned by the configured provider. See [`examples/mcp-memory`](../../../examples/mcp-memory/README.md) for optional providers.
 

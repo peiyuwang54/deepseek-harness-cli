@@ -12,6 +12,18 @@
 
 两个可选子功能在同一服务之上提供产品界面：`permissions` 会话投影单元（`src/types.ts` 声明该 key；单元以组合默认值为基础折叠三个全量值可调参数事件，并生成选择器视图，其中包含表内选项和仅作当前值的 `custom`）与命令条目。`/permissions` 报告或选择一个具名 preset。服务会同时标识供 `--full-auto` 使用的工作区受限／不审批 preset，以及供 `--yolo` 使用的全访问／不审批 preset；它不会注册会话级快捷命令。每个子功能仅在其注册表（`ctx.sessionProjections` / `ctx.commands`）被组合时激活。
 
+可选的 `security` 配置会在组合 `dsh-tools` 时向 `tools/pre-execute` 流水线添加部署策略。`toolAllow` 与 `toolDeny` 使用精确的工具名；`commandAllow` 与 `commandDeny` 是应用于 `bash` 和 `pwsh` 命令文本的 JavaScript 正则表达式源；`networkAllowlist` 接受用于 `web_fetch` 的精确主机名或 `*.domain` 模式；`mcpTrust` 将 MCP 服务名映射为 `trusted`、`prompt` 或 `blocked`。`administratorLocked: true` 会拒绝 `/permissions`、`set()` 和 `setPolicy()` 的更改。无效模式会在服务构造期间失败；省略字段则保留部署已有的策略。
+
+```yaml
+security:
+  toolDeny: ['shell_upload']
+  commandDeny: ['(^|\\s)rm\\s+-rf(\\s|$)']
+  networkAllowlist: ['example.com', '*.trusted.test']
+  mcpTrust:
+    filesystem: blocked
+  administratorLocked: true
+```
+
 ## 模型体验
 
 间接地，通过 `dsh-user-approval` 和 `dsh-tool-bash`：二者会渲染由此服务的可调参数事件所选择的审批策略提示词、切换通知和沙箱工具结果；`permission/preset` 本身只写入日志。

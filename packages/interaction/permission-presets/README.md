@@ -12,6 +12,18 @@ The service requires a confining `ctx.shell` executor and `ctx.approval`. A tabl
 
 Two optional children ship the product surfaces over the same service: a `permissions` session-projection unit (`src/types.ts` declares the key; the unit folds the three whole-value knob events and views the select — table options plus a current-only `custom` — over the composition defaults) and command entries. `/permissions` reports or selects a named preset. The service identifies both the workspace-confined/no-approval preset used by `--full-auto` and the full-access/no-approval preset used by `--yolo`; it does not register session-level shortcut commands. Each child activates only when its registry (`ctx.sessionProjections` / `ctx.commands`) is composed.
 
+An optional `security` config adds deployment policy to the `tools/pre-execute` pipeline when `dsh-tools` is composed. `toolAllow` and `toolDeny` use exact tool names; `commandAllow` and `commandDeny` are JavaScript regular-expression sources for `bash` and `pwsh`; `networkAllowlist` accepts exact hosts or `*.domain` patterns for `web_fetch`; and `mcpTrust` maps an MCP server name to `trusted`, `prompt`, or `blocked`. `administratorLocked: true` rejects `/permissions`, `set()`, and `setPolicy()` changes. Invalid patterns fail during service construction, while omitted fields keep the deployment's existing policy.
+
+```yaml
+security:
+  toolDeny: ['shell_upload']
+  commandDeny: ['(^|\\s)rm\\s+-rf(\\s|$)']
+  networkAllowlist: ['example.com', '*.trusted.test']
+  mcpTrust:
+    filesystem: blocked
+  administratorLocked: true
+```
+
 ## Model Experience
 
 Indirectly, through `dsh-user-approval` and `dsh-tool-bash`, which render the approval-policy prompt, switch notice, and sandboxed tool outcomes selected by this service's knob events; `permission/preset` itself is log-only.

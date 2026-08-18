@@ -47,12 +47,16 @@ interface Config {
   /**
    * Default for new sessions. When omitted, the preset matching the composed
    * sandbox and approval defaults is used.
-   */
+  */
   defaultPreset?: string
+  /** Additional execution policy applied before any tool dispatch. */
+  security?: SecurityPolicyConfig
 }
 ```
 
 The service requires a confining `ctx.shell` executor and `ctx.approval`, and misconfiguration fails at plugin load: a table entry named `custom` throws (the name is reserved for the derived not-a-preset state), and composing over a bash executor that does not confine (no `sandboxMode` capability fact) throws, because presets bundle a sandbox mode.
+
+The optional `security` config applies deployment policy to the `tools/pre-execute` pipeline when `dsh-tools` is composed: exact tool allow/deny lists, command regular expressions for `bash` and `pwsh`, host allowlists for `web_fetch`, MCP trust actions, and an administrator lock for runtime permission changes. The package README documents the fields and example.
 
 ## Current preset and the derived `custom`
 
@@ -149,5 +153,5 @@ setPolicy(session: Session, selection: PermissionPolicySelection): void
 
 Types: [Session](session.md) · [SessionEvent](session.md)
 
-Source: [`packages/interaction/permission-presets/src/index.ts:171`](../../packages/interaction/permission-presets/src/index.ts)
+Source: [`packages/interaction/permission-presets/src/index.ts:242`](../../packages/interaction/permission-presets/src/index.ts)
 <!-- END GENERATED cordis-surface -->

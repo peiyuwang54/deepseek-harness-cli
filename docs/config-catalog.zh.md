@@ -1313,6 +1313,8 @@ export interface Config {
    * sandbox and approval defaults is used.
    */
   defaultPreset?: string
+  /** Additional execution policy applied before any tool dispatch. */
+  security?: SecurityPolicyConfig
 }
 
 /** One preset's sandbox/approval bundle and optional client presentation. */
@@ -1325,6 +1327,24 @@ export interface PresetSpec {
   name?: string
   /** One user-facing sentence on what the preset means; omitted when not configured. */
   description?: string
+}
+
+/** Deployment-level execution restrictions shared by model-facing tools. */
+export interface SecurityPolicyConfig {
+  /** Tool names allowed when non-empty; deny rules still take precedence. */
+  toolAllow?: string[]
+  /** Tool names denied before approval or dispatch. */
+  toolDeny?: string[]
+  /** JavaScript regular expressions matched against bash/pwsh command text. */
+  commandAllow?: string[]
+  /** JavaScript regular expressions that deny bash/pwsh command text. */
+  commandDeny?: string[]
+  /** Exact hosts or `*.domain` patterns allowed for `web_fetch`. */
+  networkAllowlist?: string[]
+  /** MCP server name → trust action for `mcp__<server>__*` tools. */
+  mcpTrust?: Record<string, 'trusted' | 'prompt' | 'blocked'>
+  /** Prevent `/permissions` from changing the selected preset at runtime. */
+  administratorLocked?: boolean
 }
 ```
 

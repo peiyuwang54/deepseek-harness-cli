@@ -47,12 +47,16 @@ interface Config {
   /**
    * Default for new sessions. When omitted, the preset matching the composed
    * sandbox and approval defaults is used.
-   */
+  */
   defaultPreset?: string
+  /** Additional execution policy applied before any tool dispatch. */
+  security?: SecurityPolicyConfig
 }
 ```
 
 该服务要求一个施加隔离的 `ctx.shell` 执行器和 `ctx.approval`，配置错误在插件加载时即失败：名为 `custom` 的表项会抛出异常（该名称保留给派生的「非预设」状态）；在不施加隔离的 bash 执行器（没有 `sandboxMode` 能力事实）之上组合同样抛出异常，因为预设捆绑了一个沙箱模式。
+
+组合 `dsh-tools` 时，可选的 `security` 配置会将部署策略应用于 `tools/pre-execute` 流水线：精确的工具允许／拒绝列表、适用于 `bash` 和 `pwsh` 的命令正则表达式、`web_fetch` 主机允许列表、MCP 信任操作，以及防止运行时权限更改的管理员锁。包 README 负责字段与示例说明。
 
 ## 当前预设与派生的 `custom`
 
@@ -149,5 +153,5 @@ setPolicy(session: Session, selection: PermissionPolicySelection): void
 
 Types: [Session](session.md) · [SessionEvent](session.md)
 
-Source: [`packages/interaction/permission-presets/src/index.ts:171`](../../packages/interaction/permission-presets/src/index.ts)
+Source: [`packages/interaction/permission-presets/src/index.ts:242`](../../packages/interaction/permission-presets/src/index.ts)
 <!-- END GENERATED cordis-surface -->

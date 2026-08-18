@@ -12,6 +12,12 @@ The profile plugin command could install and update packages through pnpm and in
 
 `deepseek plugin --profile <name>` keeps pnpm as the dependency resolver and adds boot-free `source`, `enable`, and `disable` operations. `install` is an explicit alias for pnpm `add`. Enablement changes only `dsh.profile.bundles`; dependency files and the user's real workspace are untouched. Source output reports the resolved package directory plus `repository` or `homepage` when declared.
 
+## Alternatives considered
+
+**Edit `package.json` directly for every toggle.** Rejected: package dependencies and profile activation are separate concerns, and activation should not rewrite a user's dependency manifest.
+
+**Make `install` perform activation automatically.** Rejected: resolving a package and deciding whether its Cordis bundle is active are independent choices; keeping them separate makes a disabled installed package reversible.
+
 ## Consequences
 
 Plugin installation, provenance, verification, and activation are now separate operations. A disabled package remains installed for quick reactivation, while its patch layer is absent from the next profile composition. Changes take effect after restarting the profile.

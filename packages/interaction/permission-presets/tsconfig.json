@@ -42,6 +42,9 @@
       "path": "../../settings/settings"
     },
     {
+      "path": "../../core/tools"
+    },
+    {
       "path": "../commands"
     }
   ]

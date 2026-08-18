@@ -26,6 +26,8 @@ import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-sett
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-commands'
 import type { PermissionSelect, PresetOption } from './types.ts'
+import type { PreToolDecision, ToolExecution } from '@deepseek-ai/dsh-tools'
+import type {} from '@deepseek-ai/dsh-tools'
 
 export { SANDBOX_MODES } from '@deepseek-ai/dsh-sandbox-policy'
 export { APPROVAL_POLICIES } from '@deepseek-ai/dsh-user-approval'
@@ -161,6 +163,75 @@ export interface Config {
    * sandbox and approval defaults is used.
    */
   defaultPreset?: string
+  /** Additional execution policy applied before any tool dispatch. */
+  security?: SecurityPolicyConfig
+}
+
+/** Deployment-level execution restrictions shared by model-facing tools. */
+export interface SecurityPolicyConfig {
+  /** Tool names allowed when non-empty; deny rules still take precedence. */
+  toolAllow?: string[]
+  /** Tool names denied before approval or dispatch. */
+  toolDeny?: string[]
+  /** JavaScript regular expressions matched against bash/pwsh command text. */
+  commandAllow?: string[]
+  /** JavaScript regular expressions that deny bash/pwsh command text. */
+  commandDeny?: string[]
+  /** Exact hosts or `*.domain` patterns allowed for `web_fetch`. */
+  networkAllowlist?: string[]
+  /** MCP server name → trust action for `mcp__<server>__*` tools. */
+  mcpTrust?: Record<string, 'trusted' | 'prompt' | 'blocked'>
+  /** Prevent `/permissions` from changing the selected preset at runtime. */
+  administratorLocked?: boolean
+}
+
+interface ResolvedSecurityPolicy {
+  readonly toolAllow: readonly string[]
+  readonly toolDeny: readonly string[]
+  readonly commandAllow: readonly RegExp[]
+  readonly commandDeny: readonly RegExp[]
+  readonly networkAllowlist: readonly string[] | undefined
+  readonly mcpTrust: Readonly<Record<string, 'trusted' | 'prompt' | 'blocked'>>
+  readonly administratorLocked: boolean
+}
+
+function compilePatterns(patterns: readonly string[] | undefined, label: string): readonly RegExp[] {
+  return (patterns ?? []).map((pattern) => {
+    try {
+      return new RegExp(pattern, 'u')
+    } catch (error) {
+      throw new Error(`permission: invalid ${label} regular expression ${JSON.stringify(pattern)}`, { cause: error })
+    }
+  })
+}
+
+function normalizeHostPattern(pattern: string, label: string): string {
+  const normalized = pattern.trim().toLowerCase()
+  if (normalized === '' || !/^(?:\*\.)?[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/u.test(normalized)) {
+    throw new Error(`permission: ${label} contains invalid host pattern ${JSON.stringify(pattern)}`)
+  }
+  return normalized
+}
+
+function hostAllowed(hostname: string, patterns: readonly string[]): boolean {
+  const host = hostname.toLowerCase()
+  return patterns.some(pattern => pattern.startsWith('*.')
+    ? host.endsWith(pattern.slice(1)) && host !== pattern.slice(2)
+    : host === pattern)
+}
+
+function commandText(exec: ToolExecution): string | undefined {
+  if (exec.name !== 'bash' && exec.name !== 'pwsh') return undefined
+  const args = exec.arguments
+  if (typeof args !== 'object' || args === null || Array.isArray(args)) return undefined
+  const command = (args as Record<string, unknown>).command
+  return typeof command === 'string' ? command : undefined
+}
+
+function mcpServerName(toolName: string): string | undefined {
+  if (!toolName.startsWith('mcp__')) return undefined
+  const separator = toolName.indexOf('__', 5)
+  return separator <= 5 ? undefined : toolName.slice(5, separator)
 }
 
 /**
@@ -191,23 +262,95 @@ export class PermissionPresetService extends Service {
       },
     }),
     defaultPreset: z.string(),
+    security: z.object({
+      toolAllow: z.array(String).default([]),
+      toolDeny: z.array(String).default([]),
+      commandAllow: z.array(String).default([]),
+      commandDeny: z.array(String).default([]),
+      networkAllowlist: z.array(String).default(undefined as unknown as string[]),
+      mcpTrust: z.dict(z.union(['trusted', 'prompt', 'blocked'] as const)).default({}),
+      administratorLocked: z.boolean().default(false),
+    }).default(undefined as unknown as {
+      toolAllow: string[]
+      toolDeny: string[]
+      commandAllow: string[]
+      commandDeny: string[]
+      networkAllowlist: string[]
+      mcpTrust: Record<string, 'trusted' | 'prompt' | 'blocked'>
+      administratorLocked: boolean
+    }),
   })
 
   static inject = ['shell', 'approval', 'sessions']
 
   private readonly presets: Record<string, PresetSpec>
+  private readonly security: ResolvedSecurityPolicy
   private defaultSettings: () => PermissionSettings
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'permissionPresets')
     // The schema defaulted the table — the cast records that runtime fact.
     this.presets = config.presets as Record<string, PresetSpec>
+    const security = config.security ?? {}
+    this.security = Object.freeze({
+      toolAllow: Object.freeze([...(security.toolAllow ?? [])]),
+      toolDeny: Object.freeze([...(security.toolDeny ?? [])]),
+      commandAllow: Object.freeze(compilePatterns(security.commandAllow, 'commandAllow')),
+      commandDeny: Object.freeze(compilePatterns(security.commandDeny, 'commandDeny')),
+      networkAllowlist: security.networkAllowlist === undefined
+        ? undefined
+        : Object.freeze(security.networkAllowlist.map(pattern => normalizeHostPattern(pattern, 'networkAllowlist'))),
+      mcpTrust: Object.freeze({ ...(security.mcpTrust ?? {}) }),
+      administratorLocked: security.administratorLocked ?? false,
+    })
     if (CUSTOM_PRESET in this.presets) {
       throw new Error(`permission: "${CUSTOM_PRESET}" is reserved for the derived not-a-preset state and cannot name a table entry`)
     }
     if (ctx.shell.sandboxMode === undefined) {
       throw new Error('permission: the mounted bash executor does not confine (no sandboxMode) — presets bundle a sandbox mode, so composing this plugin over an unconfined executor is a misconfiguration')
     }
+    ctx.inject(['tools'], (toolCtx) => {
+      toolCtx.on('tools/pre-execute', async (exec, next): Promise<PreToolDecision> => {
+        const toolDenied = this.security.toolDeny.includes(exec.name)
+        const toolMissingFromAllow = this.security.toolAllow.length > 0 && !this.security.toolAllow.includes(exec.name)
+        if (toolDenied || toolMissingFromAllow) {
+          return { kind: 'deny', reason: `tool "${exec.name}" is blocked by the administrator security policy` }
+        }
+
+        const trust = mcpServerName(exec.name)
+        const trustPolicy = trust === undefined ? undefined : this.security.mcpTrust[trust]
+        if (trustPolicy === 'blocked') return { kind: 'deny', reason: `MCP server "${trust}" is blocked by the administrator security policy` }
+        if (trustPolicy === 'prompt') return { kind: 'ask', reason: `MCP server "${trust}" requires approval for this tool call` }
+
+        const command = commandText(exec)
+        if (command !== undefined) {
+          if (this.security.commandDeny.some(pattern => pattern.test(command))) {
+            return { kind: 'deny', reason: `command is blocked by the administrator security policy: ${JSON.stringify(command)}` }
+          }
+          if (this.security.commandAllow.length > 0 && !this.security.commandAllow.some(pattern => pattern.test(command))) {
+            return { kind: 'deny', reason: `command does not match the administrator command allowlist: ${JSON.stringify(command)}` }
+          }
+        }
+
+        if (exec.name === 'web_fetch' && this.security.networkAllowlist !== undefined) {
+          const args = exec.arguments
+          const url = typeof args === 'object' && args !== null && !Array.isArray(args)
+            ? (args as Record<string, unknown>).url
+            : undefined
+          if (typeof url !== 'string') return { kind: 'deny', reason: 'web_fetch URL is missing from the security policy check' }
+          let hostname: string
+          try {
+            hostname = new URL(url).hostname
+          } catch {
+            return { kind: 'deny', reason: `web_fetch URL is invalid under the administrator security policy: ${JSON.stringify(url)}` }
+          }
+          if (!hostAllowed(hostname, this.security.networkAllowlist)) {
+            return { kind: 'deny', reason: `web_fetch host "${hostname}" is not in the administrator network allowlist` }
+          }
+        }
+        return next()
+      })
+    })
     const inferredDefault = this.derive(EMPTY_KNOBS)
     const defaultPreset = config.defaultPreset ?? inferredDefault
     if (defaultPreset === CUSTOM_PRESET) {
@@ -285,6 +428,9 @@ export class PermissionPresetService extends Service {
           }
           if (!this.names.includes(name)) {
             return { kind: 'error', text: `unknown preset "${name}" (available: ${this.names.join(', ')})` }
+          }
+          if (this.security.administratorLocked) {
+            return { kind: 'error', text: 'permission presets are locked by the administrator policy' }
           }
           this.apply(agent.session, name, (policy) =>{  this.ctx.approval.setPolicy(agent, policy) })
           return { kind: 'success', text: `preset ${name}` }
@@ -412,6 +558,7 @@ export class PermissionPresetService extends Service {
    * @param name - the preset to switch to; unknown names throw.
    */
   set(session: Session, name: string): void {
+    if (this.security.administratorLocked) throw new Error('permission presets are locked by the administrator policy')
     this.apply(session, name, (policy) =>{  setApprovalPolicy(session, policy) })
   }
 
@@ -423,6 +570,7 @@ export class PermissionPresetService extends Service {
    * @param selection - Explicit knobs; omitted fields retain their effective values.
    */
   setPolicy(session: Session, selection: PermissionPolicySelection): void {
+    if (this.security.administratorLocked) throw new Error('permission presets are locked by the administrator policy')
     const events = session.events
     if (selection.sandbox !== undefined
       && selection.sandbox !== (effectiveSandboxMode(events) ?? this.ctx.shell.sandboxMode)) {

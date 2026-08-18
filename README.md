@@ -108,10 +108,7 @@ deepseek doctor --json
 deepseek completion zsh > ~/.zsh/completions/_deepseek
 ```
 
-`doctor` also checks shipped profile overlays and presets, the optional Web
-frontend asset, installation channel, sandbox runner, truecolor, mouse input,
-and clipboard support. Host capability checks are warnings; a missing runtime
-asset or unsupported Node version is blocking.
+`doctor` also checks shipped profile overlays and presets, the optional Web frontend asset, installation channel, sandbox runner, truecolor, mouse input, and clipboard support. Host capability checks are warnings; a missing runtime asset or unsupported Node version is blocking.
 
 Inspect and validate a profile's installed plugin bundles without starting it:
 
@@ -125,9 +122,7 @@ deepseek plugin --profile tui install <package>
 deepseek plugin --profile tui update
 ```
 
-`source` shows the package directory and declared repository. `enable` and
-`disable` change the active Cordis bundle list and take effect on the next
-launch; `install`, `update`, and `remove` use pnpm for dependency resolution.
+`source` shows the package directory and declared repository. `enable` and `disable` change the active Cordis bundle list and take effect on the next launch; `install`, `update`, and `remove` use pnpm for dependency resolution.
 
 ## What it includes
 

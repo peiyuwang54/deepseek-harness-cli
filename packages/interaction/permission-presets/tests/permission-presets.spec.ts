@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { CallId } from '@deepseek-ai/dsh-llm'
+import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
 import type { ApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
@@ -9,6 +11,7 @@ import PermissionPresetService, {
 import type { Config } from '@deepseek-ai/dsh-permission-presets'
 import { SettingsProvider } from '@deepseek-ai/dsh-settings'
 import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import ToolRuntime, { defineTool } from '@deepseek-ai/dsh-tools'
 
 /** Writable memory provider for the permission/settings lifecycle specs. */
 class MemorySettings extends SettingsProvider {
@@ -62,6 +65,50 @@ async function mountedStore(options: { approvalDefault?: ApprovalPolicy | undefi
   })
   await ctx.plugin(PermissionPresetService, {})
   return ctx
+}
+
+async function mountedSecurity(config: NonNullable<Config['security']>): Promise<Context> {
+  const ctx = await mounted({ config: { security: config } })
+  await ctx.plugin(SystemPrompt)
+  await ctx.plugin(ToolRuntime)
+  return ctx
+}
+
+const securityTool = defineTool({
+  name: 'safe_tool',
+  description: 'security policy fixture',
+  parameters: {},
+  output: {
+    schema: { type: 'string' },
+    render: (_args, value) => [{ type: 'text', text: value }],
+  },
+  async execute() {
+    return 'executed'
+  },
+})
+
+const bashTool = defineTool({
+  name: 'bash',
+  description: 'command security policy fixture',
+  parameters: { command: { type: 'string', required: true } },
+  output: {
+    schema: { type: 'string' },
+    render: (_args, value) => [{ type: 'text', text: value }],
+  },
+  async execute() {
+    return 'executed'
+  },
+})
+
+async function executeSecurityTool(ctx: Context, name: string, args: unknown = {}): Promise<string> {
+  const result = await ctx.tools.execute({
+    signal: new AbortController().signal,
+    callId: CallId(`security-${name}`),
+    name,
+    arguments: args,
+  })
+  const text = result.content[0]
+  return text?.type === 'text' ? text.text : ''
 }
 
 describe('effectivePermissionPreset', () => {
@@ -211,6 +258,46 @@ describe('PermissionPresetService', () => {
     ctx.permissionPresets.set(session, 'workspace-write')
     expect(session.events).toHaveLength(0)
     expect(ctx.permissionPresets.current(session.events)).toBe('workspace-write')
+  })
+
+  it('enforces tool and command policies before dispatch', async () => {
+    const ctx = await mountedSecurity({
+      toolAllow: ['safe_tool', 'bash'],
+      commandDeny: ['rm\\s+-rf'],
+      commandAllow: ['^(?:echo|pwd)'],
+    })
+    ctx.tools.register(securityTool)
+    ctx.tools.register(bashTool)
+    expect(await executeSecurityTool(ctx, 'safe_tool')).toBe('executed')
+    expect(await executeSecurityTool(ctx, 'other_tool')).toContain('blocked by the administrator security policy')
+    expect(await executeSecurityTool(ctx, 'bash', { command: 'echo ok' })).toBe('executed')
+    expect(await executeSecurityTool(ctx, 'bash', { command: 'pwd' })).toBe('executed')
+    expect(await executeSecurityTool(ctx, 'bash', { command: 'rm -rf /tmp/example' })).toContain('command is blocked')
+    expect(await executeSecurityTool(ctx, 'bash', { command: 'cat /etc/hosts' })).toContain('command does not match')
+  })
+
+  it('applies MCP trust and network host policies', async () => {
+    const ctx = await mountedSecurity({
+      mcpTrust: { filesystem: 'blocked', review: 'prompt' },
+      networkAllowlist: ['example.com', '*.trusted.test'],
+    })
+    ctx.tools.register({ ...securityTool, name: 'mcp__filesystem__read' })
+    ctx.tools.register({ ...securityTool, name: 'mcp__review__check' })
+    ctx.tools.register({ ...securityTool, name: 'web_fetch', parameters: { url: { type: 'string', required: true } } })
+    expect(await executeSecurityTool(ctx, 'mcp__filesystem__read')).toContain('MCP server "filesystem" is blocked')
+    expect(await executeSecurityTool(ctx, 'mcp__review__check')).toContain('requires approval')
+    expect(await executeSecurityTool(ctx, 'web_fetch', { url: 'https://example.com/docs' })).toBe('executed')
+    expect(await executeSecurityTool(ctx, 'web_fetch', { url: 'https://api.trusted.test/v1' })).toBe('executed')
+    expect(await executeSecurityTool(ctx, 'web_fetch', { url: 'https://evil.test/' })).toContain('not in the administrator network allowlist')
+  })
+
+  it('rejects malformed security configuration and locks runtime changes', async () => {
+    await expect(mounted({ config: { security: { commandDeny: ['['] } } })).rejects.toThrow(/invalid commandDeny regular expression/)
+    await expect(mounted({ config: { security: { networkAllowlist: ['https://example.com'] } } })).rejects.toThrow(/invalid host pattern/)
+    const ctx = await mounted({ config: { security: { administratorLocked: true } } })
+    const session = freshSession('security-locked')
+    expect(() => ctx.permissionPresets.set(session, 'full-auto')).toThrow(/locked by the administrator policy/)
+    expect(() => ctx.permissionPresets.setPolicy(session, { approval: 'never' })).toThrow(/locked by the administrator policy/)
   })
 })
 

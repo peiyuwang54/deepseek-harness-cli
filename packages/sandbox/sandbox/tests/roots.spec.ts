@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { mkdtempSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { canonicalPath, writableRoots } from '@deepseek-ai/dsh-sandbox'
+import { canonicalPath, declaredWritableRoots, writableRoots } from '@deepseek-ai/dsh-sandbox'
 
 describe('canonicalPath', () => {
   it('resolves symlinks (an existing path realpaths)', () => {
@@ -24,16 +24,26 @@ describe('canonicalPath', () => {
 
 describe('writableRoots', () => {
   it('read-only grants nothing', () => {
-    expect(writableRoots({ mode: 'read-only', workspaceRoot: process.cwd() })).toEqual([])
+    expect(writableRoots({ mode: 'read-only', workspaceRoot: process.cwd(), additionalWritableRoots: [] })).toEqual([])
   })
 
   it('workspace-write grants the workspace root plus the platform temp areas, canonical and deduplicated', () => {
     const ws = mkdtempSync(join(tmpdir(), 'dsh-ws-'))
-    const roots = writableRoots({ mode: 'workspace-write', workspaceRoot: ws })
+    const extra = mkdtempSync(join(tmpdir(), 'dsh-extra-'))
+    const roots = writableRoots({ mode: 'workspace-write', workspaceRoot: ws, additionalWritableRoots: [extra, ws] })
     expect(roots).toContain(realpathSync.native(ws))
+    expect(roots).toContain(realpathSync.native(extra))
     expect(roots).toContain(canonicalPath('/tmp'))
     expect(roots).toContain(realpathSync.native(tmpdir()))
     // Deduplicated after canonicalization (/tmp and os.tmpdir() may coincide).
     expect(new Set(roots).size).toBe(roots.length)
+  })
+
+  it('keeps user-declared roots primary-first without platform temp grants', () => {
+    expect(declaredWritableRoots({
+      mode: 'workspace-write',
+      workspaceRoot: '/workspace',
+      additionalWritableRoots: ['/shared', '/workspace'],
+    })).toEqual(['/workspace', '/shared'])
   })
 })

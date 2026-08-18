@@ -89,6 +89,7 @@ describe('headless command-line provider', () => {
       ephemeral: false,
       images: [],
       permissionMode: 'default',
+      additionalWritableRoots: [],
     })
     expect(observed.runnerConfig).toEqual({ task: 'run the tests' })
     expect(observed.exits).toEqual([])
@@ -107,6 +108,7 @@ describe('headless command-line provider', () => {
       outputSchema: 'result.schema.json',
       outputLastMessage: 'last.txt',
       permissionMode: 'full-auto',
+      additionalWritableRoots: [],
     })
   })
 
@@ -118,6 +120,7 @@ describe('headless command-line provider', () => {
         ephemeral: false,
         images: ['screen.png'],
         permissionMode: 'default',
+        additionalWritableRoots: [],
         resume: { last: true, all: true },
       })
     expect((await bootStartup(['resume', 'session-123', '--yolo', 'finish', 'the', 'task'])).task)
@@ -127,8 +130,16 @@ describe('headless command-line provider', () => {
         ephemeral: false,
         images: [],
         permissionMode: 'yolo',
+        additionalWritableRoots: [],
         resume: { sessionId: 'session-123', last: false, all: false },
       })
+  })
+
+  it('collects additional writable directories across parent and resume options', async () => {
+    const { task } = await bootStartup([
+      '--add-dir', '../shared', 'resume', '--last', '--add-dir', '/tmp/cache', 'continue',
+    ])
+    expect(task?.additionalWritableRoots).toEqual(['../shared', '/tmp/cache'])
   })
 
   it.each([{ args: [] }, { args: ['   '] }])('rejects an invocation with no non-whitespace task ($args)', async ({ args }) => {
@@ -142,6 +153,7 @@ describe('headless command-line provider', () => {
   it('prints its own help and leaves the runner pending', async () => {
     const { task, observed } = await bootStartup(['--help'])
     expect(observed.out).toContain('deepseek exec')
+    expect(observed.out).toContain('--add-dir <dir>')
     expect(task).toBeUndefined()
     expect(observed.runnerConfig).toBeUndefined()
     expect(observed.exits).toEqual([0])

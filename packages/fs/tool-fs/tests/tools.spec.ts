@@ -848,13 +848,17 @@ describe('sandbox escalation API (write/edit)', () => {
   it('a plain write stamps the default mode with the calling session root', async () => {
     const { ctx, fs } = await setupConfining()
     await call(ctx, 'write', { file_path: 'a.txt', content: 'x' }, escalationAgent())
-    expect(fs.stamped).toEqual([{ mode: 'workspace-write', workspaceRoot: resolve('/session-project') }])
+    expect(fs.stamped).toEqual([{
+      mode: 'workspace-write', workspaceRoot: resolve('/session-project'), additionalWritableRoots: [],
+    }])
   })
 
   it('a standing session override folds onto the stamp', async () => {
     const { ctx, fs } = await setupConfining()
     await call(ctx, 'write', { file_path: 'a.txt', content: 'x' }, escalationAgent([{ type: 'sandbox/mode', data: { mode: 'read-only' } }]))
-    expect(fs.stamped).toEqual([{ mode: 'read-only', workspaceRoot: resolve('/session-project') }])
+    expect(fs.stamped).toEqual([{
+      mode: 'read-only', workspaceRoot: resolve('/session-project'), additionalWritableRoots: [],
+    }])
   })
 
   it('a denied write maps to the shared marker plus the escalation hint (isError)', async () => {
@@ -887,7 +891,9 @@ describe('sandbox escalation API (write/edit)', () => {
       agent: escalationAgent() as never,
       signal: new AbortController().signal,
     })
-    expect(fs.stamped).toEqual([{ mode: 'danger-full-access', workspaceRoot: resolve('/session-project') }])
+    expect(fs.stamped).toEqual([{
+      mode: 'danger-full-access', workspaceRoot: resolve('/session-project'), additionalWritableRoots: [],
+    }])
   })
 
   it('a rejected escalation fails closed with its own text and never mutates', async () => {

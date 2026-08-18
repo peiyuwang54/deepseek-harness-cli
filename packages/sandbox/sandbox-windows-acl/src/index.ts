@@ -2,7 +2,7 @@
  * Windows ACL write-restriction sandbox backend for the DeepSeek Harness
  * sandbox seam. Mirrors the mechanism of github.com/huoyaoyuan/
  * windows-acl-restrict-poc @ 10e4dfb (the fixed revision): a WRITE_RESTRICTED
- * token whose restricting SIDs include distinct workspace and temp write
+ * token whose restricting SIDs include distinct workspace-root-set and temp write
  * SIDs that this sandbox adds to their owning directories' DACLs — the
  * intersection check then allows writes exactly where either capability has
  * a Write ACE, and nowhere else those SIDs are concerned (the check ALSO
@@ -10,13 +10,13 @@
  * keep-alive group logon SID + Everyone; Authenticated Users, INTERACTIVE,
  * and LOCAL are absent from both lists — see the seam's dual-list contract
  * in `packages/sandbox/sandbox-local` and the package README's Modes section
- * for the complete boundary). The write SID is the per-WORKSPACE identity
- * ({@link workspaceWriteSid}): deterministic from the canonical workspace
- * path, so the workspace-root ACE materializes once per workspace per
- * machine and every later provision hits the exact-ACE skip — the
+ * for the complete boundary). The write SID is the per-root-set identity
+ * ({@link workspaceWriteSid}): deterministic from the sorted canonical roots,
+ * so an ACE materializes on each root once per root set and every later
+ * provision hits the exact-ACE skip — the
  * grant-reuse story the per-session random SID paid a full tree propagation
  * per session for. Each private temp directory instead receives its own SID,
- * so sibling sessions sharing a workspace cannot enter one another's temp
+ * so sibling sessions sharing a root set cannot enter one another's temp
  * trees. Unlike the POC, every API failure throws with the API
  * name and exact Win32 code; a child is NEVER spawned unrestricted.
  *
@@ -71,8 +71,8 @@ export interface AclSandboxOptions {
   /**
    * The write SID forming the workspace-write allowlist: REQUIRED under
    * workspace-write, ignored (and must be absent) under read-only. Callers
-   * derive it from the workspace via {@link workspaceWriteSid} — the identity
-   * is per workspace, not per sandbox instance, so the workspace-root ACE
+   * derive it from the complete root set via {@link workspaceWriteSid} — the identity
+   * is per root set, not per sandbox instance, so the root ACEs
    * outlives every instance and later provisions hit the exact-ACE skip.
    */
   writeSid?: string
@@ -160,7 +160,7 @@ function freeSidBestEffort(
 export class AclSandbox {
   /** Absolute writable directories (constructor-validated). */
   readonly writableDirs: string[]
-  /** The workspace SID string whose ACEs form the workspace allowlist. */
+  /** The root-set SID string whose ACEs form the workspace allowlist. */
   readonly writeSid: string | undefined
   /** The private temp directory's write SID (workspace-write with temp only). */
   readonly tempWriteSid: string | undefined
@@ -191,7 +191,7 @@ export class AclSandbox {
     this.writeSid = options.writeSid
     this.tempWriteSid = options.tempWriteSid
     if (this.mode === 'workspace-write' && this.writeSid === undefined) {
-      throw new Error('AclSandbox workspace-write requires a write SID — derive it from the workspace via workspaceWriteSid()')
+      throw new Error('AclSandbox workspace-write requires a write SID — derive it from the root set via workspaceWriteSid()')
     }
     if (this.mode === 'workspace-write' && this.tempDirOption === undefined) {
       throw new Error('AclSandbox workspace-write requires an explicit private temp directory or null')

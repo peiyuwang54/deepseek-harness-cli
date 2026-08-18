@@ -65,7 +65,7 @@ describe('TUI user shell runner', () => {
     const resolve = vi.fn((value: object) => ({ ...value, timeoutMs: 10_000, stdoutMaxBytes: 1_000 }))
     ctx.provide('shell', { sandboxMode: 'workspace-write', resolve, run } as never)
     ctx.provide('sandboxPolicy', {
-      resolve: vi.fn(() => ({ mode: 'workspace-write', workspaceRoot: '/workspace-real' })),
+      resolve: vi.fn(() => ({ mode: 'workspace-write', workspaceRoot: '/workspace-real', additionalWritableRoots: [] })),
     } as never)
 
     await expect(createUserShellRunner(ctx)(request)).resolves.toEqual({
@@ -86,7 +86,7 @@ describe('TUI user shell runner', () => {
       command: 'printf hello',
       workdir: '/workspace-real',
       signal: request.signal,
-      sandboxPolicy: { mode: 'workspace-write', workspaceRoot: '/workspace-real' },
+      sandboxPolicy: { mode: 'workspace-write', workspaceRoot: '/workspace-real', additionalWritableRoots: [] },
     })
     expect(run).toHaveBeenCalledOnce()
   })
@@ -107,7 +107,7 @@ describe('TUI user shell runner', () => {
       }),
     } as never)
     ctx.provide('sandboxPolicy', {
-      resolve: vi.fn(() => ({ mode: 'read-only', workspaceRoot: '/workspace' })),
+      resolve: vi.fn(() => ({ mode: 'read-only', workspaceRoot: '/workspace', additionalWritableRoots: [] })),
     } as never)
 
     await expect(createUserShellRunner(ctx)(request)).resolves.toMatchObject({

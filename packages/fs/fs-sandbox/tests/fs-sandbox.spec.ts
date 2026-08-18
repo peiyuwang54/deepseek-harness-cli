@@ -195,11 +195,22 @@ describe('danger-full-access', () => {
 })
 
 describe('the per-call policy override (escalation)', () => {
+  it('an additional writable root admits a sibling directory without widening the primary root', async () => {
+    await boot('read-only')
+    const path = join(outside, 'additional-root.txt')
+    await fs.writeText(await target(path), 'shared', undefined, undefined, {
+      mode: 'workspace-write', workspaceRoot: workspace, additionalWritableRoots: [outside],
+    })
+    expect(await readFile(path, 'utf8')).toBe('shared')
+  })
+
   it('a workspace-write stamp on a read-only default lets a contained write land for that call only', async () => {
     await boot('read-only')
     const path = join(workspace, 'escalated.txt')
     // Default read-only would deny; the per-call workspace-write policy allows it (contained).
-    await fs.writeText(await target(path), 'granted', undefined, undefined, { mode: 'workspace-write', workspaceRoot: workspace })
+    await fs.writeText(await target(path), 'granted', undefined, undefined, {
+      mode: 'workspace-write', workspaceRoot: workspace, additionalWritableRoots: [],
+    })
     expect(await readFile(path, 'utf8')).toBe('granted')
     // A neighboring plain call still runs under the read-only default.
     await expect(fs.writeText(await target(join(workspace, 'plain.txt')), 'x'))
@@ -209,7 +220,9 @@ describe('the per-call policy override (escalation)', () => {
   it('a danger-full-access stamp bypasses the fence for that call', async () => {
     await boot('read-only')
     const path = join(outside, 'granted-full.txt')
-    await fs.writeText(await target(path), 'full', undefined, undefined, { mode: 'danger-full-access', workspaceRoot: workspace })
+    await fs.writeText(await target(path), 'full', undefined, undefined, {
+      mode: 'danger-full-access', workspaceRoot: workspace, additionalWritableRoots: [],
+    })
     expect(await readFile(path, 'utf8')).toBe('full')
   })
 })

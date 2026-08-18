@@ -644,14 +644,14 @@ Source: [`packages/goal/goal/src/index.ts:116`](../packages/goal/goal/src/index.
 
 ## `@deepseek-ai/dsh-headless`
 
-Requires: `headlessStartup` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `agents` · `sessions` · `sessionPersistence` · `attachments`
+Requires: `headlessStartup` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `sandboxPolicy` · `agents` · `sessions` · `sessionPersistence` · `attachments`
 
 ```ts config-catalog
 /** The runner has no deployment tunables; the startup provider owns argv. */
 export type Config = Record<never, never>
 ```
 
-Source: [`packages/bundle/headless/src/index.ts:48`](../packages/bundle/headless/src/index.ts)
+Source: [`packages/bundle/headless/src/index.ts:50`](../packages/bundle/headless/src/index.ts)
 
 <a id="deepseek-aidsh-hooks-claude-code"></a>
 
@@ -1489,7 +1489,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/sandbox/sandbox-local/src/index.ts:44`](../packages/sandbox/sandbox-local/src/index.ts)
+Source: [`packages/sandbox/sandbox-local/src/index.ts:43`](../packages/sandbox/sandbox-local/src/index.ts)
 
 <a id="deepseek-aidsh-sandbox-policy"></a>
 
@@ -1516,7 +1516,7 @@ export interface Config {
 
 Depends on: [`SandboxMode`](subsystems/sandbox.md)
 
-Source: [`packages/sandbox/sandbox-policy/src/index.ts:67`](../packages/sandbox/sandbox-policy/src/index.ts)
+Source: [`packages/sandbox/sandbox-policy/src/index.ts:70`](../packages/sandbox/sandbox-policy/src/index.ts)
 
 <a id="deepseek-aidsh-sdk-jsonrpc-server"></a>
 
@@ -2890,7 +2890,7 @@ Source: [`packages/ui/tui/src/config.ts:157`](../packages/ui/tui/src/config.ts)
 
 ## `@deepseek-ai/dsh-tui-app`
 
-Requires: `tuiStartup` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `agents` · `sessions` · `approval` · `commands` · `userQuestions` · `tools` · `llm` · `systemPrompt` · `tokenMeter` · `tuiPrompt`
+Requires: `tuiStartup` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `sandboxPolicy` · `agents` · `sessions` · `approval` · `commands` · `userQuestions` · `tools` · `llm` · `systemPrompt` · `tokenMeter` · `tuiPrompt`
 
 ```ts config-catalog
 /** Renderer presentation settings; session identity belongs to `tuiStartup`. */
@@ -2899,7 +2899,7 @@ export type Config = TuiConfig
 
 Depends on: [`TuiConfig`](../packages/ui/tui/src/index.ts)
 
-Source: [`packages/bundle/tui/src/index.ts:48`](../packages/bundle/tui/src/index.ts)
+Source: [`packages/bundle/tui/src/index.ts:50`](../packages/bundle/tui/src/index.ts)
 
 <a id="deepseek-aidsh-typert-loader"></a>
 

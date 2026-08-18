@@ -167,7 +167,7 @@ describe.skipIf(!isWin32 || !pwshAvailable())('windows-acl runner', () => {
   it('paired SIDs: the runner trusts caller-owned private-temp grants and materializes nothing itself', () => {
     const seamWorkspace = join(scratchRoot, 'seam-workspace')
     mkdirSync(seamWorkspace)
-    const writeSid = workspaceWriteSid(seamWorkspace)
+    const writeSid = workspaceWriteSid([seamWorkspace])
     const privateTemp = join(isolatedTemp, 'private-subdir')
     mkdirSync(privateTemp)
     const privateTempSid = tempWriteSid(privateTemp)
@@ -203,7 +203,7 @@ describe.skipIf(!isWin32 || !pwshAvailable())('windows-acl runner', () => {
   }, 30_000)
 
   it('temp capabilities isolate sibling sessions that share one workspace SID', () => {
-    const writeSid = workspaceWriteSid(writableDir)
+    const writeSid = workspaceWriteSid([writableDir])
     const tempA = join(isolatedTemp, 'session-a')
     const tempB = join(isolatedTemp, 'session-b')
     mkdirSync(tempA)
@@ -334,7 +334,7 @@ describe.skipIf(!isWin32 || !pwshAvailable())('windows-acl runner', () => {
     // it, so the workspace write is denied (previously it LEAKED). The
     // switch back reuses the SAME standing ACE: the re-upgrade write lands
     // without any re-grant.
-    const writeSid = workspaceWriteSid(writableDir)
+    const writeSid = workspaceWriteSid([writableDir])
     const privateTemp = join(isolatedTemp, 'mode-switch-temp')
     mkdirSync(privateTemp)
     const privateTempSid = tempWriteSid(privateTemp)
@@ -441,7 +441,7 @@ describe.skipIf(!isWin32 || !pwshAvailable())('windows-acl runner', () => {
   }, 15_000)
 
   it('runner-side failure: seam-managed SID flags must be paired and match their owning paths', () => {
-    const writeSid = workspaceWriteSid(writableDir)
+    const writeSid = workspaceWriteSid([writableDir])
     const tempSid = tempWriteSid(isolatedTemp)
     const cases = [
       ['--write-sid', writeSid],

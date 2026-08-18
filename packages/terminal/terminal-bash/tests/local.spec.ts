@@ -142,7 +142,9 @@ describe('terminal-bash real shell', () => {
     const created = await ctx.terminals.spawn(agent, { type: 'shell' })
     expect(sandbox.calls).toEqual([{
       argv: ['/bin/bash', '--noprofile', '--norc', '-i'],
-      policy: { mode: 'workspace-write', workspaceRoot: realpathSync.native(root), sessionId: 'agent-workspace-write' },
+      policy: {
+        mode: 'workspace-write', workspaceRoot: realpathSync.native(root), additionalWritableRoots: [], sessionId: 'agent-workspace-write',
+      },
     }])
     await fiber.dispose()
     expect(ctx.terminals.listBackends()).toEqual([])

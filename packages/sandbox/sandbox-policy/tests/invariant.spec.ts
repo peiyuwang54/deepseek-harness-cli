@@ -16,6 +16,10 @@ function modeEvent(mode: string): SessionEvent {
   return { type: 'sandbox/mode', seq: 0, time: 0, data: { mode } } as SessionEvent
 }
 
+function rootsEvent(roots: string[]): SessionEvent {
+  return { type: 'sandbox/writable-roots', seq: 0, time: 0, data: { roots } }
+}
+
 describe('sandbox-policy invariants', () => {
   it.each(['read-only', 'workspace-write', 'danger-full-access'])(
     'accepts the durable %s mode',
@@ -37,6 +41,21 @@ describe('sandbox-policy invariants', () => {
     const ctx = await setup()
     expect(() => { ctx.emit('session/event', {} as Session, modeEvent('host-root')) })
       .toThrow(new InvariantError('@deepseek-ai/dsh-sandbox-policy', 'sandbox/mode carries unknown mode "host-root"'))
+  })
+
+  it('accepts absolute unique writable roots', async () => {
+    const ctx = await setup()
+    expect(() => { ctx.emit('session/event', {} as Session, rootsEvent(['/workspace', '/shared'])) }).not.toThrow()
+  })
+
+  it.each([
+    { roots: ['relative'], message: 'sandbox/writable-roots carries a non-absolute root' },
+    { roots: ['/shared', '/shared'], message: 'sandbox/writable-roots repeats a root' },
+    { roots: [''], message: 'sandbox/writable-roots carries a non-absolute root' },
+  ])('rejects invalid writable roots ($roots)', async ({ roots, message }) => {
+    const ctx = await setup()
+    expect(() => { ctx.emit('session/event', {} as Session, rootsEvent(roots)) })
+      .toThrow(new InvariantError('@deepseek-ai/dsh-sandbox-policy', message))
   })
 
   it('rejects an unknown mode already present on late registration', async () => {

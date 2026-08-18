@@ -512,6 +512,7 @@ describe('per-call sandbox policy resolution', () => {
     expect(bash.requests[0]?.sandboxPolicy).toEqual({
       mode: 'read-only',
       workspaceRoot: resolvePath(realpathSync.native(sessionCwd)),
+      additionalWritableRoots: [],
       sessionId: 'policy-session',
     })
   })
@@ -522,6 +523,7 @@ describe('per-call sandbox policy resolution', () => {
     expect(bash.requests[0]?.sandboxPolicy).toEqual({
       mode: 'read-only',
       workspaceRoot: resolvePath(realpathSync.native(process.cwd())),
+      additionalWritableRoots: [],
     })
 
     // The base FakeBash advertises no sandboxMode, so the tool must not stamp

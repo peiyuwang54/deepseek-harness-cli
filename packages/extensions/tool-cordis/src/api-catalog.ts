@@ -760,6 +760,11 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Startup permission behavior.',
         parameters: [],
       },
+      {
+        signature: 'additionalWritableRoots: string[]',
+        description: 'Workspace-relative or absolute directories added to workspace-write.',
+        parameters: [],
+      },
     ],
   },
   {
@@ -1082,7 +1087,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'sandboxPolicy',
     summary: 'The sandbox-policy service (`ctx.sandboxPolicy`).',
-    description: 'The sandbox-policy service (`ctx.sandboxPolicy`). Owns the deployment default mode, fallback workspace root, and current request-time policy section. Tool layers call resolve for each execution so a session\'s mode log and immutable cwd travel together to every enforcing capability.',
+    description: 'The sandbox-policy service (`ctx.sandboxPolicy`). Owns the deployment default mode, fallback workspace root, durable additional roots, and current request-time policy section. Tool layers call resolve for each execution so a session\'s mode and root set travel together to every enforcing capability.',
     methods: [
       {
         signature: 'readonly defaultMode: SandboxMode',
@@ -1096,9 +1101,15 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'resolve(request: SandboxPolicyRequest = {}): SandboxExecutionPolicy',
-        description: 'Resolve the complete policy for one capability call. An approved explicit mode outranks the session\'s last `sandbox/mode` event, which outranks the deployment default. A session cwd is its workspace-write boundary; the configured root is the fallback for agentless calls and sessions without a cwd.',
+        description: 'Resolve the complete policy for one capability call. An approved explicit mode outranks the session\'s last `sandbox/mode` event, which outranks the deployment default. A session cwd is its primary workspace-write root; logged additional roots complete the set. The configured root is the fallback for agentless calls and sessions without a cwd.',
         parameters: [{ name: 'request', description: 'optional session and approved mode override.' }],
-        returns: 'the fully resolved per-call mode and absolute workspace root.',
+        returns: 'the fully resolved per-call mode and absolute workspace roots.',
+      },
+      {
+        signature: 'addWritableRoots(session: Session, paths: readonly string[]): string[]',
+        description: 'Add existing directories to one session\'s workspace-write roots. Relative paths resolve against the session cwd, and the complete deduplicated set is committed only after every path validates.',
+        parameters: [{ name: 'session', description: 'Session receiving the additional write authority.' }, { name: 'paths', description: 'User-selected absolute or workspace-relative directories.' }],
+        returns: 'the complete additional root set committed to the session.',
       },
       {
         signature: 'overrideOf(session: Session): SandboxMode | undefined',
@@ -2104,6 +2115,11 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       {
         signature: 'readonly permissionMode: \'default\' | \'full-auto\' | \'yolo\'',
         description: 'Permission shortcut to pin before Agent publication.',
+        parameters: [],
+      },
+      {
+        signature: 'readonly additionalWritableRoots: readonly string[]',
+        description: 'Workspace-relative or absolute directories added to workspace-write.',
         parameters: [],
       },
     ],
@@ -3896,7 +3912,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SandboxExecutionPolicy',
-    declaration: 'export interface SandboxExecutionPolicy {\n    mode: SandboxMode;\n    workspaceRoot: string;\n    sessionId?: SessionId;\n}',
+    declaration: 'export interface SandboxExecutionPolicy {\n    mode: SandboxMode;\n    workspaceRoot: string;\n    additionalWritableRoots: readonly string[];\n    sessionId?: SessionId;\n}',
   },
   {
     name: 'SandboxMode',

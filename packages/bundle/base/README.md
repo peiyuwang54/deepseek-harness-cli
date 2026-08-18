@@ -22,4 +22,4 @@ None directly; each inserted row's package owns its effect.
 
 - **A patch replaces whole row configs** — profile overrides must restate every field a row keeps; there is no deep-merge layer.
 - **Claude's SDK platform CLI remains in the Profile install closure** — the base bundle depends on the Claude provider, whose production path resolves the host `claude`; removing the SDK's unused optional payload is deferred to the product installation-closure follow-up.
-- **The Windows temp grant is a private per-session subdirectory** — `workspace-write` confines writes to the workspace plus the session's own temp subdirectory (`<temp>\dsh-<hash>`, TMP/TEMP rewritten for confined children); `read-only` grants nothing. See `@deepseek-ai/dsh-sandbox-windows-acl`.
+- **The Windows temp grant is a private per-session subdirectory** — `workspace-write` confines writes to the configured workspace roots plus the session's own temp subdirectory (`<temp>\dsh-<hash>`, TMP/TEMP rewritten for confined children); `read-only` grants nothing. See `@deepseek-ai/dsh-sandbox-windows-acl`.

@@ -1,7 +1,7 @@
 /**
  * The writable-root derivation shared by every enforcement dialect that
  * expresses a mode as a canonical allow-list: `workspace-write` means "the
- * workspace root plus the platform temp areas", and this module is that
+ * declared workspace roots plus the platform temp areas", and this module is that
  * meaning's one home. The Seatbelt profile
  * (`@deepseek-ai/dsh-sandbox-local`) and the in-process filesystem fence
  * (`@deepseek-ai/dsh-fs-sandbox`) both derive their allow-list here, so "the
@@ -43,13 +43,22 @@ export function canonicalPath(path: string): string {
 /**
  * The roots one confined execution may WRITE under — the mode's meaning as a
  * canonical, deduplicated allow-list. `read-only` allows nothing;
- * `workspace-write` allows the policy's workspace root, the host `/tmp`, and
- * the per-user platform temp dir (`os.tmpdir()` — the real temp area for
- * mkstemp-family tools; omitting it would deny what the mode promises).
+ * `workspace-write` allows the policy's primary and additional roots, the host
+ * `/tmp`, and the per-user platform temp dir (`os.tmpdir()` — the real temp
+ * area for mkstemp-family tools; omitting it would deny what the mode promises).
  * @param policy - the file-effect policy to derive the allow-list from.
  * @returns the canonical writable roots; empty exactly under `read-only`.
  */
 export function writableRoots(policy: SandboxExecutionPolicy): string[] {
   if (policy.mode !== 'workspace-write') return []
-  return [...new Set([policy.workspaceRoot, '/tmp', tmpdir()].map(canonicalPath))]
+  return [...new Set([...declaredWritableRoots(policy), '/tmp', tmpdir()].map(canonicalPath))]
+}
+
+/**
+ * Resolve the user-declared workspace roots without platform temp grants.
+ * @param policy - resolved policy carrying its primary and additional roots.
+ * @returns canonical, deduplicated roots in primary-first order.
+ */
+export function declaredWritableRoots(policy: SandboxExecutionPolicy): string[] {
+  return [...new Set([policy.workspaceRoot, ...policy.additionalWritableRoots].map(canonicalPath))]
 }

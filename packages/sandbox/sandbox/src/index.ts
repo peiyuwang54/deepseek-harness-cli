@@ -18,13 +18,14 @@ export {
   validateEscalationArgs,
 } from './escalation.ts'
 export type { EscalationApproval, EscalationApprover, EscalationOutcome, EscalationRequest } from './escalation.ts'
-export { canonicalPath, writableRoots } from './roots.ts'
+export { canonicalPath, declaredWritableRoots, writableRoots } from './roots.ts'
 
 /**
  * File-effect policy for confined processes. `read-only` permits only required
- * sinks such as `/dev/null`; `workspace-write` also permits the workspace and a
- * backend-defined temp area; `danger-full-access` bypasses confinement. Network
- * and process visibility are outside this vocabulary.
+ * sinks such as `/dev/null`; `workspace-write` also permits the declared
+ * workspace roots and a backend-defined temp area; `danger-full-access`
+ * bypasses confinement. Network and process visibility are outside this
+ * vocabulary.
  */
 export type SandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access'
 
@@ -32,8 +33,8 @@ export type SandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access'
 export type ConfinedSandboxMode = Exclude<SandboxMode, 'danger-full-access'>
 
 /**
- * The complete file-effect policy resolved for one capability call. The root
- * is carried even under modes that do not consume it so callers can resolve
+ * The complete file-effect policy resolved for one capability call. The roots
+ * are carried even under modes that do not consume them so callers can resolve
  * policy once before choosing the enforcement path.
  */
 export interface SandboxExecutionPolicy {
@@ -41,12 +42,14 @@ export interface SandboxExecutionPolicy {
   mode: SandboxMode
   /** Absolute root directory `workspace-write` may write under. */
   workspaceRoot: string
+  /** Additional absolute directories `workspace-write` may write under. */
+  additionalWritableRoots: readonly string[]
   /**
    * Opaque identity of the calling session (the branded `dsh-session`
    * SessionId). Backends key per-session state off it (e.g. windows-acl gives
-   * each live session/workspace pair a random private temp directory and SID,
-   * while the workspace SID and standing grant remain per-workspace); absent
-   * for agentless calls, which fall back to per-call backend state.
+   * each live session/root-set pair a random private temp directory and SID,
+   * while the root-set SID and standing grants remain reusable); absent for
+   * agentless calls, which fall back to per-call backend state.
    */
   sessionId?: SessionId
 }

@@ -3,6 +3,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { InvariantFailure, InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import { isAbsolute } from 'node:path'
 import { SANDBOX_MODES } from './session-mode.ts'
 
 const PACKAGE_NAME = '@deepseek-ai/dsh-sandbox-policy'
@@ -18,9 +19,18 @@ function validateEvent(event: SessionEvent, fail: InvariantFailure): void {
   if (event.type === 'sandbox/mode' && !SANDBOX_MODES.includes(event.data.mode)) {
     fail(`sandbox/mode carries unknown mode ${JSON.stringify(event.data.mode)}`)
   }
+  if (event.type === 'sandbox/writable-roots') {
+    const roots = event.data.roots
+    if (roots.some(root => root.length === 0 || !isAbsolute(root))) {
+      fail('sandbox/writable-roots carries a non-absolute root')
+    }
+    if (new Set(roots).size !== roots.length) {
+      fail('sandbox/writable-roots repeats a root')
+    }
+  }
 }
 
-/** Install validation for loaded and newly appended sandbox modes. */
+/** Install validation for loaded and newly appended sandbox policy events. */
 const install: InvariantInstaller = Object.assign((ctx: Context, fail: InvariantFailure) => {
   for (const session of ctx.sessions.list()) {
     for (const event of session.events) validateEvent(event, fail)

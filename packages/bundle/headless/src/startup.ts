@@ -49,6 +49,8 @@ export interface HeadlessStartupValues {
   resume?: HeadlessResumeSelection
   /** Startup permission behavior. */
   permissionMode: HeadlessPermissionMode
+  /** Workspace-relative or absolute directories added to workspace-write. */
+  additionalWritableRoots: string[]
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -67,6 +69,7 @@ interface CommonOptions {
   fullAuto?: boolean
   yolo?: boolean
   dangerouslyBypassApprovalsAndSandbox?: boolean
+  addDir?: string[]
 }
 
 /** Repeatable option collector that never consumes a later positional. */
@@ -83,6 +86,7 @@ function addCommonOptions(command: Command): Command {
     .option('--full-auto', 'run without prompts inside the workspace; deny wider actions')
     .option('--yolo', 'run unrestricted without approval prompts')
     .option('--dangerously-bypass-approvals-and-sandbox', 'alias for --yolo')
+    .option('--add-dir <dir>', 'add a writable directory alongside the workspace (repeatable)', collect)
 }
 
 /** Merge options accepted before and after the `resume` subcommand. */
@@ -100,6 +104,7 @@ function commonOptions(parent: CommonOptions, child: CommonOptions = {}): Common
     dangerouslyBypassApprovalsAndSandbox:
       parent.dangerouslyBypassApprovalsAndSandbox === true
       || child.dangerouslyBypassApprovalsAndSandbox === true,
+    addDir: [...(parent.addDir ?? []), ...(child.addDir ?? [])],
   }
 }
 
@@ -135,6 +140,7 @@ function startupValues(
     ...options.outputLastMessage === undefined ? {} : { outputLastMessage: options.outputLastMessage },
     ...resume === undefined ? {} : { resume },
     permissionMode: permissionMode(program, options),
+    additionalWritableRoots: options.addDir ?? [],
   }
 }
 

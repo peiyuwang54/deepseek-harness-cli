@@ -36,6 +36,9 @@
       "path": "../../interaction/permission-presets"
     },
     {
+      "path": "../../sandbox/sandbox-policy"
+    },
+    {
       "path": "../../core/session"
     },
     {

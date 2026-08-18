@@ -41,6 +41,7 @@ export const KNOWN_SESSION_EVENT_TYPES: ReadonlySet<string> = new Set([
   'request/context',
   'request/header',
   'sandbox/mode',
+  'sandbox/writable-roots',
   'schedule/change',
   'session/end-seed',
   'session/title',

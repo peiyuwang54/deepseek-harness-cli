@@ -165,7 +165,7 @@ describe.skipIf(!pwshAvailable())('SandboxPwshExecutor', () => {
     rmSync(spillDir, { recursive: true, force: true })
   })
 
-  const RO: SandboxExecutionPolicy = { mode: 'read-only', workspaceRoot: '/ws' }
+  const RO: SandboxExecutionPolicy = { mode: 'read-only', workspaceRoot: '/ws', additionalWritableRoots: [] }
 
   it('wraps the exact pwsh argv through ctx.sandbox with the per-call policy', async () => {
     const { executor, calls } = await setup()
@@ -191,7 +191,9 @@ describe.skipIf(!pwshAvailable())('SandboxPwshExecutor', () => {
 
   it('danger-full-access bypasses confine entirely and stamps full-access facts', async () => {
     const { executor, calls } = await setup()
-    const result = await executor.run(executor.resolve({ command: 'echo full', sandboxPolicy: { mode: 'danger-full-access', workspaceRoot: '/ws' } }))
+    const result = await executor.run(executor.resolve({ command: 'echo full', sandboxPolicy: {
+      mode: 'danger-full-access', workspaceRoot: '/ws', additionalWritableRoots: [],
+    } }))
     expect(result.exitCode).toBe(0)
     expect(calls).toHaveLength(0)
     expect(result.sandbox).toEqual({ mode: 'danger-full-access', denied: false })
@@ -317,7 +319,7 @@ describe.skipIf(!pwshAvailable())('SandboxPwshExecutor', () => {
     const { executor, calls } = await setup()
     const proc = executor.start(executor.resolve({
       command: 'echo full-bg',
-      sandboxPolicy: { mode: 'danger-full-access', workspaceRoot: '/ws' },
+      sandboxPolicy: { mode: 'danger-full-access', workspaceRoot: '/ws', additionalWritableRoots: [] },
     }))
     await proc.done
     expect(calls).toHaveLength(0)

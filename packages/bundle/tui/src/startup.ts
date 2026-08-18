@@ -31,6 +31,8 @@ export interface TuiStartupValues {
   readonly identity: MainSessionIdentity
   /** Permission shortcut to pin before Agent publication. */
   readonly permissionMode: 'default' | 'full-auto' | 'yolo'
+  /** Workspace-relative or absolute directories added to workspace-write. */
+  readonly additionalWritableRoots: readonly string[]
 }
 
 declare module '@deepseek-ai/cordis' {
@@ -57,7 +59,11 @@ interface TuiOptions {
   yolo?: boolean
   dangerouslyBypassApprovalsAndSandbox?: boolean
   fullAuto?: boolean
+  addDir?: string[]
 }
+
+/** Repeatable single-directory collector. */
+const collect = (value: string, previous: string[] = []): string[] => [...previous, value]
 
 /**
  * Construct a fresh terminal command so repeated test boots share no state.
@@ -72,11 +78,13 @@ function tuiCommand(): Command {
     .option('--full-auto', 'run without prompts inside the workspace; deny wider access')
     .option('--yolo', 'DANGEROUS: start with full file access and no approval prompts')
     .option('--dangerously-bypass-approvals-and-sandbox', 'alias of --yolo')
+    .option('--add-dir <dir>', 'add a writable directory alongside the workspace (repeatable)', collect)
     .addHelpText('after', `
 Examples:
   deepseek                              start a fresh session
   deepseek --resume <session>           resume a persisted session
   deepseek --full-auto                  run autonomously inside the workspace
+  deepseek --add-dir ../shared          add another workspace-write root
   deepseek --yolo                       start unrestricted without approval prompts
 `)
 }
@@ -90,7 +98,7 @@ Examples:
 export function apply(ctx: Context): void {
   const program = tuiCommand()
   program.action(() => {
-    const { resume, yolo, dangerouslyBypassApprovalsAndSandbox, fullAuto } = program.opts<TuiOptions>()
+    const { resume, yolo, dangerouslyBypassApprovalsAndSandbox, fullAuto, addDir } = program.opts<TuiOptions>()
     if (resume !== undefined && resume.trim() === '') {
       program.error('error: --resume needs a non-empty session id')
     }
@@ -111,6 +119,7 @@ export function apply(ctx: Context): void {
     ctx.provide(TUI_STARTUP_SERVICE, {
       identity,
       permissionMode: unrestricted ? 'yolo' : fullAuto === true ? 'full-auto' : 'default',
+      additionalWritableRoots: addDir ?? [],
     } satisfies TuiStartupValues)
   })
   parseCmdline(ctx, program)

@@ -36,6 +36,7 @@ function bench(
   permissionMode: TuiStartupValues['permissionMode'] = 'default',
   fullAccessPreset: string | null = 'danger-full-access',
   fullAutoPreset: string | null = 'full-auto',
+  additionalWritableRoots: readonly string[] = [],
 ) {
   const ctx = new Context()
   contexts.push(ctx)
@@ -77,7 +78,7 @@ function bench(
     return { agent: {}, dispose: async () => {} }
   })
   ctx.provide('appExit', code => void exits.push(code))
-  ctx.provide('tuiStartup', { identity, permissionMode })
+  ctx.provide('tuiStartup', { identity, permissionMode, additionalWritableRoots })
   ctx.provide('agentDefaultModel', {
     currentSelection: () => ({ provider: 'provider-a', model: 'model-a' }),
   } as never)
@@ -98,6 +99,12 @@ function bench(
     fullAccessPreset: fullAccessPreset ?? undefined,
     fullAutoPreset: fullAutoPreset ?? undefined,
     set: setPermission,
+  } as never)
+  ctx.provide('sandboxPolicy', {
+    addWritableRoots: (_session: Session, roots: readonly string[]) => {
+      order.push(`roots:${roots.join(',')}`)
+      return [...roots]
+    },
   } as never)
   ctx.provide('agents', { create, resume } as never)
   internals.mount = (_ctx, config) => { order.push(`mount:${config.sessionId}`) }
@@ -188,6 +195,25 @@ describe('tui runner', () => {
     expect(test.exits).toEqual([])
   })
 
+  it('adds writable roots before mounting the session preset', async () => {
+    const test = bench(
+      { id: SessionId('multi-root-main'), resume: false },
+      {},
+      'default',
+      'danger-full-access',
+      'full-auto',
+      ['../shared', '/tmp/cache'],
+    )
+    apply(test.ctx, {})
+    await tick()
+    expect(test.order).toEqual([
+      'create',
+      'roots:../shared,/tmp/cache',
+      'preset:standard',
+      'mount:multi-root-main',
+    ])
+  })
+
   it('fails before publication when full-auto is unavailable', async () => {
     const test = bench({ id: SessionId('prompted-only'), resume: false }, {}, 'full-auto', 'danger-full-access', null)
     let stderr = ''
@@ -216,6 +242,7 @@ describe('tui runner', () => {
     ctx.provide('tuiStartup', {
       identity: { id: SessionId('main'), resume: false },
       permissionMode: 'default',
+      additionalWritableRoots: [],
     })
     expect(() => { apply(ctx, {}) }).toThrow('must provide ctx.appExit')
   })

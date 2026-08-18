@@ -14,6 +14,7 @@ import {
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { resolveSessionPreset } from '@deepseek-ai/dsh-agent-presets'
 import type {} from '@deepseek-ai/dsh-permission-presets'
+import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import {
   apply as mountProcessTui,
@@ -32,6 +33,7 @@ export const inject = [
   'agentDefaultModel',
   'agentPresets',
   'permissionPresets',
+  'sandboxPolicy',
   'agents',
   'sessions',
   'approval',
@@ -111,10 +113,12 @@ async function startAgent(ctx: Context, startup: import('./startup.ts').TuiStart
   const defaultModel = ctx.get('agentDefaultModel')
   const presets = ctx.get('agentPresets')
   const permissions = ctx.get('permissionPresets')
+  const sandboxPolicy = ctx.get('sandboxPolicy')
   // A requested shutdown can dispose providers while Loader settlement is in flight.
-  if (agents === undefined || defaultModel === undefined || presets === undefined || permissions === undefined) return
+  if (agents === undefined || defaultModel === undefined || presets === undefined
+    || permissions === undefined || sandboxPolicy === undefined) return
 
-  const { identity, permissionMode } = startup
+  const { identity, permissionMode, additionalWritableRoots } = startup
 
   const selection = defaultModel.currentSelection()
   let disposeBootstrapSelection: (() => void) | undefined
@@ -123,9 +127,12 @@ async function startAgent(ctx: Context, startup: import('./startup.ts').TuiStart
     disposeBootstrapSelection = installModelSelection(agentCtx, selected)
   }
   const installStartupPermission = (agentCtx: Context): void => {
-    if (permissionMode === 'default') return
     const agent = agentCtx.agent
     if (agent === undefined) throw new Error('tui-runner: permission shortcut has no scoped Agent')
+    if (additionalWritableRoots.length > 0) {
+      sandboxPolicy.addWritableRoots(agent.session, additionalWritableRoots)
+    }
+    if (permissionMode === 'default') return
     const target = permissionMode === 'yolo'
       ? permissions.fullAccessPreset
       : permissions.fullAutoPreset

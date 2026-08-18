@@ -17,6 +17,7 @@ import { resolveSessionPreset } from '@deepseek-ai/dsh-agent-presets'
 import type { ImageMediaType, SaveImageAttachment } from '@deepseek-ai/dsh-attachment'
 import { createUserMessage, type ContentBlock } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-permission-presets'
+import type {} from '@deepseek-ai/dsh-sandbox-policy'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import {
@@ -38,6 +39,7 @@ export const inject = [
   'agentDefaultModel',
   'agentPresets',
   'permissionPresets',
+  'sandboxPolicy',
   'agents',
   'sessions',
   'sessionPersistence',
@@ -208,6 +210,9 @@ async function prepareAgent(
     if (agent === undefined) throw new Error('exec Agent setup has no scoped Agent')
     const selected: ModelSelectionRef = { current: selection, assembled: undefined }
     installModelSelection(agentCtx, selected)
+    if (startup.additionalWritableRoots.length > 0) {
+      ctx.sandboxPolicy.addWritableRoots(agent.session, startup.additionalWritableRoots)
+    }
     installPermission(ctx, agent, startup.permissionMode)
     await presets.mount(agentCtx, resolveSessionPreset(agent.session))
     if (schema !== undefined) structured = attachStructuredRuntime(agentCtx, schema)
@@ -243,6 +248,7 @@ async function run(ctx: Context, startup: HeadlessStartupValues, io: HeadlessIo)
     || ctx.get('agentDefaultModel') === undefined
     || ctx.get('agentPresets') === undefined
     || ctx.get('permissionPresets') === undefined
+    || ctx.get('sandboxPolicy') === undefined
     || ctx.get('sessions') === undefined
     || ctx.get('sessionPersistence') === undefined
     || ctx.get('attachments') === undefined) return

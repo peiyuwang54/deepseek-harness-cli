@@ -32,6 +32,7 @@ const DEFAULT_STARTUP: HeadlessStartupValues = {
   ephemeral: false,
   images: [],
   permissionMode: 'default',
+  additionalWritableRoots: [],
 }
 
 interface BenchOptions {
@@ -43,6 +44,7 @@ interface BenchOptions {
     set(session: Session, preset: string): void
   }
   saveImages?: (inputs: readonly SaveImageAttachment[]) => Promise<readonly ImageAttachmentRef[]>
+  addWritableRoots?: (session: Session, roots: readonly string[]) => string[]
 }
 
 /** Provide runner seams that are not under test in the scripted bench. */
@@ -53,6 +55,9 @@ function provideRunnerServices(ctx: Context, options: BenchOptions = {}): void {
     mount: () => Promise.resolve({ id: 'standard' }),
   } as never)
   ctx.provide('permissionPresets', options.permissionPresets ?? {} as never)
+  ctx.provide('sandboxPolicy', {
+    addWritableRoots: options.addWritableRoots ?? (() => []),
+  } as never)
   ctx.provide('sessionPersistence', { list: () => Promise.resolve(options.headers ?? []) } as never)
   ctx.provide('attachments', {
     saveImages: options.saveImages ?? (() => Promise.resolve([])),
@@ -320,6 +325,24 @@ describe('headless runner', () => {
     expect(applied).toHaveLength(1)
     expect(applied[0]?.preset).toBe(preset)
     expect(applied[0]?.session.id).toBe(test.calls.create[0]?.sessionId)
+    await test.ctx.fiber.dispose()
+  })
+
+  it('adds writable roots before sending the task', async () => {
+    const applied: Array<{ session: Session; roots: readonly string[] }> = []
+    const test = await bench({
+      afterPrompt(session, message) { appendTurn(session, 1, message, 'multi-root', true) },
+    }, {
+      startup: { ...DEFAULT_STARTUP, additionalWritableRoots: ['../shared', '/tmp/cache'] },
+      addWritableRoots: (session, roots) => {
+        applied.push({ session, roots: [...roots] })
+        return [...roots]
+      },
+    })
+    expect(await test.run()).toMatchObject({ code: 0, out: 'multi-root\n' })
+    expect(applied).toHaveLength(1)
+    expect(applied[0]?.session.id).toBe(test.calls.create[0]?.sessionId)
+    expect(applied[0]?.roots).toEqual(['../shared', '/tmp/cache'])
     await test.ctx.fiber.dispose()
   })
 

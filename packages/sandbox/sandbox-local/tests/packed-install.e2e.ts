@@ -135,7 +135,7 @@ describe.skipIf(!packable)('sandbox-local: packed-tarball distribution (publish-
       const out = { launcher, launcherExists: existsSync(launcher), enforcing: probe.status === 0 }
       const workdir = process.argv[2]
       if (out.enforcing) {
-        const confined = sandbox.confine(['bash', '-c', \`echo hi > \${workdir}/denied.txt\`], { mode: 'read-only', workspaceRoot: workdir })
+        const confined = sandbox.confine(['bash', '-c', \`echo hi > \${workdir}/denied.txt\`], { mode: 'read-only', workspaceRoot: workdir, additionalWritableRoots: [] })
         out.wrapArgv0 = confined.argv[0]
         out.enforcement = confined.enforcement
         const run = spawnSync(confined.argv[0], confined.argv.slice(1), { encoding: 'utf8', timeout: 30000 })
@@ -143,7 +143,7 @@ describe.skipIf(!packable)('sandbox-local: packed-tarball distribution (publish-
         out.stderrHasDialect = /permission denied/i.test(run.stderr)
       } else {
         try {
-          sandbox.confine(['true'], { mode: 'read-only', workspaceRoot: workdir })
+          sandbox.confine(['true'], { mode: 'read-only', workspaceRoot: workdir, additionalWritableRoots: [] })
           out.confineOutcome = 'wrapped'
         } catch (error) {
           out.confineOutcome = error?.code === 'SANDBOX_UNAVAILABLE' ? 'fail-closed' : String(error)

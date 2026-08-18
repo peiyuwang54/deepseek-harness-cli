@@ -23,7 +23,7 @@ const bwrapUsable = spawnSync('bwrap', [
 ], { timeout: 5_000, stdio: 'ignore' }).status === 0
 const landlockUsable = spawnSync(launcherPath(), ['--probe'], { timeout: 5_000, stdio: 'ignore' }).status === 0
 const seatbeltUsable = process.platform === 'darwin'
-  && spawnSync('sandbox-exec', [...seatbeltProfileArgs({ mode: 'workspace-write', workspaceRoot: homedir() }), '--', 'true'], { timeout: 5_000, stdio: 'ignore' }).status === 0
+  && spawnSync('sandbox-exec', [...seatbeltProfileArgs({ mode: 'workspace-write', workspaceRoot: homedir(), additionalWritableRoots: [] }), '--', 'true'], { timeout: 5_000, stdio: 'ignore' }).status === 0
 const processSandboxUsable = bwrapUsable || landlockUsable || seatbeltUsable
 
 let ctx: Context | undefined

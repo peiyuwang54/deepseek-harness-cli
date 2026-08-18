@@ -162,7 +162,7 @@ export interface RestrictingSidSet {
  * Create the write-restricted token with the mode-selected restricting list
  * (verified on Win11 26200, see the POC-worktree restrict-variant harness):
  *  - read-only:       [logon SID, EVERYONE]
- *  - workspace-write: [logon SID, EVERYONE, workspace SID, optional temp SID]
+ *  - workspace-write: [logon SID, EVERYONE, root-set SID, optional temp SID]
  *
  * The logon SID + EVERYONE keep-alive group is shared by both modes: early
  * DLL init dies with 0xC0000142 and CNG (`\Device\CNG` write trustee —

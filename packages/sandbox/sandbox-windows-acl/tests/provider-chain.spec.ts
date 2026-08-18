@@ -13,8 +13,8 @@ import { Context } from '@deepseek-ai/cordis'
 import type { SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
 import { LocalSandboxProvider } from '@deepseek-ai/dsh-sandbox-local'
 
-const RO: SandboxPolicy = { mode: 'read-only', workspaceRoot: '/ws' }
-const WW: SandboxPolicy = { mode: 'workspace-write', workspaceRoot: '/ws' }
+const RO: SandboxPolicy = { mode: 'read-only', workspaceRoot: '/ws', additionalWritableRoots: [] }
+const WW: SandboxPolicy = { mode: 'workspace-write', workspaceRoot: '/ws', additionalWritableRoots: [] }
 
 async function setup(internals: LocalSandboxProvider['internals']) {
   const ctx = new Context()
@@ -46,6 +46,14 @@ describe('windows-acl win32 chain (LocalSandboxProvider)', () => {
     expect(confined.runnerFailureRules).toEqual([{ allowedExitCodes: [127], fatalSignatures: ['windows-acl-run: '] }])
     // A sole candidate is selected unprobed.
     expect(probeWindowsAcl).not.toHaveBeenCalled()
+  })
+
+  it('workspace-write passes every declared root to the ACL runner', async () => {
+    const sandbox = await setup({ platform: 'win32', windowsAclRunnerArgs: ['node', 'windows-acl-runner.js'] })
+    const confined = sandbox.confine(['true'], { ...WW, additionalWritableRoots: ['/shared'] })
+    expect(confined.argv.slice(0, 8)).toEqual([
+      'node', 'windows-acl-runner.js', '--workspace', '/ws', '--workspace', '/shared', '--temp', tmpdir(),
+    ])
   })
 
   it('read-only: same runner and contract, read-only mode flag', async () => {

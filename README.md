@@ -78,6 +78,15 @@ deepseek --yolo
 
 `--yolo` is dangerous. Use it only in an isolated environment. Use `/permissions` to change the current session safely.
 
+Add another writable project directory while keeping `workspace-write` confinement:
+
+```sh
+deepseek --add-dir ../shared
+deepseek exec --add-dir ../shared "update both projects"
+```
+
+Repeat `--add-dir` for multiple directories. Relative paths resolve from the starting project directory and remain attached when the session is resumed. The option does not make a `read-only` session writable.
+
 ### MCP servers
 
 ```sh

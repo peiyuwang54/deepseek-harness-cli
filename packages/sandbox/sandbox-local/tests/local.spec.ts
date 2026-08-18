@@ -21,8 +21,9 @@ import {
 import type { Config } from '@deepseek-ai/dsh-sandbox-local'
 import { bwrapProfileArgs, landlockProfileArgs, seatbeltProfileArgs } from '../src/profiles.ts'
 
-const RO: SandboxPolicy = { mode: 'read-only', workspaceRoot: '/ws' }
-const WW: SandboxPolicy = { mode: 'workspace-write', workspaceRoot: '/ws' }
+const RO: SandboxPolicy = { mode: 'read-only', workspaceRoot: '/ws', additionalWritableRoots: [] }
+const WW: SandboxPolicy = { mode: 'workspace-write', workspaceRoot: '/ws', additionalWritableRoots: [] }
+const WW_MULTI: SandboxPolicy = { mode: 'workspace-write', workspaceRoot: '/ws', additionalWritableRoots: ['/shared'] }
 
 async function setup(config: Config = {}, internals: LocalSandboxProvider['internals'] = {}) {
   const ctx = new Context()
@@ -73,6 +74,13 @@ describe('profile dialects', () => {
     ])
   })
 
+  it('bwrap workspace-write binds every declared writable root', () => {
+    expect(bwrapProfileArgs(WW_MULTI)).toEqual([
+      '--ro-bind', '/', '/', '--dev', '/dev', '--proc', '/proc', '--die-with-parent',
+      '--tmpfs', '/tmp', '--bind', '/ws', '/ws', '--bind', '/shared', '/shared',
+    ])
+  })
+
   it('landlock read-only: readable tree plus a writable /dev/null, nothing else', () => {
     // /dev/null specifically, NOT /dev: a whole-/dev grant would let confined
     // commands write real host paths beneath it (/dev/shm) under read-only.
@@ -81,6 +89,12 @@ describe('profile dialects', () => {
 
   it('landlock workspace-write: adds the host /tmp and the workspace root', () => {
     expect(landlockProfileArgs(WW)).toEqual(['--ro', '/', '--rw', '/dev/null', '--rw', '/tmp', '--rw', '/ws'])
+  })
+
+  it('landlock workspace-write grants every declared writable root', () => {
+    expect(landlockProfileArgs(WW_MULTI)).toEqual([
+      '--ro', '/', '--rw', '/dev/null', '--rw', '/tmp', '--rw', '/ws', '--rw', '/shared',
+    ])
   })
 
   it('seatbelt read-only: allow-default with every file write denied except the /dev/null literal', () => {
@@ -99,10 +113,15 @@ describe('profile dialects', () => {
   })
 
   it('seatbelt workspace-write dedups a workspace root that already IS the temp dir', () => {
-    const profile = seatbeltProfileArgs({ mode: 'workspace-write', workspaceRoot: tmpdir() })[1] as string
+    const profile = seatbeltProfileArgs({ mode: 'workspace-write', workspaceRoot: tmpdir(), additionalWritableRoots: [] })[1] as string
     const grant = `(subpath "${realpathSync(tmpdir())}")`
     expect(profile).toContain(grant)
     expect(profile.split(grant)).toHaveLength(2)
+  })
+
+
+  it('seatbelt workspace-write grants every declared writable root', () => {
+    expect(seatbeltProfileArgs(WW_MULTI)[1]).toContain('(subpath "/shared")')
   })
 })
 

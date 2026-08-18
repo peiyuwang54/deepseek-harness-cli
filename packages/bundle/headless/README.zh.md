@@ -12,6 +12,7 @@ deepseek exec --json "review this repository"
 deepseek exec --image screenshot.png "fix this UI"
 deepseek exec --output-schema result.schema.json "analyze"
 deepseek exec --output-last-message result.txt "summarize"
+deepseek exec --add-dir ../shared "update both projects"
 deepseek exec resume <session-id> "continue"
 deepseek exec resume --last "continue"
 ```
@@ -22,7 +23,7 @@ deepseek exec resume --last "continue"
 
 可重复使用 `--image`，按顺序附加 PNG、JPEG、WebP 或 GIF 文件。附件服务会在用户消息进入 Session 前验证并保存所有图片。
 
-`resume <session-id>` 继续指定的持久化 Session。`resume --last` 选择在当前目录创建的最新 Session；添加 `--all` 后也会考虑其他工作区。`--ephemeral` 让新运行不持久化，不能与 resume 同用。`--full-auto`、`--yolo` 与 `--dangerously-bypass-approvals-and-sandbox` 使用和终端命令相同的权限预设。
+`resume <session-id>` 继续指定的持久化 Session。`resume --last` 选择在当前目录创建的最新 Session；添加 `--all` 后也会考虑其他工作区。可重复传入 `--add-dir`，以会话 cwd 为基准添加已存在的可写目录；完整根目录集合会持久化，因此恢复的会话会保留原有根目录，也可继续添加。`--ephemeral` 让新运行不持久化，不能与 resume 同用。`--full-auto`、`--yolo` 与 `--dangerously-bypass-approvals-and-sandbox` 使用和终端命令相同的权限预设。
 
 ## 执行
 

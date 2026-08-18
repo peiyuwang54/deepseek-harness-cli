@@ -72,6 +72,7 @@ const HELP_EXAMPLES = `
 Examples:
   deepseek                                      open a fresh interactive terminal session
   deepseek --full-auto                          run autonomously inside the workspace
+  deepseek --add-dir ../shared                  add another workspace-write root
   deepseek --yolo                               run unrestricted without approval prompts
   dsh --profile web                          boot the web profile (same as: dsh web)
   dsh tui                                    open a fresh interactive terminal session

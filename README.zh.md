@@ -78,6 +78,15 @@ deepseek --yolo
 
 `--yolo` 风险很高，只能在隔离环境中使用。运行中请用 `/permissions` 安全切换当前会话。
 
+在保持 `workspace-write` 限制的同时，可添加其他可写项目目录：
+
+```sh
+deepseek --add-dir ../shared
+deepseek exec --add-dir ../shared "update both projects"
+```
+
+多个目录可重复传入 `--add-dir`。相对路径以启动时的项目目录为基准解析，恢复会话时仍然有效。该选项不会让 `read-only` 会话获得写权限。
+
 ### MCP 服务器
 
 ```sh

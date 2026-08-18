@@ -96,7 +96,9 @@ describe.skipIf(!landlockUsable)('bash-sandbox: real Landlock confinement throug
     expect(strict.exitCode).not.toBe(0)
     expect(strict.sandbox).toEqual({ mode: 'read-only', denied: true, enforcement: enforcement })
     expect(existsSync(join(workdir, 'escalated.txt'))).toBe(false)
-    const retried = await bash.run(bash.resolve({ command, sandboxPolicy: { mode: 'workspace-write', workspaceRoot: workdir } }))
+    const retried = await bash.run(bash.resolve({ command, sandboxPolicy: {
+      mode: 'workspace-write', workspaceRoot: workdir, additionalWritableRoots: [],
+    } }))
     expect(retried.exitCode).toBe(0)
     expect(retried.sandbox).toEqual({ mode: 'workspace-write', denied: false, enforcement: enforcement })
     expect(readFileSync(join(workdir, 'escalated.txt'), 'utf8')).toBe('escalated')

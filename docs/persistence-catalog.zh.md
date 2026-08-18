@@ -584,6 +584,22 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 
 来源：[`packages/sandbox/sandbox-policy/src/session-mode.ts:33`](../packages/sandbox/sandbox-policy/src/session-mode.ts)
 
+<a id="sandboxwritable-roots--log-only"></a>
+
+#### `sandbox/writable-roots` — log-only
+
+```ts persistence-catalog
+/**
+ * Replaces the session's additional workspace-write roots. The roots are
+ * absolute canonical directories; the session cwd remains the primary
+ * root. This event is log-only and reconstructed by
+ * {@link effectiveAdditionalWritableRoots}.
+ */
+'sandbox/writable-roots': { roots: string[] }
+```
+
+来源：[`packages/sandbox/sandbox-policy/src/session-roots.ts:13`](../packages/sandbox/sandbox-policy/src/session-roots.ts)
+
 ### `schedule/*`
 
 <a id="schedulechange--log-only"></a>

@@ -17,7 +17,7 @@ import { seatbeltProfileArgs } from '../src/profiles.ts'
  * workspace-write proves the workspace-root grant itself.
  */
 
-const probe = spawnSync('sandbox-exec', [...seatbeltProfileArgs({ mode: 'read-only', workspaceRoot: '/' }), '--', 'true'], { timeout: 5_000, stdio: 'ignore' })
+const probe = spawnSync('sandbox-exec', [...seatbeltProfileArgs({ mode: 'read-only', workspaceRoot: '/', additionalWritableRoots: [] }), '--', 'true'], { timeout: 5_000, stdio: 'ignore' })
 const seatbeltUsable = probe.status === 0
 
 let ctx: Context | undefined
@@ -54,7 +54,7 @@ describe.skipIf(!seatbeltUsable)('sandbox-local: real Seatbelt confinement throu
   it('read-only denies a write — the file must NOT exist, and the kernel speaks the advertised dialect', async () => {
     const workdir = await tempDir(tmpdir())
     const sandbox = await provider()
-    const { result, confined } = runConfined(sandbox, `echo hi > ${workdir}/denied.txt`, { mode: 'read-only', workspaceRoot: workdir })
+    const { result, confined } = runConfined(sandbox, `echo hi > ${workdir}/denied.txt`, { mode: 'read-only', workspaceRoot: workdir, additionalWritableRoots: [] })
     expect(result.status).not.toBe(0)
     expect(confined.enforcement).toBe('full')
     // The wrap's denialSignatures must be what the kernel actually prints.
@@ -65,7 +65,7 @@ describe.skipIf(!seatbeltUsable)('sandbox-local: real Seatbelt confinement throu
   it('read-only keeps the tree readable/executable and /dev/null writable', async () => {
     const workdir = await tempDir(tmpdir())
     const sandbox = await provider()
-    const { result } = runConfined(sandbox, 'ls / > /dev/null && echo dev-ok', { mode: 'read-only', workspaceRoot: workdir })
+    const { result } = runConfined(sandbox, 'ls / > /dev/null && echo dev-ok', { mode: 'read-only', workspaceRoot: workdir, additionalWritableRoots: [] })
     expect(result.status).toBe(0)
     expect(result.stdout).toBe('dev-ok\n')
   })
@@ -76,7 +76,7 @@ describe.skipIf(!seatbeltUsable)('sandbox-local: real Seatbelt confinement throu
     const workdir = await tempDir(tmpdir())
     const sandbox = await provider()
     const target = join(workdir, 'tmp-denied.txt')
-    const { result } = runConfined(sandbox, `echo hi > ${target}`, { mode: 'read-only', workspaceRoot: await tempDir(homedir()) })
+    const { result } = runConfined(sandbox, `echo hi > ${target}`, { mode: 'read-only', workspaceRoot: await tempDir(homedir()), additionalWritableRoots: [] })
     expect(result.status).not.toBe(0)
     expect(existsSync(target)).toBe(false)
   })
@@ -86,13 +86,24 @@ describe.skipIf(!seatbeltUsable)('sandbox-local: real Seatbelt confinement throu
     const outside = await tempDir(homedir())
     const sandbox = await provider()
 
-    const inside = runConfined(sandbox, `printf seatbelt-ok > ${workdir}/allowed.txt`, { mode: 'workspace-write', workspaceRoot: workdir })
+    const inside = runConfined(sandbox, `printf seatbelt-ok > ${workdir}/allowed.txt`, { mode: 'workspace-write', workspaceRoot: workdir, additionalWritableRoots: [] })
     expect(inside.result.status).toBe(0)
     expect(readFileSync(join(workdir, 'allowed.txt'), 'utf8')).toBe('seatbelt-ok')
 
-    const denied = runConfined(sandbox, `echo hi > ${outside}/denied.txt`, { mode: 'workspace-write', workspaceRoot: workdir })
+    const denied = runConfined(sandbox, `echo hi > ${outside}/denied.txt`, { mode: 'workspace-write', workspaceRoot: workdir, additionalWritableRoots: [] })
     expect(denied.result.status).not.toBe(0)
     expect(existsSync(join(outside, 'denied.txt'))).toBe(false)
+  })
+
+  it('workspace-write lands writes in every declared root', async () => {
+    const workdir = await tempDir(homedir())
+    const shared = await tempDir(homedir())
+    const sandbox = await provider()
+    const { result } = runConfined(sandbox, `printf shared > ${shared}/allowed.txt`, {
+      mode: 'workspace-write', workspaceRoot: workdir, additionalWritableRoots: [shared],
+    })
+    expect(result.status).toBe(0)
+    expect(readFileSync(join(shared, 'allowed.txt'), 'utf8')).toBe('shared')
   })
 
   it('workspace-write grants /tmp and the user temp dir (the documented Seatbelt-profile temp areas)', async () => {
@@ -103,7 +114,7 @@ describe.skipIf(!seatbeltUsable)('sandbox-local: real Seatbelt confinement throu
     const { result } = runConfined(
       sandbox,
       `printf tmp-ok > ${hostTmp}/scratch.txt && printf user-tmp-ok > ${userTmp}/scratch.txt`,
-      { mode: 'workspace-write', workspaceRoot: workdir },
+      { mode: 'workspace-write', workspaceRoot: workdir, additionalWritableRoots: [] },
     )
     expect(result.status).toBe(0)
     expect(readFileSync(join(hostTmp, 'scratch.txt'), 'utf8')).toBe('tmp-ok')

@@ -8,8 +8,8 @@
  * `approval/*` precedent): the policy owner projects the fold into each model
  * request, while enforcing tools report operation-specific boundary markers.
  * EXECUTION honors the same fold through `ctx.sandboxPolicy.resolve()` — it
- * stamps the mode together with the calling session's workspace root onto each
- * capability call, weakest-precedence beneath an escalation grant.
+ * stamps the mode together with the calling session's workspace root set onto
+ * each capability call, weakest-precedence beneath an escalation grant.
  *
  * The override is policy state shared by every enforcing family (bash and
  * filesystem alike), so it lives here in the policy package rather than in any

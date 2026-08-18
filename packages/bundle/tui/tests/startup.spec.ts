@@ -56,7 +56,7 @@ describe('tui command-line provider', () => {
   it('mints one main identity and publishes the matching resume line', () => {
     internals.randomUUID = () => 'fixed-id'
     const { ctx, observed, startup } = parse([])
-    expect(startup).toEqual({ identity: { id: 'main-session-fixed-id', resume: false }, permissionMode: 'default' })
+    expect(startup).toEqual({ identity: { id: 'main-session-fixed-id', resume: false }, permissionMode: 'default', additionalWritableRoots: [] })
     expect(ctx.get('mainSessionId')).toEqual(startup?.identity)
     expect(ctx.get('tuiGoodbyeMessage')).toBe('To resume this session: deepseek --resume=main-session-fixed-id')
     expect(observed).toEqual({ exits: [], output: '' })
@@ -64,8 +64,14 @@ describe('tui command-line provider', () => {
 
   it('preserves an explicitly resumed persisted identity', () => {
     const { ctx, observed, startup } = parse(['--resume', 'persisted-session'])
-    expect(startup).toEqual({ identity: { id: 'persisted-session', resume: true }, permissionMode: 'default' })
+    expect(startup).toEqual({ identity: { id: 'persisted-session', resume: true }, permissionMode: 'default', additionalWritableRoots: [] })
     expect(ctx.get('mainSessionId')).toEqual(startup?.identity)
+    expect(observed).toEqual({ exits: [], output: '' })
+  })
+
+  it('collects repeatable additional writable directories', () => {
+    const { observed, startup } = parse(['--add-dir', '../shared', '--add-dir=/tmp/cache'])
+    expect(startup?.additionalWritableRoots).toEqual(['../shared', '/tmp/cache'])
     expect(observed).toEqual({ exits: [], output: '' })
   })
 
@@ -103,6 +109,7 @@ describe('tui command-line provider', () => {
     expect(observed.exits).toEqual([0])
     expect(observed.output).toContain('Usage: deepseek')
     expect(observed.output).toContain('--resume <session>')
+    expect(observed.output).toContain('--add-dir <dir>')
     expect(observed.output).toContain('--full-auto')
     expect(observed.output).toContain('--yolo')
     expect(observed.output).toContain('--dangerously-bypass-approvals-and-sandbox')

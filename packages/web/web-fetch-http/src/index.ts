@@ -12,6 +12,7 @@ import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-web'
 import { HttpFetchProvider } from './provider.ts'
 import type { HttpFetchLimits } from './provider.ts'
+import { normalizeAllowedDomains } from './policy.ts'
 
 const MAX_NODE_TIMER_DELAY_MS = 2_147_483_647
 
@@ -44,6 +45,8 @@ export interface Config {
   maxRedirects?: number
   /** `User-Agent` header sent on every request. */
   userAgent?: string
+  /** Exact hosts or `*.domain` patterns allowed for requests and redirects; omitted allows all hosts. */
+  allowedDomains?: string[]
 }
 
 export const Config: z<Config> = z.object({
@@ -53,6 +56,7 @@ export const Config: z<Config> = z.object({
   timeoutMs: z.number().default(30_000),
   maxRedirects: z.number().default(5),
   userAgent: z.string().default(DEFAULT_USER_AGENT),
+  allowedDomains: z.array(z.string()).default(undefined as unknown as string[]),
 })
 
 /** Complete config after schemastery applies every field default. */
@@ -89,6 +93,7 @@ export function apply(ctx: Context, config: Config): void {
   assertPositiveFinite('maxBodyChars', resolved.maxBodyChars)
   assertTimeoutMs(resolved.timeoutMs)
   assertNonNegativeInteger('maxRedirects', resolved.maxRedirects)
+  const allowedDomains = normalizeAllowedDomains(resolved.allowedDomains)
   const limits: HttpFetchLimits = {
     maxUrlLength: resolved.maxUrlLength,
     maxResponseBytes: resolved.maxResponseBytes,
@@ -96,6 +101,9 @@ export function apply(ctx: Context, config: Config): void {
     timeoutMs: resolved.timeoutMs,
     maxRedirects: resolved.maxRedirects,
     userAgent: resolved.userAgent,
+    ...allowedDomains === undefined
+      ? {}
+      : { allowedDomains },
   }
   ctx.web.registerFetchProvider(new HttpFetchProvider(limits))
 }

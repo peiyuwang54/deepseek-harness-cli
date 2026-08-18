@@ -11,7 +11,14 @@
 import { WebError } from '@deepseek-ai/dsh-web'
 import type { WebFetchBody, WebFetchProvider, WebFetchRequest, WebFetchResult } from '@deepseek-ai/dsh-web'
 import { deadline, timeoutOf } from '@deepseek-ai/dsh-timeout'
-import { classifyContentType, decoderForCharset, isSameOrigin, parseCharset, validateFetchUrl } from './policy.ts'
+import {
+  assertAllowedDomain,
+  classifyContentType,
+  decoderForCharset,
+  isSameOrigin,
+  parseCharset,
+  validateFetchUrl,
+} from './policy.ts'
 
 /** Resolved provider limits (the plugin's schemastery Config supplies defaults). */
 export interface HttpFetchLimits {
@@ -27,6 +34,8 @@ export interface HttpFetchLimits {
   maxRedirects: number
   /** `User-Agent` header sent on every request. */
   userAgent: string
+  /** Exact hosts or `*.domain` patterns allowed for requests and redirects. */
+  allowedDomains?: readonly string[]
 }
 
 /** Stable id this provider registers under. */
@@ -55,6 +64,7 @@ export class HttpFetchProvider implements WebFetchProvider {
   /** Follow same-origin redirects up to the hop cap, then read the final response. */
   private async followAndRead(initialUrl: string, signal: AbortSignal): Promise<WebFetchResult> {
     let currentUrl = validateFetchUrl(initialUrl, this.limits.maxUrlLength)
+    assertAllowedDomain(currentUrl, this.limits.allowedDomains)
     let redirectsFollowed = 0
 
     for (;;) {
@@ -86,6 +96,7 @@ export class HttpFetchProvider implements WebFetchProvider {
               'WEB_REDIRECT_BLOCKED',
             )
           }
+          assertAllowedDomain(validatedTarget, this.limits.allowedDomains)
         } catch (error: unknown) {
           await response.body?.cancel()
           throw error

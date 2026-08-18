@@ -6,7 +6,15 @@ import WebRuntime from '@deepseek-ai/dsh-web'
 import { HttpFetchProvider, LOCAL_FETCH_PROVIDER_ID } from '@deepseek-ai/dsh-web-fetch-http'
 import type { HttpFetchLimits } from '@deepseek-ai/dsh-web-fetch-http'
 import * as fetchPlugin from '@deepseek-ai/dsh-web-fetch-http'
-import { classifyContentType, decoderForCharset, isSameOrigin, parseCharset, validateFetchUrl } from '../src/policy.ts'
+import {
+  assertAllowedDomain,
+  classifyContentType,
+  decoderForCharset,
+  isSameOrigin,
+  normalizeAllowedDomains,
+  parseCharset,
+  validateFetchUrl,
+} from '../src/policy.ts'
 
 const limits: HttpFetchLimits = {
   maxUrlLength: 2048,
@@ -47,6 +55,23 @@ describe('policy helpers', () => {
     expect(() => validateFetchUrl('not a url', 2048)).toThrow(expect.objectContaining({ code: 'WEB_INVALID_URL' }))
     expect(() => validateFetchUrl('https://user:pass@example.com', 2048)).toThrow(expect.objectContaining({ code: 'WEB_BLOCKED_URL' }))
     expect(() => validateFetchUrl(`https://example.com/${'a'.repeat(3000)}`, 2048)).toThrow(expect.objectContaining({ code: 'WEB_INVALID_URL' }))
+  })
+
+  it('normalizes exact and wildcard domain allowlists', () => {
+    expect(normalizeAllowedDomains([' Example.COM ', '*.deepseek.com', 'example.com'])).toEqual(['*.deepseek.com', 'example.com'])
+    expect(normalizeAllowedDomains(undefined)).toBeUndefined()
+    expect(() => normalizeAllowedDomains(['https://example.com'])).toThrow(expect.objectContaining({ code: 'WEB_DOMAIN_BLOCKED' }))
+    expect(() => normalizeAllowedDomains(['*example.com'])).toThrow(expect.objectContaining({ code: 'WEB_DOMAIN_BLOCKED' }))
+    expect(() => normalizeAllowedDomains(['['])).toThrow(expect.objectContaining({ code: 'WEB_DOMAIN_BLOCKED' }))
+  })
+
+  it('checks exact and wildcard host matches', () => {
+    const exact = new URL('https://example.com/path')
+    const child = new URL('https://docs.example.com/path')
+    expect(() => { assertAllowedDomain(exact, ['example.com']) }).not.toThrow()
+    expect(() => { assertAllowedDomain(child, ['*.example.com']) }).not.toThrow()
+    expect(() => { assertAllowedDomain(exact, ['*.example.com']) }).toThrow(expect.objectContaining({ code: 'WEB_DOMAIN_BLOCKED' }))
+    expect(() => { assertAllowedDomain(exact, []) }).toThrow(expect.objectContaining({ code: 'WEB_DOMAIN_BLOCKED' }))
   })
 
   it('classifies content types', () => {
@@ -282,6 +307,13 @@ describe('HttpFetchProvider invalid URLs and abort', () => {
   it('rejects credentials in the URL', async () => {
     await expect(provider().fetch({ url: 'http://user:pass@127.0.0.1/' }))
       .rejects.toThrow(expect.objectContaining({ code: 'WEB_BLOCKED_URL' }))
+  })
+
+  it('rejects hosts outside the configured domain allowlist before network access', async () => {
+    await expect(provider({ allowedDomains: ['example.com'] }).fetch({ url: base }))
+      .rejects.toThrow(expect.objectContaining({ code: 'WEB_DOMAIN_BLOCKED' }))
+    const result = await provider({ allowedDomains: ['127.0.0.1'] }).fetch({ url: base })
+    expect(result.statusCode).toBe(200)
   })
 
   it('honors a pre-aborted signal', async () => {

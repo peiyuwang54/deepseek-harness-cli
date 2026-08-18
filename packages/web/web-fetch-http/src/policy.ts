@@ -41,6 +41,54 @@ export function validateFetchUrl(input: string, maxUrlLength: number): URL {
 }
 
 /**
+ * Normalize a configured domain allowlist. Entries are exact host names or
+ * `*.example.com` patterns that match subdomains but not the bare suffix.
+ * @param domains - configured host patterns, or `undefined` for no restriction.
+ * @returns a stable, lower-cased list, or `undefined` when no restriction is configured.
+ */
+export function normalizeAllowedDomains(domains: readonly string[] | undefined): readonly string[] | undefined {
+  if (domains === undefined) return undefined
+  const normalized = new Set<string>()
+  for (const raw of domains) {
+    const value = raw.trim().toLowerCase()
+    const wildcard = value.startsWith('*.')
+    const host = wildcard ? value.slice(2) : value
+    if (host === '' || (value.startsWith('*') && !wildcard)) {
+      throw new WebError(`invalid allowed domain "${raw}"`, 'WEB_DOMAIN_BLOCKED')
+    }
+    let parsed: URL
+    try {
+      parsed = new URL(`http://${host}`)
+    } catch (error: unknown) {
+      throw new WebError(`invalid allowed domain "${raw}"`, 'WEB_DOMAIN_BLOCKED', { cause: error })
+    }
+    if (parsed.hostname !== host || parsed.pathname !== '/' || parsed.search !== '' || parsed.hash !== ''
+      || parsed.port !== '' || parsed.username !== '' || parsed.password !== '') {
+      throw new WebError(`invalid allowed domain "${raw}"`, 'WEB_DOMAIN_BLOCKED')
+    }
+    normalized.add(wildcard ? `*.${parsed.hostname}` : parsed.hostname)
+  }
+  return [...normalized].toSorted()
+}
+
+/**
+ * Reject a URL whose host is absent from the configured allowlist.
+ * @param url - already-parsed request or redirect URL.
+ * @param domains - exact or wildcard host patterns, or `undefined` for no restriction.
+ * @throws {@link WebError} `WEB_DOMAIN_BLOCKED` when the host is not allowed.
+ */
+export function assertAllowedDomain(url: URL, domains: readonly string[] | undefined): void {
+  if (domains === undefined) return
+  const hostname = url.hostname.toLowerCase()
+  const allowed = domains.some(pattern => pattern.startsWith('*.')
+    ? hostname.endsWith(`.${pattern.slice(2)}`) && hostname !== pattern.slice(2)
+    : hostname === pattern)
+  if (!allowed) {
+    throw new WebError(`host "${url.hostname}" is not in the configured web domain allowlist`, 'WEB_DOMAIN_BLOCKED')
+  }
+}
+
+/**
  * Two URLs are same-origin when scheme, hostname, and port match. A redirect
  * that crosses origins is refused so each new origin requires a fresh tool call
  * (and thus a fresh provider/permission decision).

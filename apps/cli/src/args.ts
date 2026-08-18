@@ -51,8 +51,28 @@ interface McpInvocation {
   args: string[]
 }
 
+/** Run boot-free installation and environment diagnostics. */
+interface DoctorInvocation {
+  mode: 'doctor'
+  /** Diagnostic flags after `doctor`. */
+  args: string[]
+}
+
+/** Print shell completion script for the launcher. */
+interface CompletionInvocation {
+  mode: 'completion'
+  /** Completion shell and optional output flags. */
+  args: string[]
+}
+
 /** The resolved `dsh` invocation. Help, version, and errors exit inside {@link parseDshArgs}. */
-export type DshInvocation = ProfileInvocation | DumpConfigInvocation | PluginInvocation | McpInvocation
+export type DshInvocation =
+  | ProfileInvocation
+  | DumpConfigInvocation
+  | PluginInvocation
+  | McpInvocation
+  | DoctorInvocation
+  | CompletionInvocation
 
 /** Launcher flags shared by the default command and shipped profile aliases. */
 interface BootOptions {
@@ -85,6 +105,8 @@ Examples:
   dsh plugin --profile tui add <package>     install a plugin into the tui profile
   deepseek mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
                                              add a shared stdio MCP server
+  deepseek doctor                             diagnose the installation without booting a profile
+  deepseek completion zsh                     print shell completion script
 `
 
 /**
@@ -215,6 +237,26 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
     .action((args: string[]) => {
       rejectParentOptions('mcp')
       resolved = { mode: 'mcp', args }
+    })
+
+  program.command('doctor')
+    .description('diagnose the installation and environment without booting a profile')
+    .helpOption(false)
+    .allowUnknownOption()
+    .argument('[args...]', 'diagnostic flags (`--json` or `--help`)')
+    .action((args: string[]) => {
+      rejectParentOptions('doctor')
+      resolved = { mode: 'doctor', args }
+    })
+
+  program.command('completion')
+    .description('print shell completion script for the launcher')
+    .helpOption(false)
+    .allowUnknownOption()
+    .argument('[args...]', 'shell name (`bash`, `zsh`, `fish`, or `powershell`)')
+    .action((args: string[]) => {
+      rejectParentOptions('completion')
+      resolved = { mode: 'completion', args }
     })
 
   try {

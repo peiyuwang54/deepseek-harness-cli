@@ -84,6 +84,12 @@ describe('parseDshArgs', () => {
       })
   })
 
+  it('routes boot-free diagnostics and completion arguments', () => {
+    expect(parse(['doctor'])).toEqual({ mode: 'doctor', args: [] })
+    expect(parse(['doctor', '--json'])).toEqual({ mode: 'doctor', args: ['--json'] })
+    expect(parse(['completion', 'zsh'])).toEqual({ mode: 'completion', args: ['zsh'] })
+  })
+
   it('routes profile and shipped-alias config dumps', () => {
     expect(parse(['--dump-config']))
       .toEqual({ mode: 'dump-config', profile: 'tui', defaultOnly: false, patches: [] })
@@ -143,6 +149,8 @@ describe('parseDshArgs', () => {
     expect(exitCode(['plugin', '--profile', ''])).toBe(1)
     expect(exitCode(['--profile', 'x', 'plugin', 'add', 'y'])).toBe(1)
     expect(exitCode(['--profile', 'x', 'mcp', 'list'])).toBe(1)
+    expect(exitCode(['--profile', 'x', 'doctor'])).toBe(1)
+    expect(exitCode(['--profile', 'x', 'completion', 'zsh'])).toBe(1)
   })
 
   it('keeps the launcher help discoverable at the bare front door', () => {

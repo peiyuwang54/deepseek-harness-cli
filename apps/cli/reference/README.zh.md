@@ -56,6 +56,22 @@ deepseek mcp remove filesystem
 
 受管服务器只会加载到三个随附应用 profile，add、remove、enable 或 disable 后需要重启。自定义 profile 继续完全拥有自身组合，并可通过普通 patch 插入 `@deepseek-ai/dsh-mcp-client`。stdio 服务器命令会作为 agent（智能体）沙箱之外的受信任本地代码执行；启用前必须先安装并审查它。在 TUI 中，`/mcp`、`/mcp desc` 与 `/mcp schema` 会合并实时连接状态与各服务器发布给当前作用域的工具；`/mcp resources [server] [uri]` 与 `/mcp prompts [server] [prompt]` 可检查 MCP Resources 和 Prompts。`/mcp reload [server]` 可在所有存活 Agent 都空闲时重连一个当前实例或全部实例，但不会重新读取受管 catalog。
 
+## Doctor 与 Shell 补全
+
+`deepseek doctor` 不会启动 profile，而是检查 Node 版本、平台、workspace、`$DSH_HOME`、凭据、MCP catalog、随附运行时资产以及交互式终端能力。没有阻断性错误时返回 0；缺少 API Key 或输出不是交互终端等警告会显示出来，但不会阻止诊断。自动化脚本可以使用 `--json`。
+
+```sh
+deepseek doctor
+deepseek doctor --json
+```
+
+`deepseek completion <shell>` 为 `bash`、`zsh`、`fish` 或 `powershell` 输出补全脚本。请按照对应 shell 的常规补全配置加载输出；脚本同时覆盖 `deepseek` 与 `dsh`。
+
+```sh
+deepseek completion zsh > ~/.zsh/completions/_deepseek
+deepseek completion bash >> ~/.bash_completion
+```
+
 ## 插件管理
 
 `dsh plugin --profile <name> <args...>` 在 profile 缺失时先初始化它（有随附模板的用模板，其他名称只装 `@deepseek-ai/dsh-base`），然后以 profile 目录为工作目录，把 `<args...>` 转发给 `pnpm`：`add`、`remove`、`why`、`update` 及其他所有 pnpm 子命令都照常可用；pnpm 必须在 PATH 上。相对路径 spec（`.`、`../plugin` 及其 `file:`/`link:` 形式）会先锚定到调用目录，因此在插件 checkout 中执行 `add .` 安装的是该 checkout，而不是 profile。每次成功运行后，系统都会根据当前安装状态更新 `dsh.profile.bundles`：如果某项依赖解析到的包在 manifest 中声明了 `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }`，该依赖就会加入配置层栈；如果某项依赖在 `update` 后获得该声明，也会随即激活。没有组合包声明的依赖仍作为普通依赖保留，并显示一次性警告；已移除的依赖则从配置层栈中删除。

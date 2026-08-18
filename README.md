@@ -100,6 +100,14 @@ deepseek mcp remove filesystem
 
 `--env KEY[=SOURCE]` and `--header NAME=SOURCE` save environment-variable references, not secret values. Restart the CLI after an add, remove, enable, or disable. Inside a running session, use `/mcp`, `/mcp desc`, `/mcp schema`, `/mcp resources`, or `/mcp prompts` to inspect live MCP capabilities, and `/mcp reload [server]` to reconnect the current configuration.
 
+Diagnose an installation without starting a profile, or install shell completion for both command names:
+
+```sh
+deepseek doctor
+deepseek doctor --json
+deepseek completion zsh > ~/.zsh/completions/_deepseek
+```
+
 ## What it includes
 
 - Code reading, editing, shell tools, web search, skills, MCP, and subagents.

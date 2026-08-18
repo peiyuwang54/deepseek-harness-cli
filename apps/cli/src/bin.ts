@@ -55,6 +55,16 @@ switch (invocation.mode) {
     process.exit(await runMcp(invocation.args))
     break
   }
+  case 'doctor': {
+    const { runDoctor } = await import('./doctor.ts')
+    process.exit(runDoctor(invocation.args))
+    break
+  }
+  case 'completion': {
+    const { runCompletion } = await import('./completion.ts')
+    process.exit(runCompletion(invocation.args))
+    break
+  }
   case 'dump-config': {
     const { runDumpConfig } = await import('./dump-config.ts')
     runDumpConfig(invocation.profile, invocation.defaultOnly, invocation.patches)

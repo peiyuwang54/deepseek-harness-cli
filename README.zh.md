@@ -100,6 +100,14 @@ deepseek mcp remove filesystem
 
 `--env KEY[=SOURCE]` 与 `--header NAME=SOURCE` 保存环境变量引用，而不是密钥值。添加、删除、启用或停用服务器后请重启 CLI。在运行中的会话里，可用 `/mcp`、`/mcp desc`、`/mcp schema`、`/mcp resources` 或 `/mcp prompts` 检查实时 MCP 能力，并用 `/mcp reload [server]` 重连当前配置。
 
+可以在不启动 profile 的情况下诊断安装，也可以为两个命令名安装 Shell 补全：
+
+```sh
+deepseek doctor
+deepseek doctor --json
+deepseek completion zsh > ~/.zsh/completions/_deepseek
+```
+
 ## 核心能力
 
 - 代码读取、编辑、Shell、Web 搜索、Skills、MCP 与子代理。

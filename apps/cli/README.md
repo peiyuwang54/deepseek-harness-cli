@@ -17,7 +17,10 @@ English | [中文](README.zh.md)
 | `dsh --profile headless "job"` | Compatibility spelling for `deepseek exec`. |
 | `dsh tui` | Alias of `--profile tui`; open the interactive terminal UI. |
 | `dsh web` | Alias of `--profile web`. |
-| `dsh plugin --profile <name> <pnpm args>` | Manage a profile's plugins by forwarding to pnpm in the profile directory. |
+| `dsh plugin --profile <name> list` / `verify` | Inspect installed dependencies and validate active bundle layers without pnpm. |
+| `dsh plugin --profile <name> source <package>` | Show a plugin's resolved directory and declared source. |
+| `dsh plugin --profile <name> enable/disable <package>` | Toggle a bundle layer for the next launch. |
+| `dsh plugin --profile <name> install/update/remove ...` | Manage dependencies through pnpm (`install` is an alias for `add`). |
 
 The invoking directory is the default workspace root. The `web`, `tui`, and `headless` profiles auto-initialize on first use from shipped templates; any other profile must be created through `dsh plugin`.
 

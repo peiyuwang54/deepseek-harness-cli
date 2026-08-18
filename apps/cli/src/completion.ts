@@ -24,7 +24,7 @@ _deepseek_complete() {
   fi
   case "\${words[1]}" in
     mcp) COMPREPLY=($(compgen -W 'list get add enable disable remove help --help' -- "$cur"));;
-    plugin) COMPREPLY=($(compgen -W '--profile add remove update why' -- "$cur"));;
+    plugin) COMPREPLY=($(compgen -W '--profile list verify source enable disable install add update remove why' -- "$cur"));;
     doctor) COMPREPLY=($(compgen -W '--json --help' -- "$cur"));;
     completion) COMPREPLY=($(compgen -W 'bash zsh fish powershell' -- "$cur"));;
   esac
@@ -39,6 +39,7 @@ _deepseek() {
     '*::argument:->args'
   case $words[2] in
     mcp) _values 'MCP command' list get add enable disable remove help ;;
+    plugin) _values 'plugin command' list verify source enable disable install add update remove ;;
     doctor) _values 'doctor option' --json --help ;;
     completion) _values 'shell' bash zsh fish powershell ;;
   esac
@@ -56,6 +57,8 @@ complete -c deepseek -f -n '__fish_seen_subcommand_from completion' -a 'bash zsh
 complete -c dsh -f -n '__fish_seen_subcommand_from completion' -a 'bash zsh fish powershell'
 complete -c deepseek -f -n '__fish_seen_subcommand_from mcp' -a 'list get add enable disable remove help'
 complete -c dsh -f -n '__fish_seen_subcommand_from mcp' -a 'list get add enable disable remove help'
+complete -c deepseek -f -n '__fish_seen_subcommand_from plugin' -a 'list verify source enable disable install add update remove'
+complete -c dsh -f -n '__fish_seen_subcommand_from plugin' -a 'list verify source enable disable install add update remove'
 `
 
 const POWERSHELL = String.raw`# DeepSeek Harness CLI completion for PowerShell.
@@ -64,7 +67,7 @@ Register-ArgumentCompleter -Native -CommandName deepseek,dsh -ScriptBlock {
   $commands = @('web','tui','exec','mcp','plugin','doctor','completion')
   $options = @('--help','--version','--yolo','--full-auto','--sandbox','--ask-for-approval','--add-dir','--resume')
   $tokens = $commandAst.CommandElements | ForEach-Object { $_.ToString() }
-  $values = if ($tokens.Count -le 1) { $commands + $options } elseif ($tokens[1] -eq 'completion') { @('bash','zsh','fish','powershell') } elseif ($tokens[1] -eq 'doctor') { @('--json','--help') } elseif ($tokens[1] -eq 'mcp') { @('list','get','add','enable','disable','remove','help') } else { @() }
+  $values = if ($tokens.Count -le 1) { $commands + $options } elseif ($tokens[1] -eq 'completion') { @('bash','zsh','fish','powershell') } elseif ($tokens[1] -eq 'doctor') { @('--json','--help') } elseif ($tokens[1] -eq 'mcp') { @('list','get','add','enable','disable','remove','help') } elseif ($tokens[1] -eq 'plugin') { @('list','verify','source','enable','disable','install','add','update','remove') } else { @() }
   $values | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
 }
 `

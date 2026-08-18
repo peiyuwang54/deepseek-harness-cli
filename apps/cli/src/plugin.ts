@@ -11,7 +11,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import {
   DEFAULT_PROFILE_BUNDLES,
@@ -107,6 +107,41 @@ interface PluginInventoryEntry {
   readonly spec: string
   readonly bundle: boolean
   readonly active: boolean
+  readonly source?: string
+}
+
+interface PluginSource {
+  readonly packageDir: string
+  readonly repository?: string
+  readonly homepage?: string
+}
+
+function pluginSource(packageName: string, profileDir: string, installAnchor = INSTALL_ANCHOR): PluginSource | undefined {
+  let packageDir: string
+  try {
+    packageDir = resolveBundleDir(NAME, packageName, installAnchor, profileDir)
+  } catch {
+    return undefined
+  }
+  try {
+    const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8')) as {
+      repository?: unknown
+      homepage?: unknown
+    }
+    const repository = typeof manifest.repository === 'string'
+      ? manifest.repository
+      : typeof manifest.repository === 'object' && manifest.repository !== null && 'url' in manifest.repository
+        && typeof (manifest.repository as { url?: unknown }).url === 'string'
+        ? (manifest.repository as { url: string }).url
+        : undefined
+    return {
+      packageDir,
+      ...(repository === undefined ? {} : { repository }),
+      ...(typeof manifest.homepage === 'string' ? { homepage: manifest.homepage } : {}),
+    }
+  } catch {
+    return { packageDir }
+  }
 }
 
 function pluginInventory(profile: string, options: PluginCommandOptions): {
@@ -122,12 +157,17 @@ function pluginInventory(profile: string, options: PluginCommandOptions): {
   const manifest = readProfileManifest(NAME, dir)
   const active = manifest.dsh?.profile?.bundles ?? []
   const dependencies = manifest.dependencies ?? {}
-  const entries = Object.entries(dependencies).toSorted(([left], [right]) => left.localeCompare(right)).map(([name, spec]) => ({
-    name,
-    spec,
-    bundle: exportsPatch(name, dir, options.installAnchor),
-    active: active.includes(name),
-  }))
+  const entries = Object.entries(dependencies).toSorted(([left], [right]) => left.localeCompare(right)).map(([name, spec]) => {
+    const source = pluginSource(name, dir, options.installAnchor)
+    const repository = source?.repository ?? source?.homepage
+    return {
+      name,
+      spec,
+      bundle: exportsPatch(name, dir, options.installAnchor),
+      active: active.includes(name),
+      ...(repository === undefined ? {} : { source: repository }),
+    }
+  })
   return { dir, entries, activeBundles: [...active] }
 }
 
@@ -147,9 +187,41 @@ function renderPluginInventory(profile: string, inventory: ReturnType<typeof plu
 function inspectPlugins(profile: string, args: readonly string[], options: PluginCommandOptions): number {
   const command = args[0] ?? 'list'
   const json = args.includes('--json')
-  if (args.some(argument => argument !== command && argument !== '--json') || (json && args.filter(argument => argument === '--json').length > 1)) {
-    throw new Error(`${command} accepts only the optional --json flag`)
+  const name = args[1]
+  const extra = args.slice(2).filter(argument => argument !== '--json')
+  if (json && args.filter(argument => argument === '--json').length > 1) throw new Error(`${command} accepts only one --json flag`)
+  if (command === 'enable' || command === 'disable') {
+    if (name === undefined || extra.length > 0 || (json && args.length > 2)) throw new Error(`${command} needs exactly one plugin name`)
+    const inventory = pluginInventory(profile, options)
+    const entry = inventory.entries.find(candidate => candidate.name === name)
+    if (entry === undefined || !entry.bundle) throw new Error(`plugin ${JSON.stringify(name)} is not an installed dsh bundle`)
+    const enabled = command === 'enable'
+    if (entry.active === enabled) {
+      options.stdout?.(`${enabled ? 'Enabled' : 'Disabled'} plugin ${JSON.stringify(name)} (already in that state).\n`)
+      return 0
+    }
+    const dir = inventory.dir
+    const manifest = readProfileManifest(NAME, dir)
+    const bundles = [...inventory.activeBundles]
+    if (enabled) bundles.push(name)
+    else bundles.splice(bundles.indexOf(name), 1)
+    writeProfileManifest(dir, { ...manifest, dsh: { ...manifest.dsh, profile: { ...manifest.dsh?.profile, bundles } } })
+    options.stdout?.(`${enabled ? 'Enabled' : 'Disabled'} plugin ${JSON.stringify(name)}. Restart DeepSeek CLI to apply it.\n`)
+    return 0
   }
+  if (command === 'source') {
+    if (name === undefined || extra.length > 0) throw new Error('source needs exactly one plugin name and an optional --json flag')
+    const inventory = pluginInventory(profile, options)
+    const entry = inventory.entries.find(candidate => candidate.name === name)
+    if (entry === undefined) throw new Error(`plugin ${JSON.stringify(name)} is not installed`)
+    const source = pluginSource(name, inventory.dir, options.installAnchor)
+    const result = { name, spec: entry.spec, directory: source?.packageDir ?? null, source: entry.source ?? null }
+    if (json) options.stdout?.(`${JSON.stringify(result, null, 2)}\n`)
+    else options.stdout?.(`${name}\n  spec: ${entry.spec}\n  directory: ${source?.packageDir ?? 'unknown'}\n  source: ${entry.source ?? 'not declared'}\n`)
+    return 0
+  }
+  if (command !== 'list' && command !== 'ls' && command !== 'verify') throw new Error(`unknown inspection command ${JSON.stringify(command)}`)
+  if (args.some(argument => argument !== command && argument !== '--json')) throw new Error(`${command} accepts only the optional --json flag`)
   const inventory = pluginInventory(profile, options)
   if (command === 'list' || command === 'ls') {
     if (json) {
@@ -223,7 +295,7 @@ function anchorPathSpec(argument: string, cwd: string): string {
 export function runPlugin(profile: string, args: readonly string[], options: PluginCommandOptions = {}): number {
   const stdout = options.stdout ?? ((text) => { process.stdout.write(text) })
   const stderr = options.stderr ?? ((text) => { process.stderr.write(text) })
-  if (args[0] === 'list' || args[0] === 'ls' || args[0] === 'verify') {
+  if (args[0] === 'list' || args[0] === 'ls' || args[0] === 'verify' || args[0] === 'source' || args[0] === 'enable' || args[0] === 'disable') {
     try {
       return inspectPlugins(profile, args, { ...options, stdout, stderr })
     } catch (error) {
@@ -231,6 +303,9 @@ export function runPlugin(profile: string, args: readonly string[], options: Plu
       return 1
     }
   }
+  // Keep the public verbs discoverable while preserving pnpm's mature
+  // resolver for actual installation and update transactions.
+  const forwardedArgs = args[0] === 'install' ? ['add', ...args.slice(1)] : args
   const dir = resolveProfileDir(profile, options.home)
   if (!existsSync(join(dir, 'package.json'))) {
     initProfile(dir, shippedProfileTemplate(profile) ?? DEFAULT_PROFILE_BUNDLES)
@@ -239,7 +314,7 @@ export function runPlugin(profile: string, args: readonly string[], options: Plu
   const before = readProfileManifest(NAME, dir)
   // Windows resolves pnpm through its .cmd shim, which spawn() refuses
   // without a shell since the CVE-2024-27980 hardening.
-  const result = spawnSync('pnpm', args.map(argument => anchorPathSpec(argument, process.cwd())), {
+  const result = spawnSync('pnpm', forwardedArgs.map(argument => anchorPathSpec(argument, process.cwd())), {
     cwd: dir,
     stdio: 'inherit',
     shell: process.platform === 'win32',
@@ -260,7 +335,7 @@ export function runPlugin(profile: string, args: readonly string[], options: Plu
     // one; the profile owns it, and the commonest failure here is pnpm ≥10
     // blocking a git dependency's prepare (build) script until allowlisted.
     stderr(`${NAME}: pnpm failed in profile directory ${dir}\n`)
-    if (args.some(argument => /^git\+|^github:|\.git(?:#|$)/.test(argument))) {
+    if (forwardedArgs.some(argument => /^git\+|^github:|\.git(?:#|$)/.test(argument))) {
       stderr(
         `${NAME}: git-hosted plugins build on install via their prepare script, which pnpm blocks until allowed — `
         + `add the exact key pnpm printed above under allowBuilds in ${join(dir, 'pnpm-workspace.yaml')}, then re-run\n`,

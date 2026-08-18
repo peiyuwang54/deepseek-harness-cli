@@ -102,8 +102,10 @@ Examples:
   dsh --profile tui --patch ./extra.yml      boot a custom profile with one extra overlay
   dsh --profile tui --resume <session>       arguments after the launcher flags reach the app
   dsh --profile web --help                   the web app's own flags and help
-  dsh plugin --profile tui add <package>     install a plugin into the tui profile
+  dsh plugin --profile tui install <package> install a plugin into the tui profile
   dsh plugin --profile tui list              inspect installed plugins (no pnpm required)
+  dsh plugin --profile tui source <package> show the plugin source and resolved directory
+  dsh plugin --profile tui enable <package>  activate a bundle on the next launch
   dsh plugin --profile tui verify            validate plugin bundles and patch assets
   deepseek mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
                                              add a shared stdio MCP server

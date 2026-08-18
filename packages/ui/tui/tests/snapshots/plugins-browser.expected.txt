@@ -16,10 +16,10 @@ buffer
   style 0-103 dim
 5| "  @example/dsh-reviewer · custom-reviewer                                                               "
   style 0-103 dim
-6| "Manage profile packages outside chat: deepseek plugin --profile tui add <package> (or use               "
+6| "Manage profile packages outside chat: deepseek plugin --profile tui install|update|remove|enable|disable"
   style 0-103 dim
-7| "remove/update).                                                                                         "
-  style 0-14 dim
+7| "<package>.                                                                                              "
+  style 0-9 dim
 8-9| <blank>
 10| "                                                                                                        "
   style 0-103 bg=ansi-236

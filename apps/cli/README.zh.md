@@ -17,7 +17,10 @@
 | `dsh --profile headless "job"` | `deepseek exec` 的兼容写法。 |
 | `dsh tui` | `--profile tui` 的别名；打开交互式终端 UI。 |
 | `dsh web` | `--profile web` 的别名。 |
-| `dsh plugin --profile <name> <pnpm args>` | 通过在 profile 目录中转发给 pnpm 来管理该 profile 的插件。 |
+| `dsh plugin --profile <name> list` / `verify` | 不调用 pnpm，检查已安装依赖并验证生效的组合包层。 |
+| `dsh plugin --profile <name> source <package>` | 显示插件的解析目录和声明的来源。 |
+| `dsh plugin --profile <name> enable/disable <package>` | 切换下次启动时生效的组合包层。 |
+| `dsh plugin --profile <name> install/update/remove ...` | 通过 pnpm 管理依赖（`install` 是 `add` 的别名）。 |
 
 运行命令时所在的目录将作为默认 workspace 根目录。`web`、`tui` 和 `headless` profile 在首次使用时会从随附模板自动初始化；其他任何 profile 都必须通过 `dsh plugin` 创建。
 

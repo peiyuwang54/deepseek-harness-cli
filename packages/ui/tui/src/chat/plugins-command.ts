@@ -9,7 +9,7 @@ import type {
 type PluginInventoryReader = Pick<PluginInventoryGateway, 'list'>
 
 const DEFAULT_RESULT_LIMIT = 20
-const MANAGE_HINT = 'Manage profile packages outside chat: deepseek plugin --profile tui add <package> (or use remove/update).'
+const MANAGE_HINT = 'Manage profile packages outside chat: deepseek plugin --profile tui install|update|remove|enable|disable <package>.'
 
 /** Compact a module specifier without guessing whether its Loader id was generated. */
 function moduleShortName(moduleName: string): string {

@@ -115,7 +115,14 @@ deepseek completion zsh > ~/.zsh/completions/_deepseek
 ```sh
 deepseek plugin --profile tui list
 deepseek plugin --profile tui verify --json
+deepseek plugin --profile tui source <package>
+deepseek plugin --profile tui disable <package>
+deepseek plugin --profile tui enable <package>
+deepseek plugin --profile tui install <package>
+deepseek plugin --profile tui update
 ```
+
+`source` 会显示包目录和声明的仓库。`enable` 与 `disable` 会修改生效的 Cordis 组合包列表，并在下次启动时生效；`install`、`update` 和 `remove` 使用 pnpm 解析依赖。
 
 ## 核心能力
 

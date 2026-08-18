@@ -39,7 +39,7 @@ describe('/plugins browser', () => {
         '- tool-bash · active',
         '- web-search-deepseek · disabled',
         '- reviewer · failed',
-        'Manage profile packages outside chat: deepseek plugin --profile tui add <package> (or use remove/update).',
+        'Manage profile packages outside chat: deepseek plugin --profile tui install|update|remove|enable|disable <package>.',
       ].join('\n'),
     })
   })
@@ -52,7 +52,7 @@ describe('/plugins browser', () => {
         'Filter: custom · 1 matched',
         '- reviewer · failed',
         '  @example/dsh-reviewer · custom-reviewer',
-        'Manage profile packages outside chat: deepseek plugin --profile tui add <package> (or use remove/update).',
+        'Manage profile packages outside chat: deepseek plugin --profile tui install|update|remove|enable|disable <package>.',
       ].join('\n'),
     })
   })
@@ -67,7 +67,7 @@ describe('/plugins browser', () => {
       text: [
         'Plugins (3 configured · 1 active · 1 disabled)',
         'No plugins match "missing".',
-        'Manage profile packages outside chat: deepseek plugin --profile tui add <package> (or use remove/update).',
+        'Manage profile packages outside chat: deepseek plugin --profile tui install|update|remove|enable|disable <package>.',
       ].join('\n'),
     })
   })

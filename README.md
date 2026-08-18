@@ -118,7 +118,16 @@ Inspect and validate a profile's installed plugin bundles without starting it:
 ```sh
 deepseek plugin --profile tui list
 deepseek plugin --profile tui verify --json
+deepseek plugin --profile tui source <package>
+deepseek plugin --profile tui disable <package>
+deepseek plugin --profile tui enable <package>
+deepseek plugin --profile tui install <package>
+deepseek plugin --profile tui update
 ```
+
+`source` shows the package directory and declared repository. `enable` and
+`disable` change the active Cordis bundle list and take effect on the next
+launch; `install`, `update`, and `remove` use pnpm for dependency resolution.
 
 ## What it includes
 

@@ -21,6 +21,7 @@ function profileFixture(active = true): { home: string; installAnchor: string } 
   }))
   writeFileSync(join(bundle, 'package.json'), JSON.stringify({
     name: 'demo-bundle',
+    repository: { type: 'git', url: 'https://github.com/example/demo-bundle.git' },
     dsh: { bundle: { patch: './cordis.patch.yml' } },
   }))
   writeFileSync(join(bundle, 'cordis.patch.yml'), '[]\n')
@@ -47,5 +48,22 @@ describe('plugin inspection', () => {
     let output = ''
     expect(runPlugin('demo', ['verify'], { ...fixture, stdout: (text) => { output += text } })).toBe(1)
     expect(output).toContain('Inactive bundle declarations: demo-bundle')
+  })
+
+  it('shows the installed source and toggles a bundle without pnpm', () => {
+    const fixture = profileFixture()
+    let output = ''
+    expect(runPlugin('demo', ['source', 'demo-bundle', '--json'], { ...fixture, stdout: (text) => { output += text } })).toBe(0)
+    expect(JSON.parse(output)).toMatchObject({
+      name: 'demo-bundle',
+      source: 'https://github.com/example/demo-bundle.git',
+    })
+
+    output = ''
+    expect(runPlugin('demo', ['disable', 'demo-bundle'], { ...fixture, stdout: (text) => { output += text } })).toBe(0)
+    expect(output).toContain('Disabled plugin "demo-bundle"')
+    output = ''
+    expect(runPlugin('demo', ['enable', 'demo-bundle'], { ...fixture, stdout: (text) => { output += text } })).toBe(0)
+    expect(output).toContain('Enabled plugin "demo-bundle"')
   })
 })

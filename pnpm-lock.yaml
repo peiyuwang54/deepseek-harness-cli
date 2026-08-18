@@ -689,6 +689,9 @@ importers:
       '@deepseek-ai/dsh-subagent-in-process-driver':
         specifier: workspace:^
         version: link:../../../packages/subagent/subagent-in-process-driver
+      '@deepseek-ai/dsh-subagent-worktree':
+        specifier: workspace:^
+        version: link:../../../packages/subagent/subagent-worktree
       '@deepseek-ai/dsh-subprocess':
         specifier: workspace:^
         version: link:../../../packages/subprocess/subprocess

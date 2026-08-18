@@ -10,13 +10,13 @@ export interface IdePosition {
 }
 
 /** The current editor selection, including a collapsed caret. */
-export interface IdeSelection {
+interface IdeSelection {
   readonly start: IdePosition
   readonly end: IdePosition
 }
 
 /** One diagnostic reported by the editor bridge. */
-export interface IdeDiagnostic {
+interface IdeDiagnostic {
   readonly severity: 'error' | 'warning' | 'info' | 'hint'
   readonly message: string
   readonly path?: string
@@ -34,7 +34,7 @@ export interface IdeContext {
 }
 
 /** Receipt returned after an editor accepts a displayed diff. */
-export interface IdeDiffReceipt {
+interface IdeDiffReceipt {
   readonly id: string
   readonly accepted?: boolean
 }

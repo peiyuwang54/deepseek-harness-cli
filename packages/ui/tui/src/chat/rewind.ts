@@ -24,10 +24,10 @@ import type { TuiOverlaySession } from '../extension/types.ts'
 import type { ChannelNotice, ChatChannelDeps } from './channel.ts'
 
 /** Kind of filesystem checkpoint recorded in the Session log. */
-export type WorkspaceCheckpointKind = 'pre-turn' | 'direct-shell' | 'restore-safety'
+type WorkspaceCheckpointKind = 'pre-turn' | 'direct-shell' | 'restore-safety'
 
 /** Durable reference to one commit in the workspace's isolated shadow repository. */
-export interface WorkspaceCheckpointEventData {
+interface WorkspaceCheckpointEventData {
   /** Commit object in the shadow repository. */
   readonly commit: string
   /** Human-authored message whose turn had not mutated the workspace yet. */

@@ -296,8 +296,8 @@ describe('PermissionPresetService', () => {
     await expect(mounted({ config: { security: { networkAllowlist: ['https://example.com'] } } })).rejects.toThrow(/invalid host pattern/)
     const ctx = await mounted({ config: { security: { administratorLocked: true } } })
     const session = freshSession('security-locked')
-    expect(() => ctx.permissionPresets.set(session, 'full-auto')).toThrow(/locked by the administrator policy/)
-    expect(() => ctx.permissionPresets.setPolicy(session, { approval: 'never' })).toThrow(/locked by the administrator policy/)
+    expect(() => { ctx.permissionPresets.set(session, 'full-auto') }).toThrow(/locked by the administrator policy/)
+    expect(() => { ctx.permissionPresets.setPolicy(session, { approval: 'never' }) }).toThrow(/locked by the administrator policy/)
   })
 })
 

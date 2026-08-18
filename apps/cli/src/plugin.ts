@@ -231,7 +231,6 @@ function inspectPlugins(profile: string, args: readonly string[], options: Plugi
     }
     return 0
   }
-  if (command !== 'verify') throw new Error(`unknown inspection command ${JSON.stringify(command)}`)
   const declaredBundles = inventory.entries.filter(entry => entry.bundle).map(entry => entry.name)
   const active = inventory.activeBundles
   const inactive = declaredBundles.filter(name => !active.includes(name))

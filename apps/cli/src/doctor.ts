@@ -195,7 +195,7 @@ function checkInstallation(assetRoot: string, env: NodeJS.ProcessEnv): DoctorChe
   }
   const packageManager = env.npm_config_user_agent
   if (packageManager?.startsWith('npm/')) return check('installation', 'pass', 'installation channel appears to be npm', assetRoot)
-  if (assetRoot.includes(`${join('node_modules', '@peiyu_wang')}`)) return check('installation', 'pass', 'installation channel appears to be npm', assetRoot)
+  if (assetRoot.includes(join('node_modules', '@peiyu_wang'))) return check('installation', 'pass', 'installation channel appears to be npm', assetRoot)
   if (assetRoot.includes('.deepseek-harness-cli')) return check('installation', 'pass', 'installation channel appears to be the standalone installer', assetRoot)
   return check('installation', 'warn', 'installation channel could not be identified', 'set DSH_INSTALL_CHANNEL for packaged deployments')
 }

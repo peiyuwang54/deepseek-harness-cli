@@ -1,14 +1,22 @@
-import { homedir } from 'node:os'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { homedir, tmpdir } from 'node:os'
 import { join, resolve, win32 } from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
-import type { ImageAttachmentRef, SaveImageAttachment } from '@deepseek-ai/dsh-attachment'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { AttachmentStore, ImageAttachmentRef, SaveImageAttachment } from '@deepseek-ai/dsh-attachment'
 import {
+  loadTuiImageDraft,
   resolvePastedImagePath,
   saveTuiImageDrafts,
   selectedTuiImageDrafts,
   tuiImageContent,
   type TuiImageDraft,
 } from '../src/chat/image-attachments.ts'
+
+const roots: string[] = []
+
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
+})
 
 function pending(id: number, byte = id): TuiImageDraft {
   return {
@@ -60,6 +68,26 @@ describe('TUI image attachments', () => {
     const drafts = new Map([[1, pending(1)], [2, pending(2)]])
     expect(selectedTuiImageDrafts('[Image #2] x [Image #1] [Image #2] [Image #9]', drafts)
       .map(draft => draft.id)).toEqual([2, 1])
+  })
+
+  it('loads and validates one local image draft before batch persistence', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-image-test-'))
+    roots.push(root)
+    const path = join(root, 'image.png')
+    await writeFile(path, Buffer.from([1, 2, 3]))
+    const validateImage = vi.fn(async () => {})
+    const draft = await loadTuiImageDraft(
+      { validateImage } as unknown as AttachmentStore,
+      { path, mediaType: 'image/png' },
+      4,
+    )
+    expect(draft).toEqual({
+      id: 4,
+      placeholder: '[Image #4]',
+      input: { data: new Uint8Array([1, 2, 3]), mediaType: 'image/png', name: 'image.png' },
+    })
+    expect(validateImage).toHaveBeenCalledOnce()
+    expect(await readFile(path)).toEqual(Buffer.from([1, 2, 3]))
   })
 
   it('persists only pending drafts and retains durable history references', async () => {

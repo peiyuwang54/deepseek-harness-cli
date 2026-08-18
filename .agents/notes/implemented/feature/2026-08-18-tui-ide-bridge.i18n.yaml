@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-18-tui-ide-bridge.md
+2026-08-18-tui-ide-bridge.md: d5a06b54fcf07eacc931a0000dc0a7a142d8176c
+2026-08-18-tui-ide-bridge.zh.md: 0a664096630a4e5ad2b7050dc435916c134b9bc4

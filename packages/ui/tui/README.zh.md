@@ -16,7 +16,7 @@ Renderer 默认使用终端原生 inline scrollback。鼠标滚轮只滚动不�
 
 当 Agent 处于 idle 状态时，输入 `!command` 会通过已组合的 `ctx.shell` 执行器，按当前 Session 的 sandbox policy 运行这条确切命令。该命令不会启动模型 turn，也不会进入模型上下文；其有界 stdout、stderr、退出状态和 sandbox 事实会保留在持久 TUI transcript 与 `/export` 中。进程结算前 composer 会暂停，Escape 或 Ctrl+C 可以取消命令。未组合 shell 能力的 profile 会报告能力缺失，不会启动不受限制的子进程。
 
-受 Codex 启发的开发者命令是 Harness 服务之上的终端原生适配器。`/skills` 浏览当前 Agent 作用域中面向用户可调用的 catalog；`/keymap` 与 `/vim` 在默认编辑和 Vim Insert／Normal 模式间切换 composer；`/fast` 仅选择元数据真正标识为 flash、fast、turbo 或 lite 的已公布路由，没有这类路由时不会假称加速。`/experimental` 统一启动现有的 fast、Vim、reasoning 可见性与 Loader reload action。`/ide` 报告检测到的终端宿主，并提供 `@` 文件引用或 workspace handoff；没有 IDE bridge 时仍无法捕获已打开文件与选区。`/approve` 会允许活动请求一次，或为下一个与最新交互拒绝在工具和理由上完全匹配的请求预批准一次；如果下一个请求不匹配，它会消耗该授权但不会获得批准，命令也绝不改变 permission preset。
+受 Codex 启发的开发者命令是 Harness 服务之上的终端原生适配器。`/skills` 浏览当前 Agent 作用域中面向用户可调用的 catalog；`/keymap` 与 `/vim` 在默认编辑和 Vim Insert／Normal 模式间切换 composer；`/fast` 仅选择元数据真正标识为 flash、fast、turbo 或 lite 的已公布路由，没有这类路由时不会假称加速。`/experimental` 统一启动现有的 fast、Vim、reasoning 可见性与 Loader reload action。`/ide` 在配置桥接时提供编辑器上下文、跳转、诊断和 diff 审查；没有桥接时回退到 `@` 文件引用和 workspace handoff。`/approve` 会允许活动请求一次，或为下一个与最新交互拒绝在工具和理由上完全匹配的请求预批准一次；如果下一个请求不匹配，它会消耗该授权但不会获得批准，命令也绝不改变 permission preset。
 
 本包（package）只持有交互式终端展示和输入。它注入 `agents`、[`commands`](../../interaction/commands/README.md)、`approval`、`llm`、`systemPrompt`、`tokenMeter`、`tools` 和 `userQuestions`，在组合存在时可选读取 `credentials`、`hooks`、`sandboxPolicy`、`settings`、`shell`、`skills` 与 `workspaceRegistry` 服务，然后驱动由 app 或开发者代码创建或恢复的 agent。Agent 生命周期、持久化、审批策略与模型侧 [`ask_user_question`](../../interaction/tool-ask-user/README.md) 工具仍是独立组合项。
 
@@ -189,6 +189,19 @@ TUI 发出的所有通用 SGR 代码都集中在 `components/theme.ts` 的 `pale
 `/theme` 可选择 `deepseek`（默认）、`cosmic-orange`、`mist-blue`、`sage`、`lavender` 和 `deep-blue`。每种色调都同时定义用于强调角色与 banner 渐变的 24 位真彩色（按背景区分明暗），以及用于非真彩色终端的 ANSI 16 色回退，因此两类终端都能保持与明暗主题适配。
 
 用户提示词会渲染为带留白且无标签的卡片。默认 DeepSeek 主题在浅色模式中保留 Web 主题的精确 `deepseek-50`（`#EDF3FE`）用户气泡色，在暗色模式中保留 `neutral-bluish-850`（`#2C2C2E`）；其他主题色会用对应色值为用户卡片与当前 composer 同步添加淡色调。Assistant 回复不再显示角色标题，而使用暗色 `•` 与对齐续行；可见 reasoning 以 `Think` 开头。工具状态仍由彩色带下划线的标题字形与标题表达，工具正文与展开后的注入上下文统一使用一种暗色。Diff 卡片会为精确新增 `+` 行和删除 `-` 行着色并计数，未变更上下文保持暗色且不计数；超出 `maxDiffEditLength` 时使用已记录的整侧回退。问题面板以粗体强调色突出活跃行，选择器使用反色。除用户卡片与 composer 的背景表面外，这些效果都只作用于前景色。设置 `theme.color: false` 会移除样式和背景表面。
+
+## IDE Bridge
+
+将 `DSH_IDE_BRIDGE_URL` 设置为受信任的 HTTP(S) 桥接根地址，即可连接 VS Code、Cursor 或 Windsurf。可选的 `DSH_IDE_BRIDGE_TOKEN` 以 bearer token 发送，绝不会写入 Session。编辑器状态和文件修改由桥接方负责；TUI 只发送有大小上限的 JSON 请求。
+
+| 请求 | 载荷或结果 |
+|---|---|
+| `GET /context` | `{ workspace?, file?, selection?, diagnostics[] }`，位置从 0 开始 |
+| `POST /open` | `{ path, line?, column? }` |
+| `POST /diff` | `{ patch }` → `{ id }` |
+| `POST /diff/<id>/accept` | 接受桥接方持有的 diff，并返回空响应 |
+
+使用 `/ide context` 或 `/ide diagnostics` 查看当前编辑器，使用 `/ide open <path[:line[:column]]>` 跳转，使用 `/ide diff` 在编辑器中展示只读 Git diff，使用 `/ide accept <diff-id>` 应用已展示的 diff。请求五秒超时，超过 1 MiB 的响应会被拒绝。未设置 `DSH_IDE_BRIDGE_URL` 时，`/ide` 保留终端原生的文件引用和 workspace 操作。
 
 ## 模型体验
 

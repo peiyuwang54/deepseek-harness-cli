@@ -16,7 +16,7 @@ The prompt is a borderless multiline composer whose horizontal padding and backg
 
 Typing `!command` while the Agent is idle runs that exact command through the composed `ctx.shell` executor under the Session's current sandbox policy. The command does not start a model turn or enter model context; its bounded stdout, stderr, exit status, and sandbox facts remain in the durable TUI transcript and `/export`. The composer pauses until the process settles, and Escape or Ctrl+C cancels it. A profile without shell support reports the missing capability instead of starting an unrestricted child process.
 
-Codex-shaped developer commands are terminal-native adapters over Harness services. `/skills` browses the current Agent-scoped user-invocable catalog; `/keymap` and `/vim` switch the composer between default editing and Vim Insert/Normal modes; `/fast` selects an actually advertised route whose metadata identifies it as flash, fast, turbo, or lite, and refuses to claim acceleration when none exists. `/experimental` launches the existing fast, Vim, reasoning-visibility, and Loader-reload actions. `/ide` reports the detected terminal host and offers `@` file references or workspace handoff; open-file and selection capture remain unavailable without an IDE bridge. `/approve` grants an active request once or arms exactly one next request matching the latest interactive rejection's tool and reason; a different next request consumes the grant without receiving it, and the command never changes the permission preset.
+Codex-shaped developer commands are terminal-native adapters over Harness services. `/skills` browses the current Agent-scoped user-invocable catalog; `/keymap` and `/vim` switch the composer between default editing and Vim Insert/Normal modes; `/fast` selects an actually advertised route whose metadata identifies it as flash, fast, turbo, or lite, and refuses to claim acceleration when none exists. `/experimental` launches the existing fast, Vim, reasoning-visibility, and Loader-reload actions. `/ide` uses the configured bridge for editor context, navigation, diagnostics, and diff review, or falls back to `@` file references and workspace handoff when no bridge is configured. `/approve` grants an active request once or arms exactly one next request matching the latest interactive rejection's tool and reason; a different next request consumes the grant without receiving it, and the command never changes the permission preset.
 
 This package owns interactive terminal presentation and input only. It injects `agents`, [`commands`](../../interaction/commands/README.md), `approval`, `llm`, `systemPrompt`, `tokenMeter`, `tools`, and `userQuestions`, optionally reads `credentials`, `hooks`, `sandboxPolicy`, `settings`, `shell`, `skills`, and `workspaceRegistry` services when composed, then drives an agent created or resumed by app or developer code. Agent lifecycle, persistence, approval policy, and the model-facing [`ask_user_question`](../../interaction/tool-ask-user/README.md) tool remain separate composition entries.
 
@@ -187,6 +187,19 @@ There is one role per visual meaning: `dim` is the single recessed tone, `accent
 The theme hue is selectable through `/theme`: `deepseek` (default), `cosmic-orange`, `mist-blue`, `sage`, `lavender`, and `deep-blue`, with the iPhone finishes sampled from Apple's published CSS. Each hue pairs a truecolor 24-bit ink for the accent role and banner gradient with an ANSI 16-color fallback for non-truecolor terminals; the truecolor ink splits per background, so the chrome stays theme-adaptive either way.
 
 Human prompts render as padded, label-free cards. The default DeepSeek theme keeps the Web theme's exact `deepseek-50` (`#EDF3FE`) user-bubble token in light mode and `neutral-bluish-850` (`#2C2C2E`) in dark mode; other theme hues softly tint both the card and active composer from their matching ink. Assistant replies omit a role header and use a dim `•` with aligned continuation lines; visible reasoning starts with `Think`. Tool status remains in the colored, underlined title glyph and title, while the whole tool body and expanded injected context use one dim tone. Diff cards color and count exact added `+` and removed `-` lines while leaving unchanged context dim and uncounted; comparisons beyond `maxDiffEditLength` use the documented whole-side fallback. The question panel uses bold accent text for its active row and selectors use reverse video. Apart from the human-card and composer surfaces, these treatments are foreground-only. Set `theme.color: false` to strip styling and background surfaces.
+
+## IDE Bridge
+
+Set `DSH_IDE_BRIDGE_URL` to a trusted HTTP(S) bridge root to connect VS Code, Cursor, or Windsurf. The optional `DSH_IDE_BRIDGE_TOKEN` is sent as a bearer token and is never written to the Session. The bridge owns editor state and file changes; the TUI only sends bounded JSON requests.
+
+| Request | Payload or result |
+|---|---|
+| `GET /context` | `{ workspace?, file?, selection?, diagnostics[] }` with zero-based positions |
+| `POST /open` | `{ path, line?, column? }` |
+| `POST /diff` | `{ patch }` → `{ id }` |
+| `POST /diff/<id>/accept` | Accepts the bridge-owned diff and returns an empty response |
+
+Use `/ide context` or `/ide diagnostics` to inspect the current editor, `/ide open <path[:line[:column]]>` to jump, `/ide diff` to display the read-only Git diff in the editor, and `/ide accept <diff-id>` to apply a displayed diff. Requests time out after five seconds and responses larger than one MiB are rejected. Without `DSH_IDE_BRIDGE_URL`, `/ide` keeps the terminal-native reference and workspace actions.
 
 ## Model Experience
 

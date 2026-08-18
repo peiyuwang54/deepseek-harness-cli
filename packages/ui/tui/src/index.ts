@@ -225,6 +225,7 @@ import {
   type ExternalImportSource,
 } from './chat/external-import.ts'
 import { gitDiff } from './chat/git-diff.ts'
+import { createIdeBridge, IdeBridgeError, type IdeContext, type IdePosition } from './chat/ide-bridge.ts'
 import { GoalTimingTracker, formatGoalFooterStatus, type GoalFooterState } from './chat/goal-status.ts'
 import type {
   TuiAgentNavigation,
@@ -2572,8 +2573,102 @@ export function createTuiChat(
     return error === undefined ? { kind: 'success' } : { kind: 'error', text: error }
   }
 
+  const ideBridgeConfig = (() => {
+    try {
+      return { bridge: createIdeBridge() }
+    } catch (error) {
+      return { error: error instanceof IdeBridgeError ? error.message : String(error) }
+    }
+  })()
+
+  const formatIdeContext = (context: IdeContext): string => {
+    const selection = context.selection === undefined
+      ? 'none'
+      : `${String(context.selection.start.line + 1)}:${String(context.selection.start.column + 1)}-${String(context.selection.end.line + 1)}:${String(context.selection.end.column + 1)}`
+    const diagnostics = context.diagnostics.length === 0
+      ? ['Diagnostics: none']
+      : [
+        `Diagnostics: ${String(context.diagnostics.length)}`,
+        ...context.diagnostics.slice(0, 20).map((diagnostic) => {
+          const location = diagnostic.path === undefined
+            ? ''
+            : ` ${diagnostic.path}${diagnostic.line === undefined ? '' : `:${String(diagnostic.line + 1)}${diagnostic.column === undefined ? '' : `:${String(diagnostic.column + 1)}`}`}`
+          return `- ${diagnostic.severity}${location}: ${diagnostic.message}`
+        }),
+        ...context.diagnostics.length > 20 ? [`… ${String(context.diagnostics.length - 20)} more diagnostics`] : [],
+      ]
+    return [
+      `IDE workspace: ${context.workspace === undefined ? 'unknown' : context.workspace}`,
+      `Open file: ${context.file === undefined ? 'none' : context.file}`,
+      `Selection: ${selection}`,
+      ...diagnostics,
+    ].join('\n')
+  }
+
+  const parseIdePosition = (value: string): { path: string; position?: IdePosition } => {
+    const match = /^(.*?)(?::(\d+))(?::(\d+))?$/u.exec(value)
+    if (match === null) return { path: value }
+    const path = match[1] ?? ''
+    const line = Number(match[2] ?? '')
+    const column = match[3] === undefined ? 0 : Number(match[3])
+    if (path === '' || !Number.isSafeInteger(line) || line < 1 || !Number.isSafeInteger(column) || column < 1) {
+      return { path: value }
+    }
+    return { path, position: { line: line - 1, column: column - 1 } }
+  }
+
+  const queueIdeOperation = (operation: () => Promise<void>): void => {
+    commandHubOperations = commandHubOperations.then(operation).catch((error: unknown) => {
+      if (!disposed) appendNotice(`IDE bridge error: ${errorChain(error)}`, 'error')
+    })
+  }
+
   const runIdeCommand = (raw: string): CommandResult => {
     const argument = raw.trim()
+    const bridge = ideBridgeConfig.bridge
+    if (ideBridgeConfig.error !== undefined) return { kind: 'error', text: ideBridgeConfig.error }
+    if (bridge !== undefined) {
+      const [verb, ...rest] = argument.split(/\s+/u).filter(Boolean)
+      const tail = rest.join(' ').trim()
+      if (argument === '' || verb === 'context' || verb === 'status' || verb === 'diagnostics') {
+        queueIdeOperation(async () => {
+          const context = await bridge.context()
+          appendNotice(formatIdeContext(context), 'info')
+        })
+        return { kind: 'success' }
+      }
+      if (verb === 'open' || verb === 'jump') {
+        if (tail === '') return { kind: 'error', text: 'Usage: /ide open <path[:line[:column]]>' }
+        const target = parseIdePosition(tail)
+        queueIdeOperation(async () => {
+          await bridge.open(target.path, target.position)
+          appendNotice(`IDE opened ${displayText(tail)}.`)
+        })
+        return { kind: 'success' }
+      }
+      if (verb === 'diff' || verb === 'show-diff') {
+        queueIdeOperation(async () => {
+          const result = await (runtime.gitDiff ?? gitDiff)(cwd, resolved.gitDiffTimeoutMs, new AbortController().signal)
+          if (!result.isWorktree) throw new Error('the current directory is not a Git worktree')
+          if (result.text.trim() === '') {
+            appendNotice('No changes detected.')
+            return
+          }
+          const receipt = await bridge.showDiff(result.text)
+          appendNotice(`IDE diff displayed${receipt.id === '' ? '' : ` (id ${receipt.id})`}. Use /ide accept ${receipt.id} to apply it.`)
+        })
+        return { kind: 'success' }
+      }
+      if (verb === 'accept') {
+        if (tail === '') return { kind: 'error', text: 'Usage: /ide accept <diff-id>' }
+        queueIdeOperation(async () => {
+          await bridge.acceptDiff(tail)
+          appendNotice(`IDE diff ${displayText(tail)} accepted.`)
+        })
+        return { kind: 'success' }
+      }
+      return { kind: 'error', text: 'Usage: /ide [context|diagnostics|open <path[:line[:column]]>|diff|accept <diff-id>]' }
+    }
     if (argument !== '') {
       const reference = /\s/u.test(argument) ? `@${JSON.stringify(argument)} ` : `@${argument} `
       editor.insertTextAtCursor(reference)
@@ -2971,8 +3066,8 @@ export function createTuiChat(
     })
     commandCtx.commands.register({
       name: 'ide',
-      description: 'Inspect terminal IDE context or insert a workspace file reference',
-      input: { hint: '[path]' },
+      description: 'Inspect an IDE bridge, open files, and review or accept diffs',
+      input: { hint: '[context|diagnostics|open <path[:line[:column]]>|diff|accept <diff-id>]' },
       handler: ({ rawInput }) => runIdeCommand(rawInput),
     })
     commandCtx.commands.register({

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-DeepSeek Harness is a plugin-based agent harness on vendored Cordis: **everything is a plugin**. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
+DeepSeek Harness is a vendored-Cordis plugin harness: **everything is a plugin**. Read [docs/architecture.md](docs/architecture.md) before changing `packages/`; follow [docs/AGENTS.md](docs/AGENTS.md) for documentation.
 
 ## Pre-release stance: foundation over blast radius
 
@@ -21,13 +21,14 @@ packages/    @deepseek-ai/dsh-<pkg> workspaces at packages/<group>/<pkg>/
   terminal/         persistent sessions
   fs/          filesystem capability + policy
   lsp/         language-server capability
+  mcp/         MCP registry + client
   skill/       skill provider registry + local impl + catalog/loader tool
   web/         web capability: Service Definition + search/fetch providers + tool Consumer
-  compaction/     compaction capability + basic provider
+  compaction/     compaction seam + provider
   context/     request-context plugins
   subagent/    subagent capability: Service Definition + providers + delegation Consumers
   bundle/      installable dsh --profile patch-layer bundles
-  workflow/    workflow capability + worker-thread provider + tool Consumer
+  workflow/    worker provider + tool Consumer
   todo/        todo_write tool
   plan/        plan mode as logged state
   preset/      per-session agent composition from preset cordis.yml files

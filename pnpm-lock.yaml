@@ -202,6 +202,9 @@ importers:
       '@deepseek-ai/dsh-launch-environment':
         specifier: workspace:^
         version: link:../../packages/util/launch-environment
+      '@deepseek-ai/dsh-mcp':
+        specifier: workspace:^
+        version: link:../../packages/mcp/mcp
       '@deepseek-ai/dsh-mcp-client':
         specifier: workspace:^
         version: link:../../packages/mcp/mcp-client
@@ -587,6 +590,9 @@ importers:
       '@deepseek-ai/dsh-llm-retry':
         specifier: workspace:^
         version: link:../../../packages/llm/llm-retry
+      '@deepseek-ai/dsh-mcp':
+        specifier: workspace:^
+        version: link:../../../packages/mcp/mcp
       '@deepseek-ai/dsh-mcp-client':
         specifier: workspace:^
         version: link:../../../packages/mcp/mcp-client
@@ -1518,6 +1524,9 @@ importers:
       '@deepseek-ai/dsh-llm-retry':
         specifier: workspace:^
         version: link:../../llm/llm-retry
+      '@deepseek-ai/dsh-mcp':
+        specifier: workspace:^
+        version: link:../../mcp/mcp
       '@deepseek-ai/dsh-permission-presets':
         specifier: workspace:^
         version: link:../../interaction/permission-presets
@@ -6054,6 +6063,15 @@ importers:
         specifier: workspace:^
         version: link:../../core/tools
 
+  packages/mcp/mcp:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+
   packages/mcp/mcp-client:
     dependencies:
       '@deepseek-ai/schemastery':
@@ -6075,6 +6093,9 @@ importers:
       '@deepseek-ai/dsh-llm':
         specifier: workspace:^
         version: link:../../llm/llm
+      '@deepseek-ai/dsh-mcp':
+        specifier: workspace:^
+        version: link:../mcp
       '@deepseek-ai/dsh-subprocess':
         specifier: workspace:^
         version: link:../../subprocess/subprocess
@@ -8555,6 +8576,9 @@ importers:
       '@deepseek-ai/dsh-llm-retry':
         specifier: workspace:^
         version: link:../../llm/llm-retry
+      '@deepseek-ai/dsh-mcp':
+        specifier: workspace:^
+        version: link:../../mcp/mcp
       '@deepseek-ai/dsh-permission-presets':
         specifier: workspace:^
         version: link:../../interaction/permission-presets

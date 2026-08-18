@@ -6,6 +6,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import McpRegistry from '@deepseek-ai/dsh-mcp'
 import type { Config } from '@deepseek-ai/dsh-mcp-client'
 
 // ---- Mock MCP SDK ----
@@ -62,6 +63,7 @@ async function mountRegistry(): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(McpRegistry)
   return ctx
 }
 
@@ -90,7 +92,7 @@ const stdioConfig: Config = {
 describe('mcp-client plugin module exports', () => {
   it('exports name, inject, and Config', () => {
     expect(name).toBe('mcp-client')
-    expect(inject).toEqual(['tools'])
+    expect(inject).toEqual(['tools', 'mcp'])
     expect(ConfigSchema).toBeDefined()
   })
 
@@ -204,7 +206,7 @@ describe('apply (plugin lifecycle)', () => {
     await apply(ctx, stdioConfig)
     expect(ctx.tools.get('mcp__srv__remote')).toBeDefined()
 
-    await expect(apply(ctx, stdioConfig)).rejects.toThrow(/serverName "srv" is already in use/)
+    await expect(apply(ctx, stdioConfig)).rejects.toThrow(/server "srv" is already registered/)
     expect(ctx.tools.get('mcp__srv__remote')).toBeDefined()
   })
 
@@ -212,6 +214,7 @@ describe('apply (plugin lifecycle)', () => {
     const first = new Context()
     await first.plugin(SystemPrompt)
     await first.plugin(ToolRuntime)
+    await first.plugin(McpRegistry)
     await apply(first, stdioConfig)
 
     await first.fiber.dispose()
@@ -222,6 +225,7 @@ describe('apply (plugin lifecycle)', () => {
     const second = new Context()
     await second.plugin(SystemPrompt)
     await second.plugin(ToolRuntime)
+    await second.plugin(McpRegistry)
     await expect(apply(second, stdioConfig)).resolves.toBeUndefined()
     await second.fiber.dispose()
   })
@@ -350,7 +354,7 @@ describe('apply (plugin lifecycle)', () => {
   it('effect disposer unregisters the CURRENT generation and closes client', async () => {
     // Load through ctx.plugin so ONLY the plugin's fiber is disposed — the
     // registry must survive to observe the unregistration.
-    const fiber = ctx.plugin({ name: 'mcp-client', inject: ['tools'], apply }, stdioConfig)
+    const fiber = ctx.plugin({ name: 'mcp-client', inject, apply }, stdioConfig)
     await fiber
 
     // Advance to a second generation first.

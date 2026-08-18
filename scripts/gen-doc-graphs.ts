@@ -278,6 +278,15 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Registers capabilities, owns Code Mode transport, and routes calls through pre-policy, monotonic guards, around dispatch, post-policy, and final-result observation.',
   },
   {
+    key: 'mcp',
+    pkg: 'mcp',
+    title: 'MCP runtime status and lifecycle control',
+    mode: 'seam',
+    implementations: ['mcp-client'],
+    consumers: ['tui'],
+    note: 'Concrete MCP clients publish effect-scoped connection snapshots and immediate reload controls; human diagnostics consume the seam without owning transports or tool registrations.',
+  },
+  {
     key: 'userQuestions',
     pkg: 'user-questions',
     title: 'Human question/answer seam',

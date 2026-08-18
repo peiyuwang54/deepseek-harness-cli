@@ -32,6 +32,11 @@
     - id: hooks
       name: '@deepseek-ai/dsh-hook-protocol'
 
+    # Active MCP clients register connection state and reload controls here;
+    # concrete server rows remain opt-in through managed or authored layers.
+    - id: mcp
+      name: '@deepseek-ai/dsh-mcp'
+
     - id: typert
       name: '@deepseek-ai/dsh-typert-registry'
 

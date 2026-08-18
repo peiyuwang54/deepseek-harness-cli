@@ -48,6 +48,7 @@ Here are some core packages that contribute to the Cordis tree.
 | [`core/agent`](subsystems/core.md) | The `Agent` interface, live registry, and `agent/*` events | `ctx.agents` |
 | [`core/agent-loop`](subsystems/core.md) | The default driver implementing that interface | `ctx.agentLoop` |
 | [`core/scope`](subsystems/scope.md) | The per-agent scoped-registration primitive | library, no key |
+| [`mcp/mcp`](../packages/mcp/mcp/README.md) | Active MCP server status and reload controls | `ctx.mcp` |
 | [`llm/llm`](subsystems/llm-streaming.md) | Message and stream vocabulary plus the adapter seam | `ctx.llm` |
 
 ## Events

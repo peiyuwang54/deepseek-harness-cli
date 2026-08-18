@@ -54,7 +54,7 @@ deepseek mcp remove filesystem
 
 `--env KEY` forwards the same-named launch environment variable; `--env KEY=SOURCE` maps another source variable into the server process. HTTP `--header NAME=SOURCE` follows the same reference model. The catalog stores only source names and resolves them when a shipped profile starts; an unset source fails startup before the server connects. Embedded URL credentials are rejected. Config dumps print `<environment:SOURCE>` rather than the resolved value.
 
-Managed servers load only into the three shipped app profiles and require a restart after add or remove. Custom profiles retain full ownership of their composition and can insert `@deepseek-ai/dsh-mcp-client` through ordinary patches. A stdio server command executes as trusted local code outside the agent sandbox; install and review it before enabling it. Inside the TUI, `/mcp`, `/mcp desc`, and `/mcp schema` inspect the scoped tools that connected servers published.
+Managed servers load only into the three shipped app profiles and require a restart after add or remove. Custom profiles retain full ownership of their composition and can insert `@deepseek-ai/dsh-mcp-client` through ordinary patches. A stdio server command executes as trusted local code outside the agent sandbox; install and review it before enabling it. Inside the TUI, `/mcp`, `/mcp desc`, and `/mcp schema` combine live connection state with the scoped tools that each server published. `/mcp reload [server]` reconnects one current instance or all of them while every live Agent is idle; it does not reread the managed catalog.
 
 ## Plugin management
 

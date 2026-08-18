@@ -14,7 +14,7 @@ The `ToolRuntime` already accepts raw JSON Schema tool definitions (documented i
 
 ### Package
 
-A single package `@deepseek-ai/dsh-mcp-client` at `packages/mcp/mcp-client/`. No capability-seam three-package split — there is no foreseeable second MCP client implementation, and the convention is "don't split preemptively" ([capability seams Agent Note](../architecture/2026-06-13-capability-seams.md)).
+The concrete transport bridge remains one package, `@deepseek-ai/dsh-mcp-client` at `packages/mcp/mcp-client/`; it is not split by transport. The later [runtime status and reload decision](2026-08-18-mcp-runtime-status-and-reload.md) partially supersedes the original single-package topology by adding the transport-independent `@deepseek-ai/dsh-mcp` Service Definition once a human diagnostics Consumer exists.
 
 ### SDK
 
@@ -26,7 +26,7 @@ MCP Client only (no server side — ACP already covers the "expose harness as an
 
 ### Plugin shape
 
-Namespace plugin (named exports `name`/`inject`/`Config`/`apply`, no `export default`). `inject: ['tools']`. Each MCP server is one plugin instance in the composed Cordis tree — the same package loaded N times with different configs, like `dsh-tool-subagent`. An instance may come from an authored patch or from the [managed MCP server catalog](2026-08-18-managed-mcp-server-catalog.md).
+Namespace plugin (named exports `name`/`inject`/`Config`/`apply`, no `export default`). `inject: ['tools', 'mcp']`. Each MCP server is one plugin instance in the composed Cordis tree — the same package loaded N times with different configs, like `dsh-tool-subagent`. An instance may come from an authored patch or from the [managed MCP server catalog](2026-08-18-managed-mcp-server-catalog.md).
 
 ### Configuration
 
@@ -83,7 +83,7 @@ The model sees `mcp__github__create_issue`, `mcp__github__search_code`, `mcp__we
 
 ### Lifecycle
 
-Every instance enters through Cordis at boot. HMR (`@cordisjs/plugin-hmr`) provides hot-swap for authored YAML: editing the entry triggers dispose of the old instance (disconnects, unregisters tools) and creation of a new one (connects, discovers, registers). Managed-catalog changes require a process restart. There is no runtime-dynamic API. Public names are pure functions of `(serverName, rawName)`, so an HMR swap that keeps `serverName` recreates identical model-facing names — session history and permission rules stay valid — and adding or removing an unrelated server never renames an existing tool.
+Every instance enters through Cordis at boot. HMR (`@cordisjs/plugin-hmr`) provides hot-swap for authored YAML: editing the entry triggers dispose of the old instance (disconnects, unregisters tools) and creation of a new one (connects, discovers, registers). Managed-catalog add and remove require a process restart; `ctx.mcp` can immediately reload an already composed instance without rereading that catalog. Public names are pure functions of `(serverName, rawName)`, so an HMR swap that keeps `serverName` recreates identical model-facing names — session history and permission rules stay valid — and adding or removing an unrelated server never renames an existing tool.
 
 ### Tool discovery and registration
 
@@ -94,7 +94,7 @@ Every MCP tool has two names:
 
       mcp__<serverName>__<rawName>
 
-This server-qualified shape is the de-facto standard among multi-server agent clients — every surveyed end-user product qualifies MCP tools by server ([Claude Code](https://code.claude.com/docs/en/agent-sdk/mcp#tool-naming-convention) `mcp__github__list_issues`, [Codex](https://openai.com/index/unrolling-the-codex-agent-loop/) `mcp__weather__get-forecast`, [Gemini CLI](https://geminicli.com/docs/tools/mcp-server/#3-tool-naming-and-namespaces), [VS Code](https://github.com/microsoft/vscode/blob/ab9ec62c6a61e429a9abd612ff220c3f4834c9ea/src/vs/workbench/contrib/mcp/common/mcpServer.ts#L217-L260), [Cline](https://github.com/cline/cline/blob/52fdbb1d72f7324a28142a7ba7678d4b53c902f4/sdk/packages/core/src/extensions/mcp/name-transform.ts#L20-L35), [Roo Code](https://github.com/RooCodeInc/Roo-Code/blob/b867ec9145750d0ae1ff7f02d35406e9bf2a0b16/src/utils/mcp-name.ts#L117-L140), [Goose](https://github.com/block/goose/blob/b3a012cbdde854b0fe14f95b1c48543bf6517c0a/crates/goose/src/agents/extension_manager.rs#L1391-L1441), [OpenCode](https://github.com/anomalyco/opencode/blob/d199b1bff90282a4f9cd6251b5fc7b16875a52f6/packages/opencode/src/mcp/catalog.ts#L117-L120)); the exact `mcp__<server>__<tool>` spelling follows Claude Code and Codex. The `mcp__` marker keeps MCP registrations out of the native tools' namespace and gives permission/telemetry rules a stable shape (`mcp__*`, `mcp__github__*`).
+This server-qualified shape is the de-facto standard among multi-server agent clients — every surveyed end-user product qualifies MCP tools by server ([Claude Code](https://code.claude.com/docs/en/agent-sdk/mcp#tool-naming-convention) `mcp__github__list_issues`, [Codex](https://openai.com/index/unrolling-the-codex-agent-loop/) `mcp__weather__get-forecast`, [Gemini CLI](https://geminicli.com/docs/tools/mcp-server/#3-tool-naming-and-namespaces), [VS Code](https://github.com/microsoft/vscode/blob/ab9ec62c6a61e429a9abd612ff220c3f4834c9ea/src/vs/workbench/contrib/mcp/common/mcpServer.ts#L217-L260), [Cline](https://github.com/cline/cline/tree/52fdbb1d72f7324a28142a7ba7678d4b53c902f4), [Roo Code](https://github.com/RooCodeInc/Roo-Code/blob/b867ec9145750d0ae1ff7f02d35406e9bf2a0b16/src/utils/mcp-name.ts#L117-L140), [Goose](https://github.com/block/goose/blob/b3a012cbdde854b0fe14f95b1c48543bf6517c0a/crates/goose/src/agents/extension_manager.rs#L1391-L1441), [OpenCode](https://github.com/anomalyco/opencode/tree/d199b1bff90282a4f9cd6251b5fc7b16875a52f6)); the exact `mcp__<server>__<tool>` spelling follows Claude Code and Codex. The `mcp__` marker keeps MCP registrations out of the native tools' namespace and gives permission/telemetry rules a stable shape (`mcp__*`, `mcp__github__*`).
 
 1. On connect: drain `client.listTools()` pagination, derive every tool's `publicName`, then register each as a raw `ToolDefinition` via `ctx.tools.register()`. The MCP JSON Schema and description pass through unchanged (no `defineTool` DSL conversion); only the model-facing `name` is replaced.
 2. Listen for `notifications/tools/list_changed` → re-run the same sync (dispose previous generation, register new). Deterministic names mean unchanged tools keep their names across re-syncs.
@@ -205,4 +205,4 @@ Coverage is named per tier; each behavior lives at the cheapest tier that can ex
 - **MCP SDK stability**: the `@modelcontextprotocol/sdk` is still evolving; breaking changes require updating the bridge. The version is pinned, and the SDK is widely adopted (Claude Desktop, Cursor, VS Code) so breaking changes are unlikely to be silent.
 - **Tool schema quality**: MCP servers may expose poorly-described tools (vague descriptions, incomplete JSON schemas). The harness passes them through as-is — garbage-in-garbage-out; that is the server author's responsibility, not the bridge's.
 - **Stdio process management**: a misbehaving MCP server that ignores signals could wedge dispose. The Cordis fiber disposal has bounded quiescence; a stuck transport eventually times out at the framework level.
-- Crash recovery is automatic within the [reconnect budget](2026-08-06-mcp-client-auto-reconnect.md); restart or an authored-profile HMR edit is the recovery path after exhaustion or with `reconnect.enabled: false`.
+- Crash recovery is automatic within the [reconnect budget](2026-08-06-mcp-client-auto-reconnect.md); [manual runtime reload](2026-08-18-mcp-runtime-status-and-reload.md), restart, or an authored-profile HMR edit can recover after exhaustion or with `reconnect.enabled: false`.

@@ -18,6 +18,7 @@ import {
   type ContentBlock,
 } from '@deepseek-ai/dsh-llm'
 import { RetryId } from '@deepseek-ai/dsh-llm-retry'
+import McpRegistry from '@deepseek-ai/dsh-mcp'
 import GoalService from '@deepseek-ai/dsh-goal'
 import HookRegistry from '@deepseek-ai/dsh-hook-protocol'
 import type { JobOutcome } from '@deepseek-ai/dsh-jobs'
@@ -99,6 +100,7 @@ const CHECKPOINTS = [
   'goal-status-paused',
   'goal-status-complete',
   'mcp-tools',
+  'mcp-reload',
   'memory-providers',
   'feedback-usage',
   'hooks-browser',
@@ -1559,6 +1561,44 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('\r')
     })
     await checkpoint('mcp-tools', harness.terminal, { includeScrollback: true })
+    await disposeSnapshot(harness)
+  })
+
+  it('pins MCP runtime status and immediate reload results', async () => {
+    const output: ToolDefinition['output'] = {
+      schema: { type: 'null' },
+      render: () => [],
+    }
+    const harness = await setupSnapshot({
+      configureContext: async (ctx) => {
+        await ctx.plugin(SystemPrompt)
+        await ctx.plugin(ToolRegistry)
+        await ctx.plugin(McpRegistry)
+        ctx.mcp.register({
+          name: 'github',
+          transport: 'stdio',
+          status: () => ({
+            state: 'connected',
+            toolCount: 1,
+            reconnectAttempt: 0,
+            maxReconnectAttempts: 10,
+          }),
+          reload: async () => true,
+        })
+        ctx.tools.register({
+          name: 'mcp__github__search',
+          description: 'Search GitHub repositories',
+          parameters: { query: { type: 'string' } },
+          output,
+          execute: async () => null,
+        })
+      },
+    }, { columns: 92, rows: 32 })
+    await renderAfter(harness, () => {
+      harness.terminal.send('/mcp reload github')
+      harness.terminal.send('\r')
+    })
+    await checkpoint('mcp-reload', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
   })
 

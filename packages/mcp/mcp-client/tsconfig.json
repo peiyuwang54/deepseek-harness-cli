@@ -19,6 +19,9 @@
       "path": "../../llm/llm"
     },
     {
+      "path": "../mcp"
+    },
+    {
       "path": "../../core/tools"
     },
     {

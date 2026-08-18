@@ -24,10 +24,10 @@ The durable parser rejects unknown fields, unsupported versions, malformed names
 
 **Store literal environment and header values.** File permissions alone do not prevent secrets from appearing in inspection output, backups, or copied configuration. References keep secret material under the existing launch-environment ownership.
 
-**Mutate live MCP instances from the TUI.** A second runtime manager would duplicate Cordis lifecycle ownership and require a connection-status service before it could report reliable reload results. This catalog remains a launch-time input; live `/mcp` management can be added only through an effect-scoped service owned by the MCP client lifecycle.
+**Mutate live MCP instances from the TUI.** A second runtime manager would duplicate Cordis lifecycle ownership and require a connection-status service before it could report reliable reload results. This catalog remains a launch-time input; the later [MCP runtime registry](2026-08-18-mcp-runtime-status-and-reload.md) adds live reload through an effect-scoped service contributed by the MCP client lifecycle instead of mutating the catalog.
 
 ## Consequences
 
 Common MCP setup now has one stable CLI surface and works across all shipped app profiles without changing the underlying plugin architecture. Managed configuration remains inspectable and deterministic while secret values stay out of the durable file and config dumps.
 
-Server executables are still trusted local code outside the agent sandbox, and the CLI does not install them. OAuth, enable or disable state, and live reload are not provided by this catalog. Unit tests pin parsing, mutation, permissions, reference resolution, redaction, and generated patches; a built-bin e2e test pins real command dispatch and dump composition. No Session snapshot is added because management is boot-free and creates no transcript event.
+Server executables are still trusted local code outside the agent sandbox, and the CLI does not install them. OAuth and enable or disable state are not provided. Catalog changes require a new process; [runtime reload](2026-08-18-mcp-runtime-status-and-reload.md) reconnects only instances already composed from the current file. Unit tests pin parsing, mutation, permissions, reference resolution, redaction, and generated patches; a built-bin e2e test pins real command dispatch and dump composition. No Session snapshot is added because management is boot-free and creates no transcript event.

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mcpCommandResult } from '../src/chat/mcp-command.ts'
 
 describe('mcp command', () => {
@@ -66,15 +66,74 @@ describe('mcp command', () => {
       { name: 'mcp__github__search', description: '', parameters: {} },
     ])).toEqual({
       kind: 'success',
-      text: 'MCP server "missing" is not visible to this session.',
+      text: 'MCP server "missing" is not configured or visible to this session.',
     })
     expect(mcpCommandResult('details', [])).toEqual({
       kind: 'error',
-      text: 'Usage: /mcp [list|ls|desc|verbose|schema] [server]',
+      text: 'Usage: /mcp [list|ls|desc|verbose|schema|reload] [server]',
     })
     expect(mcpCommandResult('schema github extra', [])).toEqual({
       kind: 'error',
-      text: 'Usage: /mcp [list|ls|desc|verbose|schema] [server]',
+      text: 'Usage: /mcp [list|ls|desc|verbose|schema|reload] [server]',
+    })
+  })
+
+  it('includes configured servers, connection state, transport, and visible counts', () => {
+    const runtime = {
+      list: () => [
+        {
+          name: 'empty', transport: 'streamable-http' as const, state: 'failed' as const,
+          toolCount: 0, reconnectAttempt: 10, maxReconnectAttempts: 10,
+        },
+        {
+          name: 'github', transport: 'stdio' as const, state: 'reconnecting' as const,
+          toolCount: 2, reconnectAttempt: 1, maxReconnectAttempts: 10,
+        },
+      ],
+      reload: async () => [],
+    }
+    expect(mcpCommandResult('desc', [
+      { name: 'mcp__github__search', description: 'Search', parameters: {} },
+    ], { runtime })).toEqual({
+      kind: 'success',
+      text: [
+        'MCP servers visible to this session (2 servers · 1 visible tool)',
+        '- empty · failed · 0 tools',
+        '  transport: streamable-http',
+        '- github · reconnecting · 2 tools · 1 visible',
+        '  transport: stdio',
+        '  reconnect: 1/10',
+        '  - mcp__github__search — Search',
+      ].join('\n'),
+    })
+  })
+
+  it('reloads one server, reports failed immediate attempts, and requires idle runtime state', async () => {
+    const reload = vi.fn(async (name?: string) => [{
+      name: name ?? 'github',
+      reloaded: false,
+      status: {
+        name: name ?? 'github', transport: 'stdio' as const, state: 'reconnecting' as const,
+        toolCount: 1, reconnectAttempt: 1, maxReconnectAttempts: 10,
+      },
+    }])
+    const runtime = { list: () => [], reload }
+
+    await expect(mcpCommandResult('reload github', [], { runtime })).resolves.toEqual({
+      kind: 'success',
+      text: [
+        'MCP reload complete (0/1 reloaded)',
+        '- github · immediate attempt failed · reconnecting · 1 tool',
+      ].join('\n'),
+    })
+    expect(reload).toHaveBeenCalledWith('github')
+    await expect(mcpCommandResult('reload', [], { runtime, busyAgentStatus: 'running' })).resolves.toEqual({
+      kind: 'error',
+      text: '/mcp reload requires every live agent to be idle (busy status: running).',
+    })
+    await expect(mcpCommandResult('reload', [])).resolves.toEqual({
+      kind: 'error',
+      text: '/mcp reload needs the MCP runtime service.',
     })
   })
 })

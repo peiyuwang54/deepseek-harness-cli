@@ -87,7 +87,7 @@ deepseek mcp list
 deepseek mcp remove filesystem
 ```
 
-`--env KEY[=SOURCE]` and `--header NAME=SOURCE` save environment-variable references, not secret values. Restart the CLI after a change, then use `/mcp`, `/mcp desc`, or `/mcp schema` to inspect the tools visible to the current session.
+`--env KEY[=SOURCE]` and `--header NAME=SOURCE` save environment-variable references, not secret values. Restart the CLI after an add or remove. Inside a running session, use `/mcp`, `/mcp desc`, or `/mcp schema` to inspect connection state and visible tools, and `/mcp reload [server]` to reconnect the current configuration.
 
 ## What it includes
 

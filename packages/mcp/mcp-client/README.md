@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-MCP client bridge plugin: connects to external [Model Context Protocol](https://modelcontextprotocol.io/) servers and registers their tools on `ctx.tools`, making them available to the model as native tools under server-qualified names (`mcp__<serverName>__<rawName>`).
+MCP client bridge plugin: connects to external [Model Context Protocol](https://modelcontextprotocol.io/) servers, publishes connection state on `ctx.mcp`, and registers their tools on `ctx.tools` under server-qualified names (`mcp__<serverName>__<rawName>`).
 
 ## Usage
 
@@ -67,13 +67,15 @@ Every MCP tool has two names: the raw MCP name (sent on the wire in `tools/call`
 - Canonical success is `{ content: JsonValue[], structuredContent? }`; complete JSON MCP blocks survive for programmatic callers. A supported advertised `outputSchema` validates `structuredContent`; unsupported schema vocabulary falls back to unconstrained `JsonValue`.
 - Native/model rendering keeps the existing text projection: text blocks join with newlines while image, audio, resource, and unsupported blocks become placeholders.
 - On disconnect/crash: the supervisor restarts the original server config with exponential backoff (`reconnect.initialDelayMs` doubling up to `reconnect.maxDelayMs`) and re-runs discovery on success — the recovered generation replaces the previous one, so tools neither duplicate nor leak. During the outage the last good generation stays registered; calls against it fail until recovery.
-- Reconnection is budgeted per outage: after `reconnect.maxAttempts` consecutive failures the server's tools are unregistered and reconnection stops until an HMR reload or Host restart. A connection that survives past `maxDelayMs` resets the budget, so an occasionally-crashing server recovers indefinitely while a crash-looping one — even with briefly successful connects — still exhausts the cap instead of restarting forever.
+- Reconnection is budgeted per outage: after `reconnect.maxAttempts` consecutive failures the server's tools are unregistered and reconnection stops until a manual server reload, HMR replacement, or Host restart. A connection that survives past `maxDelayMs` resets the budget, so an occasionally-crashing server recovers indefinitely while a crash-looping one — even with briefly successful connects — still exhausts the cap instead of restarting forever.
 - Reconnect states are user-visible in logs: reconnecting (warn, with attempt count and delay), recovered (info), final failure and disabled-loss (error). Disposal cancels any pending reconnect. With `reconnect.enabled: false`, a lost connection keeps tools registered but failing until a reload — the manual-recovery behavior.
+- `ctx.mcp.reload(name?)` cancels pending backoff, closes the current generation through the same bounded barrier, waits for tool synchronization to quiesce, and makes one immediate replacement attempt. Concurrent requests for one server share that replacement. A failed immediate attempt resumes the configured automatic reconnect policy.
 
 ## Services consumed
 
 | Service | Usage |
 |---|---|
+| `ctx.mcp` | Register connection status and immediate reload control |
 | `ctx.tools` | Register/unregister MCP tools |
 
 ## Model Experience

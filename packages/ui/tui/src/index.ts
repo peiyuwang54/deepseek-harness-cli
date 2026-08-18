@@ -2983,9 +2983,16 @@ export function createTuiChat(
     })
     commandCtx.commands.register({
       name: 'mcp',
-      description: 'Inspect MCP servers and tools visible to this session',
-      input: { hint: '[list|desc|schema] [server]' },
-      handler: ({ rawInput }) => mcpCommandResult(rawInput, agent.ctx.tools.schemas(agent)),
+      description: 'Inspect or reload MCP servers visible to this session',
+      input: { hint: '[list|desc|schema|reload] [server]' },
+      handler: ({ rawInput }) => {
+        const runtime = ctx.get('mcp')
+        const busyAgent = ctx.agents.list().find(candidate => candidate.status !== 'idle')
+        return mcpCommandResult(rawInput, agent.ctx.tools.schemas(agent), {
+          ...runtime === undefined ? {} : { runtime },
+          ...busyAgent === undefined ? {} : { busyAgentStatus: busyAgent.status },
+        })
+      },
     })
     commandCtx.commands.register({
       name: 'memories',

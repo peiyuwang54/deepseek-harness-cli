@@ -960,6 +960,31 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'mcp',
+    summary: 'Effect-scoped registry of active MCP server runtimes.',
+    description: 'Effect-scoped registry of active MCP server runtimes.',
+    methods: [
+      {
+        signature: 'register(server: McpServerRuntime): () => void',
+        description: 'Register one concrete MCP server runtime for the calling plugin\'s lifetime.',
+        parameters: [{ name: 'server', description: 'Borrowed runtime status and reload controls.' }],
+        returns: 'The exact effect disposer that removes this server.',
+      },
+      {
+        signature: 'list(): McpServerStatus[]',
+        description: 'Snapshot every active server in stable name order.',
+        parameters: [],
+        returns: 'Fresh status objects detached from provider state.',
+      },
+      {
+        signature: 'async reload(name?: string): Promise<McpReloadResult[]>',
+        description: 'Immediately reconnect one server or every active server. Distinct servers reload concurrently; each provider serializes its own generations.',
+        parameters: [{ name: 'name', description: 'Exact server namespace, or omission to select every server.' }],
+        returns: 'Stable-name results after all immediate attempts settle.',
+      },
+    ],
+  },
+  {
     key: 'messageFeedback',
     summary: 'Storage-domain sidecar service.',
     description: 'Storage-domain sidecar service. It inspects persisted Session history and never creates or resumes an Agent or Session.',
@@ -3544,6 +3569,30 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ManualCompactAgentContext',
     declaration: 'export interface ManualCompactAgentContext extends CompactionAgentContext {\n    runMaintenance<T>(task: (signal: AbortSignal) => Promise<T>): Promise<T>;\n}',
+  },
+  {
+    name: 'McpConnectionState',
+    declaration: 'export type McpConnectionState = \'connecting\' | \'connected\' | \'reconnecting\' | \'failed\';',
+  },
+  {
+    name: 'McpConnectionStatus',
+    declaration: 'export interface McpConnectionStatus {\n    readonly state: McpConnectionState;\n    readonly toolCount: number;\n    readonly reconnectAttempt: number;\n    readonly maxReconnectAttempts: number;\n}',
+  },
+  {
+    name: 'McpReloadResult',
+    declaration: 'export interface McpReloadResult {\n    readonly name: string;\n    readonly reloaded: boolean;\n    readonly status: McpServerStatus;\n}',
+  },
+  {
+    name: 'McpServerRuntime',
+    declaration: 'export interface McpServerRuntime {\n    readonly name: string;\n    readonly transport: McpTransport;\n    readonly status: () => McpConnectionStatus;\n    readonly reload: () => Promise<boolean>;\n}',
+  },
+  {
+    name: 'McpServerStatus',
+    declaration: 'export interface McpServerStatus extends McpConnectionStatus {\n    readonly name: string;\n    readonly transport: McpTransport;\n}',
+  },
+  {
+    name: 'McpTransport',
+    declaration: 'export type McpTransport = \'stdio\' | \'streamable-http\';',
   },
   {
     name: 'Message',

@@ -58,7 +58,7 @@ Ctrl+G 会通过用户的 `VISUAL` 或 `EDITOR` 命令编辑当前 composer 草�
 
 直接调用 `/model off`、`/model high` 或 `/model max` 会复用当前路由公布的推理强度 catalog。不可用的等级会被拒绝，且不改变选择。
 
-`/mcp [list|desc|schema] [server]` 只投影当前 Agent 作用域工具视图中的 MCP 限定 schema。它会按服务器归组稳定的公开工具名；描述视图与参数 schema 视图会逐级展示更多发现数据，可选的服务器 id 可过滤任一视图。`ls` 是 `list` 的别名，`verbose` 则继续作为 `desc` 的别名。该投影不会声称工具注册表无法判定的连接状态。
+`/mcp [list|desc|schema|reload] [server]` 会把 [MCP 运行时 registry](2026-08-18-mcp-runtime-status-and-reload.md)与当前 Agent 作用域工具视图中的 MCP 限定 schema 合并。它会按服务器归组稳定的公开工具名；描述视图与参数 schema 视图会逐级展示更多发现数据，可选的服务器 id 可过滤任一视图。`ls` 是 `list` 的别名，`verbose` 则继续作为 `desc` 的别名。连接状态与重连进度来自持有该连接的 client supervisor，而不是根据工具是否存在来推断。reload 只在所有存活 Agent 都空闲时重连一个当前服务器或全部服务器；缺少运行时服务的 TUI 嵌入会保留只读工具发现，并报告 reload 不可用。
 
 `/memories [verbose]` 会把同一份作用域工具视图缩小到 server id 能识别为 `memory`、`memorix` 或 `engram` 的 MCP 工具，再按 provider 归组可见工具。该命令为只读，不会推断已存数据、启用记忆使用或提供破坏性重置。Harness 没有内置记忆存储；provider 配置与所有数据生命周期操作都留在该 TUI projection 之外。
 

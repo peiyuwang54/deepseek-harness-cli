@@ -1,6 +1,7 @@
 /** Read-only `/memories` projection over visible Memory MCP tools. */
 
 import type { CommandResult } from '@deepseek-ai/dsh-commands'
+import { groupMcpTools } from './mcp-tools.ts'
 
 interface VisibleTool {
   readonly name: string
@@ -12,31 +13,11 @@ interface MemoryProvider {
   readonly tools: readonly VisibleTool[]
 }
 
-const MCP_TOOL_PREFIX = 'mcp__'
 const MEMORY_SERVER_PATTERN = /(?:^|[_-])(?:memory|memorix|engram)(?:$|[_-])/u
 const CONFIGURE_HINT = 'Configure an optional provider outside chat; see examples/mcp-memory/README.md. /mcp verbose lists all MCP tools.'
 
-function mcpServerName(toolName: string): string | undefined {
-  if (!toolName.startsWith(MCP_TOOL_PREFIX)) return undefined
-  const server = toolName.slice(MCP_TOOL_PREFIX.length).split('__', 1)[0]
-  return server === undefined || server.length === 0 ? undefined : server
-}
-
 function memoryProviders(tools: readonly VisibleTool[]): MemoryProvider[] {
-  const grouped = new Map<string, VisibleTool[]>()
-  for (const tool of tools) {
-    const server = mcpServerName(tool.name)
-    if (server === undefined || !MEMORY_SERVER_PATTERN.test(server)) continue
-    const entries = grouped.get(server) ?? []
-    entries.push(tool)
-    grouped.set(server, entries)
-  }
-  return [...grouped]
-    .toSorted(([left], [right]) => left.localeCompare(right))
-    .map(([name, entries]) => ({
-      name,
-      tools: entries.toSorted((left, right) => left.name.localeCompare(right.name)),
-    }))
+  return groupMcpTools(tools).filter(provider => MEMORY_SERVER_PATTERN.test(provider.name))
 }
 
 /**

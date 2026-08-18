@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-MCP 客户端桥接插件：连接外部 [Model Context Protocol](https://modelcontextprotocol.io/) 服务器，把它们的工具注册到 `ctx.tools`，使模型能够通过服务器限定名称（`mcp__<serverName>__<rawName>`）将其作为原生工具使用。
+MCP 客户端桥接插件：连接外部 [Model Context Protocol](https://modelcontextprotocol.io/) 服务器，在 `ctx.mcp` 发布连接状态，并将工具以服务器限定名称（`mcp__<serverName>__<rawName>`）注册到 `ctx.tools`。
 
 ## 用法
 
@@ -67,13 +67,15 @@ MCP 客户端桥接插件：连接外部 [Model Context Protocol](https://modelc
 - 规范成功值是 `{ content: JsonValue[], structuredContent? }`；完整的 JSON MCP 块会保留给编程调用方。受支持且已声明的 `outputSchema` 会验证 `structuredContent`；不受支持的 schema 词汇会回退为不受约束的 `JsonValue`。
 - Native／模型渲染保留现有文本投影：文本块以换行连接，图片、音频、资源和不受支持的块会变成占位符。
 - 断开／崩溃时：supervisor 以指数退避（`reconnect.initialDelayMs` 逐次翻倍，上限 `reconnect.maxDelayMs`）重启原始服务器配置，成功后重新执行发现——恢复的世代会替换前一个，因此工具既不会重复也不会泄漏。中断期间最后一个正常世代保持注册；针对它的调用在恢复前会失败。
-- 重连按中断预算控制：连续失败达到 `reconnect.maxAttempts` 次后，该服务器的工具会被注销，重连停止，直到 HMR 重载或重启 Host。连接存活超过 `maxDelayMs` 会重置预算，因此偶尔崩溃的服务器可以无限恢复，而崩溃循环的服务器——即使短暂连接成功——仍会耗尽上限而非永远重启。
+- 重连按中断预算控制：连续失败达到 `reconnect.maxAttempts` 次后，该服务器的工具会被注销，重连停止，直到手动重载服务器、HMR 替换或重启 Host。连接存活超过 `maxDelayMs` 会重置预算，因此偶尔崩溃的服务器可以无限恢复，而崩溃循环的服务器——即使短暂连接成功——仍会耗尽上限而非永远重启。
 - 重连状态在日志中对用户可见：reconnecting（warn，含尝试次数和延迟）、recovered（info）、最终失败和 disabled-loss（error）。dispose（资源释放）会取消任何待执行的重连。设置 `reconnect.enabled: false` 时，连接丢失后工具保持注册但调用失败，直到重载——即手动恢复行为。
+- `ctx.mcp.reload(name?)` 会取消待执行的退避，通过同一有界屏障关闭当前世代，等待工具同步静止，再立即尝试建立一个替代世代。同一服务器的并发请求会共享这次替换。立即尝试失败后会恢复使用已配置的自动重连策略。
 
 ## 消费的服务
 
 | 服务 | 用途 |
 |---|---|
+| `ctx.mcp` | 注册连接状态与立即重载控制 |
 | `ctx.tools` | 注册／注销 MCP 工具 |
 
 ## 模型体验

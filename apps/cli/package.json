@@ -43,6 +43,7 @@
     "@deepseek-ai/dsh-fs-local": "workspace:^",
     "@deepseek-ai/dsh-headless": "workspace:^",
     "@deepseek-ai/dsh-mcp-client": "workspace:^",
+    "@deepseek-ai/dsh-mcp": "workspace:^",
     "@deepseek-ai/dsh-home-paths": "workspace:^",
     "@deepseek-ai/dsh-persona": "workspace:^",
     "@deepseek-ai/dsh-plan-mode": "workspace:^",

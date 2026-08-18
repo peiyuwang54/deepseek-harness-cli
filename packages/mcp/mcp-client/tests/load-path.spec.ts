@@ -22,7 +22,7 @@ describe('dsh-mcp-client real-load-path guard', () => {
     const unwrapped = loader.unwrapExports(mcpClient) as Record<string, unknown>
     expect(unwrapped).toBe(mcpClient)
     expect(unwrapped.name).toBe('mcp-client')
-    expect(unwrapped.inject).toEqual(['tools'])
+    expect(unwrapped.inject).toEqual(['tools', 'mcp'])
     expect(typeof unwrapped.apply).toBe('function')
     expect(unwrapped.Config).toBeDefined()
   })

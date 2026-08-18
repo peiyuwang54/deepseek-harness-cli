@@ -58,6 +58,7 @@
     "@deepseek-ai/dsh-jobs": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/dsh-llm-retry": "workspace:^",
+    "@deepseek-ai/dsh-mcp": "workspace:^",
     "@deepseek-ai/dsh-permission-presets": "workspace:^",
     "@deepseek-ai/dsh-plan-mode": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",
@@ -92,6 +93,9 @@
       "optional": true
     },
     "@deepseek-ai/dsh-jobs": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-mcp": {
       "optional": true
     },
     "@deepseek-ai/dsh-permission-presets": {
@@ -149,6 +153,7 @@
     "@deepseek-ai/dsh-jobs-local": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/dsh-llm-retry": "workspace:^",
+    "@deepseek-ai/dsh-mcp": "workspace:^",
     "@deepseek-ai/dsh-permission-presets": "workspace:^",
     "@deepseek-ai/dsh-plan-mode": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^",

@@ -10,7 +10,7 @@
  * the next disconnect starts a fresh budget while a crash-looping server —
  * even one whose connects briefly succeed — still exhausts the cap instead of
  * restarting forever. Exhaustion unregisters the server's tools and stops;
- * disposal (including HMR) is the only way back from that state.
+ * a manual reload, HMR replacement, or Host restart can make a fresh attempt.
  *
  * @module
  */
@@ -18,6 +18,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js'
 import type { Context } from '@deepseek-ai/cordis'
+import type { McpConnectionStatus } from '@deepseek-ai/dsh-mcp'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { createTransport } from './transport.ts'
 import { syncTools } from './tools.ts'
@@ -103,6 +104,14 @@ export interface ConnectionHandle {
    * whether a failed startup is fatal via `failOnStartupError`.
    */
   ready: Promise<ConnectionOutcome>
+  /** Read the current generation, tool, and reconnect state. */
+  status(): McpConnectionStatus
+  /**
+   * Close any current generation and make one immediate replacement attempt.
+   * A failed immediate attempt may arm the ordinary automatic reconnect loop.
+   * @returns whether the immediate connection and tool synchronization succeeded.
+   */
+  reload(): Promise<boolean>
   /**
    * Stop reconnection, close the live client, wait for the in-flight attempt
    * and queued tool syncs to quiesce, then unregister every tool this server
@@ -142,12 +151,25 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
   /** Live tool registrations owned by this server; only {@link enqueueSync} and dispose swap it. */
   let disposers: ToolDisposers = new Map()
   let reconnectTimer: NodeJS.Timeout | undefined
+  let state: McpConnectionStatus['state'] = 'connecting'
   /** Consecutive failed connection attempts within the current outage. */
   let failedAttempts = 0
   /** When the current generation finished connect + initial sync; undefined while down. */
   let connectedAt: number | undefined
-  /** The real error from the first connection attempt, for startup-await diagnostics. */
-  let firstAttemptError: unknown
+  /** At most one human-requested replacement may own this server at a time. */
+  let reloadInFlight: Promise<boolean> | undefined
+
+  /** Reject a reload after a concurrent plugin teardown crossed an await. */
+  function assertReloadable(): void {
+    if (disposed) throw new Error(`${label}: cannot reload a disposed connection`)
+  }
+
+  /** Cancel the one provider-owned automatic reconnect timer, if armed. */
+  function cancelReconnectTimer(): void {
+    if (reconnectTimer === undefined) return
+    clearTimeout(reconnectTimer)
+    reconnectTimer = undefined
+  }
 
   /** A generation may act only while it is the current one on a live plugin. */
   const isCurrent = (generation: Client): boolean => !disposed && client === generation
@@ -192,9 +214,10 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
   function scheduleReconnect(): void {
     const lostEstablishedConnection = connectedAt !== undefined
     if (!policy.enabled) {
+      state = 'failed'
       const message = lostEstablishedConnection
-        ? 'connection lost and reconnect is disabled — registered tools will fail until an HMR reload or Host restart'
-        : 'connection failed and reconnect is disabled — no tools were registered; reload the plugin or restart the Host to connect'
+        ? 'connection lost and reconnect is disabled — registered tools will fail until a manual reload, HMR replacement, or Host restart'
+        : 'connection failed and reconnect is disabled — no tools were registered; reload the server, replace the plugin, or restart the Host to connect'
       ctx.logger.error(`${label}: ${message}`)
       return
     }
@@ -204,21 +227,23 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     connectedAt = undefined
     failedAttempts += 1
     if (failedAttempts > policy.maxAttempts) {
+      state = 'failed'
       // Enqueue the give-up disposal so it cannot race an in-flight sync's
       // phase-2 swap (which checks isCurrent inside the queue).
       syncChain = syncChain.then(() => {
         for (const dispose of disposers.values()) dispose()
         disposers = new Map()
       })
-      ctx.logger.error(`${label}: giving up after ${policy.maxAttempts} consecutive failed reconnect attempts — tools unregistered; reload the plugin or restart the Host to reconnect`)
+      ctx.logger.error(`${label}: giving up after ${policy.maxAttempts} consecutive failed reconnect attempts — tools unregistered; reload the server, replace the plugin, or restart the Host to reconnect`)
       return
     }
     const delayMs = Math.min(policy.maxDelayMs, policy.initialDelayMs * 2 ** (failedAttempts - 1))
+    state = 'reconnecting'
     const action = lostEstablishedConnection ? 'connection lost; reconnecting' : 'connection failed; retrying'
     ctx.logger.warn(`${label}: ${action} in ${delayMs}ms (attempt ${failedAttempts}/${policy.maxAttempts})`)
     reconnectTimer = setTimeout(() => {
       reconnectTimer = undefined
-      settling = connectGeneration(false)
+      settling = connectGeneration('reconnect')
     }, delayMs)
     // An armed reconnect timer must never hold the process open on its own.
     reconnectTimer.unref()
@@ -232,9 +257,10 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
    * Every failure funnels through {@link generationDown}; success arms the
    * onclose-driven disconnect path. Never rejects.
    *
-   * @param startup - Whether this is the plugin's activation attempt.
+   * @param mode - Whether this is activation, automatic recovery, or an immediate human reload.
    */
-  async function connectGeneration(startup: boolean): Promise<void> {
+  async function connectGeneration(mode: 'startup' | 'reconnect' | 'reload'): Promise<ConnectionOutcome> {
+    state = mode === 'reconnect' ? 'reconnecting' : 'connecting'
     const generation = new Client(
       { name: 'dsh-mcp-client', version: '0.0.1' },
       { capabilities: {} },
@@ -271,65 +297,105 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     try {
       await generation.connect(createTransport(config))
       if (hasClosed()) {
+        const error = new Error(`${label}: connection closed during initialization`)
         attemptSettled = true
         generationDown(generation)
-        return
+        return { error }
       }
-      await enqueueSync(generation, startup ? startupOpts : opts)
+      await enqueueSync(generation, mode === 'startup' ? startupOpts : opts)
     } catch (error) {
-      if (firstAttemptError === undefined) firstAttemptError = error
       // Disposal clears current ownership before it closes the generation, so
       // only a live supervisor reports an attempt failure.
       if (isCurrent(generation)) ctx.logger.warn(`${label}: connection attempt failed: ${String(error)}`)
       try { await generation.close() } catch { /* transport already gone */ }
       const quiesced = hasClosed() || await waitForClose(closed.promise)
       attemptSettled = true
-      if (!isCurrent(generation)) return
+      if (!isCurrent(generation)) return { error }
       if (!quiesced) {
         client = undefined
         clientClosed = undefined
-        ctx.logger.error(`${label}: failed generation did not close within ${GENERATION_CLOSE_TIMEOUT_MS}ms — reconnect stopped to avoid overlapping server processes; reload the plugin or restart the Host to retry`)
-        return
+        state = 'failed'
+        ctx.logger.error(`${label}: failed generation did not close within ${GENERATION_CLOSE_TIMEOUT_MS}ms — reconnect stopped to avoid overlapping server processes; reload the server, replace the plugin, or restart the Host to retry`)
+        return { error }
       }
       generationDown(generation)
-      return
+      return { error }
     }
     attemptSettled = true
     if (hasClosed()) {
+      const error = new Error(`${label}: connection closed during tool synchronization`)
       generationDown(generation)
-      return
+      return { error }
     }
-    if (!isCurrent(generation)) return
+    if (!isCurrent(generation)) return { error: new Error(`${label}: connection generation replaced`) }
     connectedAt = Date.now()
+    state = 'connected'
     if (failedAttempts > 0) ctx.logger.info(`${label}: reconnected and re-synced tools (attempt ${failedAttempts}/${policy.maxAttempts})`)
+    return {}
   }
 
   /** The in-flight (or last settled) connection attempt; dispose awaits it for quiescence. */
-  let settling = connectGeneration(true)
+  let settling = connectGeneration('startup')
 
   // The ready promise settles when the first attempt finishes (regardless of
   // success). If the first attempt fails and reconnect is enabled, the
   // supervisor is already scheduling a retry — ready just reports the outcome.
-  const ready: Promise<ConnectionOutcome> = settling.then(() => {
-    // After settling: if client is set the initial connect+sync succeeded.
-    // If not, the supervisor either scheduled a retry (error logged) or gave
-    // up (error logged). Either way the outcome is reported with the real error.
-    // Note: settling.then() is a microtask; stdio onclose is a macrotask — so
-    // a server that crashes AFTER a successful initial sync cannot flip client
-    // to undefined before this continuation runs.
-    if (client !== undefined) return {}
-    /* v8 ignore next -- defensive: firstAttemptError is always set when connect/sync fails */
-    return { error: firstAttemptError ?? new Error(`${label}: initial connection failed`) }
-  })
+  const ready: Promise<ConnectionOutcome> = settling
+
+  async function performManualReload(): Promise<boolean> {
+    assertReloadable()
+    cancelReconnectTimer()
+
+    const previousSettling = settling
+    const current = client
+    const currentClosed = clientClosed
+    client = undefined
+    clientClosed = undefined
+    state = 'connecting'
+    if (current !== undefined) {
+      try { await current.close() } catch { /* transport already gone */ }
+      if (currentClosed !== undefined && !await waitForClose(currentClosed)) {
+        state = 'failed'
+        ctx.logger.error(`${label}: generation did not close within ${GENERATION_CLOSE_TIMEOUT_MS}ms during manual reload — replacement not started`)
+        return false
+      }
+    }
+
+    await previousSettling
+    await syncChain
+    assertReloadable()
+    cancelReconnectTimer()
+    failedAttempts = 0
+    connectedAt = undefined
+    const attempt = connectGeneration('reload')
+    settling = attempt
+    const outcome = await attempt
+    return outcome.error === undefined
+  }
 
   return {
     ready,
+    status(): McpConnectionStatus {
+      return {
+        state,
+        toolCount: disposers.size,
+        reconnectAttempt: failedAttempts,
+        maxReconnectAttempts: policy.maxAttempts,
+      }
+    },
+    async reload(): Promise<boolean> {
+      if (reloadInFlight !== undefined) return await reloadInFlight
+      const operation = performManualReload()
+      reloadInFlight = operation
+      try {
+        return await operation
+      } finally {
+        if (reloadInFlight === operation) reloadInFlight = undefined
+      }
+    },
     async dispose(): Promise<void> {
       disposed = true
-      if (reconnectTimer !== undefined) {
-        clearTimeout(reconnectTimer)
-        reconnectTimer = undefined
-      }
+      cancelReconnectTimer()
       const current = client
       const currentClosed = clientClosed
       client = undefined

@@ -24,10 +24,10 @@ catalog 保存环境变量来源名称，而不是解析后的值。`--env KEY[=
 
 **保存环境变量与 header 的字面值。** 仅靠文件权限无法阻止密钥出现在检查输出、备份或复制的配置中。引用会让密钥材料继续由现有启动环境持有。
 
-**从 TUI 修改实时 MCP 实例。** 第二套运行时管理器会重复 Cordis 生命周期所有权，而且只有先提供连接状态服务，才能可靠报告 reload 结果。该 catalog 继续作为启动时输入；只有通过由 MCP client 生命周期持有、受 effect 约束的服务，才可增加实时 `/mcp` 管理。
+**从 TUI 修改实时 MCP 实例。** 第二套运行时管理器会重复 Cordis 生命周期所有权，而且只有先提供连接状态服务，才能可靠报告 reload 结果。该 catalog 继续作为启动时输入；后续的 [MCP 运行时 registry](2026-08-18-mcp-runtime-status-and-reload.md)会通过 MCP client 生命周期贡献、受 effect 约束的服务增加实时重载，而不是修改 catalog。
 
 ## Consequences
 
 常见 MCP 配置现在拥有一个稳定的 CLI 界面，并可在不改变底层插件架构的前提下跨所有随附应用 profile 工作。受管配置保持可检查且确定，密钥值则不会进入持久文件与配置 dump。
 
-服务器可执行文件仍是 agent（智能体）沙箱之外的受信任本地代码，CLI 也不会安装它们。该 catalog 不提供 OAuth、启用或禁用状态与实时 reload。单元测试固定解析、修改、权限、引用解析、脱敏和生成的 patch；built-bin e2e 测试固定真实命令分派与 dump 组合。由于管理命令无需启动 profile，也不会产生 transcript 事件，因此不添加 Session 快照。
+服务器可执行文件仍是 agent（智能体）沙箱之外的受信任本地代码，CLI 也不会安装它们。系统不提供 OAuth 与启用／禁用状态。catalog 变更需要新进程；[运行时重载](2026-08-18-mcp-runtime-status-and-reload.md)只会重连已经根据当前文件组合的实例。单元测试固定解析、修改、权限、引用解析、脱敏和生成的 patch；built-bin e2e 测试固定真实命令分派与 dump 组合。由于管理命令无需启动 profile，也不会产生 transcript 事件，因此不添加 Session 快照。

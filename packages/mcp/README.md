@@ -6,4 +6,5 @@ Packages bridging the harness to the MCP ecosystem.
 
 | Package | Role |
 |---|---|
+| [`mcp/`](mcp/README.md) | Runtime registry for server connection status and reload control on `ctx.mcp` |
 | [`mcp-client/`](mcp-client/README.md) | MCP client bridge that registers external server tools on `ctx.tools` |

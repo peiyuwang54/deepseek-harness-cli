@@ -21,6 +21,7 @@ import { z } from 'zod'
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import McpRegistry from '@deepseek-ai/dsh-mcp'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import { apply } from '@deepseek-ai/dsh-mcp-client/src/index.ts'
 import { publicToolName } from '@deepseek-ai/dsh-mcp-client/src/tools.ts'
@@ -40,6 +41,7 @@ async function mountRegistry(): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(McpRegistry)
   return ctx
 }
 
@@ -169,7 +171,7 @@ describe('fixture server — duplicate serverName', () => {
     }
     await apply(ctx, config)
 
-    await expect(apply(ctx, config)).rejects.toThrow(/serverName "dup" is already in use/)
+    await expect(apply(ctx, config)).rejects.toThrow(/server "dup" is already registered/)
 
     await ctx.fiber.dispose()
     await sleep(200)
@@ -254,7 +256,7 @@ describe('fixture server — crash recovery', () => {
   it('plugin unload during an outage stops reconnection and unregisters tools', async () => {
     const ctx = await mountRegistry()
     const fiber = ctx.plugin(
-      { name: 'mcp-client', inject: ['tools'], apply },
+      { name: 'mcp-client', inject: ['tools', 'mcp'], apply },
       crashConfig('ephemeral', { initialDelayMs: 8_000, maxDelayMs: 8_000, maxAttempts: 5 }),
     )
     // Cordis awaits async apply() as startup work; wait for it.

@@ -33,6 +33,7 @@
     { "path": "../../llm/llm" },
     { "path": "../../llm/token-meter" },
     { "path": "../../llm/llm-retry" },
+    { "path": "../../mcp/mcp" },
     { "path": "../../interaction/commands" },
     { "path": "../../interaction/permission-presets" },
     { "path": "../../plan/plan-mode" },

@@ -1,0 +1,34 @@
+terminal 92x32 buffer=normal length=32 base=0 viewport=0
+lifecycle started=1 stopped=0 progress=inactive
+title "DSH snapshot"
+cursor visible column=3 viewportRow=7 bufferRow=7
+buffer
+0| " DEEPSEEK HARNESS v0.1.0"
+  style 1-8 fg=bright-blue bold
+  style 10-16 bold
+  style 18-23 dim
+1| <blank>
+2| "MCP reload complete (1/1 reloaded)                                                          "
+  style 0-91 dim
+3| "- github · reloaded · connected · 1 tool                                                    "
+  style 0-39 dim
+4-5| <blank>
+6| "                                                                                            "
+  style 0-91 bg=ansi-236
+7| " › │Describe a task, @ a file, or / for commands                                            "
+  style 0-0 bg=ansi-236
+  style 1-1 fg=bright-blue bg=ansi-236 bold
+  style 2-2 bg=ansi-236 dim
+  style 3-3 bg=ansi-236
+  style 4-47 bg=ansi-236 dim
+  style 48-91 bg=ansi-236
+8| "                                                                                            "
+  style 0-91 bg=ansi-236
+9| "  Enter send · Shift+Enter newline · / commands"
+  style 0-46 dim
+10| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+  style 44-45 dim
+  style 48-72 dim
+  style 75-79 dim
+  style 82-91 dim
+11-31| <blank>

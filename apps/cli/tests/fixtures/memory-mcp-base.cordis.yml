@@ -6,3 +6,6 @@
 
 - id: tools
   name: cordis:memory-test-tools
+
+- id: mcp
+  name: cordis:memory-test-mcp

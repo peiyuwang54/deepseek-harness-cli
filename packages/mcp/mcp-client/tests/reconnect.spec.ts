@@ -8,6 +8,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import McpRegistry from '@deepseek-ai/dsh-mcp'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import type { Config } from '@deepseek-ai/dsh-mcp-client'
 
@@ -69,6 +70,7 @@ async function mountRegistry(): Promise<Context> {
   const ctx = new Context()
   await ctx.plugin(SystemPrompt)
   await ctx.plugin(ToolRuntime)
+  await ctx.plugin(McpRegistry)
   return ctx
 }
 
@@ -168,6 +170,49 @@ describe('reconnect supervisor', () => {
     instances[0]!.onclose?.()
     await sleep(30)
     expect(instances).toHaveLength(2)
+  })
+
+  it('reports runtime state and manual reload cancels backoff before replacing the generation', async () => {
+    await apply(ctx, stdioConfig({ initialDelayMs: 60_000, maxDelayMs: 60_000, maxAttempts: 5 }))
+    expect(ctx.mcp.list()).toMatchObject([
+      { name: 'srv', transport: 'stdio', state: 'connected', toolCount: 1 },
+    ])
+
+    instances[0]!.onclose?.()
+    expect(ctx.mcp.list()).toMatchObject([
+      { name: 'srv', state: 'reconnecting', reconnectAttempt: 1, maxReconnectAttempts: 5 },
+    ])
+
+    mockListTools.mockResolvedValue(listing('revived'))
+    await expect(ctx.mcp.reload('srv')).resolves.toMatchObject([
+      { name: 'srv', reloaded: true, status: { state: 'connected', toolCount: 1 } },
+    ])
+    expect(instances).toHaveLength(2)
+    expect(mockConnect).toHaveBeenCalledTimes(2)
+    expect(ctx.tools.get('mcp__srv__remote')).toBeUndefined()
+    expect(ctx.tools.get('mcp__srv__revived')).toBeDefined()
+
+    // The cancelled 60-second timer cannot keep the test process open or
+    // create a later third generation.
+    await ctx.fiber.dispose()
+  })
+
+  it('coalesces concurrent manual reloads into one replacement generation', async () => {
+    await apply(ctx, stdioConfig())
+    const gate: PromiseWithResolvers<void> = Promise.withResolvers()
+    mockConnect.mockImplementationOnce(() => gate.promise)
+
+    const first = ctx.mcp.reload('srv')
+    await vi.waitFor(() => { expect(instances).toHaveLength(2) })
+    const second = ctx.mcp.reload('srv')
+    await sleep(10)
+    expect(instances).toHaveLength(2)
+
+    gate.resolve()
+    const [firstResult, secondResult] = await Promise.all([first, second])
+    expect(firstResult[0]?.reloaded).toBe(true)
+    expect(secondResult[0]?.reloaded).toBe(true)
+    expect(mockConnect).toHaveBeenCalledTimes(2)
   })
 
   it('stops at the failure cap, unregisters the tools, and reports final failure', async () => {
@@ -309,7 +354,7 @@ describe('reconnect supervisor', () => {
   })
 
   it('a transport close after dispose schedules nothing', async () => {
-    const fiber = ctx.plugin({ name: 'mcp-client', inject: ['tools'], apply }, stdioConfig())
+    const fiber = ctx.plugin({ name: 'mcp-client', inject: ['tools', 'mcp'], apply }, stdioConfig())
     await vi.waitFor(() => { expect(ctx.tools.get('mcp__srv__remote')).toBeDefined() })
 
     await fiber.dispose()
@@ -419,7 +464,7 @@ describe('reconnect supervisor', () => {
   })
 
   it('dispose during an in-flight initial sync quiesces without leaking tools', async () => {
-    const fiber = ctx.plugin({ name: 'mcp-client', inject: ['tools'], apply }, stdioConfig({ initialDelayMs: 2, maxDelayMs: 8, maxAttempts: 5 }))
+    const fiber = ctx.plugin({ name: 'mcp-client', inject: ['tools', 'mcp'], apply }, stdioConfig({ initialDelayMs: 2, maxDelayMs: 8, maxAttempts: 5 }))
     await vi.waitFor(() => { expect(ctx.tools.get('mcp__srv__remote')).toBeDefined() })
 
     // Block the reconnect attempt's tool discovery until after dispose starts.
@@ -441,7 +486,7 @@ describe('reconnect supervisor', () => {
 
   it('a re-sync failing because dispose closed the transport stays silent', async () => {
     const { errors } = captureLogs(ctx)
-    const fiber = ctx.plugin({ name: 'mcp-client', inject: ['tools'], apply }, stdioConfig())
+    const fiber = ctx.plugin({ name: 'mcp-client', inject: ['tools', 'mcp'], apply }, stdioConfig())
     await vi.waitFor(() => { expect(ctx.tools.get('mcp__srv__remote')).toBeDefined() })
 
     const gate: PromiseWithResolvers<unknown> = Promise.withResolvers()

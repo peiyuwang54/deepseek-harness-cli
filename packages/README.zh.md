@@ -26,6 +26,7 @@ npm scope 为 `@deepseek-ai/dsh-*`；Cordis `Service` 子类和函数插件通�
 | [`sandbox/`](sandbox/README.md) | 进程限制 seam；bwrap/Landlock/Seatbelt 后端 | 产品：稳定 API |
 | [`fs/`](fs/README.md) | 文件系统能力系列：seam、本地实现、面向模型的文件工具、由 bash 支持的发现工具 | 产品：稳定 API |
 | [`lsp/`](lsp/README.md) | LSP 能力系列：seam、通用 stdio 提供方和 `lsp` 工具 | 产品：稳定 API |
+| [`mcp/`](mcp/README.md) | MCP 能力系列：运行时 registry、具体客户端与用户诊断 | 产品：稳定 API |
 | [`skill/`](skill/README.md) | skill（技能）能力系列：提供方注册表、本地提供方和面向模型的目录／loader | 产品：稳定 API |
 | [`compaction/`](compaction/README.md) | 压缩（compaction）能力系列：Service Definition + 基础提供方 + 命令 Consumer | 产品：稳定 API |
 | [`context/`](context/README.md) | 模型可见请求上下文，包括 workspace 指令和时间上下文 | 产品：稳定 API |

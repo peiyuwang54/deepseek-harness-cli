@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-14-shipped-tui-cli-front-door.md
-2026-08-14-shipped-tui-cli-front-door.md: 5aa55b21e4a5d5b50820bb84bc535182510afee5
-2026-08-14-shipped-tui-cli-front-door.zh.md: 37976a56dd56f2561d84ea58723f06a0d0adebca
+2026-08-14-shipped-tui-cli-front-door.md: 096f98e8812236b6078ec6256b7c02b72a384f86
+2026-08-14-shipped-tui-cli-front-door.zh.md: c6badd7f37e5dfbde7504f5662b720ab601b8604

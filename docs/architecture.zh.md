@@ -48,6 +48,7 @@ dsh --profile web --dump-config
 | [`core/agent`](subsystems/core.md) | `Agent` 接口、活跃 agent 注册表和 `agent/*` 事件 | `ctx.agents` |
 | [`core/agent-loop`](subsystems/core.md) | 实现该接口的默认驱动器 | `ctx.agentLoop` |
 | [`core/scope`](subsystems/scope.md) | 按 agent 划分作用域的注册原语 | 库，无 ctx 键 |
+| [`mcp/mcp`](../packages/mcp/mcp/README.md) | 活跃 MCP 服务器状态与重载控制 | `ctx.mcp` |
 | [`llm/llm`](subsystems/llm-streaming.md) | 消息与流式词汇表，以及适配器 seam | `ctx.llm` |
 
 <a id="events"></a>

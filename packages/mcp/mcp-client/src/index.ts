@@ -15,6 +15,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
+import type { McpConnectionStatus } from '@deepseek-ai/dsh-mcp'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { RECONNECT_DEFAULTS, resolveReconnectPolicy, startConnection } from './connection.ts'
 import type { ReconnectConfig } from './connection.ts'
@@ -28,21 +29,13 @@ export type { ReconnectConfig, ResolvedReconnectPolicy } from './connection.ts'
 export const name = 'mcp-client'
 
 /** Services required by this plugin. */
-export const inject = ['tools']
+export const inject = ['tools', 'mcp']
 
 /** Default timeout for individual MCP tool calls (ms). */
 const DEFAULT_TOOL_CALL_TIMEOUT_MS = 60_000
 
 /** Valid `serverName`, kept below the public tool-name budget. */
 const SERVER_NAME_PATTERN = /^[A-Za-z0-9_-]{1,32}$/
-
-/**
- * Live `serverName` reservations per app, keyed off `ctx.root` (multiple apps
- * in one process — tests — must not see each other's names). A duplicate
- * namespace is a configuration error surfaced at plugin load, never silent
- * shadowing.
- */
-const activeServerNames = new WeakMap<Context, Set<string>>()
 
 // ---- Config ----
 
@@ -133,7 +126,7 @@ export const Config = z.union([
  * Connect one MCP server and publish its initial tool generation before activation.
  * This entry remains explicitly `async`: Cordis treats a prototype-bearing
  * ordinary function as a constructor, whose returned Promise is not startup work.
- * @param ctx - plugin context carrying the tool registry.
+ * @param ctx - plugin context carrying the tool and MCP runtime registries.
  * @param config - resolved transport and server namespace configuration.
  * @returns startup readiness after connection and initial tool discovery settle.
  */
@@ -143,30 +136,27 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   // effect registers.
   const reconnect = resolveReconnectPolicy(config.reconnect, `mcp-client(${config.serverName}): reconnect`)
 
-  // Reserve the namespace next: a duplicate `serverName` fails THIS instance
-  // at load with an actionable error and leaves the earlier instance intact.
-  ctx.effect(() => {
-    let names = activeServerNames.get(ctx.root)
-    if (!names) {
-      names = new Set()
-      activeServerNames.set(ctx.root, names)
-    }
-    if (names.has(config.serverName)) {
-      throw new Error(
-        `mcp-client: serverName "${config.serverName}" is already in use by another mcp-client instance — pick a unique serverName in cordis.yml`,
-      )
-    }
-    names.add(config.serverName)
-    return () => void names.delete(config.serverName)
-  }, 'mcp-client.serverName')
+  const connection: { current?: ReturnType<typeof startConnection> } = {}
+  const pendingStatus: McpConnectionStatus = {
+    state: 'connecting',
+    toolCount: 0,
+    reconnectAttempt: 0,
+    maxReconnectAttempts: reconnect.maxAttempts,
+  }
+  ctx.mcp.register({
+    name: config.serverName,
+    transport: config.transport,
+    status: () => connection.current?.status() ?? pendingStatus,
+    reload: async () => await connection.current?.reload() ?? false,
+  })
 
   // The supervisor owns the client/transport generations, the reconnect
   // loop, and the live tool registrations; disposal stops reconnection,
   // quiesces in-flight work, and unregisters the current generation.
-  const connection = startConnection(ctx, config, reconnect)
+  connection.current = startConnection(ctx, config, reconnect)
 
   ctx.effect(() => {
-    return () => connection.dispose()
+    return () => connection.current?.dispose()
   }, 'mcp-client.connection')
 
   // Block plugin activation on the initial connection + tool discovery so
@@ -174,7 +164,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   // When failOnStartupError is true, a failed initial attempt rejects the
   // fiber (Cordis rolls it back); otherwise the error is logged and the
   // supervisor enters its reconnect loop.
-  const outcome = await connection.ready
+  const outcome = await connection.current.ready
   if (outcome.error !== undefined && config.failOnStartupError) {
     throw new Error(`mcp-client(${config.serverName}): initial connection or tool synchronization failed`, { cause: outcome.error })
   }

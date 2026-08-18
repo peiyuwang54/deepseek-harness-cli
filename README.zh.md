@@ -87,7 +87,7 @@ deepseek mcp list
 deepseek mcp remove filesystem
 ```
 
-`--env KEY[=SOURCE]` 与 `--header NAME=SOURCE` 保存环境变量引用，而不是密钥值。修改后请重启 CLI，再使用 `/mcp`、`/mcp desc` 或 `/mcp schema` 检查当前会话可见的工具。
+`--env KEY[=SOURCE]` 与 `--header NAME=SOURCE` 保存环境变量引用，而不是密钥值。添加或删除服务器后请重启 CLI。在运行中的会话里，可用 `/mcp`、`/mcp desc` 或 `/mcp schema` 检查连接状态与可见工具，并用 `/mcp reload [server]` 重连当前配置。
 
 ## 核心能力
 

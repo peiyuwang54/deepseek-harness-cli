@@ -54,7 +54,7 @@ deepseek mcp remove filesystem
 
 `--env KEY` 会转发同名的启动环境变量，`--env KEY=SOURCE` 则把另一个来源变量映射到服务器进程。HTTP 的 `--header NAME=SOURCE` 使用相同的引用模型。catalog 只保存来源名称，并在随附 profile 启动时解析；来源未设置时，系统会在服务器连接前停止启动。命令拒绝 URL 内嵌凭据，配置 dump 也只打印 `<environment:SOURCE>`，不会打印解析后的值。
 
-受管服务器只会加载到三个随附应用 profile，add 或 remove 后需要重启。自定义 profile 继续完全拥有自身组合，并可通过普通 patch 插入 `@deepseek-ai/dsh-mcp-client`。stdio 服务器命令会作为 agent（智能体）沙箱之外的受信任本地代码执行；启用前必须先安装并审查它。在 TUI 中，`/mcp`、`/mcp desc` 与 `/mcp schema` 可检查已连接服务器发布给当前作用域的工具。
+受管服务器只会加载到三个随附应用 profile，add 或 remove 后需要重启。自定义 profile 继续完全拥有自身组合，并可通过普通 patch 插入 `@deepseek-ai/dsh-mcp-client`。stdio 服务器命令会作为 agent（智能体）沙箱之外的受信任本地代码执行；启用前必须先安装并审查它。在 TUI 中，`/mcp`、`/mcp desc` 与 `/mcp schema` 会合并实时连接状态与各服务器发布给当前作用域的工具。`/mcp reload [server]` 可在所有存活 Agent 都空闲时重连一个当前实例或全部实例，但不会重新读取受管 catalog。
 
 ## 插件管理
 

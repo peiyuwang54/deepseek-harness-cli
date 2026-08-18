@@ -644,17 +644,14 @@ Source: [`packages/goal/goal/src/index.ts:116`](../packages/goal/goal/src/index.
 
 ## `@deepseek-ai/dsh-headless`
 
-Requires: `agentDefaultModel` · `agents` · `sessions`
+Requires: `headlessStartup` · `agentDefaultModel` · `agentPresets` · `permissionPresets` · `agents` · `sessions` · `sessionPersistence` · `attachments`
 
 ```ts config-catalog
-/** Plugin config: the task resolved from this app's injected provider service. */
-export interface Config {
-  /** The prompt text for the single run. */
-  task: string
-}
+/** The runner has no deployment tunables; the startup provider owns argv. */
+export type Config = Record<never, never>
 ```
 
-Source: [`packages/bundle/headless/src/index.ts:31`](../packages/bundle/headless/src/index.ts)
+Source: [`packages/bundle/headless/src/index.ts:48`](../packages/bundle/headless/src/index.ts)
 
 <a id="deepseek-aidsh-hooks-claude-code"></a>
 
@@ -859,7 +856,7 @@ export interface Config {
   /** Deployment thinking policy; `disabled` limits every conversation request to `off`. */
   thinking?: 'enabled' | 'disabled'
   /** Default thinking effort (default `high`); `off` disables thinking per request. */
-  reasoningEffort?: 'off' | 'high' | 'max'
+  reasoningEffort?: 'off' | 'low' | 'high' | 'max'
   /** Default per-request output cap (default 256,000); a model's own cap and explicit request values win. */
   maxTokens?: number
   /** Positive context capacity used when the selected model has no exact value (default 1,000,000). */
@@ -2830,6 +2827,12 @@ export interface TuiConfig {
   maxDiffEditLength?: number
   /** Maximum lifetime in milliseconds of each Git child used by `/diff`. */
   gitDiffTimeoutMs?: number
+  /** Maximum lifetime in milliseconds of each isolated workspace-checkpoint Git child. */
+  rewindGitTimeoutMs?: number
+  /** Maximum bytes accepted from one regular file in an automatic workspace checkpoint. */
+  rewindMaxFileBytes?: number
+  /** Maximum aggregate regular-file bytes accepted by one automatic workspace checkpoint. */
+  rewindMaxTotalBytes?: number
   /** Maximum options visible at once in a user-question panel. */
   maxQuestionOptions?: number
   /** Maximum models visible at once in the model selector. */
@@ -2881,7 +2884,7 @@ export interface TuiThemeConfig {
 }
 ```
 
-Source: [`packages/ui/tui/src/config.ts:145`](../packages/ui/tui/src/config.ts)
+Source: [`packages/ui/tui/src/config.ts:157`](../packages/ui/tui/src/config.ts)
 
 <a id="deepseek-aidsh-tui-app"></a>
 

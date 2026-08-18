@@ -40,6 +40,8 @@ describe('parseDshArgs', () => {
     expect(parse(['tui'])).toEqual({ mode: 'profile', profile: 'tui', patches: [], args: [] })
     expect(parse(['tui', '--patch', 'terminal.yml', '--resume', 'session-a']))
       .toEqual({ mode: 'profile', profile: 'tui', patches: ['terminal.yml'], args: ['--resume', 'session-a'] })
+    expect(parse(['exec', '--json', 'review', 'this', 'repository']))
+      .toEqual({ mode: 'profile', profile: 'headless', patches: [], args: ['--json', 'review', 'this', 'repository'] })
   })
 
   it('ends the launcher flags at the first token it does not own', () => {
@@ -88,6 +90,10 @@ describe('parseDshArgs', () => {
       .toEqual({ mode: 'dump-config', profile: 'tui', defaultOnly: false, patches: [] })
     expect(parse(['tui', '--dump-default-config']))
       .toEqual({ mode: 'dump-config', profile: 'tui', defaultOnly: true, patches: [] })
+    expect(parse(['exec', '--dump-config']))
+      .toEqual({ mode: 'dump-config', profile: 'headless', defaultOnly: false, patches: [] })
+    expect(parse(['exec', '--dump-default-config']))
+      .toEqual({ mode: 'dump-config', profile: 'headless', defaultOnly: true, patches: [] })
   })
 
   it('hands unowned root arguments to the default terminal profile', () => {
@@ -114,6 +120,7 @@ describe('parseDshArgs', () => {
     expect(exitCode(['tui', '--dump-config', '--dump-default-config'])).toBe(1)
     expect(exitCode(['tui', '--dump-default-config', '--patch', 't.yml'])).toBe(1)
     expect(exitCode(['tui', '--patch='])).toBe(1)
+    expect(exitCode(['exec', '--dump-config', '--json', 'task'])).toBe(1)
     // A dump never runs app command-line providers, so it cannot show what
     // those flags would decide; printing a tree that differs from the same
     // invocation's boot would mislead.

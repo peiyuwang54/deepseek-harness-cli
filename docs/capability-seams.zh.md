@@ -100,6 +100,8 @@ flowchart LR
   svc_tuiPrompt["ctx.tuiPrompt<br/>Terminal prompt value registry"]
   pkg_tui_app["tui-app"]
   svc_tuiStartup["ctx.tuiStartup<br/>Terminal launcher-to-runner handoff"]
+  pkg_headless["headless"]
+  svc_headlessStartup["ctx.headlessStartup<br/>Non-interactive launcher-to-runner handoff"]
   pkg_session_projection["session-projection"]
   svc_sessionProjections["ctx.sessionProjections<br/>Session projection units"]
   pkg_host_apiproxy["host-apiproxy"]
@@ -113,7 +115,6 @@ flowchart LR
   pkg_acp["acp"]
   pkg_agent_default_model["agent-default-model"]
   svc_agentDefaultModel["ctx.agentDefaultModel<br/>Default Agent model selection"]
-  pkg_headless["headless"]
   svc_agentLoop["ctx.agentLoop<br/>Concrete loop driver"]
   pkg_agent_spine_demo["agent-spine-demo"]
   pkg_goal["goal"]
@@ -234,6 +235,7 @@ flowchart LR
   pkg_fs_local --> svc_fs
   pkg_fs_sandbox --> svc_fs
   pkg_goal --> svc_goals
+  pkg_headless --> svc_headlessStartup
   pkg_hook_protocol --> svc_hooks
   pkg_invariants --> svc_invariants
   pkg_jobs --> svc_jobs
@@ -458,6 +460,7 @@ flowchart LR
 | `ctx.tui` | `seam` | [`tui`](../packages/ui/tui) | - | - | - | 已挂载的终端持有 pi-tui、焦点与清理状态；扩展只能获得限定于该 TUI、由 effect 持有的 FIFO overlay session。 |
 | `ctx.tuiPrompt` | `core` | [`tui`](../packages/ui/tui) | - | - | - | 插件在 Cordis effect 下注册受信任的提示符片段；renderer 观察合并后的变更，而不会把仅用于展示的值变成持久 Session 事件。 |
 | `ctx.tuiStartup` | `bundle` | [`tui-app`](../packages/bundle/tui) | - | - | - | CLI startup 行校验 TTY 与恢复参数，然后发布唯一且不可变的主 Session 身份，允许 runner 创建或恢复对应的精确 Agent。 |
+| `ctx.headlessStartup` | `bundle` | [`headless`](../packages/bundle/headless) | - | - | - | exec startup 行校验任务、恢复、输出、图像与权限参数，然后发布唯一且不可变的调用信息，允许 headless runner 开始执行。 |
 | `ctx.sessionProjections` | `core` | [`session-projection`](../packages/session/session-projection) | - | [`tool-todo`](../packages/todo/tool-todo), [`session-title`](../packages/session/session-title), [`host-apiproxy`](../packages/host/apiproxy) | - | 各领域注册由状态驱动的折叠单元；主动驱动过程维护每个会话的水位状态，api-proxy 提供基线并推送发生变化的值。 |
 | `ctx.sessionProjectionCache` | `core` | [`session-projection-cache`](../packages/session/session-projection-cache) | - | [`host-apiproxy`](../packages/host/apiproxy) | - | 按会话持久保存投影单元状态的检查点（节流检查点，以及轮次／结束／分离时的必选检查点），并提供冷读取阶梯：缓存行加持久化尾部回放，因此列表读取永远不需要加载完整日志。 |
 | `ctx.skills` | `seam` | [`skill`](../packages/skill/skill) | [`skill-badge`](../packages/skill/skill-badge), [`skill-filesystem`](../packages/skill/skill-filesystem) | [`tool-skill`](../packages/skill/tool-skill) | - | 合并提供方的 skill（技能）目录；tool-skill 渲染会话前缀目录，并加载完整的 skill 正文。 |

@@ -20,6 +20,11 @@ import { isCompactCheckpointSource } from '@deepseek-ai/dsh-compaction'
 import { isAppendSurfaceEvent, isReplacementSurfaceEvent } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
+import {
+  BRACKETED_PASTE_END,
+  BRACKETED_PASTE_START,
+  sanitizePastedText,
+} from '../components/text.ts'
 
 /** Software cursor cadence, independent of the terminal profile's blink preference. */
 export const CURSOR_BLINK_INTERVAL_MS = 530
@@ -50,6 +55,18 @@ export class HintEditor extends Editor {
   cursorEnabled = true
   /** Current software cursor phase; the chat lifecycle toggles it while this editor owns focus. */
   cursorVisible = true
+  /** Optional consumer for a complete bracketed paste that names one local image path. */
+  onPasteImagePath: ((text: string) => boolean) | undefined
+
+  override handleInput(data: string): void {
+    if (this.onPasteImagePath !== undefined
+      && data.startsWith(BRACKETED_PASTE_START)
+      && data.endsWith(BRACKETED_PASTE_END)) {
+      const pasted = sanitizePastedText(data.slice(BRACKETED_PASTE_START.length, -BRACKETED_PASTE_END.length))
+      if (this.onPasteImagePath(pasted)) return
+    }
+    super.handleInput(data)
+  }
 
   override render(width: number): string[] {
     const contentWidth = Math.max(1, width - 2)

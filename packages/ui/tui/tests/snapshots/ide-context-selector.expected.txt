@@ -38,9 +38,9 @@ buffer
   style 0-0 fg=bright-blue
   style 20-53 dim
   style 75-75 fg=bright-blue
-16| "│   Inspect current context         standalone terminal (no IDE bridge)    │"
+16| "│   Inspect current context         vscode                                 │"
   style 0-0 fg=bright-blue
-  style 27-70 dim
+  style 27-41 dim
   style 75-75 fg=bright-blue
 17| "│                                                                          │"
   style 0-0 fg=bright-blue

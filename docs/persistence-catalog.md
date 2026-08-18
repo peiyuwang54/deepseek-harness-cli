@@ -913,6 +913,17 @@ Source: [`packages/ui/tui/src/chat/user-shell.ts:83`](../packages/ui/tui/src/cha
 
 Source: [`packages/ui/tui/src/chat/user-shell.ts:74`](../packages/ui/tui/src/chat/user-shell.ts)
 
+<a id="tuiworkspace-checkpoint--log-only"></a>
+
+#### `tui/workspace-checkpoint` — log-only
+
+```ts persistence-catalog
+/** Log-only reference to a workspace snapshot stored outside the real project repository. */
+'tui/workspace-checkpoint': WorkspaceCheckpointEventData
+```
+
+Source: [`packages/ui/tui/src/chat/rewind.ts:42`](../packages/ui/tui/src/chat/rewind.ts)
+
 ### `turn/*`
 
 <a id="turnend--log-only"></a>

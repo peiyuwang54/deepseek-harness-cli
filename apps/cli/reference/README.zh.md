@@ -26,9 +26,9 @@
 |---|---|
 | `web` | `--host`、`--port`、可重复的 `--trusted-host` |
 | `tui` | `--resume <session>`、`--full-auto`、`--yolo`、`--dangerously-bypass-approvals-and-sandbox` |
-| `headless` | 任务文本，作为位置参数 |
+| `headless` | 任务文本；`--json`、`--ephemeral`、可重复的 `--image`、`--output-schema`、`--output-last-message`、权限快捷参数与 `resume` |
 
-一次性任务（`dsh --profile headless "run the tests"`）通过核心注册表创建一个全新的持久化 Agent（智能体），提交任务、等待完全停稳并对会话执行 flush，再从其持久化事件区间中推导最后一个非空 assistant 文本与最终 `turn/end` 原因。它在 stdout 打印文本，并在原因为 `completed` 时以 0 退出，否则以 1 退出。没有任务的调用是该应用的用法错误。随附 headless profile 不挂载 ApiProxy、Host、HTTP 服务器、Web 运行时或浏览器客户端；成功运行不会向 stderr 写入任何内容，也不会打开监听端口。
+`deepseek exec "run the tests"` 别名会创建一个持久化 Agent（智能体）并打印最终结果；`dsh --profile headless` 保留为 profile 层写法。`--json` 发出 JSONL 生命周期事件；可重复的 `--image` 接收本地 PNG、JPEG、WebP 或 GIF 输入；`--output-schema` 要求符合 Schema 的结构化输出；`--output-last-message` 保存最终结果。`resume <id>` 继续指定 Session，`resume --last` 默认选择当前工作区中最新的 Session，添加 `--all` 后会考虑所有工作区。`--ephemeral` 只适用于新运行，权限快捷参数与终端命令一致。Runner 会等待完全停稳并在输出前执行 flush，仅在得到已完成且有效的结果时以 0 退出；它不挂载 ApiProxy、Host、HTTP 服务器、Web 运行时或浏览器客户端，也不打开监听端口。输出与失败约定由 [headless 组合包 README](../../../packages/bundle/headless/README.md)负责。
 
 可在不启动的情况下检查组合出的配置树：
 

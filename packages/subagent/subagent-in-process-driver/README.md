@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-This package is the shared run driver for the two in-process providers. Spawn passes no session seed; fork passes the parent's completed-turn prefix. Everything else—depth, child creation, optional child customization, result reading, cancellation, and disposal—has one implementation here.
+This package is the shared run driver for the two in-process providers. Spawn passes no session seed; fork passes the parent's completed-turn prefix. Everything else—depth, child creation, optional child customization, result reading, cancellation, and disposal—has one implementation here. It also exports the Agent-scoped structured-output runtime used by both subagents and non-interactive `deepseek exec` runs.
 
 ## Start contract
 
@@ -36,15 +36,15 @@ Depth enforcement is internal to `startInProcessRun`: it reads the parent depth 
 
 ## Structured output
 
-`attachStructuredRuntime(childCtx, schema)` installs the whole contract in the child's scope:
+`attachStructuredRuntime(agentCtx, schema)` installs the whole contract in one Agent's scope:
 
 - A `structured_output` tool registered with the requested schema validates and stages the model's value.
 - An order-190 system-prompt section tells the child that the tool call is the terminal answer.
-- Both contributions are ordinary child-scoped registrations. An expert `system-prompt/assemble` listener may replace them and therefore owns preserving the structured-output protocol for that child.
+- Both contributions are ordinary Agent-scoped registrations. An expert `system-prompt/assemble` listener may replace them and therefore owns preserving the structured-output protocol for that Agent.
 - A `tools/result` observer commits a staged value only after that execution's authoritative final tool result succeeds, including the enclosing `run_code` result for Code Mode sub-dispatch.
 - A monotonic tool guard blocks later calls after capture, and the structured-output execution's `concludeTurn()` marker ends the turn after the result commits.
 
-A clean turn that never commits the required structured value reports `error`; the driver does not re-prompt. All registrations ride the child fiber and disappear with it.
+A clean turn that never commits the required structured value reports `error`; the caller does not re-prompt. All registrations ride the Agent fiber and disappear with it.
 
 ## Model Experience
 

@@ -10,7 +10,7 @@
  * `dsh --profile tui --resume abc` boots the tui profile with `--resume abc`,
  * and `dsh --profile web -h` prints the web app's help, not this one's.
  *
- * `web` and `tui` are shipped aliases for their matching profiles; `plugin`
+ * `web`, `tui`, and `exec` are shipped aliases for their matching profiles; `plugin`
  * manages a profile's plugin dependencies by forwarding to pnpm.
  * @module @deepseek-ai/dsh/args
  */
@@ -69,6 +69,7 @@ Examples:
   dsh --profile web                          boot the web profile (same as: dsh web)
   dsh tui                                    open a fresh interactive terminal session
   dsh tui --resume <session>                 resume a persisted terminal session
+  deepseek exec "run the tests"               run one non-interactive task
   dsh --profile headless "run the tests"     answer one task, print the result, and exit
   dsh --profile tui --patch ./extra.yml      boot a custom profile with one extra overlay
   dsh --profile tui --resume <session>       arguments after the launcher flags reach the app
@@ -182,6 +183,7 @@ export function parseDshArgs(argv: readonly string[], version: string): DshInvoc
 
   addProfileAlias('web', 'web', 'web')
   addProfileAlias('tui', 'tui', 'terminal')
+  addProfileAlias('exec', 'headless', 'non-interactive')
 
   const plugin = program.command('plugin').description('manage a profile\'s plugins by forwarding the remaining arguments to pnpm in the profile directory')
   plugin

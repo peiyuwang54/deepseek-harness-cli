@@ -56,6 +56,7 @@ const reasoningConfigPath = fileURLToPath(new URL('./fixtures/cli.cordis.yml', i
 const deepseekDefaultsConfigPath = fileURLToPath(new URL('./fixtures/deepseek-defaults.cordis.yml', import.meta.url))
 const headlessOverlayPath = fileURLToPath(new URL('./fixtures/headless-profile.cordis.yml', import.meta.url))
 const headlessSessionExpected = join(snapshotsDir, 'headless-profile', 'session.expected.jsonl')
+const headlessExecExpected = join(snapshotsDir, 'headless-profile', 'exec-json.expected.jsonl')
 const headlessFailureExpected = join(snapshotsDir, 'headless-profile', 'stderr.expected.txt')
 const cliMockLlmPluginPath = fileURLToPath(new URL('./fixtures/cli-mock-llm.ts', import.meta.url))
 const refreshing = process.env.DSH_SNAPSHOT === 'refresh'
@@ -116,6 +117,19 @@ function parseJsonl(content: string): JsonObject[] {
   return content.split('\n')
     .filter(line => line.trim().length > 0)
     .map(line => JSON.parse(line) as JsonObject)
+}
+
+/** Stabilize the product exec protocol's fresh thread identity. */
+function normalizeExecJsonl(content: string): string {
+  const records = parseJsonl(content)
+  const first = records[0]
+  if (first?.type !== 'thread.started' || typeof first.thread_id !== 'string') {
+    throw new Error('product exec JSONL did not start with a thread identity')
+  }
+  return records.map(record => JSON.stringify({
+    ...record,
+    ...record.type === 'thread.started' ? { thread_id: '{{sessionId}}' } : {},
+  })).join('\n') + '\n'
 }
 
 function contextFromLogs(contents: readonly string[]): NormalizeContext {
@@ -219,14 +233,14 @@ async function prepareCliMockFixture(cwd: string): Promise<void> {
 }
 
 describe('headless stream-json snapshots', () => {
-  it('runs one task through the product headless profile command', async () => {
+  it('runs one task through the product exec JSONL command', async () => {
     const task = 'Prove the product headless profile path with one real tool round trip.'
     const result = await runLoaderSmoke({
       label: 'product headless profile snapshot',
       tempDirPrefix: 'headless-snapshot-profile-',
       binScript: dshBinScript,
       configPath: headlessOverlayPath,
-      binArgs: ['--profile', 'headless', '--patch', headlessOverlayPath, task],
+      binArgs: ['exec', '--patch', headlessOverlayPath, '--json', task],
       tsconfigPath,
       env: {
         DSH_PERMISSION_MODE: 'danger-full-access',
@@ -248,7 +262,9 @@ describe('headless stream-json snapshots', () => {
       },
     })
 
-    expect(result.stdout).toBe('CLI tool round trip complete: CLI_TOOL_ROUND_TRIP\n')
+    const stream = normalizeExecJsonl(result.stdout)
+    if (refreshing) await writeFile(headlessExecExpected, stream)
+    expect(stream).toBe(await readFile(headlessExecExpected, 'utf8'))
     expect(result.stderr).toBe('')
   }, LOADER_SMOKE_TEST_TIMEOUT_MS)
 
@@ -541,6 +557,7 @@ describe('headless stream-json snapshots', () => {
       expect(result.stderr).toBe('')
       expect(server.requests).toHaveLength(1)
       expect(server.requests[0]?.max_tokens).toBe(256_000)
+      expect(server.requests[0]?.reasoning_effort).toBe('low')
       const header = (parseJsonl(result.stdout)
         .map(record => record.event)
         .find((event): event is JsonObject => (
@@ -555,7 +572,7 @@ describe('headless stream-json snapshots', () => {
           "maxTokens": 256000,
           "model": "deepseek-v4-flash",
           "provider": "deepseek-official",
-          "reasoningEffort": "off",
+          "reasoningEffort": "low",
         }
       `)
       expect(header?.adapterDefaults).toEqual({

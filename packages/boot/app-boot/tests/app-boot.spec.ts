@@ -1,7 +1,6 @@
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
@@ -560,12 +559,14 @@ describe('boot', () => {
 
   it('resolves configured and runtime-created bare plugins from the harness installation', async () => {
     const dir = tmp()
-    const harness = tmp()
+    const harness = join(tmp(), 'installed host')
     const absolutePlugin = join(dir, 'absolute.mjs')
     const shadow = join(dir, 'node_modules', '@deepseek-ai', 'dsh-system-prompt')
+    const configFallback = join(dir, 'node_modules', 'config-fallback-only')
     const harnessPlugin = join(harness, 'node_modules', '@deepseek-ai', 'dsh-system-prompt')
     const harnessChild = join(harness, 'node_modules', 'host-only-child')
     mkdirSync(shadow, { recursive: true })
+    mkdirSync(configFallback, { recursive: true })
     mkdirSync(harnessPlugin, { recursive: true })
     mkdirSync(harnessChild, { recursive: true })
     writeFileSync(join(shadow, 'package.json'), JSON.stringify({
@@ -576,6 +577,17 @@ describe('boot', () => {
     writeFileSync(join(shadow, 'index.mjs'), [
       'export function apply(ctx) {',
       '  ctx.provide("shadowPluginLoaded", true)',
+      '}',
+      '',
+    ].join('\n'))
+    writeFileSync(join(configFallback, 'package.json'), JSON.stringify({
+      name: 'config-fallback-only',
+      type: 'module',
+      exports: './index.mjs',
+    }))
+    writeFileSync(join(configFallback, 'index.mjs'), [
+      'export function apply(ctx) {',
+      '  ctx.provide("configFallbackLoaded", true)',
       '}',
       '',
     ].join('\n'))
@@ -610,6 +622,8 @@ describe('boot', () => {
       "  name: '@deepseek-ai/dsh-system-prompt'",
       '- id: relative',
       "  name: './relative.mjs'",
+      '- id: fallback',
+      "  name: 'config-fallback-only'",
     ]
     const configOwnedPath = join(dir, 'config-owned.cordis.yml')
     writeFileSync(configOwnedPath, [...entries, ''].join('\n'))
@@ -628,11 +642,12 @@ describe('boot', () => {
     } finally {
       await configOwned.fiber.dispose()
     }
-    const harnessBaseUrl = pathToFileURL(join(harness, 'entry.mjs')).href
-    const ctx = await boot(NAME, hostOwnedPath, undefined, undefined, harnessBaseUrl)
+    const harnessAnchor = join(harness, 'entry.mjs')
+    const ctx = await boot(NAME, hostOwnedPath, undefined, undefined, harnessAnchor)
     try {
       expect(ctx.get('harnessPluginLoaded')).toBe(true)
       expect(ctx.get('hostChildLoaded')).toBe(true)
+      expect(ctx.get('configFallbackLoaded')).toBe(true)
       expect(ctx.get('shadowPluginLoaded')).toBeUndefined()
       expect(ctx.get('relativePluginLoaded')).toBe(true)
       expect(ctx.get('absolutePluginLoaded')).toBe(true)

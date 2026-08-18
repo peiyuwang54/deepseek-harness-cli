@@ -6,7 +6,7 @@
   <img src=".github/deepseek-cli-splash.png" alt="DeepSeek CLI 终端预览" width="80%" />
 </p>
 
-<p align="center"><strong>8 种界面语言 · 6 套主题配色 · 从规划到执行的智能体编程</strong></p>
+<p align="center"><strong>9 种界面语言 · 6 套主题配色 · 从规划到执行的智能体编程</strong></p>
 
 <p align="center">
   <img src=".github/deepseek-cli-theme-swatches.svg" alt="DeepSeek CLI 主题色：DeepSeek、宇宙橙、雾蓝、鼠尾草绿、薰衣草紫和深蓝" width="280" />
@@ -56,6 +56,14 @@ deepseek
 dsh
 ```
 
+脚本与 CI 可用 `deepseek exec` 运行非交互任务：
+
+```sh
+deepseek exec "run the tests"
+deepseek exec --json "review this repository"
+deepseek exec resume --last "continue"
+```
+
 首次启动时，将 DeepSeek API Key 粘贴到掩码输入框。Key 由共享凭据服务保存，不会进入聊天记录。之后可用 `/credentials` 查看来源、更换 Key 或删除已保存的值。
 
 自动化场景可在启动前设置 `DEEPSEEK_API_KEY`；PowerShell 使用 `$env:DEEPSEEK_API_KEY="your-key"`。从启动环境继承的值在 CLI 内只读。
@@ -74,7 +82,7 @@ deepseek --yolo
 
 - 代码读取、编辑、Shell、Web 搜索、Skills、MCP 与子代理。
 - 持久会话、恢复、Plan、Goal、消息排队与上下文自动压缩。
-- Codex 风格终端 UI，支持 6 套主题配色，以及中文、英语、阿拉伯语、法语、俄语、西班牙语、日语和韩语。
+- Codex 风格终端 UI，支持 6 套主题配色，以及英语、简体中文、繁体中文、阿拉伯语、法语、俄语、西班牙语、日语和韩语。
 - 基于插件的终端、Headless 自动化与 Web UI profile。
 
 <a id="run-from-source"></a>

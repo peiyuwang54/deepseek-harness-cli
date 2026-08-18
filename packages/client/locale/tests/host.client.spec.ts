@@ -23,6 +23,8 @@ describe('locale host', () => {
     expect(ctx.settings.get(ns)).toEqual({})
     await ctx.settings.update(ns, { preference: 'fr' })
     expect(ctx.settings.get(ns)).toEqual({ preference: 'fr' })
+    await ctx.settings.update(ns, { preference: 'zh-tw' })
+    expect(ctx.settings.get(ns)).toEqual({ preference: 'zh-tw' })
     await expect(ctx.settings.update(ns, { preference: 'de' })).rejects.toThrow()
     await fiber.dispose()
     expect(ctx.settings.describe().map(row => row.ns)).not.toContain(ns)

@@ -98,6 +98,8 @@ flowchart LR
   svc_tuiPrompt["ctx.tuiPrompt<br/>Terminal prompt value registry"]
   pkg_tui_app["tui-app"]
   svc_tuiStartup["ctx.tuiStartup<br/>Terminal launcher-to-runner handoff"]
+  pkg_headless["headless"]
+  svc_headlessStartup["ctx.headlessStartup<br/>Non-interactive launcher-to-runner handoff"]
   pkg_session_projection["session-projection"]
   svc_sessionProjections["ctx.sessionProjections<br/>Session projection units"]
   pkg_host_apiproxy["host-apiproxy"]
@@ -111,7 +113,6 @@ flowchart LR
   pkg_acp["acp"]
   pkg_agent_default_model["agent-default-model"]
   svc_agentDefaultModel["ctx.agentDefaultModel<br/>Default Agent model selection"]
-  pkg_headless["headless"]
   svc_agentLoop["ctx.agentLoop<br/>Concrete loop driver"]
   pkg_agent_spine_demo["agent-spine-demo"]
   pkg_goal["goal"]
@@ -232,6 +233,7 @@ flowchart LR
   pkg_fs_local --> svc_fs
   pkg_fs_sandbox --> svc_fs
   pkg_goal --> svc_goals
+  pkg_headless --> svc_headlessStartup
   pkg_hook_protocol --> svc_hooks
   pkg_invariants --> svc_invariants
   pkg_jobs --> svc_jobs
@@ -456,6 +458,7 @@ flowchart LR
 | `ctx.tui` | `seam` | [`tui`](../packages/ui/tui) | - | - | - | A mounted terminal owns pi-tui, focus, and teardown state while extensions receive only effect-owned FIFO overlay sessions scoped to that exact TUI. |
 | `ctx.tuiPrompt` | `core` | [`tui`](../packages/ui/tui) | - | - | - | Plugins register trusted prompt fragments under Cordis effects; the renderer observes coalesced changes without turning presentation-only values into durable session events. |
 | `ctx.tuiStartup` | `bundle` | [`tui-app`](../packages/bundle/tui) | - | - | - | The CLI startup row validates TTY and resume arguments, then publishes one immutable main-session identity that releases the runner to create or resume the exact Agent. |
+| `ctx.headlessStartup` | `bundle` | [`headless`](../packages/bundle/headless) | - | - | - | The exec startup row validates task, resume, output, image, and permission arguments, then publishes one immutable invocation that releases the headless runner. |
 | `ctx.sessionProjections` | `core` | [`session-projection`](../packages/session/session-projection) | - | [`tool-todo`](../packages/todo/tool-todo), [`session-title`](../packages/session/session-title), [`host-apiproxy`](../packages/host/apiproxy) | - | Domains register state-driven fold units; the eager drive keeps per-session watermark states and api-proxy serves baselines and pushes changed values. |
 | `ctx.sessionProjectionCache` | `core` | [`session-projection-cache`](../packages/session/session-projection-cache) | - | [`host-apiproxy`](../packages/host/apiproxy) | - | Durably checkpoints projection unit states per session (throttled + turn/end/detach mandatory points) and serves the cold-read ladder: cache row + persistence tail replay, so listings never load full logs. |
 | `ctx.skills` | `seam` | [`skill`](../packages/skill/skill) | [`skill-badge`](../packages/skill/skill-badge), [`skill-filesystem`](../packages/skill/skill-filesystem) | [`tool-skill`](../packages/skill/tool-skill) | - | Merges provider skill catalogs; tool-skill renders the session-prefix catalog and loads complete skill bodies. |

@@ -2,19 +2,42 @@
 
 English | [中文](README.zh.md)
 
-The dsh one-shot bundle. [`cordis.patch.yml`](cordis.patch.yml) rides directly over [`dsh-base`](../base/README.md): it supplies the coding persona and tool mode, disables HMR, mounts Code Mode's worker as a core execution capability, and inserts this package's `headless-runner` plugin (config `{task}`, resolved from the injected `headlessStartup` provider). It mounts no Host, HTTP server, Web runtime, or browser plugin.
+The non-interactive execution bundle used by `deepseek exec` and the compatible `dsh --profile headless` spelling. [`cordis.patch.yml`](cordis.patch.yml) composes the coding Agent and `headless-runner` directly over [`dsh-base`](../base/README.md), without a Host, HTTP server, Web runtime, or browser plugin.
 
-After the Loader settles, the runner reads the shared [`ctx.agentDefaultModel`](../../core/agent-default-model/README.md), creates one fresh persisted Agent through `ctx.agents`, submits the task as an ordinary user message, and waits for quiescence. It flushes the Session before folding the owned durable event interval, writes the last non-empty assistant text to stdout, and requests exit through the launcher-provided `ctx.appExit` host hook ([`dsh-cmdline`](../../boot/cmdline/README.md)) (final `turn/end` completed → 0, otherwise 1). A terminal `error` reason also writes its code and message to stderr; successful runs keep stderr empty. The process opens no listening port. The task text is this app's command line: the ordinary `headless-startup` provider ([`src/startup.ts`](src/startup.ts)) injects `ctx.cmdlineArgs` ([`dsh-cmdline`](../../boot/cmdline/README.md)), reads the positional argument of `dsh --profile headless "task"`, prints the app's `--help`, and provides `headlessStartup`; the runner injects that service and reads its task from lazy config. A missing or whitespace-only task is rejected before the runner activates.
+## Commands
+
+```sh
+deepseek exec "run the tests"
+deepseek exec --json "review this repository"
+deepseek exec --image screenshot.png "fix this UI"
+deepseek exec --output-schema result.schema.json "analyze"
+deepseek exec --output-last-message result.txt "summarize"
+deepseek exec resume <session-id> "continue"
+deepseek exec resume --last "continue"
+```
+
+`--json` writes one JSON value per line using `thread.*`, `turn.*`, and `item.*` lifecycle events. Without it, stdout contains the final result and a newline. `--output-last-message` also writes that result without an added newline to the selected file.
+
+`--output-schema` accepts an object-rooted JSON Schema from the supported [`dsh-tools` subset](../../core/tools/README.md). The Agent receives a scoped `structured_output` tool; success requires one committed schema-valid call, and the captured object becomes the final result. Invalid schema files and completed turns without a valid capture exit nonzero.
+
+Repeat `--image` to attach ordered PNG, JPEG, WebP, or GIF files. The attachment service validates and stores every image before the user message enters the Session.
+
+`resume <session-id>` continues an exact persisted Session. `resume --last` selects the newest Session created in the current directory; add `--all` to consider other workspaces. `--ephemeral` prevents persistence for a fresh run and cannot be combined with resume. `--full-auto`, `--yolo`, and `--dangerously-bypass-approvals-and-sandbox` use the same permission presets as the terminal command.
+
+## Execution
+
+After Loader settlement, the runner resolves the shared default model and Agent preset, creates or resumes one Agent, submits one user message, and waits until it becomes idle. It flushes the Session before deriving the result and exit status. A completed final turn exits 0; all other outcomes exit 1. Text mode writes durable model failures and runner failures to stderr, while JSON mode preserves JSONL framing with an `error` event. The process opens no listening port.
 
 ## Model Experience
 
-None, as the runner submits the task as an ordinary user message; prompts and tools belong to the base and headless bundle rows.
+None, as ordinary runs add no model-visible content and structured mode adds only the caller-selected schema tool and its completion instruction.
 
 #### KV Cache effect
 
-None; the runner adds nothing to the request prefix.
+Text, image, and resume modes add no fixed request prefix. Structured mode adds the schema-specific tool and instruction, so its request prefix differs from an ordinary run.
 
 ## Known Limitations and Deferred Work
 
-- **One submitted task only** — the runner has no interactive follow-up surface; it waits through any work the Agent completes before returning to idle and prints the last non-empty assistant message in that interval.
-- **`ctx.appExit` is launcher-owned** — booting the headless profile outside the `dsh` launcher fails loud at activation until the host provides the exit request.
+- One process submits one task. Continued interaction requires another `exec resume` invocation or the interactive terminal.
+- JSONL reports stable lifecycle categories but does not expose raw provider chunks or every product-specific Session event.
+- `ctx.appExit` is launcher-owned; embedding the bundle without the `dsh` launcher must provide that service.

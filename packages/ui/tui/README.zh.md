@@ -46,6 +46,10 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 `/fork` 是一个 agent 作用域命令，要求 agent 处于 idle 且已挂载持久会话存储。命令生命周期结算后，它会把完整的当前日志复制到一个带新 id 与 parent 链接的子会话，flush 两个会话，再请求同一个进程宿主在当前 workspace 中切换到子会话。切换失败时原终端仍可使用，并会报告保留的子会话 id，便于之后通过 `/resume` 恢复。
 
+`/rewind` 会先选择一条历史人工消息，再恢复到该消息之前的对话、首次工具调用前的工作区文件，或同时恢复两者。对话回退会创建并切换到一个子 Session，绝不截断原日志。工作区检查点使用 `$DSH_HOME/workspace-checkpoints/v1` 下的隔离 Git 对象库，而不是项目仓库；它包含已跟踪文件、未忽略的未跟踪文件与符号链接。恢复前会先保存当前工作区，只删除影子历史明确记录的路径，并保留忽略文件。遇到不支持的特殊文件、单文件或总大小超限、Git 失败，以及符号链接目录下的路径时，会在工具执行前失败。`/restore` 会打开同一份历史并默认选择仅恢复文件。直接 `!command` 也会在 Shell 启动前建立检查点。
+
+`/rewind` 与 `/restore` 都是 agent 作用域的 TUI 命令，并补全了上文所述的命令集合。
+
 `/side [message]` 会在父会话至少完成一轮用户对话后打开临时旁路对话；`/btw` 是不显示在命令目录中的别名。它继承最近一个完整轮次前缀、preset、模型和推理强度，但只把旧指令当作参考，关闭继承的 Plan 模式与 Goal 激活，并禁止子代理和 workflow 工具。旁路 transcript 会隐藏继承行及内部边界，只保留 `/copy`、`/diff`、`/export`、`/ide`、`/mention`、`/raw`、`/status` 和 `/usage`。旁路运行时 Ctrl+C 先中断，空闲时 Ctrl+C 返回未被修改的父会话。随后旁路 Agent 会被释放，其带 `ephemeral` 标记的 Session header 与事件不会进入持久化或 `/resume`。
 
 `/agent` 与别名 `/subagents` 会打开一个附着 composer 的选择器，列出存活的主 Agent 与 `ctx.subagents` 返回的所有存活后代。每行显示持久标签、模式、运行状态、当前标记和会话 id；非活动或无法读取的子项不会进入可切换列表，可改用 `/resume` 打开。选择其他行会把同一个终端通道重新挂载到该 Agent，不会停止任何 Agent，也不会修改 Session 日志。当前 Agent 必须处于 idle，交互 provider 才能安全卸载；所选目标可以已经在运行。如果当前可见子 Agent 随后被 dispose，通道会自动返回仍存活的主 Agent。未提供导航宿主或 subagent service 的自定义 renderer embedding 会报告能力缺失，不会显示虚构条目。
@@ -94,7 +98,7 @@ Agent 运行时，普通编辑器提交会调用 `agent.steer()`；其他时候�
 
 统一选择器在顶部展示一个 `DeepSeek` 系统默认行，然后为每种色调展示 `Light ·` 与 `Dark ·` 主题卡。选择卡片会一起提交明暗外观与色调；每个背景仍会在 TUI 自有的 `ui-accent` section 中记住非活跃选择。即使终端不回复背景色查询，当前主题也会一起重绘 prompt、边框、角色标题、选择状态、零状态欢迎面板、composer 与已提交用户卡片。只有 composer 和已提交用户卡片使用背景填充；欢迎面板保留终端背景。卡片表面在终端支持时使用精确 24 位背景，否则回退到 xterm 256 色。真彩色终端的启动 banner 与品牌色还会按背景使用对应色值——深色终端用亮色、浅色终端用深色——前景角色则继续使用适配主题的 ANSI 回退。
 
-`/language [en|zh|ar|fr|ru|es|ja|ko]` 会写入共用的 `locale.preference` 设置，并提供英文、中文、阿拉伯文、法文、俄文、西班牙文、日文和韩文终端文案。不带参数的 `/language` 会打开附着 composer 的选择器；TUI 中的修改会立即刷新欢迎面板、默认输入 placeholder、编辑器 footer、运行状态行与设置界面。浏览器会采用共用的英文或中文选择；若持久化设置仅受终端支持，则浏览器继续采用其自身检测到的语言。模型回复、工具载荷、自定义 placeholder 和第三方命令文案保留来源语言，不做机器翻译。
+`/language [en|zh|zh-tw|ar|fr|ru|es|ja|ko]` 会写入共用的 `locale.preference` 设置，并提供英文、简体中文、繁体中文、阿拉伯文、法文、俄文、西班牙文、日文和韩文终端文案。不带参数的 `/language` 会打开附着 composer 的选择器；TUI 中的修改会立即刷新欢迎面板、默认输入 placeholder、编辑器 footer、运行状态行、凭据界面与设置界面。浏览器会采用共用的英文或简体中文选择；若持久化设置仅受终端支持，则浏览器继续采用其自身检测到的语言。模型回复、工具载荷、自定义 placeholder 和第三方命令文案保留来源语言，不做机器翻译。
 
 `/workspace` 会在共享持久 `ctx.workspaceRegistry` 上打开可搜索 selector；`/workspace <directory>` 会先对该目录做 canonicalize 并注册。选择一行后，通过可选宿主 `TuiRuntime.handoffWorkspace` 在该工作区开启一个**全新**会话。Controller 要求 agent 空闲，检查目录，flush 当前会话，drain 输入，并在 handoff 前释放 UI 及全屏／鼠标终端 mode。缺少宿主时，当前 TUI 保持运行并显示警告；宿主拒绝时，会恢复终端并强制渲染完整首帧。该路径绝不改写当前会话不可变的 `SessionHeader.cwd`——更改工作区是一次进程／会话 handoff，而非原地元数据变更。
 

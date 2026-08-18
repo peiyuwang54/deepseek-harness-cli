@@ -715,7 +715,7 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
     expect(result.output).not.toMatch(/ERR_MODULE_NOT_FOUND|failed to import|failed to start/ui)
   }, 60_000)
 
-  it('runs the headless profile through its app-owned task positional', async () => {
+  it('runs JSONL through the built exec alias and headless profile', async () => {
     const apiKey = 'built-dsh-headless-key'
     const server = await startMockLlmServer({
       sequence: ['success'],
@@ -724,14 +724,27 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
     })
     const home = mkdtempSync(join(tmpdir(), 'dsh-built-headless-'))
     try {
-      const result = await runBuiltBin(['--profile', 'headless', 'answer', 'from', 'the', 'published', 'entry'], {
+      const result = await runBuiltBin(['exec', '--json', 'answer', 'from', 'the', 'published', 'entry'], {
         DSH_HOME: home,
         DSH_TELEMETRY_DISABLED: '1',
         DEEPSEEK_API_KEY: apiKey,
         DEEPSEEK_BASE_URL: server.baseURL,
       })
       expect(result.code, result.stderr).toBe(0)
-      expect(result.stdout).toBe('published headless profile reached the mock')
+      const records = result.stdout.split('\n')
+        .filter(line => line !== '')
+        .map(line => JSON.parse(line) as Record<string, unknown>)
+      expect(records[0]).toMatchObject({ type: 'thread.started' })
+      expect(records).toContainEqual({ type: 'turn.started' })
+      expect(records.some((record) => {
+        const item = record.item
+        return record.type === 'item.completed'
+          && item !== null
+          && typeof item === 'object'
+          && (item as Record<string, unknown>).type === 'agent_message'
+          && (item as Record<string, unknown>).text === 'published headless profile reached the mock'
+      })).toBe(true)
+      expect(records.at(-1)).toMatchObject({ type: 'turn.completed' })
       expect(result.stderr).toBe('')
       expect(server.requests.length).toBeGreaterThan(0)
       expect(server.requests.every(request => request.path === '/chat/completions')).toBe(true)

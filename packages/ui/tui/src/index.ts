@@ -179,6 +179,7 @@ import { createQuestionQueue } from './chat/questions.ts'
 import { createApprovalQueue } from './chat/approvals.ts'
 import { createResumeController } from './chat/resume.ts'
 import { createForkController } from './chat/fork.ts'
+import { createRewindController } from './chat/rewind.ts'
 import {
   createSideConversation,
   discardSideConversation,
@@ -1443,7 +1444,7 @@ export function createTuiChat(
       case 'tui/user-shell-start': {
         const card = new UserShellCommandComponent(
           event.data.command,
-          event.data.cwd,
+          runtime.formatCwd?.(event.data.cwd) ?? formatCwd(event.data.cwd),
           resolved.maxToolOutputLines,
           palette,
           options.renderChunks,
@@ -1772,6 +1773,14 @@ export function createTuiChat(
       stdout: { text: '', truncated: false },
       stderr: { text: errorChain(error), truncated: false },
     })
+    const cancelledResult = (): UserShellResult => ({
+      exitCode: null,
+      signal: null,
+      timedOut: false,
+      aborted: true,
+      stdout: { text: '', truncated: false },
+      stderr: { text: '', truncated: false },
+    })
     const record = (result: UserShellResult): void => {
       agent.session.append('tui/user-shell-result', {
         id,
@@ -1780,7 +1789,10 @@ export function createTuiChat(
       })
       fileSearch.invalidate()
     }
-    active.task = userShellRunner({ command, agent, signal: controller.signal })
+    active.task = rewindController.checkpointDirectShell()
+      .then(() => controller.signal.aborted
+        ? cancelledResult()
+        : userShellRunner({ command, agent, signal: controller.signal }))
       .then(record, (error: unknown) => { record(failureResult(error)) })
       .then(async () => { await ctx.sessions.flush(agent.session) })
       .catch((error: unknown) => {
@@ -1828,6 +1840,20 @@ export function createTuiChat(
     releaseTerminal,
     restoreTerminal,
   })
+  const rewindController = createRewindController({
+    ctx,
+    agent,
+    runtime,
+    resolved,
+    palette,
+    overlayManager,
+    appendNotice,
+    requestRender,
+    isDisposed,
+    agentStatus,
+    releaseTerminal,
+    restoreTerminal,
+  })
 
   const shutdown = (exitProcess: boolean): Promise<void> => {
     shuttingDown ??= (async () => {
@@ -1839,6 +1865,7 @@ export function createTuiChat(
       credentialsController.clearOverlay()
       workspaceController.clearOverlay()
       forkController.dispose()
+      rewindController.dispose()
       clearStatus()
       for (const controller of commandControllers) controller.abort(new Error('TUI disposed'))
       commandControllers.clear()
@@ -3105,6 +3132,24 @@ export function createTuiChat(
       },
     })
     commandCtx.commands.register({
+      name: 'rewind',
+      description: 'Rewind conversation, workspace files, or both',
+      handler: ({ rawInput }) => {
+        if (rawInput.trim() !== '') return { kind: 'error', text: 'Usage: /rewind (no arguments)' }
+        const error = rewindController.show()
+        return error === undefined ? { kind: 'success' } : { kind: 'error', text: error }
+      },
+    })
+    commandCtx.commands.register({
+      name: 'restore',
+      description: 'Restore workspace files from before a prior message',
+      handler: ({ rawInput }) => {
+        if (rawInput.trim() !== '') return { kind: 'error', text: 'Usage: /restore (no arguments)' }
+        const error = rewindController.show(true)
+        return error === undefined ? { kind: 'success' } : { kind: 'error', text: error }
+      },
+    })
+    commandCtx.commands.register({
       name: 'rename',
       description: 'Rename this session and pin its title',
       input: { hint: '<title>' },
@@ -3128,7 +3173,7 @@ export function createTuiChat(
     commandCtx.commands.register({
       name: 'language',
       description: 'Choose and persist the terminal interface language',
-      input: { hint: '[en|zh|ar|fr|ru|es|ja|ko]' },
+      input: { hint: '[en|zh|zh-tw|ar|fr|ru|es|ja|ko]' },
       handler: ({ rawInput }) => {
         settingsController.queueLanguageCommand(rawInput)
         return { kind: 'success' }

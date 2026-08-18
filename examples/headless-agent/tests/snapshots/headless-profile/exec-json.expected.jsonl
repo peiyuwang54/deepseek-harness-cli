@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"{{sessionId}}"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"cli-smoke-call","type":"tool_call","name":"bash","arguments":"{\"command\":\"printf CLI_TOOL_ROUND_TRIP\",\"description\":\"Prove the CLI tool round trip.\"}","status":"in_progress"}}
+{"type":"item.completed","item":{"id":"cli-smoke-call","type":"tool_call","status":"completed","content":[{"type":"text","text":"CLI_TOOL_ROUND_TRIP"}]}}
+{"type":"item.completed","item":{"id":"message_29","type":"agent_message","text":"CLI tool round trip complete: CLI_TOOL_ROUND_TRIP"}}
+{"type":"turn.completed","usage":{"input_tokens":18,"cached_input_tokens":2,"cache_write_input_tokens":0,"output_tokens":8,"reasoning_output_tokens":1}}

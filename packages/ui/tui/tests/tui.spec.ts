@@ -50,7 +50,12 @@ import { MissingExternalEditorError } from '../src/chat/external-editor.ts'
 import type { UserShellRequest, UserShellResult } from '../src/chat/user-shell.ts'
 import { renderMarkdownTranscript, renderRawTranscript } from '../src/chat/transcript-export.ts'
 import { CURSOR_BLINK_INTERVAL_MS } from '../src/chat/helpers.ts'
-import { TUI_LOCALE_OPTIONS, formatDeepDivingStatus } from '../src/chat/language.ts'
+import {
+  TUI_LOCALE_OPTIONS,
+  formatDeepDivingStatus,
+  resolveTuiLocale,
+  tuiCredentialCopy,
+} from '../src/chat/language.ts'
 import {
   TUI_PERSONALITY_SETTINGS_NAMESPACE,
   tuiPersonalityPrompt,
@@ -280,6 +285,9 @@ describe('TUI config', () => {
       fileSearchMaxEntries: 10_000,
       fileSearchExcludedDirectories: ['.git', 'node_modules'],
       fileSearchRespectIgnoreFiles: true,
+      rewindGitTimeoutMs: 60_000,
+      rewindMaxFileBytes: 25 * 1024 * 1024,
+      rewindMaxTotalBytes: 200 * 1024 * 1024,
       showHardwareCursor: true,
       theme: {
         color: true,
@@ -311,6 +319,9 @@ describe('TUI config', () => {
       fileSearchMaxEntries: 123,
       fileSearchExcludedDirectories: ['.git', 'generated'],
       fileSearchRespectIgnoreFiles: false,
+      rewindGitTimeoutMs: 789,
+      rewindMaxFileBytes: 12_345,
+      rewindMaxTotalBytes: 67_890,
       showHardwareCursor: false,
       theme: { color: false, truecolor: true },
       title: 'DSH',
@@ -334,6 +345,9 @@ describe('TUI config', () => {
       fileSearchMaxEntries: 123,
       fileSearchExcludedDirectories: ['.git', 'generated'],
       fileSearchRespectIgnoreFiles: false,
+      rewindGitTimeoutMs: 789,
+      rewindMaxFileBytes: 12_345,
+      rewindMaxTotalBytes: 67_890,
       showHardwareCursor: false,
       theme: {
         color: false,
@@ -761,6 +775,13 @@ describe('shared settings, appearance, and workspaces', () => {
     expect(mutate).toHaveBeenCalledWith(localeNamespace, [{ op: 'set', path: ['preference'], value: 'ar' }])
     expect(result.terminal.output).toContain('تم تغيير لغة الواجهة إلى العربية.')
     expect(result.terminal.output).toContain('صِف مهمة، أو أرفق ملفًا باستخدام @، أو اكتب / لعرض الأوامر')
+
+    result.terminal.send('/language 繁體中文')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(mutate).toHaveBeenCalledWith(localeNamespace, [{ op: 'set', path: ['preference'], value: 'zh-tw' }])
+    expect(result.terminal.output).toContain('介面語言已切換為繁體中文。')
+    expect(result.terminal.output).toContain('描述任務，@ 加入檔案，或輸入 / 查看命令')
     await dispose(result)
   })
 
@@ -2098,6 +2119,50 @@ describe('goodbye message and /resume', () => {
     expect(handoff).toHaveBeenCalledWith(target.id, '/workspace')
     expect(result.terminal.stopped).toBeGreaterThan(0)
     expect(result.terminal.output).toContain('Resume handoff failed: test host retained process')
+    await dispose(result)
+  })
+
+  it('rewinds conversation history from a selected user message without invoking the workspace restore', async () => {
+    const handoff = vi.fn<NonNullable<TuiRuntime['handoffResume']>>(() => Promise.reject(new Error('test rewind retained process')))
+    const result = await setup({
+      cwd: '/workspace',
+      omitInitialLifecycle: true,
+      handoffResume: handoff,
+      sessionPersistence: { list: async () => [] },
+      configureContext: (ctx) => {
+        ctx.on('session/flush', () => undefined)
+        return Promise.resolve()
+      },
+      beforeMount: (session) => {
+        session.append('turn/start', { turn: 1 })
+        session.append('step/start', { turn: 1, step: 1 })
+        appendUser(session, 'first request')
+        session.append('tui/workspace-checkpoint', { commit: '1'.repeat(40), userSeq: 2, kind: 'pre-turn' })
+        session.append('step/end', { turn: 1, step: 1 })
+        session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+        session.append('turn/start', { turn: 2 })
+        session.append('step/start', { turn: 2, step: 1 })
+        appendUser(session, 'second request')
+        session.append('tui/workspace-checkpoint', { commit: '2'.repeat(40), userSeq: 8, kind: 'pre-turn' })
+        session.append('step/end', { turn: 2, step: 1 })
+        session.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
+      },
+    })
+    result.terminal.send('/rewind')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Rewind to before a message')
+    expect(result.terminal.output).toContain('first request')
+    expect(result.terminal.output).toContain('second request')
+    result.terminal.send('\x1b[B')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Choose what to rewind')
+    expect(result.terminal.output).toContain('Conversation and files')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(handoff).toHaveBeenCalledWith(SessionId('session-1'), '/workspace')
+    expect(result.terminal.output).toContain('Rewind failed: test rewind retained process')
     await dispose(result)
   })
 
@@ -5145,51 +5210,55 @@ describe('pi-tui chat lifecycle and transcript', () => {
   })
 
   it('runs a leading-bang command outside the model and retains its result card', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'dsh-tui-shell-test-'))
     const completed = Promise.withResolvers<UserShellResult>()
     const userShell = vi.fn((_request: UserShellRequest) => completed.promise)
-    const result = await setup({ omitInitialLifecycle: true, userShell })
-    result.terminal.send('!printf hello')
-    await tick()
-    expect(result.terminal.output).toContain('Shell mode · Enter run · Esc clear')
-    result.terminal.output = ''
-    result.terminal.send('\r')
-    await tick()
+    const result = await setup({ cwd, formatCwd: () => '/workspace', omitInitialLifecycle: true, userShell })
+    try {
+      result.terminal.send('!printf hello')
+      await tick()
+      expect(result.terminal.output).toContain('Shell mode · Enter run · Esc clear')
+      result.terminal.output = ''
+      result.terminal.send('\r')
+      await vi.waitFor(() => { expect(userShell).toHaveBeenCalledOnce() })
 
-    expect(userShell).toHaveBeenCalledOnce()
-    expect(userShell.mock.calls[0]?.[0].command).toBe('printf hello')
-    expect(userShell.mock.calls[0]?.[0].agent).toBe(result.agent)
-    expect(result.agent.sent).toEqual([])
-    expect(result.session.events.at(-1)).toMatchObject({
-      type: 'tui/user-shell-start',
-      data: { command: 'printf hello', cwd: '/workspace' },
-    })
-    expect(result.terminal.output).toContain('○ Shell')
-    expect(result.terminal.output).toContain('$ printf hello')
-    expect(result.terminal.output).toContain('Shell command running · Esc interrupt')
+      expect(userShell.mock.calls[0]?.[0].command).toBe('printf hello')
+      expect(userShell.mock.calls[0]?.[0].agent).toBe(result.agent)
+      expect(result.agent.sent).toEqual([])
+      expect(result.session.events.findLast(event => event.type === 'tui/user-shell-start')).toMatchObject({
+        type: 'tui/user-shell-start',
+        data: { command: 'printf hello', cwd },
+      })
+      expect(result.terminal.output).toContain('○ Shell')
+      expect(result.terminal.output).toContain('$ printf hello')
+      expect(result.terminal.output).toContain('Shell command running · Esc interrupt')
 
-    completed.resolve({
-      exitCode: 0,
-      signal: null,
-      timedOut: false,
-      aborted: false,
-      stdout: { text: 'hello\n', truncated: false },
-      stderr: { text: '', truncated: false },
-      sandbox: { mode: 'workspace-write', denied: false },
-    })
-    await vi.waitFor(() => {
-      expect(result.session.events.at(-1)?.type).toBe('tui/user-shell-result')
-    })
-    expect(result.terminal.output).toContain('● Shell')
-    expect(result.terminal.output).toContain('hello')
-    expect(result.terminal.output).toContain('[exit 0]')
-    expect(result.terminal.output).toContain('Enter send · Shift+Enter newline · / commands')
+      completed.resolve({
+        exitCode: 0,
+        signal: null,
+        timedOut: false,
+        aborted: false,
+        stdout: { text: 'hello\n', truncated: false },
+        stderr: { text: '', truncated: false },
+        sandbox: { mode: 'workspace-write', denied: false },
+      })
+      await vi.waitFor(() => {
+        expect(result.session.events.at(-1)?.type).toBe('tui/user-shell-result')
+      })
+      expect(result.terminal.output).toContain('● Shell')
+      expect(result.terminal.output).toContain('hello')
+      expect(result.terminal.output).toContain('[exit 0]')
+      expect(result.terminal.output).toContain('Enter send · Shift+Enter newline · / commands')
 
-    result.terminal.output = ''
-    result.terminal.send('\x1b[A')
-    await tick()
-    expect(result.terminal.output.replaceAll(/\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07|\r/g, ''))
-      .toContain('!printf hello')
-    await dispose(result)
+      result.terminal.output = ''
+      result.terminal.send('\x1b[A')
+      await tick()
+      expect(result.terminal.output.replaceAll(/\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07|\r/g, ''))
+        .toContain('!printf hello')
+    } finally {
+      await dispose(result)
+      await rm(cwd, { recursive: true, force: true })
+    }
   })
 
   it('keeps a shell command draft while the Agent is running', async () => {
@@ -5222,6 +5291,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
   })
 
   it('cancels an active user shell command with Escape and waits for it during disposal', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'dsh-tui-shell-cancel-'))
     const aborted = vi.fn()
     const userShell = vi.fn(({ signal }: { signal: AbortSignal }) => new Promise<UserShellResult>((resolve) => {
       signal.addEventListener('abort', () => {
@@ -5236,37 +5306,48 @@ describe('pi-tui chat lifecycle and transcript', () => {
         })
       }, { once: true })
     }))
-    const result = await setup({ omitInitialLifecycle: true, userShell })
-    result.terminal.send('!sleep 10')
-    result.terminal.send('\r')
-    await tick()
-    result.terminal.send('\x1b')
-    await vi.waitFor(() => {
-      expect(aborted).toHaveBeenCalledOnce()
-      expect(result.session.events.at(-1)?.type).toBe('tui/user-shell-result')
-    })
-    expect(result.terminal.output).toContain('[cancelled]')
+    const result = await setup({ cwd, formatCwd: () => '/workspace', omitInitialLifecycle: true, userShell })
+    try {
+      result.terminal.send('!sleep 10')
+      result.terminal.send('\r')
+      await vi.waitFor(() => { expect(userShell).toHaveBeenCalledOnce() })
+      result.terminal.send('\x1b')
+      await vi.waitFor(() => {
+        expect(aborted).toHaveBeenCalledOnce()
+        expect(result.session.events.at(-1)?.type).toBe('tui/user-shell-result')
+      })
+      expect(result.terminal.output).toContain('[cancelled]')
 
-    result.terminal.send('!sleep 20')
-    result.terminal.send('\r')
-    await tick()
-    await result.controller.dispose()
-    expect(aborted).toHaveBeenCalledTimes(2)
-    await result.ctx.fiber.dispose()
+      result.terminal.send('!sleep 20')
+      result.terminal.send('\r')
+      await vi.waitFor(() => { expect(userShell).toHaveBeenCalledTimes(2) })
+      await result.controller.dispose()
+      expect(aborted).toHaveBeenCalledTimes(2)
+      await result.ctx.fiber.dispose()
+    } finally {
+      await rm(cwd, { recursive: true, force: true })
+    }
   })
 
   it('records a rejected shell host as a settled transcript error', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'dsh-tui-shell-error-'))
     const result = await setup({
+      cwd,
+      formatCwd: () => '/workspace',
       omitInitialLifecycle: true,
       userShell: () => Promise.reject(new Error('runner unavailable')),
     })
-    result.terminal.send('!echo hi')
-    result.terminal.send('\r')
-    await vi.waitFor(() => {
-      expect(result.session.events.at(-1)?.type).toBe('tui/user-shell-result')
-    })
-    expect(result.terminal.output).toContain('runner unavailable')
-    await dispose(result)
+    try {
+      result.terminal.send('!echo hi')
+      result.terminal.send('\r')
+      await vi.waitFor(() => {
+        expect(result.session.events.at(-1)?.type).toBe('tui/user-shell-result')
+      })
+      expect(result.terminal.output).toContain('runner unavailable')
+    } finally {
+      await dispose(result)
+      await rm(cwd, { recursive: true, force: true })
+    }
   })
 
   it('opens a keyboard selector and switches the session model without sending slash text to the agent', async () => {
@@ -8803,13 +8884,17 @@ describe('terminal mounting', () => {
 
   it('matches the Web label and Codex live-turn clock and interrupt hint', () => {
     expect(TUI_LOCALE_OPTIONS.map(option => option.id)).toEqual([
-      'en', 'zh', 'ar', 'fr', 'ru', 'es', 'ja', 'ko',
+      'en', 'zh', 'zh-tw', 'ar', 'fr', 'ru', 'es', 'ja', 'ko',
     ])
     expect(formatDeepDivingStatus(14_999, 'en')).toBe('Deep diving (14s • esc to interrupt)')
     expect(formatDeepDivingStatus(125_000, 'en')).toBe('Deep diving (2m 05s • esc to interrupt)')
     expect(formatDeepDivingStatus(125_000, 'zh')).toBe('正在深度求索 (2分05秒 • Esc 中断)')
+    expect(formatDeepDivingStatus(125_000, 'zh-tw')).toBe('正在深度求索 (2分05秒 • Esc 中斷)')
     expect(formatDeepDivingStatus(125_000, 'ar')).toBe('جارٍ الاستكشاف العميق (2د 05ث • Esc للمقاطعة)')
     expect(formatDeepDivingStatus(125_000, 'ja')).toBe('深く探索中 (2分05秒 • Esc で中断)')
+    expect(resolveTuiLocale('Traditional Chinese')).toBe('zh-tw')
+    expect(resolveTuiLocale('繁体中文')).toBe('zh-tw')
+    expect(tuiCredentialCopy('zh-tw').saved).toBe('DeepSeek API Key 已儲存。')
   })
 
   it('uses semantic palette roles for diff and patch fences', () => {

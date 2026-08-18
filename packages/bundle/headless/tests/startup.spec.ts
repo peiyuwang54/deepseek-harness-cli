@@ -75,7 +75,7 @@ export const apply = ctx => globalThis.__headlessStartupApply(ctx)
   await ctx.loader.await()
   disposers.push(async () => { await ctx.fiber.dispose() })
   return {
-    task: ctx.get(HEADLESS_STARTUP_SERVICE) as HeadlessStartupValues | undefined,
+    task: ctx.get(HEADLESS_STARTUP_SERVICE),
     observed,
   }
 }
@@ -83,9 +83,52 @@ export const apply = ctx => globalThis.__headlessStartupApply(ctx)
 describe('headless command-line provider', () => {
   it('joins the task positional into the runner config', async () => {
     const { task, observed } = await bootStartup(['run', 'the', 'tests'])
-    expect(task).toEqual({ task: 'run the tests' })
+    expect(task).toEqual({
+      task: 'run the tests',
+      json: false,
+      ephemeral: false,
+      images: [],
+      permissionMode: 'default',
+    })
     expect(observed.runnerConfig).toEqual({ task: 'run the tests' })
     expect(observed.exits).toEqual([])
+  })
+
+  it('resolves JSONL, schema, image, output, ephemeral, and permission options', async () => {
+    const { task } = await bootStartup([
+      '--json', '--ephemeral', '--image', 'one.png', '-i', 'two.jpg',
+      '--output-schema', 'result.schema.json', '-o', 'last.txt', '--full-auto', 'analyze',
+    ])
+    expect(task).toEqual({
+      task: 'analyze',
+      json: true,
+      ephemeral: true,
+      images: ['one.png', 'two.jpg'],
+      outputSchema: 'result.schema.json',
+      outputLastMessage: 'last.txt',
+      permissionMode: 'full-auto',
+    })
+  })
+
+  it('resolves newest and explicit session continuations', async () => {
+    expect((await bootStartup(['--json', 'resume', '--last', '--all', '-i', 'screen.png', 'continue'])).task)
+      .toEqual({
+        task: 'continue',
+        json: true,
+        ephemeral: false,
+        images: ['screen.png'],
+        permissionMode: 'default',
+        resume: { last: true, all: true },
+      })
+    expect((await bootStartup(['resume', 'session-123', '--yolo', 'finish', 'the', 'task'])).task)
+      .toEqual({
+        task: 'finish the task',
+        json: false,
+        ephemeral: false,
+        images: [],
+        permissionMode: 'yolo',
+        resume: { sessionId: 'session-123', last: false, all: false },
+      })
   })
 
   it.each([{ args: [] }, { args: ['   '] }])('rejects an invocation with no non-whitespace task ($args)', async ({ args }) => {
@@ -98,9 +141,38 @@ describe('headless command-line provider', () => {
 
   it('prints its own help and leaves the runner pending', async () => {
     const { task, observed } = await bootStartup(['--help'])
-    expect(observed.out).toContain('dsh --profile headless')
+    expect(observed.out).toContain('deepseek exec')
     expect(task).toBeUndefined()
     expect(observed.runnerConfig).toBeUndefined()
     expect(observed.exits).toEqual([0])
+  })
+
+  it.each([
+    {
+      args: ['--full-auto', '--yolo', 'task'],
+      message: '--full-auto and --yolo are mutually exclusive',
+    },
+    {
+      args: ['--ephemeral', 'resume', '--last', 'task'],
+      message: '--ephemeral cannot be used with exec resume',
+    },
+    {
+      args: ['resume', '--all', 'session-1', 'task'],
+      message: '--all requires --last',
+    },
+    {
+      args: ['resume'],
+      message: 'exec resume needs a session id or --last',
+    },
+    {
+      args: ['resume', '   ', 'task'],
+      message: 'exec resume needs a session id or --last',
+    },
+  ])('rejects contradictory resume and permission options ($message)', async ({ args, message }) => {
+    const { task, observed } = await bootStartup(args)
+    expect(observed.out).toContain(message)
+    expect(task).toBeUndefined()
+    expect(observed.runnerConfig).toBeUndefined()
+    expect(observed.exits).toEqual([1])
   })
 })

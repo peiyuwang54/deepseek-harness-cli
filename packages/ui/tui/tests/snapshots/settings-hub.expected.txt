@@ -25,9 +25,9 @@ buffer
   style 0-0 fg=bright-blue
   style 2-61 fg=bright-blue inverse
   style 75-75 fg=bright-blue
-21| "│   语言                            中文                                   │"
+21| "│   语言                            简体中文                               │"
   style 0-0 fg=bright-blue
-  style 8-39 dim
+  style 8-43 dim
   style 75-75 fg=bright-blue
 22| "│   沟通风格                        友好                                   │"
   style 0-0 fg=bright-blue

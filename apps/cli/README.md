@@ -11,8 +11,10 @@ English | [中文](README.zh.md)
 | `deepseek` | Open the interactive terminal UI. |
 | `deepseek --full-auto` | Run without prompts inside the workspace; deny wider access. |
 | `deepseek --yolo` | Run without a sandbox or approval prompts. |
+| `deepseek exec "job"` | Run a non-interactive task and print the final result. |
+| `deepseek exec resume --last "job"` | Continue the newest persisted session in this workspace. |
 | `dsh --profile <name>` | Boot the named profile under `$DSH_HOME/profiles/<name>`. |
-| `dsh --profile headless "job"` | Run one fresh persisted session, print the final answer, and exit. |
+| `dsh --profile headless "job"` | Compatibility spelling for `deepseek exec`. |
 | `dsh tui` | Alias of `--profile tui`; open the interactive terminal UI. |
 | `dsh web` | Alias of `--profile web`. |
 | `dsh plugin --profile <name> <pnpm args>` | Manage a profile's plugins by forwarding to pnpm in the profile directory. |
@@ -26,10 +28,12 @@ The launcher parses only its own flags and hands everything after them to the bo
 ```sh
 dsh --profile web --port 8080       # --port belongs to the web app
 dsh tui --resume <id>               # --resume belongs to the terminal app
-dsh --profile headless "run the tests"
+deepseek exec --json "run the tests"
 dsh --profile web --help            # the web app's flags, not the launcher's
 dsh --help                          # the launcher's own help
 ```
+
+The non-interactive command also supports repeatable `--image`, `--output-schema`, `--output-last-message`, `--ephemeral`, `--full-auto`, `--yolo`, and `resume`; see the [headless bundle contract](../../packages/bundle/headless/README.md).
 
 ## Profiles
 

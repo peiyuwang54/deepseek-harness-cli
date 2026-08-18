@@ -15,7 +15,7 @@ export const LOCALE_IDS = ['zh', 'en'] as const
 export type LocaleId = typeof LOCALE_IDS[number]
 
 /** Locale preferences accepted by the shared Web/TUI settings document. */
-export const LOCALE_PREFERENCE_IDS = ['en', 'zh', 'ar', 'fr', 'ru', 'es', 'ja', 'ko'] as const
+export const LOCALE_PREFERENCE_IDS = ['en', 'zh', 'zh-tw', 'ar', 'fr', 'ru', 'es', 'ja', 'ko'] as const
 
 /** Locale preference persisted for either shipped front door. */
 export type LocalePreferenceId = typeof LOCALE_PREFERENCE_IDS[number]

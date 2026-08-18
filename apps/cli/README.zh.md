@@ -11,8 +11,10 @@
 | `deepseek` | 打开交互式终端 UI。 |
 | `deepseek --full-auto` | 在工作区内不询问地运行，并拒绝更广访问。 |
 | `deepseek --yolo` | 关闭沙箱与审批提示。 |
+| `deepseek exec "job"` | 运行非交互任务并打印最终结果。 |
+| `deepseek exec resume --last "job"` | 继续当前工作区中最新的持久化会话。 |
 | `dsh --profile <name>` | 启动位于 `$DSH_HOME/profiles/<name>` 的指定 profile。 |
-| `dsh --profile headless "job"` | 运行一个全新的持久化会话，打印最终答案并退出。 |
+| `dsh --profile headless "job"` | `deepseek exec` 的兼容写法。 |
 | `dsh tui` | `--profile tui` 的别名；打开交互式终端 UI。 |
 | `dsh web` | `--profile web` 的别名。 |
 | `dsh plugin --profile <name> <pnpm args>` | 通过在 profile 目录中转发给 pnpm 来管理该 profile 的插件。 |
@@ -26,10 +28,12 @@
 ```sh
 dsh --profile web --port 8080       # --port belongs to the web app
 dsh tui --resume <id>               # --resume belongs to the terminal app
-dsh --profile headless "run the tests"
+deepseek exec --json "run the tests"
 dsh --profile web --help            # the web app's flags, not the launcher's
 dsh --help                          # the launcher's own help
 ```
+
+非交互命令还支持可重复的 `--image`、`--output-schema`、`--output-last-message`、`--ephemeral`、`--full-auto`、`--yolo` 与 `resume`；完整约定见 [headless 组合包](../../packages/bundle/headless/README.md)。
 
 ## Profile
 

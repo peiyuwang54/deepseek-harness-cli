@@ -7,26 +7,29 @@ buffer
   style 1-8 fg=bright-blue bold
   style 10-16 bold
   style 18-23 dim
-1-15| <blank>
-16| "                                                                                            "
+1-14| <blank>
+15| "                                                                                            "
   style 0-91 bg=ansi-236
-17| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
+16| " › 描述任务，@ 添加文件，或输入 / 查看命令                                                  "
   style 0-0 bg=ansi-236
   style 1-1 fg=bright-blue bg=ansi-236 bold
   style 2-41 bg=ansi-236 dim
   style 42-91 bg=ansi-236
-18| "                                                                                            "
+17| "                                                                                            "
   style 0-91 bg=ansi-236
-19| "  Enter 发送 · Shift+Enter 换行 · / 命令"
+18| "  Enter 发送 · Shift+Enter 换行 · / 命令"
   style 0-39 dim
-20| "╭ 语言 ────────────────────────────────────────────────────────────────────╮"
+19| "╭ 语言 ────────────────────────────────────────────────────────────────────╮"
   style 0-75 fg=bright-blue
-21| "│   English                                                                │"
+20| "│   English                                                                │"
   style 0-0 fg=bright-blue
   style 75-75 fg=bright-blue
-22| "│ → 中文                            当前                                   │"
+21| "│ → 简体中文                        当前                                   │"
   style 0-0 fg=bright-blue
   style 2-39 fg=bright-blue inverse
+  style 75-75 fg=bright-blue
+22| "│   繁體中文                                                               │"
+  style 0-0 fg=bright-blue
   style 75-75 fg=bright-blue
 23| "│   العربية                                                                │"
   style 0-0 fg=bright-blue

@@ -477,8 +477,9 @@ function groupedDump(
  * @param ctx - context carrying an initialized Loader service.
  * @param absoluteConfigPath - absolute YAML or JSON configuration path.
  * @param patches - initial app and user patches, applied in order.
- * @param bareModuleBaseUrl - optional installed-host base for bare package
- * names; relative names continue to resolve beside the configuration file.
+ * @param bareModuleBaseUrl - optional installed-host base tried first for bare
+ * package names; unresolved packages retry beside the configuration file,
+ * while relative names always resolve there.
  * @returns the created root Include entry, or `undefined` when a surface
  * disposed the whole tree (taking the Loader service with it) while the
  * transactional create was still settling entry lifecycle.
@@ -489,19 +490,32 @@ export async function mountRootInclude(
   patches: readonly PatchOptions[] = [],
   bareModuleBaseUrl?: string,
 ): Promise<Entry | undefined> {
-  ctx.loader.builtins.include = bareModuleBaseUrl === undefined
-    ? Include
-    : class HostResolvedRootInclude extends Include {
-      override import(name: string, getOuterStack?: () => string[]): unknown {
+  if (bareModuleBaseUrl === undefined) {
+    ctx.loader.builtins.include = Include
+  } else {
+    const bareModuleParentUrl = isAbsolute(bareModuleBaseUrl)
+      ? pathToFileURL(bareModuleBaseUrl).href
+      : bareModuleBaseUrl
+    ctx.loader.builtins.include = class HostResolvedRootInclude extends Include {
+      override async import(name: string, getOuterStack?: () => string[]): Promise<unknown> {
         const specifier = isAbsolute(name) ? pathToFileURL(name).href : name
         if (name.startsWith('.') || name.startsWith('cordis:')) return super.import(specifier, getOuterStack)
         const internal = this.ctx.loader.internal
         /* v8 ignore next -- Node supplies the internal loader; this preserves the
            original diagnostic for hypothetical embedders without it. */
         if (internal === undefined) return super.import(specifier, getOuterStack)
-        return internal.import(specifier, bareModuleBaseUrl, {})
+        try {
+          return await internal.import(specifier, bareModuleParentUrl, {})
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ERR_MODULE_NOT_FOUND') throw error
+          const configBaseUrl = this.ctx.baseUrl
+          /* v8 ignore next -- Include construction always replaces its context base with its config directory. */
+          if (configBaseUrl === undefined) throw new Error('host-resolved include has no configuration base URL')
+          return internal.import(specifier, configBaseUrl, {})
+        }
       }
     }
+  }
   // `cordis:group` alongside it: a group row is how a composition gives one
   // `isolate` realm to a provider and its consumers together, and an agent
   // preset living outside this workspace cannot resolve `@deepseek-ai/cordis-plugin-group`
@@ -746,10 +760,10 @@ export async function assertEntriesActivated(ctx: Context, binName: string): Pro
  * @param patches - optional overlay patches applied over the included tree
  * (see {@link loadOptionalPatches}); an empty list mounts none.
  * @param prepare - optional host setup run after Loader installation and before any config-tree entry mounts.
- * @param bareModuleBaseUrl - optional installed-host base for bare package
- * names; use it when the host, rather than the configuration project, owns the
- * complete plugin set. It also anchors the Loader root used by entries created
- * at runtime.
+ * @param bareModuleBaseUrl - optional installed-host base tried first for bare
+ * package names; use it when the host owns the shipped plugin set. Unresolved
+ * packages retry from the configuration project, and the installed base also
+ * anchors Loader-root entries created at runtime.
  * @returns the root context once every entry has started, or as soon as a
  * surface disposed the tree while startup was still in flight.
  * @throws a labelled error after disposing the partial context — `host

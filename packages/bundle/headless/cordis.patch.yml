@@ -1,8 +1,7 @@
-# The dsh-headless bundle patch: one-shot task mode directly over dsh-base.
-# It mounts no Host, HTTP server, Web runtime, or browser plugin. An ordinary
-# provider plugin injects `cmdlineArgs`, parses the task positional
-# (`dsh --profile headless "<task>"`) and this app's --help, then the direct
-# driver creates an Agent through the core registry and prints its durable result.
+# The dsh-headless bundle patch: non-interactive execution directly over
+# dsh-base. It mounts no Host, HTTP server, Web runtime, or browser plugin.
+# Startup parses the exec invocation before the direct runner creates or
+# resumes one Agent and emits its durable result.
 
 - id: system-prompt
   config:
@@ -19,17 +18,92 @@
     # Keep the same temporary process-wide Code Mode opt-in as the Web surface.
     mode: !!js process.env.DSH_TOOLS_MODE
 
+# Exec mounts the same per-session preset ledger as the TUI. Disable the
+# process-wide agent contributions from the base layer so a resumed minimal or
+# custom session cannot inherit tools and prompts outside its recorded preset.
+- id: tool-bash
+  disabled: true
+
+- id: tool-pwsh
+  disabled: true
+
+- id: tool-jobs
+  disabled: true
+
+- id: tool-fs
+  disabled: true
+
+- id: tool-fs-search
+  disabled: true
+
+- id: tool-str-replace-editor
+  disabled: true
+
+- id: skill-filesystem
+  disabled: true
+
+- id: tool-skill
+  disabled: true
+
+- id: tool-goal
+  disabled: true
+
+- id: plan-mode
+  disabled: true
+
+- id: compaction-basic
+  disabled: true
+
+- id: command-compact
+  disabled: true
+
+- id: tool-result-pruner
+  disabled: true
+
+- id: tool-subagent-control
+  disabled: true
+
+- id: tool-subagent-list-agents
+  disabled: true
+
+- id: tool-subagent
+  disabled: true
+
+- id: tool-subagent-fork
+  disabled: true
+
+- id: workflow-worker-thread
+  disabled: true
+
+- id: tool-workflow
+  disabled: true
+
+- id: tool-ralph
+  disabled: true
+
+- id: agent-instructions
+  disabled: true
+
+- id: tool-todo
+  disabled: true
+
+- id: tool-web
+  disabled: true
+
 - insert:
     # Code Mode is a core execution capability, not a Web component.
     - id: code-runtime
       name: '@deepseek-ai/dsh-code-runtime-worker-thread'
 
+    - id: agent-presets
+      name: '@deepseek-ai/dsh-agent-presets'
+      config:
+        default: standard
+
     - id: headless-startup
       name: '@deepseek-ai/dsh-headless/startup'
 
-    # Reads its task from the ordinary headlessStartup provider.
+    # Reads the resolved invocation from the ordinary headlessStartup provider.
     - id: headless-runner
       name: '@deepseek-ai/dsh-headless'
       inject: [headlessStartup]
-      config:
-        task: !!js ctx.headlessStartup.task

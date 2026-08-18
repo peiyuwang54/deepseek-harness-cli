@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-本包是两个进程内提供方共用的运行驱动器。spawn 不传入会话初始内容；fork 传入父 agent（智能体）已完成轮次的前缀。其余机制，包括深度、子 agent 创建、可选的子 agent 定制、结果读取、取消和 dispose（资源释放），都在此共用同一套实现。
+本包是两个进程内提供方共用的运行驱动器。spawn 不传入会话初始内容；fork 传入父 agent（智能体）已完成轮次的前缀。其余机制，包括深度、子 agent 创建、可选的子 agent 定制、结果读取、取消和 dispose（资源释放），都在此共用同一套实现。本包还导出 agent 作用域的结构化输出运行时，供子 agent 与非交互式 `deepseek exec` 共同使用。
 
 ## 启动约定
 
@@ -36,15 +36,15 @@
 
 ## 结构化输出
 
-`attachStructuredRuntime(childCtx, schema)` 会在子 agent 作用域中安装完整约定：
+`attachStructuredRuntime(agentCtx, schema)` 会在单个 agent 的作用域中安装完整约定：
 
 - 使用请求 schema 注册的 `structured_output` 工具会校验并暂存模型值。
 - 一个顺序为 190 的系统提示词段会告诉子 agent，该工具调用就是终态答案。
-- 两项贡献都是普通的子 agent 作用域注册。专家级 `system-prompt/assemble` 监听器可以替换它们，因此负责为该子 agent 保留结构化输出协议。
+- 两项贡献都是普通的 agent 作用域注册。专家级 `system-prompt/assemble` 监听器可以替换它们，因此负责为该 agent 保留结构化输出协议。
 - `tools/result` 观察器只会在该次执行的权威最终工具结果成功后提交暂存值；Code Mode 子分派外层的 `run_code` 结果也包括在内。
 - 单调工具防护会在捕获值后阻止后续调用，结构化输出执行的 `concludeTurn()` 标记则在结果提交后结束轮次。
 
-正常结束却始终未提交必需结构化值的轮次会报告 `error`；驱动器不会重新提示。所有注册都附着于子 agent fiber，并随其一同消失。
+正常结束却始终未提交必需结构化值的轮次会报告 `error`；调用方不会重新提示。所有注册都附着于 agent fiber，并随其一同消失。
 
 ## 模型体验
 

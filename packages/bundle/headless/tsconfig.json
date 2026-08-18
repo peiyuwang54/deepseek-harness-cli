@@ -24,10 +24,28 @@
       "path": "../../core/agent-default-model"
     },
     {
+      "path": "../../preset/agent-presets"
+    },
+    {
+      "path": "../../attachment/attachment"
+    },
+    {
       "path": "../../llm/llm"
     },
     {
+      "path": "../../interaction/permission-presets"
+    },
+    {
       "path": "../../core/session"
+    },
+    {
+      "path": "../../session/session-persistence"
+    },
+    {
+      "path": "../../core/tools"
+    },
+    {
+      "path": "../../subagent/subagent-in-process-driver"
     },
     {
       "path": "../../runtime-diagnostics/invariants"

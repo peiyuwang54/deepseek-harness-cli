@@ -130,6 +130,7 @@ const CHECKPOINTS = [
   'workspace-handoff-recovered',
   'new-session-handoff-recovered',
   'fork-session-handoff-recovered',
+  'rewind-selector',
   'errors-and-help',
   'disposed-terminal',
   'resume-sessions-loading',
@@ -937,7 +938,10 @@ describe('TUI terminal-state snapshots', () => {
   })
 
   it('pins a direct user shell command and its sandboxed result', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'dsh-tui-shell-snapshot-'))
     const harness = await setupSnapshot({
+      cwd,
+      formatCwd: () => '/workspace/project',
       omitInitialLifecycle: true,
       userShell: async () => ({
         exitCode: 0,
@@ -949,13 +953,17 @@ describe('TUI terminal-state snapshots', () => {
         sandbox: { mode: 'workspace-write', denied: false },
       }),
     })
-    harness.terminal.send('!ls')
-    harness.terminal.send('\r')
-    await vi.waitFor(async () => {
-      expect(await harness.terminal.snapshot()).toContain('[exit 0]')
-    })
-    await checkpoint('user-shell-command', harness.terminal)
-    await disposeSnapshot(harness)
+    try {
+      harness.terminal.send('!ls')
+      harness.terminal.send('\r')
+      await vi.waitFor(async () => {
+        expect(await harness.terminal.snapshot()).toContain('[exit 0]')
+      })
+      await checkpoint('user-shell-command', harness.terminal)
+    } finally {
+      await disposeSnapshot(harness)
+      await rm(cwd, { recursive: true, force: true })
+    }
   })
 
   it('pins session autocomplete discovered through a log-backed title', async () => {
@@ -2107,6 +2115,39 @@ describe('TUI terminal-state snapshots', () => {
     await new Promise(resolve => setTimeout(resolve, 25))
     await checkpoint('fork-session-handoff-recovered', harness.terminal, { includeScrollback: true })
     await disposeSnapshot(harness)
+  })
+
+  it('pins the conversation and workspace rewind message selector', async () => {
+    const dateNow = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-08-18T06:41:25.000Z'))
+    const harness = await setupSnapshot({
+      cwd: '/workspace/project',
+      omitInitialLifecycle: true,
+      beforeMount: (session) => {
+        session.append('turn/start', { turn: 1 })
+        session.append('step/start', { turn: 1, step: 1 })
+        appendUser(session, 'Implement the parser foundation')
+        session.append('tui/workspace-checkpoint', { commit: '1'.repeat(40), userSeq: 2, kind: 'pre-turn' })
+        session.append('step/end', { turn: 1, step: 1 })
+        session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+        session.append('turn/start', { turn: 2 })
+        session.append('step/start', { turn: 2, step: 1 })
+        appendUser(session, 'Add recovery coverage')
+        session.append('tui/workspace-checkpoint', { commit: '2'.repeat(40), userSeq: 8, kind: 'pre-turn' })
+        session.append('step/end', { turn: 2, step: 1 })
+        session.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
+      },
+    }, { columns: 92, rows: 32 })
+
+    try {
+      await renderAfter(harness, () => {
+        harness.terminal.send('/rewind')
+        harness.terminal.send('\r')
+      })
+      await checkpoint('rewind-selector', harness.terminal, { includeScrollback: true })
+    } finally {
+      await disposeSnapshot(harness)
+      dateNow.mockRestore()
+    }
   })
 
   it('pins the detailed session diagnostics card', async () => {

@@ -152,36 +152,25 @@ async function durablePromptContent(ctx: Context, content: readonly PromptConten
   if (content.every(part => part.type === 'text')) {
     return content.map(part => ({ type: 'text', text: part.text }))
   }
-  const limits = ctx.attachments.imageLimits
-  if (content.filter(part => part.type === 'image').length > limits.maxImagesPerMessage) {
-    throw new AttachmentError('Prompt exceeds the configured image-count limit.', 'TOO_MANY_IMAGES')
-  }
   const prepared = content.map(part => part.type === 'text'
     ? part
     : { part, data: decodeBase64(part.data) })
   const images = prepared.filter((part): part is Extract<typeof part, { data: Uint8Array }> => 'data' in part)
-  const totalBytes = images.reduce((sum, image) => sum + image.data.byteLength, 0)
-  if (totalBytes > limits.maxMessageImageBytes) {
-    throw new AttachmentError('Prompt exceeds the configured aggregate image-byte limit.', 'IMAGES_TOO_LARGE')
-  }
-  for (const image of images) {
-    await ctx.attachments.validateImage({
-      data: image.data,
-      mediaType: image.part.mediaType,
-      ...image.part.name === undefined ? {} : { name: image.part.name },
-    })
-  }
+  const references = await ctx.attachments.saveImages(images.map(image => ({
+    data: image.data,
+    mediaType: image.part.mediaType,
+    ...image.part.name === undefined ? {} : { name: image.part.name },
+  })))
   const blocks: ContentBlock[] = []
+  let imageIndex = 0
   for (const item of prepared) {
     if (!('data' in item)) {
       blocks.push({ type: 'text', text: item.text })
       continue
     }
-    const attachment = await ctx.attachments.saveImage({
-      data: item.data,
-      mediaType: item.part.mediaType,
-      ...item.part.name === undefined ? {} : { name: item.part.name },
-    })
+    const attachment = references[imageIndex++]
+    /* v8 ignore next -- each prepared image supplied exactly one saveImages input and therefore one ordered ref. */
+    if (attachment === undefined) throw new Error('attachment batch result did not preserve input cardinality')
     blocks.push({ type: 'image', attachment })
   }
   return blocks
@@ -302,7 +291,12 @@ function paginate(
     if (!MESSAGE_TYPES.has(event.type) || !isAppendSurfaceEvent(event)) continue
     count++
     const sources = (event as { sourceEventSeqs?: number[] }).sourceEventSeqs
-    const groupStart = sources !== undefined && sources.length > 0 ? Math.min(event.seq, ...sources) : event.seq
+    let groupStart = event.seq
+    if (sources !== undefined) {
+      for (const source of sources) {
+        if (source < groupStart) groupStart = source
+      }
+    }
     if (count >= maxMessages) {
       cut = groupStart
       break

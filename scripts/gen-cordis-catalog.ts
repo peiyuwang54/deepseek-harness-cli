@@ -70,6 +70,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   e2b: 'subprocess.md',
   fs: 'filesystem.md',
   goals: 'goal.md',
+  headlessStartup: 'core.md',
   hooks: 'hooks.md',
   webServer: 'web-server.md',
   invariants: 'invariants.md',

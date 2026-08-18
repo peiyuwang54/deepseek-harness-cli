@@ -26,9 +26,9 @@ The shipped apps own these command lines:
 |---|---|
 | `web` | `--host`, `--port`, repeatable `--trusted-host` |
 | `tui` | `--resume <session>`, `--full-auto`, `--yolo`, `--dangerously-bypass-approvals-and-sandbox` |
-| `headless` | the task text, as the positional argument |
+| `headless` | task text; `--json`, `--ephemeral`, repeatable `--image`, `--output-schema`, `--output-last-message`, permission shortcuts, and `resume` |
 
-A one-shot task (`dsh --profile headless "run the tests"`) creates one fresh persisted Agent through the core registry, submits the task, waits for quiescence, and flushes the Session before deriving the last non-empty assistant text and final `turn/end` reason from its durable interval. It prints the text on stdout and exits 0 for `completed`, else 1. An invocation with no task is a usage error from that app. The shipped headless profile mounts no ApiProxy, Host, HTTP server, Web runtime, or browser client; a successful run writes nothing to stderr and opens no listening port.
+The `deepseek exec "run the tests"` alias creates one persisted Agent and prints its final result; `dsh --profile headless` remains the profile-level spelling. `--json` emits JSONL lifecycle events. Repeatable `--image` admits local PNG, JPEG, WebP, or GIF inputs, `--output-schema` requires schema-valid structured output, and `--output-last-message` saves the result. `resume <id>` continues an exact Session, while `resume --last` selects the newest Session in the current workspace unless `--all` is present. `--ephemeral` applies only to fresh runs. Permission shortcuts match the terminal command. The runner waits for quiescence and flushes before output, exits 0 only for completed valid results, mounts no ApiProxy, Host, HTTP server, Web runtime, or browser client, and opens no listening port. The [headless bundle README](../../../packages/bundle/headless/README.md) owns the output and failure contracts.
 
 Inspect the composed tree without booting it:
 

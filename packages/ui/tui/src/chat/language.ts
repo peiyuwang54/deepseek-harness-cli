@@ -6,7 +6,7 @@ import { settingsNamespace, type SettingsProvider } from '@deepseek-ai/dsh-setti
 export const TUI_LOCALE_SETTINGS_NAMESPACE = settingsNamespace('locale')
 
 /** Locale with complete terminal-owned copy. */
-export type TuiLocale = 'en' | 'zh' | 'ar' | 'fr' | 'ru' | 'es' | 'ja' | 'ko'
+export type TuiLocale = 'en' | 'zh' | 'zh-tw' | 'ar' | 'fr' | 'ru' | 'es' | 'ja' | 'ko'
 
 /** One terminal language option, named in its own language. */
 export interface TuiLocaleOption {
@@ -17,7 +17,8 @@ export interface TuiLocaleOption {
 /** Languages offered by the terminal selector. */
 export const TUI_LOCALE_OPTIONS: readonly TuiLocaleOption[] = [
   { id: 'en', label: 'English' },
-  { id: 'zh', label: '中文' },
+  { id: 'zh', label: '简体中文' },
+  { id: 'zh-tw', label: '繁體中文' },
   { id: 'ar', label: 'العربية' },
   { id: 'fr', label: 'Français' },
   { id: 'ru', label: 'Русский' },
@@ -32,6 +33,12 @@ const TUI_LOCALE_ALIASES: Readonly<Record<string, TuiLocale>> = {
   english: 'en',
   chinese: 'zh',
   '中文': 'zh',
+  '简体中文': 'zh',
+  '簡體中文': 'zh',
+  traditional: 'zh-tw',
+  'traditional chinese': 'zh-tw',
+  '繁体中文': 'zh-tw',
+  '繁體中文': 'zh-tw',
   arabic: 'ar',
   العربية: 'ar',
   french: 'fr',
@@ -217,6 +224,63 @@ const COPY: Readonly<Record<TuiLocale, TuiCopy>> = {
     deleteConfirmDescription: '永久删除此会话日志，操作无法撤销',
     languageChanged: '界面语言已切换为中文。',
     durationHour: '时',
+    durationMinute: '分',
+    durationSecond: '秒',
+  },
+  'zh-tw': {
+    welcomeBack: '歡迎回來！',
+    whatsNew: '新增功能',
+    recentSessions: '最近工作階段',
+    loadingSessions: '正在載入工作階段記錄…',
+    sessionsUnavailable: '目前設定無法讀取工作階段記錄。',
+    noPreviousSessions: '目前設定還沒有歷史工作階段。',
+    preset: '預設：',
+    model: '模型：',
+    permissions: '權限：',
+    workspaceUnset: '未設定工作區',
+    skillsAction: '瀏覽並執行智慧體技能',
+    permissionsAction: '選擇核准與沙箱模式',
+    modelAction: '切換模型與思考等級',
+    workspaceAction: '在其他工作區啟動',
+    resumeAction: '搜尋歷史工作階段',
+    helpHint: '/help 查看命令 · @ 加入檔案',
+    compactActions: '/model 模型  /resume 工作階段  /workspace 工作區  /help 說明',
+    shortcutHint: 'Enter 傳送 · Shift+Enter 換行 · Alt+M 模型 · ? 快捷鍵',
+    inputPlaceholder: '描述任務，@ 加入檔案，或輸入 / 查看命令',
+    editorIdleFooter: 'Enter 傳送 · Shift+Enter 換行 · / 命令',
+    editorRunningFooter: 'Enter 引導 · Esc 中斷 · Shift+Enter 換行',
+    shellModeFooter: 'Shell 模式 · Enter 執行 · Esc 清除',
+    shellRunningFooter: 'Shell 命令執行中 · Esc 中斷',
+    shellPromptHelp: 'Shell 模式：輸入 ! 與命令，然後按 Enter。',
+    shellWaitForTurn: '請等待目前輪次結束後再執行 Shell 命令。',
+    shellAlreadyRunning: '已有 Shell 命令正在執行。',
+    deepDiving: '正在深度求索',
+    interruptHint: 'Esc 中斷',
+    pendingSteering: '將在下次工具呼叫後提交的訊息',
+    pendingSteeringInterrupt: '按 Esc 中斷並立即傳送',
+    settings: '設定',
+    appearance: '外觀',
+    language: '語言',
+    settingsDocument: '設定檔',
+    personality: '溝通風格',
+    personalityFriendly: '友善',
+    personalityFriendlyDescription: '溫暖、協作、樂於協助',
+    personalityPragmatic: '務實',
+    personalityPragmaticDescription: '簡潔、專注任務、直截了當',
+    current: '目前',
+    moveSelectClose: '↑/↓ 移動 • Enter 選擇 • Esc 關閉',
+    archiveTitle: '封存此工作階段？',
+    archiveKeep: '否，保留此工作階段',
+    archiveKeepDescription: '返回目前對話',
+    archiveConfirm: '是，封存並結束',
+    archiveConfirmDescription: '從使用中清單隱藏，但保留完整記錄',
+    deleteTitle: '刪除此工作階段？',
+    deleteKeep: '否，保留此工作階段',
+    deleteKeepDescription: '返回目前對話',
+    deleteConfirm: '是，刪除並結束',
+    deleteConfirmDescription: '永久刪除此工作階段記錄，操作無法復原',
+    languageChanged: '介面語言已切換為繁體中文。',
+    durationHour: '時',
     durationMinute: '分',
     durationSecond: '秒',
   },
@@ -621,6 +685,20 @@ const CREDENTIAL_COPY: Readonly<Record<TuiLocale, CredentialCopy>> = {
     failed: '凭据更新失败', usage: '用法：/credentials [status|set|unset]',
     moveSelectClose: '↑/↓ 移动 • Enter 选择 • Esc 关闭',
   },
+  'zh-tw': {
+    title: 'DeepSeek API Key', connectTitle: '連接 DeepSeek',
+    connectDetail: '貼上 DeepSeek API Key。輸入會被遮蔽，也不會加入聊天記錄。',
+    updateDetail: '貼上新的 DeepSeek API Key，內容會持續隱藏。',
+    inputHint: 'Enter 儲存 • Esc 略過', savingHint: '正在儲存…', configured: '已設定', missing: '未設定',
+    source: '來源', configure: '設定 API Key', replace: '更換 API Key', remove: '刪除已儲存的 API Key',
+    close: '關閉', confirmRemove: '刪除已儲存的 DeepSeek API Key？', cancel: '取消',
+    saved: 'DeepSeek API Key 已儲存。', removed: '已刪除儲存的 DeepSeek API Key。',
+    unavailable: '目前設定未提供認證資料儲存空間。',
+    readOnly: '目前 API Key 來自唯讀環境變數，請在啟動 DeepSeek CLI 前修改。',
+    empty: '請輸入 API Key。', illegalCharacters: 'API Key 只能包含可列印的 ASCII 字元。',
+    failed: '認證資料更新失敗', usage: '用法：/credentials [status|set|unset]',
+    moveSelectClose: '↑/↓ 移動 • Enter 選擇 • Esc 關閉',
+  },
   ar: {
     title: 'مفتاح DeepSeek API', connectTitle: 'اتصال DeepSeek',
     connectDetail: 'ألصق مفتاح DeepSeek API. سيبقى مخفيًا ولن يُضاف إلى سجل المحادثة.',
@@ -754,7 +832,7 @@ export function formatDeepDivingStatus(elapsedMs: number, locale: TuiLocale): st
   const hours = Math.floor(total / 3600)
   const minutes = Math.floor(total % 3600 / 60)
   const seconds = total % 60
-  const compactUnits = locale === 'zh' || locale === 'ja' || locale === 'ko'
+  const compactUnits = locale === 'zh' || locale === 'zh-tw' || locale === 'ja' || locale === 'ko'
   const separator = compactUnits ? '' : ' '
   const duration = hours > 0
     ? `${hours}${copy.durationHour}${separator}${String(minutes).padStart(2, '0')}${copy.durationMinute}${separator}${String(seconds).padStart(2, '0')}${copy.durationSecond}`

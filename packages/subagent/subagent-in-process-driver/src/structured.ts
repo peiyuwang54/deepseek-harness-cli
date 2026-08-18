@@ -1,7 +1,7 @@
 /**
- * Child-scoped structured-output tool, prompt instruction, terminal guard, and authoritative
- * result capture for in-process subagents. Each child registers its real schema on its own
- * scope, so concurrent runs do not interact and disposal leaves no global residue. The prompt
+ * Agent-scoped structured-output tool, prompt instruction, terminal guard, and authoritative
+ * result capture for one-shot runs. Each Agent registers its real schema on its own scope,
+ * so concurrent runs do not interact and disposal leaves no global residue. The prompt
  * contribution is ordinary reconstructed request state.
  *
  * Capture commits only after the authoritative `tools/result` succeeds; Code Mode capture also
@@ -15,11 +15,11 @@ import type { ToolSchema } from '@deepseek-ai/dsh-llm'
 import type { ToolExecution, ToolRunContext } from '@deepseek-ai/dsh-tools'
 import { ToolArgsError, validateJsonSchemaValue, type ObjectJsonSchema } from '@deepseek-ai/dsh-tools'
 
-/** The model-facing tool name a structured child must call to finish. */
+/** The model-facing tool name a structured run must call to finish. */
 export const STRUCTURED_OUTPUT_TOOL = 'structured_output'
 
 /**
- * The instruction registered as the child's trailing (order-190, the end of
+ * The instruction registered as the Agent's trailing (order-190, the end of
  * the tool-guidance band) scoped prompt section: the demand travels with the
  * tool, as ordinary prompt state of exactly one agent.
  */
@@ -28,7 +28,7 @@ export const STRUCTURED_OUTPUT_INSTRUCTION
     + `\`${STRUCTURED_OUTPUT_TOOL}\` tool with arguments matching its parameter schema exactly. `
     + 'Do not finish with a plain text answer: only the tool call counts as your result.'
 
-/** One structured run's live handle: read the captured value once the child settles. */
+/** One structured run's live handle: read the captured value once the Agent settles. */
 export interface StructuredAttachment {
   /**
    * The captured value, once the child called the tool with valid arguments
@@ -39,14 +39,14 @@ export interface StructuredAttachment {
 }
 
 /**
- * Attach the scoped capture tool, instruction, and enforcement to a child during
- * its creation window. Child disposal removes every registration.
- * @param childCtx - the child agent's scope context (`setup`'s argument).
+ * Attach the scoped capture tool, instruction, and enforcement to an Agent during
+ * its creation window. Agent disposal removes every registration.
+ * @param agentCtx - the Agent's scope context (`setup`'s argument).
  * @param schema - the trusted, already-asserted schema subset to enforce (see
  *   `assertObjectJsonSchema` in dsh-tools).
  * @returns the attachment handle (read `captured()` after the child settles).
  */
-export function attachStructuredRuntime(childCtx: Context, schema: ObjectJsonSchema): StructuredAttachment {
+export function attachStructuredRuntime(agentCtx: Context, schema: ObjectJsonSchema): StructuredAttachment {
   /**
    * Validated values staged by the capture tool body, awaiting THEIR OWN
    * authoritative `tools/result` notification. The execution object's identity
@@ -71,7 +71,7 @@ export function attachStructuredRuntime(childCtx: Context, schema: ObjectJsonSch
     parameters: schema as unknown as Record<string, unknown>,
   }
 
-  childCtx.tools.register({
+  agentCtx.tools.register({
     ...schemaEntry,
     output: {
       schema: {
@@ -96,7 +96,7 @@ export function attachStructuredRuntime(childCtx: Context, schema: ObjectJsonSch
     },
   })
 
-  childCtx.systemPrompt.section({
+  agentCtx.systemPrompt.section({
     name: `tool:${STRUCTURED_OUTPUT_TOOL}`,
     order: 190,
     text: STRUCTURED_OUTPUT_INSTRUCTION,
@@ -106,14 +106,14 @@ export function attachStructuredRuntime(childCtx: Context, schema: ObjectJsonSch
   // waterfall and compose monotonically (deny or abstain, never allow), so a
   // later prepended listener cannot resurrect dispatch. Calls that precede
   // capture in the same response remain untouched.
-  childCtx.tools.guard(exec => captured === undefined && pending === undefined
+  agentCtx.tools.guard(exec => captured === undefined && pending === undefined
     ? undefined
     : `structured output already recorded: the run is complete, so \`${exec.name}\` is not executed`)
 
   // The capture COMMIT observes the immutable, authoritative result after the
   // complete pipeline and outer error normalization. This notification cannot
   // transform the outcome, so there is no wrapper outside the commit verdict.
-  childCtx.on('tools/result', function (this: unknown, exec, result) {
+  agentCtx.on('tools/result', function (this: unknown, exec, result) {
     if (exec.name === STRUCTURED_OUTPUT_TOOL) {
       const entry = staged.get(exec)
       if (entry === undefined) return

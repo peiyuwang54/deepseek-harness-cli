@@ -364,6 +364,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'completion after the encoded raster has been fully decoded.',
       },
       {
+        signature: 'async saveImages(inputs: readonly SaveImageAttachment[]): Promise<readonly ImageAttachmentRef[]>',
+        description: 'Validate one ordered image batch before committing any member. Validation failures start no writes; storage failures return no partial references, although already published content-addressed objects may stay unreachable until a future retention policy collects them.',
+        parameters: [{ name: 'inputs', description: 'encoded images in their owning message order.' }],
+        returns: 'durable references in the exact input order.',
+      },
+      {
         signature: 'abstract saveImage(input: SaveImageAttachment): Promise<ImageAttachmentRef>',
         description: 'Validate and durably commit one image before its owning session event is appended.',
         parameters: [{ name: 'input', description: 'encoded bytes, declared media type, and optional display name.' }],
@@ -706,6 +712,53 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Create one Goal through the remote boundary.',
         parameters: [{ name: 'agent', description: 'exact live Agent resolved from the wire identity.' }, { name: 'request', description: 'objective and optional round cap.' }],
         returns: 'the created Goal identity.',
+      },
+    ],
+  },
+  {
+    key: 'headlessStartup',
+    summary: 'Immutable parsed command-line values consumed by one non-interactive run.',
+    description: 'Immutable parsed command-line values consumed by one non-interactive run.',
+    methods: [
+      {
+        signature: 'task: string',
+        description: 'The prompt text submitted for this run.',
+        parameters: [],
+      },
+      {
+        signature: 'json: boolean',
+        description: 'Emit machine-readable JSONL events instead of a final text line.',
+        parameters: [],
+      },
+      {
+        signature: 'ephemeral: boolean',
+        description: 'Do not persist a fresh session.',
+        parameters: [],
+      },
+      {
+        signature: 'images: string[]',
+        description: 'Ordered local image paths attached to the prompt.',
+        parameters: [],
+      },
+      {
+        signature: 'outputSchema?: string',
+        description: 'Optional JSON Schema file constraining the final result.',
+        parameters: [],
+      },
+      {
+        signature: 'outputLastMessage?: string',
+        description: 'Optional destination for the last agent result.',
+        parameters: [],
+      },
+      {
+        signature: 'resume?: HeadlessResumeSelection',
+        description: 'Optional persisted-session continuation.',
+        parameters: [],
+      },
+      {
+        signature: 'permissionMode: HeadlessPermissionMode',
+        description: 'Startup permission behavior.',
+        parameters: [],
       },
     ],
   },
@@ -3221,6 +3274,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface GoalView extends GoalSnapshot {\n    readonly roundsStarted: number;\n    readonly createdAt: number;\n    readonly updatedAt: number;\n    readonly activation: GoalActivation;\n}',
   },
   {
+    name: 'HeadlessPermissionMode',
+    declaration: 'export type HeadlessPermissionMode = \'default\' | \'full-auto\' | \'yolo\';',
+  },
+  {
+    name: 'HeadlessResumeSelection',
+    declaration: 'export interface HeadlessResumeSelection {\n    sessionId?: string;\n    last: boolean;\n    all: boolean;\n}',
+  },
+  {
     name: 'HookCatalogGroup',
     declaration: 'export interface HookCatalogGroup {\n    readonly matcher?: string;\n    readonly handlers: readonly HookCatalogHandler[];\n}',
   },
@@ -3699,6 +3760,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'RedactedSecret',
     declaration: 'export interface RedactedSecret {\n    path: string[];\n    set: boolean;\n}',
+  },
+  {
+    name: 'ReplayEnvelope',
+    declaration: 'export interface ReplayEnvelope {\n    response: unknown;\n    blocks?: readonly unknown[];\n}',
   },
   {
     name: 'RequestContext',
@@ -4218,7 +4283,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'StreamChunk',
-    declaration: 'export type StreamChunk = {\n    type: \'block-start\';\n    index: number;\n    blockType: ContentBlockType;\n} | {\n    type: \'text-delta\';\n    index: number;\n    text: string;\n} | {\n    type: \'reasoning-delta\';\n    index: number;\n    text: string;\n} | {\n    type: \'tool-call-delta\';\n    index: number;\n    id: CallId;\n    name?: string;\n    argumentsDelta: string;\n} | {\n    type: \'block-end\';\n    index: number;\n    block: ContentBlock;\n} | {\n    type: \'usage\';\n    usage: TokenUsage;\n} | {\n    type: \'finish\';\n    reason: FinishReason;\n    replayState?: unknown;\n};',
+    declaration: 'export type StreamChunk = {\n    type: \'block-start\';\n    index: number;\n    blockType: ContentBlockType;\n} | {\n    type: \'text-delta\';\n    index: number;\n    text: string;\n} | {\n    type: \'reasoning-delta\';\n    index: number;\n    text: string;\n} | {\n    type: \'tool-call-delta\';\n    index: number;\n    id: CallId;\n    name?: string;\n    argumentsDelta: string;\n} | {\n    type: \'block-end\';\n    index: number;\n    block: ContentBlock;\n} | {\n    type: \'usage\';\n    usage: TokenUsage;\n} | {\n    type: \'finish\';\n    reason: FinishReason;\n    replayState?: ReplayEnvelope;\n};',
   },
   {
     name: 'SubagentCapabilities',

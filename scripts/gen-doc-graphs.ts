@@ -328,6 +328,13 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'The CLI startup row validates TTY and resume arguments, then publishes one immutable main-session identity that releases the runner to create or resume the exact Agent.',
   },
   {
+    key: 'headlessStartup',
+    pkg: 'headless',
+    title: 'Non-interactive launcher-to-runner handoff',
+    mode: 'bundle',
+    note: 'The exec startup row validates task, resume, output, image, and permission arguments, then publishes one immutable invocation that releases the headless runner.',
+  },
+  {
     key: 'sessionProjections',
     pkg: 'session-projection',
     title: 'Session projection units',

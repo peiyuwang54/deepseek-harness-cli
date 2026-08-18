@@ -16,7 +16,7 @@ Peer products converge on an attachment rail above the editor, but their storage
 
 ## Decision
 
-Pasted or dropped raster images are the Web composer's first consumer of a durable attachment capability. Unsent files remain temporary client-owned draft state. The host validates and durably commits every accepted user image before appending its message event. A provider adapter that produces structured image output must durably commit the output before appending its assistant block. Canonical user and assistant content contains only role-neutral `ImageBlock` references.
+Pasted or dropped raster images are the Web composer's first consumer of a durable attachment capability. Unsent files remain temporary client-owned draft state. Every rich-content intake adapter decodes its wire blocks, proves route capability, and delegates the complete image batch to the attachment service before appending its message event. A provider adapter that produces structured image output must durably commit the output before appending its assistant block. Canonical user and assistant content contains only role-neutral `ImageBlock` references.
 
 Version one supports PNG, JPEG, WebP, and GIF paste and drag-and-drop, image-only or mixed prompts, historical user and assistant image rendering, and original-image preview on a single click (display and interaction specifics superseded in part by the [attachment-display alignment note](2026-08-11-web-attachment-display-alignment.md)). File picking, generic files, PDF, audio, video, image copying, and a custom context menu remain separate follow-ups.
 
@@ -114,7 +114,7 @@ type PromptInputPart =
     }
 ```
 
-Base64 crosses JSON-RPC once and is discarded after persistence. The host validates canonical base64, image count, aggregate bytes, individual bytes, the declared MIME against a fully decoded raster, intrinsic dimensions, and decoded-pixel count. It awaits the seam's storage-free `validateImage` for every batch member before saving any member, so one malformed image cannot strand the batch's valid members as unreferenced objects. Storage commits then run in submission order to bound full-raster decoder memory. If a later storage I/O operation fails, the host appends no user event, but an earlier immutable content-addressed object may remain unreferenced; version one leaves cleanup to future reference-aware garbage collection instead of adding destructive rollback to the deduplicated store. Only after every image succeeds does it call the agent with normalized text and durable image blocks in the submitted order. A failure exposes no attachment path or raw bytes.
+Base64 crosses a wire boundary once and is discarded after persistence. Each front door validates canonical base64 and declared MIME shape, then calls `AttachmentStore.saveImages()` with the whole decoded batch. The service owns image count, aggregate bytes, individual bytes, fully decoded raster/MIME agreement, intrinsic dimensions, and decoded-pixel count; it validates every batch member before saving any member, so one malformed image cannot strand the batch's valid members as unreferenced objects. Storage commits then run in submission order to bound full-raster decoder memory. If a later storage I/O operation fails, the caller appends no model-visible event and receives no partial references, but an earlier immutable content-addressed object may remain unreferenced; version one leaves cleanup to future reference-aware garbage collection instead of adding destructive rollback to the deduplicated store. Only after every image succeeds does the front door call the agent with normalized text and durable image blocks in wire order. A failure exposes no attachment path or raw bytes.
 
 `session.attachment` is a read-only, session-scoped endpoint. The host serves bytes only when a durable event in that session references the requested attachment identifier. The client deduplicates loads by session and attachment identifier while that session is rendered, revokes resolved URLs on rendered-session disposal, and rejects invalidated late loads before allocating an object URL so an unmounted session or disposed service cannot repopulate the cache.
 
@@ -148,13 +148,13 @@ Malformed base64, unsupported or mismatched media, truncated image payloads, exc
 
 | Surface | Responsibility |
 | --- | --- |
-| `packages/attachment/attachment` | Opaque attachment identifier, image reference, limits, failures, and `ctx.attachments` service. |
+| `packages/attachment/attachment` | Opaque attachment identifier, image reference, limits, failures, and single/batch admission through `ctx.attachments`. |
 | `packages/attachment/attachment-local` | Private content-addressed storage, complete raster decoding, integrity verification, and configuration. |
 | `packages/llm/llm` | Role-neutral `ImageBlock` and input-modality metadata. |
 | `packages/llm/llm-pi-ai` | Resolve durable supported image input into native provider content. |
 | `packages/llm/llm-deepseek` | Reject image content explicitly. |
 | `packages/compaction/compaction-basic` | Preserve images in summary input and reject non-text checkpoint output explicitly. |
-| `packages/host/apiproxy` and `packages/bundle/base` | Narrow upload wire, persist-before-event ordering, session-authorized reads, limits and model preflight, plus default profile composition. |
+| `packages/host/apiproxy` and `packages/bundle/base` | Narrow upload wire, routed-model preflight, delegation to shared batch admission, persist-before-event ordering, session-authorized reads, and default profile composition. |
 | `packages/client/connection` and `packages/client/runtime` | Bounded request buffering, wire types, fixture images, prompt uploads, attachment reads, and durable-reference folding. |
 | `packages/client/ui-conversation` | Per-session draft images, attachment rail, user and assistant image controls, and original preview. |
 | `packages/acp/acp` | Explicit fallback rendering for image blocks. |
@@ -163,7 +163,7 @@ The attachment packages form the interface/implementation side of one capability
 
 ### Implementation
 
-The implemented slice includes the attachment seam, role-neutral image block, Pi-AI input conversion, DeepSeek rejection, durable host ordering, Web upload/read protocol, current image-limit enforcement, bounded Web request bodies, in-memory draft images, paste/drop rail, user and assistant history rendering, single-click preview, compaction handling, and keyless assembled Web coverage.
+The implemented slice includes the attachment seam and shared batch admission, role-neutral image block, Pi-AI input conversion, DeepSeek rejection, durable host and TUI ordering, Web upload/read protocol, current image-limit enforcement, bounded Web request bodies, in-memory draft images, paste/drop rail, user and assistant history rendering, single-click preview, compaction handling, and keyless assembled Web coverage.
 
 No compatibility shim is required for the pre-release prompt wire; all call sites and fixtures change with the introducing slice.
 
@@ -199,6 +199,7 @@ UI state can be stale and does not protect direct SDK, ACP, replay, or uncatalog
 - Host and protocol tests cover persist-before-event ordering, absence of base64 in logs, session-scoped authorization, capability rejection, upload limits, bounded HTTP request bodies, image-admission/model-selection races (queued and steering placements), pending publication, idle release without publication, text-only queue edits, and selection against current derived history after compaction.
 - Client unit tests cover paste and drop, mixed clipboard text, image-only send, draft restoration, ordering, draft/session-scope/application object-URL cleanup, and a deferred historical read that completes after disposal; the keyless assembled built-client lane (`apps/web/tests/image-display.snapshot.ts`, `DSH_EXAMPLE_MODE=lib pnpm run test:snapshot`) covers the historical user and assistant galleries over the authorized attachment route, the original-size lightbox, and the composer paste rail.
 - Adapter and compaction tests cover native Pi-AI image conversion, late attachment-service composition, text-only rejection, recursively nested tool-result images, preserved summary input, and explicit image-output rejection.
+- Attachment and TUI tests cover all-member validation before writes, mixed text/image ordering, local-path normalization, and durable-reference reuse across prompt history.
 - A credentialed real-API test sends a PNG through the Anthropic `claude-opus-4-8` route and requires the model to identify its QR code.
 - The current production adapter set has no certified image-output route; output-provider certification remains outside version one.
 

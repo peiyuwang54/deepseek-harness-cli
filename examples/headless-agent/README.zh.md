@@ -10,12 +10,12 @@
 # repo root .env (gitignored) or exported env:
 #   DEEPSEEK_API_KEY=sk-…
 #   DEEPSEEK_BASE_URL=https://…   # optional; defaults to the public API
-pnpm dsh --profile headless "fix the failing test in this workspace"
+pnpm dsh exec "fix the failing test in this workspace"
 ```
 
-产品命令是 [`dsh --profile headless`](../../apps/cli/README.md)：它接受一项非空任务，创建并持久化新会话，打印最终 assistant 文本，然后退出。
+产品命令是 [`deepseek exec`](../../apps/cli/README.md)，`dsh --profile headless` 保持兼容。它接受一项非空任务，并支持 JSONL 输出、恢复、图片、结构化输出与临时会话。
 
-快照套件通过 [`tests/fixtures/headless-driver.ts`](tests/fixtures/headless-driver.ts) 运行本目录的配置。这个未导出且仅供测试使用的进程会在结果记录之前，以 JSONL 发出规范会话事件。该事件流属于测试基础设施，不是受支持的 CLI（命令行界面）输出格式。子会话只通过父会话的工具事件和结果对外显示。
+快照套件通过 [`tests/fixtures/headless-driver.ts`](tests/fixtures/headless-driver.ts) 运行本目录的配置。这个未导出且仅供测试使用的进程会在结果记录之前发出规范 Session 事件。该原始测试流不同于产品命令投影出的 `thread.*`、`turn.*` 与 `item.*` JSONL。子会话只通过父会话的工具事件和结果对外显示。
 
 ## E2B POC overlay
 

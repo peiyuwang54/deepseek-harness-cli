@@ -1,11 +1,10 @@
 /**
- * The verify-cordis-config metadata contract: `disabled` is the one entry
- * metadata field whose `!!js` expression the Loader interpolates; every other
- * metadata field must stay static, and a disabled expression must parse.
+ * Focused contracts for Loader metadata expressions and runtime-created
+ * package resolution.
  */
 
 import { describe, expect, it } from 'vitest'
-import { metadataExpressionErrors } from './verify-cordis-config.ts'
+import { chooserRootDependencyErrors, metadataExpressionErrors } from './verify-cordis-config.ts'
 
 describe('verify-cordis-config metadata expressions', () => {
   it('accepts a disabled !!js expression', () => {
@@ -35,5 +34,32 @@ describe('verify-cordis-config metadata expressions', () => {
       '[0]',
     )
     expect(problems.some(problem => problem.includes('[0].disabled: disabled expression does not parse'))).toBe(true)
+  })
+})
+
+describe('verify-cordis-config runtime-created packages', () => {
+  const chooser = [{
+    file: 'packages/bundle/web-app/cordis.patch.yml',
+    name: '@deepseek-ai/dsh-host-directory-picker-auto',
+  }]
+  const runtimePackages = {
+    '@deepseek-ai/dsh-host-directory-picker-native': 'workspace:^',
+    '@deepseek-ai/dsh-host-directory-picker-browse': 'workspace:^',
+    '@deepseek-ai/dsh-client-ui-directory-picker-browse': 'workspace:^',
+    '@deepseek-ai/dsh-client-ui-directory-picker-native': 'workspace:^',
+  }
+
+  it('accepts direct app dependencies for every chooser-created root entry', () => {
+    expect(chooserRootDependencyErrors(chooser, runtimePackages, 'apps/cli/package.json')).toEqual([])
+  })
+
+  it('rejects a chooser-created package available only through a bundle dependency', () => {
+    const incomplete = Object.fromEntries(Object.entries(runtimePackages).filter(
+      ([packageName]) => packageName !== '@deepseek-ai/dsh-host-directory-picker-native',
+    ))
+
+    expect(chooserRootDependencyErrors(chooser, incomplete, 'apps/cli/package.json')).toEqual([
+      'packages/bundle/web-app/cordis.patch.yml: @deepseek-ai/dsh-host-directory-picker-native must be declared directly in apps/cli/package.json dependencies because @deepseek-ai/dsh-host-directory-picker-auto creates it through the Loader root',
+    ])
   })
 })

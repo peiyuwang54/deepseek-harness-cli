@@ -390,6 +390,9 @@ describe('Python release workflows', () => {
     }
 
     const buildSteps: unknown[] = build.steps
+    const pnpmSetup = buildSteps.find(step => (
+      isRecord(step) && typeof step.uses === 'string' && step.uses.startsWith('pnpm/action-setup@')
+    ))
     const manylinuxAddon = buildSteps.find(step => isRecord(step) && step.name === 'Rebuild Linux node-pty against manylinux 2.28')
     const macosCheck = buildSteps.find(step => isRecord(step) && step.name === 'Check macOS deployment target')
     const manylinuxSmoke = buildSteps.find(step => isRecord(step) && step.name === 'Run wheel in a manylinux 2.28 container')
@@ -405,6 +408,9 @@ describe('Python release workflows', () => {
     expect(plan.if).toContain('inputs.release')
     expect(JSON.stringify(plan.steps)).toContain('pep440_version')
     expect(JSON.stringify(workflow)).toContain('macosx_14_0_arm64')
+    expect(pnpmSetup).toMatchObject({
+      with: { dest: runnerPrivatePnpmDestination },
+    })
     expect(manylinuxAddon).toMatchObject({ if: "runner.os == 'Linux'" })
     expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_x86_64')
     expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_aarch64')
@@ -540,8 +546,14 @@ describe('CLI release workflow', () => {
     const manylinuxAddon = buildSteps.find(step => (
       isRecord(step) && step.name === 'Rebuild Linux node-pty against manylinux 2.28'
     ))
+    const pnpmSetup = buildSteps.find(step => (
+      isRecord(step) && typeof step.uses === 'string' && step.uses.startsWith('pnpm/action-setup@')
+    ))
     expect(matrixStep?.run).toContain('node24-win-x64 windows-2025')
     expect(matrixStep?.run).toContain('node24-linux-x64 ubuntu-latest')
+    expect(pnpmSetup).toMatchObject({
+      with: { dest: runnerPrivatePnpmDestination },
+    })
     expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm')
     expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro')
     expect(JSON.stringify(manylinuxAddon)).toContain('DSH_NODE_BIN_DIR:$DSH_PNPM_BIN_DIR:$PATH')

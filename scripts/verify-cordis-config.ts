@@ -50,7 +50,7 @@ const CHOOSER_PACKAGE = '@deepseek-ai/dsh-host-directory-picker-auto'
  * (which only ever resolves `browse`) hides a dropped `-native` dependency
  * until a macOS boot.
  */
-const CHOOSER_BACKEND_PACKAGES = [
+const CHOOSER_RUNTIME_PACKAGES = [
   '@deepseek-ai/dsh-host-directory-picker-native',
   '@deepseek-ai/dsh-host-directory-picker-browse',
   '@deepseek-ai/dsh-client-ui-directory-picker-browse',
@@ -262,21 +262,39 @@ function validateAppResolution(): string[] {
   const violations: string[] = []
   // App overlays (and any config left under apps/cli/config) resolve from the
   // dsh app's own dependency surface — the profile module fallback mirrors it.
+  const cliDependencies = readManifest('apps/cli/package.json').dependencies ?? {}
+  const bundleManifests = globSync('packages/bundle/*/package.json', { cwd: root })
+    .map(manifestPath => ({
+      manifestPath,
+      bundleDir: manifestPath.replace(/\/package\.json$/, ''),
+      manifest: readManifest(manifestPath),
+    }))
   const appDependencies = {
-    ...readManifest('apps/cli/package.json').dependencies,
+    ...cliDependencies,
     // The fallback also links every bundle's own dependencies (healProfilesModuleFallback).
-    ...Object.fromEntries(globSync('packages/bundle/*/package.json', { cwd: root })
-      .flatMap(file => Object.entries(readManifest(file).dependencies ?? {}))),
+    ...Object.fromEntries(bundleManifests
+      .flatMap(({ manifest }) => Object.entries(manifest.dependencies ?? {}))),
   }
   const shipped = new Set(globSync('*.cordis.yml', { cwd: resolve(root, 'apps/cli/config') })
     .map(file => `apps/cli/config/${file}`))
   const appReferences = pluginReferences.filter(reference => shipped.has(reference.file) || appOverlayFiles.has(reference.file))
   violations.push(...missingPluginDependencies(appReferences, appDependencies, 'apps/cli/package.json or a bundle manifest'))
+  const composedBundleDirectories = bundleManifests
+    .filter(({ manifest }) => manifest.name !== undefined && Object.hasOwn(cliDependencies, manifest.name))
+    .map(({ bundleDir }) => bundleDir)
+  const rootLoaderReferences = pluginReferences.filter(reference => (
+    shipped.has(reference.file)
+    || appOverlayFiles.has(reference.file)
+    || composedBundleDirectories.some(bundleDir => reference.file.startsWith(`${bundleDir}/`))
+  ))
+  violations.push(...chooserRootDependencyErrors(
+    rootLoaderReferences,
+    cliDependencies,
+    'apps/cli/package.json',
+  ))
   // Each bundle's patch rows must resolve from that bundle's own dependencies:
   // per-layer resolution anchors on the bundle package directory.
-  for (const manifestPath of globSync('packages/bundle/*/package.json', { cwd: root })) {
-    const bundleDir = manifestPath.replace(/\/package\.json$/, '')
-    const manifest = readManifest(manifestPath)
+  for (const { manifestPath, bundleDir, manifest } of bundleManifests) {
     const references = pluginReferences.filter(reference => reference.file.startsWith(`${bundleDir}/`))
     violations.push(...missingPluginDependencies(
       // A bundle may mount its own package (the web-app runtime row).
@@ -355,12 +373,33 @@ function missingPluginDependencies(
     if (packageName === undefined) continue
     require(packageName, reference.file)
     if (packageName === CHOOSER_PACKAGE) {
-      for (const backend of CHOOSER_BACKEND_PACKAGES) require(backend, reference.file)
+      for (const runtimePackage of CHOOSER_RUNTIME_PACKAGES) require(runtimePackage, reference.file)
     }
   }
   return [...requiredPackages].flatMap(([packageName, locations]) => packageName in dependencies
     ? []
     : `${[...locations].join(', ')}: ${packageName} must be declared in ${manifestPath} dependencies`)
+}
+
+/**
+ * Report adaptive directory-picker packages that the Loader root cannot resolve.
+ * @param references - configured plugins reachable from one app composition.
+ * @param dependencies - direct dependencies of the app anchoring root entries.
+ * @param manifestPath - manifest path named in diagnostics.
+ * @returns one diagnostic for each missing runtime-created package.
+ */
+export function chooserRootDependencyErrors(
+  references: readonly Readonly<{ file: string; name: string }>[],
+  dependencies: Readonly<Record<string, string>>,
+  manifestPath: string,
+): string[] {
+  const locations = new Set(references
+    .filter(reference => packageNameFromSpecifier(reference.name) === CHOOSER_PACKAGE)
+    .map(reference => reference.file))
+  if (locations.size === 0) return []
+  return CHOOSER_RUNTIME_PACKAGES.flatMap(packageName => Object.hasOwn(dependencies, packageName)
+    ? []
+    : `${[...locations].join(', ')}: ${packageName} must be declared directly in ${manifestPath} dependencies because ${CHOOSER_PACKAGE} creates it through the Loader root`)
 }
 
 function readManifest(path: string): PackageManifest {

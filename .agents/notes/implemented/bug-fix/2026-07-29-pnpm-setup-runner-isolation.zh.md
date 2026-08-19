@@ -10,9 +10,9 @@ Status: implemented
 
 ## 决策
 
-[主 CI 工作流](../../../../.github/workflows/ci.yml)中的每个 `pnpm/action-setup` 步骤都设置 `dest: ${{ runner.temp }}/setup-pnpm`。每个 runner 服务独占自己的临时目录，因此一个设置过程无法替换另一个 runner 的安装目录。持久 store 的复用仍由 `PNPM_CONFIG_STORE_DIR` 独立处理，遵循 [pnpm 配置决策](../process/2026-07-26-pnpm-action-setup-for-symmetric-ci-caching.md)。
+[主 CI 工作流](../../../../.github/workflows/ci.yml)中的每个 `pnpm/action-setup` 步骤都设置 `dest: ${{ runner.temp }}/setup-pnpm`。可复用的 Python 可执行文件构建器与 CLI 发布工作流使用同一目标目录，因为它们的 manylinux 容器会先按该 runner 路径原样挂载，再调用 pnpm。每个 runner 服务独占自己的临时目录，因此一个设置过程无法替换另一个 runner 的安装目录，容器也不会挂载与 `PNPM_HOME` 不同的路径。持久 store 的复用仍由 `PNPM_CONFIG_STORE_DIR` 独立处理，遵循 [pnpm 配置决策](../process/2026-07-26-pnpm-action-setup-for-symmetric-ci-caching.md)。
 
-[工作流回归测试](../../../../scripts/ci-workflow.spec.ts)会找出 `ci.yml` 中的每个 `pnpm/action-setup` 步骤，并拒绝缺少 runner 专属目标目录的步骤。这可确保后续新增的作业也处于同一隔离边界内。
+[工作流回归测试](../../../../scripts/ci-workflow.spec.ts)会找出 `ci.yml` 中的每个 `pnpm/action-setup` 步骤，并分别固定两个容器化可执行文件工作流使用的设置步骤；任何缺少 runner 专属目标目录的步骤都会被拒绝。
 
 ## 曾考虑的替代方案
 

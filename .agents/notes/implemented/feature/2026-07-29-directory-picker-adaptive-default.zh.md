@@ -24,7 +24,7 @@ Status: implemented
 ## 后果
 
 - 随附的 web GUI 开箱即自适应：有人值守的本地宿主 → OS 选择器；SSH 启动、全网卡绑定、无头宿主、不支持的平台，或没有选择器二进制的 Linux → 应用内浏览器。探测是从启动上下文推断操作者位置，而任何启动侧信号都无法证明这一点：脱离的 tmux 会话会丢失 `SSH_*`；非 Aqua 的 darwin 进程仍被算作有显示；而 `ssh -L` 形态（在工作站本地启动、之后经转发端口访问，从 `127.0.0.1` 到达）会判定 `native`，把选择器弹在无人值守的工作站上——即便按连接自适应也修不了最后这一情形。错误的 `native` 选择会退化为后端既有的可重试失败对话框；处于这些形态的部署直接组合 `-browse`。
-- 选择器按运行时字符串（已导出的 `BACKEND_PACKAGES`）挂载后端，yml 行扫描看不到这一点；因此 `verify-cordis-config` 要求每个挂载 `-auto` 的组合把两个后端都声明为依赖，使无密钥的 Linux CI（它永远只会判定出 `browse`）无法掩盖被丢掉的 `-native` 依赖。随附树的 web e2e／快照通道（`apps/web/tests/scaffold.ts`）以 disable+insert 补丁固定 `-browse`——其预期输出取决于具体交互，绝不能依赖运行该套件的宿主。
+- 选择器按运行时字符串（`BACKEND_PACKAGES` 与 `SURFACE_PACKAGES`）挂载两个 Host 后端和两个 Client 界面，yml 行扫描看不到这一点。`verify-cordis-config` 要求持有选择器的 bundle 声明全部四个包；当该 bundle 进入随附组合时，它还要求 Loader 根节点所属的 CLI manifest 直接声明这些包：通过 Loader 根节点创建的条目从应用安装锚点解析，而不是从 bundle 的依赖目录解析。这样也能防止只会判定出 `browse` 的无密钥 Linux CI 掩盖缺失的 `native` 配对。随附树的 web e2e／快照通道（`apps/web/tests/scaffold.ts`）以 disable+insert 补丁固定 `-browse`——其预期输出取决于具体交互，绝不能依赖运行该套件的宿主。
 - 每次启动只判定一次，维持 seam 的能力稳定性约定；按连接的形态在有部署提出需求前仍不在范围内。
 - 同时挂载选择器**和**某个后端行会明确报错（重复的 `directoryPicker` 服务；`single` 洞中的重复流程）。
 - host 类型检查聚合现在引用两个后端项目（仅声明，node 入口不携带 client 合并），使选择器的 REAL-composition 测试能挂载它们——与 client 聚合对 `webserver` 的引用互为镜像。

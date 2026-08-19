@@ -2,6 +2,7 @@
 
 import { accessSync, constants, existsSync, readFileSync, statSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
+import { createRequire } from 'node:module'
 import { platform as hostPlatform, release } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -138,34 +139,47 @@ function checkMcp(home: string): DoctorCheck {
   }
 }
 
+function resolveInstalledAsset(assetRoot: string, specifier: string): string | undefined {
+  try {
+    return createRequire(join(assetRoot, 'package.json')).resolve(specifier)
+  } catch {
+    // The assets check reports unresolved shipped files with their public package specifiers.
+    return undefined
+  }
+}
+
 function checkAssets(assetRoot: string): DoctorCheck {
   const required = ['package.json', 'config', 'config/agent-presets']
   const missing = required.filter(relative => !existsSync(join(assetRoot, relative)))
   if (missing.length > 0) {
     return check('assets', 'fail', 'runtime assets are incomplete', missing.join(', '))
   }
-  // Executable releases run from a pkg snapshot.  JavaScript can be present
+  // Executable releases run from a pkg snapshot. JavaScript can be present
   // while profile assembly still fails if non-code overlay files were not
-  // embedded; check every shipped profile bundle explicitly.
+  // embedded; resolve assets through the same package exports as profile boot.
   const bundles = ['dsh-base', 'dsh-tui-app', 'dsh-headless', 'dsh-web-app']
   const missingOverlays = bundles
-    .map(name => join(assetRoot, 'node_modules', '@deepseek-ai', name, 'cordis.patch.yml'))
-    .filter(filename => !existsSync(filename))
+    .map(name => `@deepseek-ai/${name}/cordis.patch.yml`)
+    .filter(specifier => resolveInstalledAsset(assetRoot, specifier) === undefined)
   if (missingOverlays.length > 0) {
-    return check('assets', 'fail', 'runtime profile assets are incomplete', missingOverlays.map(filename => filename.replace(`${assetRoot}/`, '')).join(', '))
+    return check('assets', 'fail', 'runtime profile assets are incomplete', missingOverlays.join(', '))
   }
-  const frontend = join(assetRoot, 'node_modules', '@deepseek-ai', 'dsh-web-frontend', 'dist', 'index.html')
-  if (!existsSync(frontend)) {
+  const frontendSpecifier = '@deepseek-ai/dsh-web-frontend/dist/index.html'
+  const frontend = resolveInstalledAsset(assetRoot, frontendSpecifier)
+  if (frontend === undefined) {
     // The terminal and headless profiles do not need the browser dist, so a
     // source install remains usable; web users still receive an actionable
     // warning instead of a false healthy result.
-    return check('assets', 'warn', 'runtime profile overlays are present; web frontend dist is missing', frontend)
+    return check('assets', 'warn', 'runtime profile overlays are present; web frontend dist is missing', frontendSpecifier)
   }
   return check('assets', 'pass', 'runtime overlays, presets, and web assets are present', assetRoot)
 }
 
-function commandAvailable(command: string, env: NodeJS.ProcessEnv): boolean {
-  const result = spawnSync(command, ['--version'], { env, stdio: 'ignore', windowsHide: true })
+function commandAvailable(command: string, env: NodeJS.ProcessEnv, platform: string): boolean {
+  const [probe, args] = platform === 'win32'
+    ? ['where.exe', [command]] as const
+    : [command, ['--version']] as const
+  const result = spawnSync(probe, args, { env, stdio: 'ignore', windowsHide: true })
   return result.error === undefined && result.status === 0
 }
 
@@ -182,7 +196,7 @@ function checkSandbox(env: NodeJS.ProcessEnv, platform: string): DoctorCheck {
     : platform === 'win32'
       ? 'icacls'
       : 'bwrap'
-  if (commandAvailable(runner, env)) {
+  if (commandAvailable(runner, env, platform)) {
     return check('sandbox', 'warn', `sandbox runner ${runner} is available`, 'doctor cannot prove per-call confinement without booting a profile')
   }
   return check('sandbox', 'warn', 'no host sandbox runner was detected', 'the selected profile may use a deny-only or unconfined executor')
@@ -226,7 +240,7 @@ function checkClipboard(env: NodeJS.ProcessEnv, platform: string): DoctorCheck {
       : env.WAYLAND_DISPLAY !== undefined
         ? 'wl-copy'
         : 'xclip'
-  return commandAvailable(command, env)
+  return commandAvailable(command, env, platform)
     ? check('clipboard', 'pass', `clipboard command ${command} is available`)
     : check('clipboard', 'warn', `clipboard command ${command} was not found`, 'copy and paste shortcuts may be unavailable')
 }

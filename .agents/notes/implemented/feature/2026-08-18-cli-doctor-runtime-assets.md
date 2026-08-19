@@ -10,7 +10,7 @@ English | [中文](2026-08-18-cli-doctor-runtime-assets.zh.md)
 
 ## Decision
 
-The boot-free doctor validates every shipped profile overlay, the preset tree, and the optional web frontend asset. It reports installation channel, host sandbox-runner availability, truecolor, interactive mouse input, and clipboard command availability as separate checks. Asset and Node failures remain blocking; host capability probes are warnings unless the launcher explicitly reports active sandbox enforcement.
+The boot-free doctor validates every shipped profile overlay, the preset tree, and the optional web frontend asset. Overlay and frontend lookups resolve public package exports from the CLI package manifest anchor, so source installs, hoisted deployment closures, and pkg snapshots use the same locations as profile boot. It reports installation channel, host sandbox-runner availability, truecolor, interactive mouse input, and clipboard command availability as separate checks. Windows system commands are located through `where.exe` because `icacls` and `clip` do not implement a version flag. Asset and Node failures remain blocking; host capability probes are warnings unless the launcher explicitly reports active sandbox enforcement.
 
 ## Alternatives considered
 
@@ -18,10 +18,14 @@ The boot-free doctor validates every shipped profile overlay, the preset tree, a
 
 **Treat every host capability probe as a hard failure.** Rejected: Terminal.app and minimal CI images can lack optional mouse, clipboard, or truecolor support while TUI and headless profiles remain usable.
 
+**Join dependency paths beneath the CLI package directory.** Rejected: production dependencies may be hoisted outside that directory, and pkg does not preserve the package manager's symlink topology. Package exports are the same authority used by profile boot.
+
+**Probe every host command with `--version`.** Rejected: Windows system commands such as `icacls` and `clip` reject that flag even when they are available.
+
 ## Consequences
 
-Release smoke tests and users can identify missing `cordis.patch.yml` files before profile boot. Doctor intentionally does not claim that a runner probe proves per-call confinement; only a running profile can provide that evidence.
+Release smoke tests and users can identify missing `cordis.patch.yml` files before profile boot without false failures from a hoisted or embedded installation. Doctor intentionally does not claim that a runner probe proves per-call confinement; only a running profile can provide that evidence.
 
 ## Verification
 
-`pnpm exec vitest run apps/cli/tests/doctor-completion.spec.ts` and `pnpm exec tsc -p apps/cli/tsconfig.json --noEmit` pass.
+Focused tests cover hoisted package assets, a missing overlay, and Windows command discovery. The built Windows executable returns a successful JSON report with embedded overlays, presets, and web assets present.

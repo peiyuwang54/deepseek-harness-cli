@@ -21,7 +21,9 @@ describe('apps/cli/install/install.ps1', () => {
   it('downloads the published win-x64 tarball and never clones', () => {
     expect(installer).toContain('deepseek-harness-cli-x64-win')
     expect(installer).toContain('releases/download')
-    expect(installer).toContain('Get-FileHash')
+    expect(installer).toContain('function Get-Sha256')
+    expect(installer).toContain('[System.Security.Cryptography.SHA256]::Create()')
+    expect(installer).not.toContain('Get-FileHash')
     expect(installer).not.toContain('git clone')
     expect(installer).toContain('never clones the repository')
   })
@@ -92,12 +94,7 @@ describe('apps/cli/install/install.ps1', () => {
         response.writeHead(404)
         response.end()
       })
-      await new Promise<void>((resolveListen, rejectListen) => {
-        server?.once('error', rejectListen)
-        server?.listen(0, '127.0.0.1', resolveListen)
-      })
-      const address = server.address()
-      if (address === null || typeof address === 'string') throw new Error('test server did not bind a TCP port')
+      const port = await listenOnLoopback(server)
 
       const installDir = join(root, '带空格 Windows 安装')
       const { stdout } = await execFileAsync('powershell.exe', [
@@ -107,9 +104,9 @@ describe('apps/cli/install/install.ps1', () => {
         '-File',
         installerPath,
         '-BaseUrl',
-        `http://127.0.0.1:${address.port}`,
+        `http://127.0.0.1:${port}`,
         '-ReleasesUrl',
-        `http://127.0.0.1:${address.port}${releasesPath}`,
+        `http://127.0.0.1:${port}${releasesPath}`,
         '-InstallDir',
         installDir,
         '-DownloadAttempts',
@@ -127,12 +124,7 @@ describe('apps/cli/install/install.ps1', () => {
       expect(stdout).toContain('download failed (2/3)')
       expect(readFileSync(join(installDir, 'bin', 'deepseek-harness-cli.exe'), 'utf8')).toBe(executableBody)
     } finally {
-      if (server !== undefined) {
-        const activeServer = server
-        await new Promise<void>((resolveClose) => {
-          activeServer.close(() => { resolveClose() })
-        })
-      }
+      await closeServer(server)
       rmSync(root, { recursive: true, force: true })
     }
   }, 30_000)
@@ -158,12 +150,7 @@ describe('apps/cli/install/install.ps1', () => {
         response.writeHead(404)
         response.end()
       })
-      await new Promise<void>((resolveListen, rejectListen) => {
-        server?.once('error', rejectListen)
-        server?.listen(0, '127.0.0.1', resolveListen)
-      })
-      const address = server.address()
-      if (address === null || typeof address === 'string') throw new Error('test server did not bind a TCP port')
+      const port = await listenOnLoopback(server)
 
       await expect(execFileAsync('powershell.exe', [
         '-NoProfile',
@@ -174,7 +161,7 @@ describe('apps/cli/install/install.ps1', () => {
         '-Version',
         '9.9.9',
         '-BaseUrl',
-        `http://127.0.0.1:${address.port}`,
+        `http://127.0.0.1:${port}`,
         '-InstallDir',
         installDir,
         '-DownloadAttempts',
@@ -189,13 +176,25 @@ describe('apps/cli/install/install.ps1', () => {
       expect(tarballRequests).toBe(3)
       expect(readFileSync(installedExecutable, 'utf8')).toBe('existing executable')
     } finally {
-      if (server !== undefined) {
-        const activeServer = server
-        await new Promise<void>((resolveClose) => {
-          activeServer.close(() => { resolveClose() })
-        })
-      }
+      await closeServer(server)
       rmSync(root, { recursive: true, force: true })
     }
   }, 30_000)
 })
+
+async function listenOnLoopback(server: ReturnType<typeof createServer>): Promise<number> {
+  await new Promise<void>((resolveListen, rejectListen) => {
+    server.once('error', rejectListen)
+    server.listen(0, '127.0.0.1', resolveListen)
+  })
+  const address = server.address()
+  if (address === null || typeof address === 'string') throw new Error('test server did not bind a TCP port')
+  return address.port
+}
+
+async function closeServer(server: ReturnType<typeof createServer> | undefined): Promise<void> {
+  if (server === undefined) return
+  await new Promise<void>((resolveClose) => {
+    server.close(() => { resolveClose() })
+  })
+}

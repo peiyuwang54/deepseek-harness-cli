@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
-import { join, resolve, win32 } from 'node:path'
+import { join, posix, resolve, win32 } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { AttachmentStore, ImageAttachmentRef, SaveImageAttachment } from '@deepseek-ai/dsh-attachment'
 import {
@@ -46,11 +47,12 @@ describe('TUI image attachments', () => {
     expect(resolvePastedImagePath('"assets/one image.PNG"', '/workspace')).toEqual({
       path: resolve('/workspace/assets/one image.PNG'), mediaType: 'image/png',
     })
-    expect(resolvePastedImagePath('assets/one\\ image.jpg', '/workspace')).toEqual({
-      path: resolve('/workspace/assets/one image.jpg'), mediaType: 'image/jpeg',
+    expect(resolvePastedImagePath('assets/one\\ image.jpg', '/workspace', 'linux')).toEqual({
+      path: posix.resolve('/workspace/assets/one image.jpg'), mediaType: 'image/jpeg',
     })
-    expect(resolvePastedImagePath('file:///tmp/a.webp', '/workspace')).toEqual({
-      path: '/tmp/a.webp', mediaType: 'image/webp',
+    const filePath = resolve('/tmp/a.webp')
+    expect(resolvePastedImagePath(pathToFileURL(filePath).href, '/workspace')).toEqual({
+      path: filePath, mediaType: 'image/webp',
     })
     expect(resolvePastedImagePath('~/a.gif', '/workspace')).toEqual({
       path: join(homedir(), 'a.gif'), mediaType: 'image/gif',

@@ -131,6 +131,11 @@ export async function syncTools(
   opts: ToolBridgeOptions,
   previous: ToolDisposers,
 ): Promise<ToolDisposers> {
+  if (client.getServerCapabilities()?.tools === undefined) {
+    for (const dispose of previous.values()) dispose()
+    return new Map()
+  }
+
   // Phase 1: fetch and build the next generation without touching the registry.
   const definitions = new Map<string, ToolDefinition>()
   let cursor: string | undefined

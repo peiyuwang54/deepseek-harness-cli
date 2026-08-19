@@ -385,10 +385,55 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
   let personalityOverlay: TuiOverlaySession | undefined
   let titleOverlay: TuiOverlaySession | undefined
   let statusLineOverlay: TuiOverlaySession | undefined
+  const trackOverlay = (
+    session: TuiOverlaySession,
+    current: () => TuiOverlaySession | undefined,
+    update: (next: TuiOverlaySession | undefined) => void,
+  ): void => {
+    update(session)
+    void session.closed.then(() => {
+      if (current() === session) update(undefined)
+    })
+    deps.requestRender()
+  }
   let titleItems = readTuiTitleItems(ctx.get('settings'))
   let statusLineItems = readTuiStatusLineItems(ctx.get('settings'))
   let notificationsEnabled = readTuiNotifications(ctx.get('settings'))
   let operations = Promise.resolve()
+
+  const openActionOverlay = (
+    title: string,
+    items: readonly ActionDialogChoice[],
+    maxVisible: number,
+    done: (value: string) => void,
+    initialValue: string | undefined,
+    current: () => TuiOverlaySession | undefined,
+    update: (next: TuiOverlaySession | undefined) => void,
+  ): void => {
+    const session = overlayManager.open({
+      create: () => new ActionDialog(
+        title,
+        items,
+        maxVisible,
+        palette,
+        (value) => {
+          void session.close()
+          done(value)
+        },
+        () => { void session.close() },
+        initialValue,
+        tuiCopy(locale).moveSelectClose,
+        false,
+      ),
+      options: {
+        width: resolved.modelDialogWidth,
+        maxHeight: resolved.modelDialogMaxHeight,
+        anchor: 'center',
+        margin: 1,
+      },
+    }, 'composer')
+    trackOverlay(session, current, update)
+  }
 
   const settings = (): SettingsProvider | undefined => ctx.get('settings')
 
@@ -564,45 +609,21 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       ...lightHues,
       ...darkHues,
     ]
-    const session = overlayManager.open({
-      create: () => new ActionDialog(
-        'Theme',
-        items,
-        items.length,
-        palette,
-        (value) => {
-          void session.close()
-          operations = operations.then(async () => {
-            if (value === '@deepseek') {
-              if (!await resetDeepSeekTheme()) return
-              if (!deps.isDisposed()) deps.appendNotice('Theme: DeepSeek.')
-              return
-            }
-            const [scheme, id] = value.split(':', 2) as [string, string | undefined]
-            if ((scheme !== 'light' && scheme !== 'dark') || !isAccentId(id)) return
-            if (!await commitThemePreset(scheme, id)) return
-            if (!deps.isDisposed()) deps.appendNotice(`Theme: ${scheme === 'light' ? 'Light' : 'Dark'} · ${accentHue(id).label}.`)
-          }).catch((error: unknown) => {
-            if (!deps.isDisposed()) deps.appendNotice(`Theme update failed: ${String(error)}`, 'error')
-          })
-        },
-        () => { void session.close() },
-        undefined,
-        copy.moveSelectClose,
-        false,
-      ),
-      options: {
-        width: resolved.modelDialogWidth,
-        maxHeight: resolved.modelDialogMaxHeight,
-        anchor: 'center',
-        margin: 1,
-      },
-    }, 'composer')
-    themeOverlay = session
-    void session.closed.then(() => {
-      if (themeOverlay === session) themeOverlay = undefined
-    })
-    deps.requestRender()
+    openActionOverlay('Theme', items, items.length, (value) => {
+      operations = operations.then(async () => {
+        if (value === '@deepseek') {
+          if (!await resetDeepSeekTheme()) return
+          if (!deps.isDisposed()) deps.appendNotice('Theme: DeepSeek.')
+          return
+        }
+        const [scheme, id] = value.split(':', 2) as [string, string | undefined]
+        if ((scheme !== 'light' && scheme !== 'dark') || !isAccentId(id)) return
+        if (!await commitThemePreset(scheme, id)) return
+        if (!deps.isDisposed()) deps.appendNotice(`Theme: ${scheme === 'light' ? 'Light' : 'Dark'} · ${accentHue(id).label}.`)
+      }).catch((error: unknown) => {
+        if (!deps.isDisposed()) deps.appendNotice(`Theme update failed: ${String(error)}`, 'error')
+      })
+    }, undefined, () => themeOverlay, (next) => { themeOverlay = next })
   }
 
   const showLanguage = (): void => {
@@ -613,37 +634,13 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       label: option.label,
       ...locale === option.id ? { description: copy.current } : {},
     }))
-    const session = overlayManager.open({
-      create: () => new ActionDialog(
-        copy.language,
-        items,
-        items.length,
-        palette,
-        (value) => {
-          void session.close()
-          if (isTuiLocale(value)) {
-            operations = operations.then(() => commitLocale(value)).catch((error: unknown) => {
-              if (!deps.isDisposed()) deps.appendNotice(`Language update failed: ${String(error)}`, 'error')
-            })
-          }
-        },
-        () => { void session.close() },
-        locale,
-        copy.moveSelectClose,
-        false,
-      ),
-      options: {
-        width: resolved.modelDialogWidth,
-        maxHeight: resolved.modelDialogMaxHeight,
-        anchor: 'center',
-        margin: 1,
-      },
-    }, 'composer')
-    languageOverlay = session
-    void session.closed.then(() => {
-      if (languageOverlay === session) languageOverlay = undefined
-    })
-    deps.requestRender()
+    openActionOverlay(copy.language, items, items.length, (value) => {
+      if (isTuiLocale(value)) {
+        operations = operations.then(() => commitLocale(value)).catch((error: unknown) => {
+          if (!deps.isDisposed()) deps.appendNotice(`Language update failed: ${String(error)}`, 'error')
+        })
+      }
+    }, locale, () => languageOverlay, (next) => { languageOverlay = next })
   }
 
   const showPersonality = (): void => {
@@ -661,36 +658,12 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
         description: personality === 'pragmatic' ? copy.current : copy.personalityPragmaticDescription,
       },
     ]
-    const session = overlayManager.open({
-      create: () => new ActionDialog(
-        copy.personality,
-        items,
-        items.length,
-        palette,
-        (value) => {
-          void session.close()
-          if (!isTuiPersonality(value)) return
-          operations = operations.then(async () => { await commitPersonality(value) }).catch((error: unknown) => {
-            if (!deps.isDisposed()) deps.appendNotice(`Personality update failed: ${String(error)}`, 'error')
-          })
-        },
-        () => { void session.close() },
-        undefined,
-        copy.moveSelectClose,
-        false,
-      ),
-      options: {
-        width: resolved.modelDialogWidth,
-        maxHeight: resolved.modelDialogMaxHeight,
-        anchor: 'center',
-        margin: 1,
-      },
-    }, 'composer')
-    personalityOverlay = session
-    void session.closed.then(() => {
-      if (personalityOverlay === session) personalityOverlay = undefined
-    })
-    deps.requestRender()
+    openActionOverlay(copy.personality, items, items.length, (value) => {
+      if (!isTuiPersonality(value)) return
+      operations = operations.then(async () => { await commitPersonality(value) }).catch((error: unknown) => {
+        if (!deps.isDisposed()) deps.appendNotice(`Personality update failed: ${String(error)}`, 'error')
+      })
+    }, undefined, () => personalityOverlay, (next) => { personalityOverlay = next })
   }
 
   const showTitle = (): void => {
@@ -727,11 +700,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
         margin: 1,
       },
     }, 'composer')
-    titleOverlay = session
-    void session.closed.then(() => {
-      if (titleOverlay === session) titleOverlay = undefined
-    })
-    deps.requestRender()
+    trackOverlay(session, () => titleOverlay, (next) => { titleOverlay = next })
   }
 
   const showStatusLine = (): void => {
@@ -770,11 +739,7 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
         margin: 1,
       },
     }, 'composer')
-    statusLineOverlay = session
-    void session.closed.then(() => {
-      if (statusLineOverlay === session) statusLineOverlay = undefined
-    })
-    deps.requestRender()
+    trackOverlay(session, () => statusLineOverlay, (next) => { statusLineOverlay = next })
   }
 
   const showSettings = (): void => {
@@ -815,47 +780,23 @@ export function createSettingsController(deps: SettingsControllerDeps): Settings
       })),
     ]
     void settingsOverlay?.close()
-    const session = overlayManager.open({
-      create: () => new ActionDialog(
-        copy.settings,
-        items,
-        resolved.maxModelOptions,
-        palette,
-        (value) => {
-          void session.close()
-          if (value === '@theme') showTheme()
-          else if (value === '@language') showLanguage()
-          else if (value === '@personality') showPersonality()
-          else if (value === '@title') showTitle()
-          else if (value === '@statusline') showStatusLine()
-          else if (value === '@document') {
-            operations = operations.then(showDocument).catch((error: unknown) => {
-              if (!deps.isDisposed()) deps.appendNotice(`Settings document failed: ${String(error)}`, 'error')
-            })
-          } else {
-            const descriptor = descriptors.find(item => `namespace:${item.ns}` === value)
-            if (descriptor !== undefined) {
-              deps.appendNotice(`${descriptor.ns}: ${descriptorDescription(descriptor)}.`)
-            }
-          }
-        },
-        () => { void session.close() },
-        undefined,
-        copy.moveSelectClose,
-        false,
-      ),
-      options: {
-        width: resolved.modelDialogWidth,
-        maxHeight: resolved.modelDialogMaxHeight,
-        anchor: 'center',
-        margin: 1,
-      },
-    }, 'composer')
-    settingsOverlay = session
-    void session.closed.then(() => {
-      if (settingsOverlay === session) settingsOverlay = undefined
-    })
-    deps.requestRender()
+    openActionOverlay(copy.settings, items, resolved.maxModelOptions, (value) => {
+      if (value === '@theme') showTheme()
+      else if (value === '@language') showLanguage()
+      else if (value === '@personality') showPersonality()
+      else if (value === '@title') showTitle()
+      else if (value === '@statusline') showStatusLine()
+      else if (value === '@document') {
+        operations = operations.then(showDocument).catch((error: unknown) => {
+          if (!deps.isDisposed()) deps.appendNotice(`Settings document failed: ${String(error)}`, 'error')
+        })
+      } else {
+        const descriptor = descriptors.find(item => `namespace:${item.ns}` === value)
+        if (descriptor !== undefined) {
+          deps.appendNotice(`${descriptor.ns}: ${descriptorDescription(descriptor)}.`)
+        }
+      }
+    }, undefined, () => settingsOverlay, (next) => { settingsOverlay = next })
   }
 
   const themeCommand = async (raw: string): Promise<void> => {

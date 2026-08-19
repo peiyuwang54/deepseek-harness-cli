@@ -56,21 +56,29 @@ describe('CI workflow', () => {
     const commandSteps = windows.steps.filter((step): step is Record<string, unknown> & { run: string } => (
       isRecord(step) && typeof step.run === 'string'
     ))
+    const installWine = commandSteps.find(step => step.name === 'Install Wine')
 
     // Required PR job: Wine on ubuntu-latest, runs wine-windows-gates.sh.
     expect(windows['runs-on']).toBe('ubuntu-latest')
     expect(windows.name).toBe('windows node 24 / wine blocking')
     expect(windows.if).toBe("github.event_name == 'pull_request'")
     expect(commandSteps.some(step => step.run.includes('wine-windows-gates.sh'))).toBe(true)
+    expect(installWine?.run).toContain('dpkg --unpack "$HOME"/wine-debs/*.deb')
+    expect(installWine?.run).toContain('apt-get install -y --no-install-recommends --no-download wine')
 
     // windows-native: non-blocking native job with failover, runs windows-complete.
     // Its pool is resolved by the Windows-specific switch.
-    expect(typeof windowsNative['runs-on']).toBe('string')
-    expect(windowsNative['runs-on']).toContain('DSH_CI_FAILOVER_WINDOWS')
-    expect(windowsNative['runs-on']).not.toContain('DSH_CI_FAILOVER_LINUX')
-    expect(windowsNative['runs-on']).toContain('self-hosted')
-    expect(windowsNative['runs-on']).toContain('dsh-win-ci')
-    expect(windowsNative['runs-on']).toContain('dsh-windows-2025-16core')
+    const windowsRunsOn = windowsNative['runs-on']
+    if (typeof windowsRunsOn !== 'string') throw new TypeError('windows-native runs-on must be a string expression')
+    expect(windowsRunsOn).toContain('DSH_CI_FAILOVER_WINDOWS')
+    expect(windowsRunsOn).toContain('DSH_CI_HOSTED_WINDOWS_RUNNER')
+    expect(windowsRunsOn).not.toContain('DSH_CI_FAILOVER_LINUX')
+    expect(windowsRunsOn).toContain('self-hosted')
+    expect(windowsRunsOn).toContain('dsh-win-ci')
+    expect(windowsRunsOn).toContain('windows-2025')
+    expect(windowsRunsOn).not.toContain('dsh-windows-2025-16core')
+    expect(windowsRunsOn.indexOf('DSH_CI_FAILOVER_WINDOWS')).toBeLessThan(windowsRunsOn.indexOf('DSH_CI_HOSTED_WINDOWS_RUNNER'))
+    expect(windowsRunsOn.indexOf('DSH_CI_HOSTED_WINDOWS_RUNNER')).toBeLessThan(windowsRunsOn.indexOf('windows-2025'))
     expect(windowsNative.name).toBe('windows node 24 / native complete')
     expect(windowsNative.if).toBe("github.event_name == 'pull_request'")
     const nativeCommandSteps = (windowsNative.steps as unknown[]).filter((step): step is Record<string, unknown> & { run: string } => (
@@ -96,11 +104,25 @@ describe('CI workflow', () => {
     // and the verdict job resolve their pool through DSH_CI_FAILOVER_LINUX,
     // never the Windows switch.
     for (const [jobName, job] of [['node-24', node24], ['node-24-coverage', node24Coverage], ['node-24-consumers', node24Consumers]] as const) {
-      expect(typeof job['runs-on']).toBe('string')
-      expect(job['runs-on'], `${jobName} runs-on must use the Linux failover switch`).toContain('DSH_CI_FAILOVER_LINUX')
-      expect(job['runs-on'], `${jobName} runs-on must not use the Windows failover switch`).not.toContain('DSH_CI_FAILOVER_WINDOWS')
-      expect(job['runs-on']).toContain('vm-backup')
+      const linuxRunsOn = job['runs-on']
+      if (typeof linuxRunsOn !== 'string') throw new TypeError(`${jobName} runs-on must be a string expression`)
+      expect(linuxRunsOn, `${jobName} runs-on must use the Linux failover switch`).toContain('DSH_CI_FAILOVER_LINUX')
+      expect(linuxRunsOn, `${jobName} runs-on must permit a configured hosted pool`).toContain('DSH_CI_HOSTED_LINUX_RUNNER')
+      expect(linuxRunsOn, `${jobName} runs-on must not use the Windows failover switch`).not.toContain('DSH_CI_FAILOVER_WINDOWS')
+      expect(linuxRunsOn).toContain('vm-backup')
+      expect(linuxRunsOn).toContain('ubuntu-24.04')
+      expect(linuxRunsOn).not.toContain('dsh-ubuntu-24-04-16core')
+      expect(linuxRunsOn.indexOf('DSH_CI_FAILOVER_LINUX')).toBeLessThan(linuxRunsOn.indexOf('DSH_CI_HOSTED_LINUX_RUNNER'))
+      expect(linuxRunsOn.indexOf('DSH_CI_HOSTED_LINUX_RUNNER')).toBeLessThan(linuxRunsOn.indexOf('ubuntu-24.04'))
     }
+    if (!isRecord(node24.env) || !isRecord(node24Coverage.env) || !isRecord(node24Consumers.env)) {
+      throw new TypeError('Linux CI jobs must define runner-sized concurrency environments')
+    }
+    expect(node24.env.DSH_GATE_CONCURRENCY).toContain("|| '2'")
+    expect(node24Coverage.env.DSH_COVERAGE_MAX_WORKERS).toContain("|| '5'")
+    expect(node24Coverage.env.DSH_GATE_CONCURRENCY).toContain("|| '1'")
+    expect(node24Consumers.env.DSH_GATE_CONCURRENCY).toContain("|| '2'")
+    expect(node24Consumers.env.DSH_SNAPSHOT_MAX_CONCURRENCY).toContain("|| '4'")
     expect(aggregate['runs-on']).toContain('DSH_CI_FAILOVER_LINUX')
     expect(aggregate['runs-on']).not.toContain('DSH_CI_FAILOVER_WINDOWS')
     expect(aggregate['runs-on']).toContain('vm-backup')
@@ -390,6 +412,9 @@ describe('Python release workflows', () => {
     }
 
     const buildSteps: unknown[] = build.steps
+    const pnpmSetup = buildSteps.find(step => (
+      isRecord(step) && typeof step.uses === 'string' && step.uses.startsWith('pnpm/action-setup@')
+    ))
     const manylinuxAddon = buildSteps.find(step => isRecord(step) && step.name === 'Rebuild Linux node-pty against manylinux 2.28')
     const macosCheck = buildSteps.find(step => isRecord(step) && step.name === 'Check macOS deployment target')
     const manylinuxSmoke = buildSteps.find(step => isRecord(step) && step.name === 'Run wheel in a manylinux 2.28 container')
@@ -405,18 +430,13 @@ describe('Python release workflows', () => {
     expect(plan.if).toContain('inputs.release')
     expect(JSON.stringify(plan.steps)).toContain('pep440_version')
     expect(JSON.stringify(workflow)).toContain('macosx_14_0_arm64')
+    expect(pnpmSetup).toMatchObject({
+      with: { dest: runnerPrivatePnpmDestination },
+    })
     expect(manylinuxAddon).toMatchObject({ if: "runner.os == 'Linux'" })
     expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_x86_64')
     expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_aarch64')
-    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm')
-    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro')
-    expect(JSON.stringify(manylinuxAddon)).toContain('DSH_NODE_BIN_DIR:$DSH_PNPM_BIN_DIR:$PATH')
-    expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_build_from_source=true')
-    expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_python=/opt/python/cp310-cp310/bin/python')
-    expect(JSON.stringify(manylinuxAddon)).toContain(
-      'pnpm --filter @deepseek-ai/dsh-subprocess-local rebuild node-pty',
-    )
-    expect(JSON.stringify(manylinuxAddon)).not.toContain('make -C build')
+    expectManylinuxNodePtyRebuild(manylinuxAddon)
     expect(JSON.stringify(manylinuxAddon)).toContain('node-pty-glibc-versions.txt')
     expect(JSON.stringify(manylinuxAddon)).toContain('le 2.28')
     expect(macosCheck).toMatchObject({ if: "runner.os == 'macOS'" })
@@ -540,17 +560,15 @@ describe('CLI release workflow', () => {
     const manylinuxAddon = buildSteps.find(step => (
       isRecord(step) && step.name === 'Rebuild Linux node-pty against manylinux 2.28'
     ))
+    const pnpmSetup = buildSteps.find(step => (
+      isRecord(step) && typeof step.uses === 'string' && step.uses.startsWith('pnpm/action-setup@')
+    ))
     expect(matrixStep?.run).toContain('node24-win-x64 windows-2025')
     expect(matrixStep?.run).toContain('node24-linux-x64 ubuntu-latest')
-    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm')
-    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro')
-    expect(JSON.stringify(manylinuxAddon)).toContain('DSH_NODE_BIN_DIR:$DSH_PNPM_BIN_DIR:$PATH')
-    expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_build_from_source=true')
-    expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_python=/opt/python/cp310-cp310/bin/python')
-    expect(JSON.stringify(manylinuxAddon)).toContain(
-      'pnpm --filter @deepseek-ai/dsh-subprocess-local rebuild node-pty',
-    )
-    expect(JSON.stringify(manylinuxAddon)).not.toContain('make -C build')
+    expect(pnpmSetup).toMatchObject({
+      with: { dest: runnerPrivatePnpmDestination },
+    })
+    expectManylinuxNodePtyRebuild(manylinuxAddon)
     expect(readFileSync(resolve(root, 'scripts/exe-build/pipeline.ts'), 'utf8')).toContain(
       "shell: process.platform === 'win32' && command.toLowerCase().endsWith('.cmd')",
     )
@@ -579,6 +597,17 @@ function loadWorkflow(path: string): Record<string, unknown> {
   const workflow: unknown = yaml.load(readFileSync(resolve(root, path), 'utf8'))
   if (!isRecord(workflow)) throw new TypeError(`${path} must define a workflow`)
   return workflow
+}
+
+function expectManylinuxNodePtyRebuild(step: unknown): void {
+  const serialized = JSON.stringify(step)
+  expect(serialized).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm')
+  expect(serialized).toContain('$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro')
+  expect(serialized).toContain('DSH_NODE_BIN_DIR:$DSH_PNPM_BIN_DIR:$PATH')
+  expect(serialized).toContain('npm_config_build_from_source=true')
+  expect(serialized).toContain('npm_config_python=/opt/python/cp310-cp310/bin/python')
+  expect(serialized).toContain('pnpm --filter @deepseek-ai/dsh-subprocess-local rebuild node-pty')
+  expect(serialized).not.toContain('make -C build')
 }
 
 function workflowEvent(workflow: Record<string, unknown>, event: string): Record<string, unknown> {

@@ -9,6 +9,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { agentEvents } from '@deepseek-ai/dsh-agent'
 import type { Agent } from '@deepseek-ai/dsh-agent'
+import AttachmentStore, {
+  AttachmentId,
+  type ImageAttachmentRef,
+  type SaveImageAttachment,
+  type StoredImageAttachment,
+} from '@deepseek-ai/dsh-attachment'
 import LlmRuntime, { LlmAdapter, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type {
   GenerateOptions, LlmCallConfig, LlmModelInfo, LlmModelReasoningInfo, LlmProviderInfo,
@@ -131,26 +137,37 @@ function registerTextOnly(ctx: Context): void {
 describe('Web session model selection', () => {
   it('validates an ordered image batch before persisting any member', async () => {
     const { ctx, agent, sessionId } = await harness()
-    const validateImage = vi.fn((_input: { data: Uint8Array }) => Promise.resolve())
-    const saveImage = vi.fn((input: { data: Uint8Array; mediaType: 'image/png'; name?: string }) => Promise.resolve({
-      attachmentId: `att-${String(input.data[0])}`,
+    const validateImage = vi.fn((_input: SaveImageAttachment) => Promise.resolve())
+    const saveImage = vi.fn((input: SaveImageAttachment): Promise<ImageAttachmentRef> => Promise.resolve({
+      attachmentId: AttachmentId(`att-${String(input.data[0])}`),
       mediaType: input.mediaType,
       bytes: input.data.byteLength,
       width: 1,
       height: 1,
       ...input.name === undefined ? {} : { name: input.name },
     }))
-    ctx.provide('attachments', {
-      imageLimits: {
+    class RecordingAttachmentStore extends AttachmentStore {
+      readonly imageLimits = {
         maxImageBytes: 4,
         maxImagesPerMessage: 2,
         maxMessageImageBytes: 4,
         maxImagePixels: 4,
-        mediaTypes: ['image/png'],
-      },
-      validateImage,
-      saveImage,
-    } as never)
+        mediaTypes: ['image/png'] as const,
+      }
+
+      override validateImage(input: SaveImageAttachment): Promise<void> {
+        return validateImage(input)
+      }
+
+      override saveImage(input: SaveImageAttachment): Promise<ImageAttachmentRef> {
+        return saveImage(input)
+      }
+
+      override readImage(_ref: ImageAttachmentRef): Promise<StoredImageAttachment> {
+        return Promise.reject(new Error('not used'))
+      }
+    }
+    await ctx.plugin(RecordingAttachmentStore)
     const followup = vi.fn()
     Object.assign(agent, { followup })
     const api = createApiProxy(ctx, {

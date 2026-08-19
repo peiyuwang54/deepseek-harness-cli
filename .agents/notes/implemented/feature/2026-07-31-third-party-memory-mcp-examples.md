@@ -14,7 +14,7 @@ The acceptance bar is stronger than "the socket connects": each reference must s
 
 Ship three default-off Cordis overlay examples under `examples/mcp-memory`: Memorix, MCP Reference Memory, and Engram. Every file inserts exactly one `@deepseek-ai/dsh-mcp-client` row. None is referenced by the shipped composition, and the CLI declares the generic bridge only so an explicitly selected overlay can resolve it.
 
-These third-party configurations are provided as interoperability examples only. Their inclusion does not imply endorsement, recommendation, partnership, or ongoing support by DeepSeek. There is no memory preset registry, vendor-specific DSH plugin, universal memory service, installation UI, migration layer, health checker, or reconnect controller. Another memory MCP server uses the same documented stdio or Streamable HTTP row.
+These third-party configurations are provided as interoperability examples only. Their inclusion does not imply endorsement, recommendation, partnership, or ongoing support by DeepSeek. There is no memory preset registry, vendor-specific DSH plugin, universal memory service, installation UI, migration layer, or provider-specific health checker. Transport failure detection, bounded automatic reconnect, and manual reload stay in the generic MCP runtime. Another memory MCP server uses the same documented stdio or Streamable HTTP row.
 
 ## Responsibility boundary
 
@@ -24,8 +24,9 @@ These third-party configurations are provided as interoperability examples only.
 | Start stdio command and stop it on plugin disposal | Yes | Install the pinned executable |
 | Connect to Streamable HTTP and discover tools | Yes | Run and supervise the HTTP service |
 | Register tools as `mcp__<serverName>__<rawName>` | Yes | Define tool schemas and behavior |
+| Detect transport loss, retry within the configured budget, and reload manually | Yes | Keep a separate HTTP service available |
 | Account, auth, model, embedding, storage initialization | No | Yes |
-| Vendor data migration, retry, crash recovery | No | Yes |
+| Vendor data migration, storage repair, retention, and forgetting | No | Yes |
 
 The generic stdio transport scrubs ambient credential-shaped and `DSH_*` variables while inheriting other ambient variables. Baseline examples add only required overrides; optional provider secrets must be added to `config.env` or configured in the provider's own files.
 
@@ -59,7 +60,7 @@ Before merge, manual evidence for every pinned provider must separately show:
 2. Fresh DSH session B, under the same provider storage scope, calls search or recall and returns that value without session A's transcript.
 3. Session B uses the recalled value in a subsequent answer.
 
-"Fresh session" means a new DSH session in the same Host. No Host restart is required. The generic MCP client discovers asynchronously and has no automatic reconnect after a child or HTTP transport closes; validation waits for tools before the first turn and uses HMR or a Host restart only after a crash.
+"Fresh session" means a new DSH session in the same Host. No Host restart is required. The generic MCP client discovers asynchronously and reconnects automatically within its configured attempt budget. Validation waits for tools before the first turn; after the budget is exhausted, `/mcp reload <server>` or a Host restart starts recovery.
 
 ## Alternatives considered
 
@@ -73,6 +74,6 @@ Before merge, manual evidence for every pinned provider must separately show:
 
 ## Consequences
 
-Selecting a file gives the model the provider's complete discovered MCP tool surface, with schema/token cost determined by that provider. Removing `--config` removes the memory server. Users accept each upstream license, data policy, cloud cost, and operational model directly.
+Selecting a file gives the model the provider's complete discovered MCP tool surface, with schema/token cost determined by that provider. Removing `--patch` removes the memory server. Users accept each upstream license, data policy, cloud cost, and operational model directly.
 
 The earlier vendor-specific change is superseded by this generic path. Future provider drift is handled by updating and revalidating a small example pin rather than adding runtime branches to DSH.

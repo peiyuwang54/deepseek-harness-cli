@@ -315,7 +315,12 @@ function suppressShutdownError(ctx: Context, signal: AbortSignal, error: unknown
 export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Context; shutdown: ProcessShutdown }> {
   const composed = composeProfile(options.profile, options.patchFiles)
   const app: { current?: Context } = {}
-  const shutdown = createProcessShutdown(async () => { await app.current?.fiber.dispose() })
+  let removeProcessListeners = (): void => {}
+  let uninstallFailLoud = (): void => {}
+  const shutdown = createProcessShutdown(async () => {
+    removeProcessListeners()
+    await app.current?.fiber.dispose()
+  })
   const signalShutdown = new AbortController()
   let replacingProcess = false
   const interrupt = (code: number): void => {
@@ -335,9 +340,14 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
   const onSigint = (): void => { interrupt(130) }
   process.on('SIGTERM', onSigterm)
   process.on('SIGINT', onSigint)
-  const uninstallFailLoud = installFailLoud(NAME, process, async () => {
+  uninstallFailLoud = installFailLoud(NAME, process, async () => {
     await app.current?.fiber.dispose()
   })
+  removeProcessListeners = () => {
+    process.off('SIGTERM', onSigterm)
+    process.off('SIGINT', onSigint)
+    uninstallFailLoud()
+  }
   const tuiHandoff = createTuiProcessHandoff({
     profile: options.profile,
     patchFiles: options.patchFiles,

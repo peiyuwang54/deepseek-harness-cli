@@ -37,6 +37,7 @@ function createMockClient(tools: MockTool[], callResult: MockCallResult = { cont
     _options?: unknown,
   ): Promise<Record<string, unknown>> => ({ ...callResult }))
   return {
+    getServerCapabilities: vi.fn(() => ({ tools: {} })),
     listTools,
     callTool,
     request: vi.fn(async (
@@ -123,6 +124,21 @@ describe('syncTools', () => {
     expect(ctx.tools.get('add')).toBeUndefined()
   })
 
+  it('keeps a resource-only server connected with no tool registrations', async () => {
+    const withTools = createMockClient([
+      { name: 'old_tool', inputSchema: { type: 'object' } },
+    ])
+    const previous = await syncTools(withTools as never, ctx, defaultOpts, new Map())
+    const resourceOnly = createMockClient([])
+    resourceOnly.getServerCapabilities.mockReturnValue({} as never)
+
+    const next = await syncTools(resourceOnly as never, ctx, defaultOpts, previous)
+
+    expect(next.size).toBe(0)
+    expect(resourceOnly.listTools).not.toHaveBeenCalled()
+    expect(ctx.tools.get('mcp__srv__old_tool')).toBeUndefined()
+  })
+
   it('lets two servers publish the same raw name side by side', async () => {
     const clientA = createMockClient([{ name: 'search', inputSchema: { type: 'object' } }])
     const clientB = createMockClient([{ name: 'search', inputSchema: { type: 'object' } }])
@@ -196,6 +212,28 @@ describe('syncTools', () => {
     expect(disposers.size).toBe(0)
     expect(ctx.tools.get('mcp__srv__free')).toBeUndefined()
     // The squatter is untouched.
+    expect(ctx.tools.get('mcp__srv__taken')).toBeDefined()
+  })
+
+  it('rolls back and rejects a registration conflict in strict mode', async () => {
+    ctx.tools.register({
+      name: 'mcp__srv__taken',
+      description: 'Squatter',
+      parameters: { type: 'object' },
+      output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value as string }] },
+      execute: async () => 'squatter',
+    })
+    const client = createMockClient([
+      { name: 'free', inputSchema: { type: 'object' } },
+      { name: 'taken', inputSchema: { type: 'object' } },
+    ])
+
+    await expect(syncTools(client as never, ctx, {
+      ...defaultOpts,
+      registrationFailure: 'throw',
+    }, new Map())).rejects.toThrow(/already registered/u)
+
+    expect(ctx.tools.get('mcp__srv__free')).toBeUndefined()
     expect(ctx.tools.get('mcp__srv__taken')).toBeDefined()
   })
 

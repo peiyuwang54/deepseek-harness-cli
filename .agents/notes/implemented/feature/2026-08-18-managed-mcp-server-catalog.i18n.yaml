@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-18-managed-mcp-server-catalog.md
-2026-08-18-managed-mcp-server-catalog.md: 593a05fd2602915e64c4095720ed676dca2aadce
-2026-08-18-managed-mcp-server-catalog.zh.md: 4c612df1fbf8db289cda66445492eae8ef821f05
+2026-08-18-managed-mcp-server-catalog.md: 5798a0d00ba8021e3a10a0d18e836b7b56747fad
+2026-08-18-managed-mcp-server-catalog.zh.md: 0765c5543b5f25b77b27684fa5640dcb1f396d6a

@@ -111,6 +111,25 @@ function Invoke-Download {
     }
 }
 
+function Get-Sha256 {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            return ([System.BitConverter]::ToString($sha256.ComputeHash($stream))).Replace("-", "").ToLowerInvariant()
+        } finally {
+            $sha256.Dispose()
+        }
+    } finally {
+        $stream.Dispose()
+    }
+}
+
 if ($env:PROCESSOR_ARCHITECTURE -ne "AMD64" -and $env:PROCESSOR_ARCHITEW6432 -ne "AMD64") {
     throw "deepseek-harness-cli: unsupported architecture $($env:PROCESSOR_ARCHITECTURE); supported: Windows x64."
 }
@@ -164,7 +183,7 @@ try {
     Invoke-Download -Uri $shaUrl -OutFile $shaFile
 
     $expected = ((Get-Content -LiteralPath $shaFile -Raw) -split "\s+")[0].ToLowerInvariant()
-    $actual = (Get-FileHash -LiteralPath $tarball -Algorithm SHA256).Hash.ToLowerInvariant()
+    $actual = Get-Sha256 -Path $tarball
     if ($expected -ne $actual) {
         throw "deepseek-harness-cli: checksum mismatch for $tarballUrl (expected $expected, got $actual)"
     }

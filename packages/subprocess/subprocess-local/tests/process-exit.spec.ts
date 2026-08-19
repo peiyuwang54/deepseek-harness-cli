@@ -28,15 +28,27 @@ function processExists(pid: number): boolean {
 }
 
 async function readTree(path: string): Promise<TreeState> {
-  return vi.waitFor(async () => {
-    const text = await readFile(path, 'utf8')
-    const state = JSON.parse(text) as Partial<TreeState>
-    if (!Number.isSafeInteger(state.root) || !Number.isSafeInteger(state.descendant)
-      || (state.root ?? 0) <= 0 || (state.descendant ?? 0) <= 0 || state.root === state.descendant) {
-      throw new Error(`invalid managed-tree state: ${text}`)
+  const text = await readFile(path, 'utf8')
+  const state = JSON.parse(text) as Partial<TreeState>
+  if (!Number.isSafeInteger(state.root) || !Number.isSafeInteger(state.descendant)
+    || (state.root ?? 0) <= 0 || (state.descendant ?? 0) <= 0 || state.root === state.descendant) {
+    throw new Error(`invalid managed-tree state: ${text}`)
+  }
+  return state as TreeState
+}
+
+async function waitForFile(path: string): Promise<void> {
+  const deadline = Date.now() + scenarioTimeoutMs
+  for (;;) {
+    try {
+      await readFile(path, 'utf8')
+      return
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+      if (Date.now() >= deadline) throw new Error(`file did not appear: ${path}`, { cause: error })
+      await new Promise(resolve => setTimeout(resolve, 10))
     }
-    return state as TreeState
-  }, { interval: 10, timeout: scenarioTimeoutMs })
+  }
 }
 
 async function captureIdentities(inspector: ProcessInspector, state: TreeState): Promise<ProcessIdentity[]> {
@@ -106,11 +118,8 @@ async function runScenario(kind: ManagedKind, trigger: ExitTrigger) {
   let settled = false
   let treeGone = false
   try {
+    await waitForFile(join(root, 'ready'))
     state = await readTree(join(root, 'tree.json'))
-    await vi.waitFor(() => readFile(join(root, 'ready'), 'utf8'), {
-      interval: 10,
-      timeout: scenarioTimeoutMs,
-    })
     if (process.platform !== 'win32') identities = await captureIdentities(createProcessInspector(), state)
     await writeFile(join(root, 'proceed'), 'proceed')
     const outcome = await child

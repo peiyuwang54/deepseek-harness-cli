@@ -57,7 +57,7 @@ switch (invocation.mode) {
   }
   case 'doctor': {
     const { runDoctor } = await import('./doctor.ts')
-    process.exit(runDoctor(invocation.args))
+    process.exit(await runDoctor(invocation.args))
     break
   }
   case 'completion': {

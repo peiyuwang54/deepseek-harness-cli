@@ -21,6 +21,8 @@ English | [中文](README.zh.md)
 | `dsh plugin --profile <name> source <package>` | Show a plugin's resolved directory and declared source. |
 | `dsh plugin --profile <name> enable/disable <package>` | Toggle a bundle layer for the next launch. |
 | `dsh plugin --profile <name> install/update/remove ...` | Manage dependencies through pnpm (`install` is an alias for `add`). |
+| `deepseek doctor [--json]` | Validate the installation and probe enabled managed MCP servers without booting a profile. |
+| `deepseek completion <shell>` | Print completion for bash, zsh, fish, or PowerShell. |
 
 The invoking directory is the default workspace root. The `web`, `tui`, and `headless` profiles auto-initialize on first use from shipped templates; any other profile must be created through `dsh plugin`.
 

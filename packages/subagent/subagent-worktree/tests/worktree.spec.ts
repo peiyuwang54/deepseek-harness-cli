@@ -14,7 +14,8 @@ async function repository(): Promise<string> {
   const cwd = await mkdtemp(join(tmpdir(), 'dsh-worktree-repo-'))
   await git(cwd, ['init', '-q'])
   await writeFile(join(cwd, 'README.md'), 'base\n')
-  await git(cwd, ['add', 'README.md'])
+  await writeFile(join(cwd, '.gitattributes'), '* text eol=lf\n')
+  await git(cwd, ['add', 'README.md', '.gitattributes'])
   await runNativeCommand('git', ['-C', cwd, '-c', 'user.name=dsh-test', '-c', 'user.email=dsh@example.test', 'commit', '-qm', 'base'], new AbortController().signal)
   return cwd
 }

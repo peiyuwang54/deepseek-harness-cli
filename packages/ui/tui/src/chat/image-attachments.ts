@@ -2,7 +2,7 @@
 
 import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { basename, extname, isAbsolute, resolve, win32 } from 'node:path'
+import { basename, posix, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   AttachmentError,
@@ -67,14 +67,15 @@ export function resolvePastedImagePath(
   } else if (platform !== 'win32') {
     candidate = candidate.replace(/\\([\\ "'])/gu, '$1')
   }
+  const pathRules = platform === 'win32' ? win32 : posix
   if (candidate === '~') candidate = homedir()
   else if (candidate.startsWith('~/') || candidate.startsWith('~\\')) {
-    candidate = resolve(homedir(), candidate.slice(2))
+    candidate = pathRules.resolve(homedir(), candidate.slice(2))
   }
-  const path = platform === 'win32'
-    ? (win32.isAbsolute(candidate) ? win32.normalize(candidate) : win32.resolve(cwd, candidate))
-    : (isAbsolute(candidate) ? resolve(candidate) : resolve(cwd, candidate))
-  const mediaType = IMAGE_MEDIA_TYPES[extname(path).toLocaleLowerCase()]
+  const path = pathRules.isAbsolute(candidate)
+    ? pathRules.normalize(candidate)
+    : pathRules.resolve(cwd, candidate)
+  const mediaType = IMAGE_MEDIA_TYPES[pathRules.extname(path).toLocaleLowerCase()]
   return mediaType === undefined ? undefined : { path, mediaType }
 }
 

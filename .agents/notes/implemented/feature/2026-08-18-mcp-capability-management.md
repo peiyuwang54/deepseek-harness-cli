@@ -24,4 +24,4 @@ The runtime MCP registry owns transport-independent discovery methods for Resour
 
 ## Consequences
 
-Users can temporarily disable an MCP server without deleting its configuration or secret references. Resource and Prompt inspection is available in the terminal while tool registration remains unchanged. Discovery calls use the configured MCP call timeout and are unavailable while a server is disconnected. OAuth login, token storage, and browser authorization remain future transport-specific work.
+Users can temporarily disable an MCP server without deleting its configuration or secret references. Resource and Prompt inspection is available in the terminal while tool registration remains unchanged. Discovery calls use the configured MCP call timeout and are unavailable while a server is disconnected. [OAuth login and token storage](2026-08-18-mcp-oauth.md) are intentionally boot-free; the runtime registry remains credential-free.

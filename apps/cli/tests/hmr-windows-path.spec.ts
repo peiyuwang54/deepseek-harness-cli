@@ -1,3 +1,5 @@
+import { resolve, sep } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { resolveHmrBaseDir } from '@deepseek-ai/cordis-plugin-hmr'
 
@@ -14,8 +16,9 @@ describe('HMR base path resolution', () => {
       .toBe(String.raw`\\server\share\dsh`)
     expect(resolveHmrBaseDir('file:///C:/Users/tester/.dsh', 'file:///C:/snapshot/app/'))
       .toMatch(/C:[/\\]Users[/\\]tester[/\\]\.dsh$/u)
-    expect(resolveHmrBaseDir('profiles/tui', 'file:///tmp/dsh/'))
-      .toBe('/tmp/dsh/profiles/tui')
+    const portableBase = pathToFileURL(`${resolve('/tmp/dsh')}${sep}`).href
+    expect(resolveHmrBaseDir('profiles/tui', portableBase))
+      .toBe(resolve('/tmp/dsh/profiles/tui'))
   })
 
   it('resolves a relative root when the embedded loader anchor is a Windows path', () => {

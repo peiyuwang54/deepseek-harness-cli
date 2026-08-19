@@ -10,7 +10,7 @@ Installation failures are difficult to classify when the normal profile boot is 
 
 ## Decision
 
-The launcher provides `deepseek doctor [--json]` without mounting a profile. It reports Node and platform support, workspace and harness-home access, credential presence, MCP catalog syntax, shipped runtime assets, and terminal capabilities. It returns nonzero only for blocking checks. `deepseek completion <shell>` emits static completion scripts for bash, zsh, fish, and PowerShell and registers both shipped command names.
+The launcher provides `deepseek doctor [--json]` without mounting a profile. It reports Node and platform support, workspace and harness-home access, credential presence, managed MCP configuration and [bounded connectivity](2026-08-19-mcp-connectivity-diagnostics.md), shipped runtime assets, and terminal capabilities. It returns nonzero only for blocking checks. `deepseek completion <shell>` emits static completion scripts for bash, zsh, fish, and PowerShell and registers both shipped command names.
 
 ## Alternatives considered
 
@@ -19,4 +19,4 @@ The launcher provides `deepseek doctor [--json]` without mounting a profile. It 
 
 ## Consequences
 
-Doctor does not contact the model, start MCP servers, or mutate user files. A missing API key, missing harness home, non-TTY output, and missing truecolor advertisement are warnings; malformed configuration, inaccessible workspace, unsupported Node, or incomplete runtime assets are blocking errors. Completion scripts cover launcher commands and common options but do not attempt to discover third-party plugin commands.
+Doctor does not contact the model or mutate user files. It starts enabled managed MCP servers only for the bounded connectivity diagnostic and closes each probe immediately. A missing API key, missing harness home, non-TTY output, missing truecolor advertisement, or optional MCP failure is a warning; malformed configuration, a required MCP failure, inaccessible workspace, unsupported Node, or incomplete runtime assets are blocking errors. Completion scripts cover launcher commands and common options but do not attempt to discover third-party plugin commands.

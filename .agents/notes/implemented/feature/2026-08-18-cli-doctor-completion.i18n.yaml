@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-18-cli-doctor-completion.md
-2026-08-18-cli-doctor-completion.md: efae03079ace1b5f7dfc4d167d8764a6cf3706d5
-2026-08-18-cli-doctor-completion.zh.md: 36518e963e4276fbe37f50970d94cb86d693d3bd
+2026-08-18-cli-doctor-completion.md: 9722f18b501a86db83668b6f0c3d3bd5545cbbd7
+2026-08-18-cli-doctor-completion.zh.md: fec2f954f06e4936386ecc6ed6645e010b36032e

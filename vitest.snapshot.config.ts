@@ -44,6 +44,10 @@ export default defineConfig({
   test: {
     execArgv: vitestExecArgv,
     setupFiles: ['./scripts/test-invariants.ts'],
+    env: {
+      TERM_PROGRAM: 'vscode',
+      TZ: 'Asia/Shanghai',
+    },
     include: [
       'scripts/**/*.snapshot.ts',
       // The assembled Web snapshot executes generated client bundles; source

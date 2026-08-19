@@ -51,6 +51,7 @@ const EXPECTED_TOOLS = [
   'skill',
   'subagent',
   'subagent_fork',
+  'subagent_worktree',
   'todo_write',
   'update_goal',
   'web_search',

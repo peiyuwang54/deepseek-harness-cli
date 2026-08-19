@@ -10,9 +10,9 @@ English | [中文](2026-07-29-pnpm-setup-runner-isolation.zh.md)
 
 ## Decision
 
-Every `pnpm/action-setup` step in [the primary CI workflow](../../../../.github/workflows/ci.yml) sets `dest: ${{ runner.temp }}/setup-pnpm`. Each runner service owns its temporary directory, so one setup cannot replace another runner's install directory. Persistent store reuse remains separate through `PNPM_CONFIG_STORE_DIR`, as established by the [pnpm provisioning decision](../process/2026-07-26-pnpm-action-setup-for-symmetric-ci-caching.md).
+Every `pnpm/action-setup` step in [the primary CI workflow](../../../../.github/workflows/ci.yml) sets `dest: ${{ runner.temp }}/setup-pnpm`. The reusable Python executable builder and CLI release workflow use the same destination because their manylinux container mounts that exact runner path before invoking pnpm. Each runner service owns its temporary directory, so one setup cannot replace another runner's installation and a container never mounts a path different from `PNPM_HOME`. Persistent store reuse remains separate through `PNPM_CONFIG_STORE_DIR`, as established by the [pnpm provisioning decision](../process/2026-07-26-pnpm-action-setup-for-symmetric-ci-caching.md).
 
-[The workflow regression test](../../../../scripts/ci-workflow.spec.ts) discovers every `pnpm/action-setup` step in `ci.yml` and rejects one without the runner-private destination. This keeps newly added jobs inside the same isolation boundary.
+[The workflow regression test](../../../../scripts/ci-workflow.spec.ts) discovers every `pnpm/action-setup` step in `ci.yml` and separately pins the setup steps used by both containerized executable workflows. It rejects any of them without the runner-private destination.
 
 ## Alternatives considered
 

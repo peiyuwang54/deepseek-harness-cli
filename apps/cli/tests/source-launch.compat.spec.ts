@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest'
 
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url))
 const dshSourceBin = 'apps/cli/src/bin.ts'
+const sourceLaunchTimeoutMs = process.platform === 'win32' ? 90_000 : 25_000
 
 describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
   it('launches the source CLI without building', async () => {
@@ -28,7 +29,7 @@ describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
     const result = await execa(process.execPath, ['--import', 'tsx/esm', dshSourceBin], {
       cwd: repoRoot,
       input: '',
-      timeout: 25_000,
+      timeout: sourceLaunchTimeoutMs,
       killSignal: 'SIGKILL',
       reject: false,
     })
@@ -38,5 +39,5 @@ describe('dsh SOURCE launcher (node --import tsx/esm)', () => {
     expect(result.exitCode).not.toBe(0)
     expect(result.stderr).toContain('requires interactive stdin and stdout TTYs; use --profile headless')
     expect(result.stdout).toBe('')
-  }, 30_000)
+  }, sourceLaunchTimeoutMs + 5_000)
 })

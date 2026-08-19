@@ -65,12 +65,17 @@ describe('CI workflow', () => {
 
     // windows-native: non-blocking native job with failover, runs windows-complete.
     // Its pool is resolved by the Windows-specific switch.
-    expect(typeof windowsNative['runs-on']).toBe('string')
-    expect(windowsNative['runs-on']).toContain('DSH_CI_FAILOVER_WINDOWS')
-    expect(windowsNative['runs-on']).not.toContain('DSH_CI_FAILOVER_LINUX')
-    expect(windowsNative['runs-on']).toContain('self-hosted')
-    expect(windowsNative['runs-on']).toContain('dsh-win-ci')
-    expect(windowsNative['runs-on']).toContain('dsh-windows-2025-16core')
+    const windowsRunsOn = windowsNative['runs-on']
+    if (typeof windowsRunsOn !== 'string') throw new TypeError('windows-native runs-on must be a string expression')
+    expect(windowsRunsOn).toContain('DSH_CI_FAILOVER_WINDOWS')
+    expect(windowsRunsOn).toContain('DSH_CI_HOSTED_WINDOWS_RUNNER')
+    expect(windowsRunsOn).not.toContain('DSH_CI_FAILOVER_LINUX')
+    expect(windowsRunsOn).toContain('self-hosted')
+    expect(windowsRunsOn).toContain('dsh-win-ci')
+    expect(windowsRunsOn).toContain('windows-2025')
+    expect(windowsRunsOn).not.toContain('dsh-windows-2025-16core')
+    expect(windowsRunsOn.indexOf('DSH_CI_FAILOVER_WINDOWS')).toBeLessThan(windowsRunsOn.indexOf('DSH_CI_HOSTED_WINDOWS_RUNNER'))
+    expect(windowsRunsOn.indexOf('DSH_CI_HOSTED_WINDOWS_RUNNER')).toBeLessThan(windowsRunsOn.indexOf('windows-2025'))
     expect(windowsNative.name).toBe('windows node 24 / native complete')
     expect(windowsNative.if).toBe("github.event_name == 'pull_request'")
     const nativeCommandSteps = (windowsNative.steps as unknown[]).filter((step): step is Record<string, unknown> & { run: string } => (
@@ -96,11 +101,24 @@ describe('CI workflow', () => {
     // and the verdict job resolve their pool through DSH_CI_FAILOVER_LINUX,
     // never the Windows switch.
     for (const [jobName, job] of [['node-24', node24], ['node-24-coverage', node24Coverage], ['node-24-consumers', node24Consumers]] as const) {
-      expect(typeof job['runs-on']).toBe('string')
-      expect(job['runs-on'], `${jobName} runs-on must use the Linux failover switch`).toContain('DSH_CI_FAILOVER_LINUX')
-      expect(job['runs-on'], `${jobName} runs-on must not use the Windows failover switch`).not.toContain('DSH_CI_FAILOVER_WINDOWS')
-      expect(job['runs-on']).toContain('vm-backup')
+      const linuxRunsOn = job['runs-on']
+      if (typeof linuxRunsOn !== 'string') throw new TypeError(`${jobName} runs-on must be a string expression`)
+      expect(linuxRunsOn, `${jobName} runs-on must use the Linux failover switch`).toContain('DSH_CI_FAILOVER_LINUX')
+      expect(linuxRunsOn, `${jobName} runs-on must permit a configured hosted pool`).toContain('DSH_CI_HOSTED_LINUX_RUNNER')
+      expect(linuxRunsOn, `${jobName} runs-on must not use the Windows failover switch`).not.toContain('DSH_CI_FAILOVER_WINDOWS')
+      expect(linuxRunsOn).toContain('vm-backup')
+      expect(linuxRunsOn).toContain('ubuntu-24.04')
+      expect(linuxRunsOn).not.toContain('dsh-ubuntu-24-04-16core')
+      expect(linuxRunsOn.indexOf('DSH_CI_FAILOVER_LINUX')).toBeLessThan(linuxRunsOn.indexOf('DSH_CI_HOSTED_LINUX_RUNNER'))
+      expect(linuxRunsOn.indexOf('DSH_CI_HOSTED_LINUX_RUNNER')).toBeLessThan(linuxRunsOn.indexOf('ubuntu-24.04'))
     }
+    if (!isRecord(node24.env) || !isRecord(node24Coverage.env) || !isRecord(node24Consumers.env)) {
+      throw new TypeError('Linux CI jobs must define runner-sized concurrency environments')
+    }
+    expect(node24.env.DSH_GATE_CONCURRENCY).toContain("|| '2'")
+    expect(node24Coverage.env.DSH_COVERAGE_MAX_WORKERS).toContain("|| '2'")
+    expect(node24Consumers.env.DSH_GATE_CONCURRENCY).toContain("|| '2'")
+    expect(node24Consumers.env.DSH_SNAPSHOT_MAX_CONCURRENCY).toContain("|| '4'")
     expect(aggregate['runs-on']).toContain('DSH_CI_FAILOVER_LINUX')
     expect(aggregate['runs-on']).not.toContain('DSH_CI_FAILOVER_WINDOWS')
     expect(aggregate['runs-on']).toContain('vm-backup')

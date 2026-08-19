@@ -45,19 +45,19 @@ jobs:
   # TODO(hosted-serial-ci): Re-enable the three hosted serial reference jobs before release.
   # The self-hosted standby remains active on every master push.
 
-  # Three enterprise jobs isolate coverage, static analysis, and the
-  # build-backed consumer tail. The consumer job owns the only Linux build so
-  # all three jobs enter runner allocation independently.
+  # Three Linux jobs isolate coverage, static analysis, and the build-backed
+  # consumer tail. The consumer job owns the only Linux build so all three jobs
+  # enter runner allocation independently.
   #
-  # FAILOVER (Linux): each Linux enterprise job resolves its pool through the
-  # DSH_CI_FAILOVER_LINUX repository variable. Unset (normal), the expressions
-  # pick the hosted enterprise pools below. Setting the variable to
-  # 'selfhosted' (repo Settings → Actions → Variables; writer-manageable
-  # repository state — not PR-editable, no merge required) retargets all
-  # three onto the in-house
-  # vm-backup pool and re-running the failed jobs is the entire switch —
-  # see .agents/notes/implemented/process/2026-07-26-ci-failover-runbook.md. The
-  # in-house pool's readiness is re-proven on every master push by the
+  # PRIMARY + FAILOVER (Linux): DSH_CI_HOSTED_LINUX_RUNNER may name one
+  # repository-configured hosted label; unset, pull requests use GitHub's
+  # standard ubuntu-24.04 pool. DSH_CI_FAILOVER_LINUX=selfhosted (repo Settings
+  # → Actions → Variables; writer-manageable repository state — not
+  # PR-editable, no merge required) retargets all three onto the in-house
+  # vm-backup pool, and re-running the jobs is the entire switch. See
+  # .agents/notes/implemented/process/2026-07-26-ci-failover-runbook.md and
+  # .agents/notes/implemented/process/2026-08-19-portable-ci-runner-defaults.md.
+  # The in-house pool's readiness is re-proven on every master push by the
   # serial-linux-selfhosted standby lane below. The Windows failover switch is
   # the separate DSH_CI_FAILOVER_WINDOWS variable on the windows-native job below.
   node-24:
@@ -66,10 +66,11 @@ jobs:
       ${{ vars.DSH_CI_FAILOVER_LINUX == 'selfhosted'
           && github.event.pull_request.user.login != 'dependabot[bot]'
           && fromJSON('["self-hosted", "linux", "x64", "vm-backup"]')
-          || 'dsh-ubuntu-24-04-16core' }}
+          || vars.DSH_CI_HOSTED_LINUX_RUNNER
+          || 'ubuntu-24.04' }}
     name: node 24 / static
     env:
-      DSH_GATE_CONCURRENCY: '8'
+      DSH_GATE_CONCURRENCY: ${{ ((vars.DSH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]') || vars.DSH_CI_HOSTED_LINUX_RUNNER != '') && '8' || '2' }}
     steps:
       # Fetch complete history so the archive gate can read the trusted PR base from a reused shallow checkout.
       - uses: actions/checkout@v6
@@ -118,14 +119,16 @@ jobs:
       ${{ vars.DSH_CI_FAILOVER_LINUX == 'selfhosted'
           && github.event.pull_request.user.login != 'dependabot[bot]'
           && fromJSON('["self-hosted", "linux", "x64", "vm-backup"]')
-          || 'dsh-ubuntu-24-04-16core' }}
+          || vars.DSH_CI_HOSTED_LINUX_RUNNER
+          || 'ubuntu-24.04' }}
     name: node 24 / coverage
     env:
-      # The hosted 16-core runner uses six coverage workers. The failover pool
-      # shares one 64-core VM across six always-on runner instances, so each
-      # instance may use eight while keeping the worst case at 8 × 6 = 48
-      # workers; process-bound suites remain isolated in forks.
-      DSH_COVERAGE_MAX_WORKERS: ${{ vars.DSH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]' && '8' || '6' }}
+      # A configured larger hosted runner uses six coverage workers. The
+      # standard runner uses two. The failover pool shares one 64-core VM across
+      # six always-on runner instances, so each instance may use eight while
+      # keeping the worst case at 8 × 6 = 48 workers; process-bound suites
+      # remain isolated in forks.
+      DSH_COVERAGE_MAX_WORKERS: ${{ vars.DSH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]' && '8' || vars.DSH_CI_HOSTED_LINUX_RUNNER != '' && '6' || '2' }}
       DSH_GATE_CONCURRENCY: '3'
     steps:
       - uses: actions/checkout@v6
@@ -181,15 +184,17 @@ jobs:
       ${{ vars.DSH_CI_FAILOVER_LINUX == 'selfhosted'
           && github.event.pull_request.user.login != 'dependabot[bot]'
           && fromJSON('["self-hosted", "linux", "x64", "vm-backup"]')
-          || 'dsh-ubuntu-24-04-16core' }}
+          || vars.DSH_CI_HOSTED_LINUX_RUNNER
+          || 'ubuntu-24.04' }}
     name: node 24 / snapshots and artifacts
     env:
-      DSH_GATE_CONCURRENCY: '8'
+      DSH_GATE_CONCURRENCY: ${{ ((vars.DSH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]') || vars.DSH_CI_HOSTED_LINUX_RUNNER != '') && '8' || '2' }}
       DSH_NODE_COMPAT_SKIP_TYPECHECK: '1'
-      DSH_OXLINT_THREADS: '8'
-      DSH_PUBLINT_CONCURRENCY: '8'
-      # Failover halves snapshot concurrency for the shared 64-core VM.
-      DSH_SNAPSHOT_MAX_CONCURRENCY: ${{ vars.DSH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]' && '12' || '32' }}
+      DSH_OXLINT_THREADS: ${{ ((vars.DSH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]') || vars.DSH_CI_HOSTED_LINUX_RUNNER != '') && '8' || '4' }}
+      DSH_PUBLINT_CONCURRENCY: ${{ ((vars.DSH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]') || vars.DSH_CI_HOSTED_LINUX_RUNNER != '') && '8' || '4' }}
+      # Failover halves the configured larger runner's snapshot concurrency;
+      # the standard runner uses four concurrent snapshot tasks.
+      DSH_SNAPSHOT_MAX_CONCURRENCY: ${{ vars.DSH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]' && '12' || vars.DSH_CI_HOSTED_LINUX_RUNNER != '' && '32' || '4' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -437,11 +442,12 @@ jobs:
   # Every pull request also gets a real Windows-kernel signal. This job keeps
   # its own unmasked conclusion but is deliberately absent from
   # all-checks-passed.needs, so it never delays or changes that required
-  # verdict. Under normal operation it runs on the hosted larger runner; under
-  # Windows failover (DSH_CI_FAILOVER_WINDOWS=selfhosted) it retargets onto the
-  # in-house self-hosted Windows pool. Dependabot PRs are excluded from the
-  # self-hosted pool and stay queued for the hosted runner — see the failover
-  # runbook. This Windows switch is independent of the Linux
+  # verdict. DSH_CI_HOSTED_WINDOWS_RUNNER may name one repository-configured
+  # hosted label; unset, the job uses GitHub's standard Windows 2025 pool.
+  # Under Windows failover (DSH_CI_FAILOVER_WINDOWS=selfhosted) it retargets
+  # onto the in-house self-hosted Windows pool. Dependabot PRs are excluded
+  # from the self-hosted pool and remain on the hosted selector — see the
+  # failover runbook. This Windows switch is independent of the Linux
   # DSH_CI_FAILOVER_LINUX variable that retargets the three required Linux jobs
   # and the all-checks-passed verdict above.
   windows-native:
@@ -450,7 +456,8 @@ jobs:
       ${{ vars.DSH_CI_FAILOVER_WINDOWS == 'selfhosted'
           && github.event.pull_request.user.login != 'dependabot[bot]'
           && fromJSON('["self-hosted", "dsh-win-ci", "windows"]')
-          || 'dsh-windows-2025-16core' }}
+          || vars.DSH_CI_HOSTED_WINDOWS_RUNNER
+          || 'windows-2025' }}
     name: windows node 24 / native complete
     timeout-minutes: 60
     env:
@@ -519,7 +526,7 @@ jobs:
 
       # Master refreshes the pnpm store cache that pull requests restore without saving.
       # The store cache stays a hand-rolled actions/cache step rather than
-      # setup-node's `cache: pnpm`: the enterprise pull-request jobs above
+      # setup-node's `cache: pnpm`: the pull-request jobs above
       # restore exactly this key and path, and setup-node's built-in cache
       # uses its own key format — converting this producer would silently
       # starve their documented restore-only optimization.

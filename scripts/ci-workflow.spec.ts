@@ -120,6 +120,7 @@ describe('CI workflow', () => {
     }
     expect(node24.env.DSH_GATE_CONCURRENCY).toContain("|| '2'")
     expect(node24Coverage.env.DSH_COVERAGE_MAX_WORKERS).toContain("|| '5'")
+    expect(node24Coverage.env.DSH_GATE_CONCURRENCY).toContain("|| '1'")
     expect(node24Consumers.env.DSH_GATE_CONCURRENCY).toContain("|| '2'")
     expect(node24Consumers.env.DSH_SNAPSHOT_MAX_CONCURRENCY).toContain("|| '4'")
     expect(aggregate['runs-on']).toContain('DSH_CI_FAILOVER_LINUX')

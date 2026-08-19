@@ -14,7 +14,7 @@ PR CI 包含三个必需的 Linux 作业和一个提示性的原生 Windows 作�
 
 该决策仅取代[可移植恢复边界](2026-07-23-portable-required-pull-request-ci.md)与[大型 runner 测量](2026-07-22-evidence-based-larger-hosted-runners.md)中默认必需的大型 runner 分配。它们的作业拆分、已测量容量配置、聚合成员关系和自托管恢复机制仍为当前事实。
 
-标准 Linux 路径使用与标准托管机器相匹配的并发度：两个常规门禁 worker、五个覆盖率 worker，以及四个快照任务。覆盖率拆分会把四个 worker 分配给插桩后的多项目运行，把一个 worker 分配给未插桩的重型测试；降低插桩并发度会使大型 TUI 测试的 V8 覆盖率从汇总中丢失，即使每个测试均通过。已配置的 Linux 托管标签保留大型 runner 设置，自托管路径保留共享虚拟机设置。独立的 [CI 故障切换手册](2026-07-26-ci-failover-runbook.md)继续拥有故障路由和 Dependabot 排除规则；故障切换优先于主托管标签。
+标准 Linux 路径使用与标准托管机器相匹配的并发度：两个常规门禁 worker、五个覆盖率 worker，以及四个快照任务。覆盖率拆分会把四个 worker 分配给插桩后的多项目运行，把一个 worker 分配给未插桩的重型测试。在标准四核 runner 上，这两条门禁串行运行，使插桩 worker 在收集 V8 覆盖率时独占机器；降低插桩并发度或同时运行重型门禁都会使覆盖率贡献从汇总中丢失，即使每个测试均通过。已配置的 Linux 托管标签保留大型 runner 设置，自托管路径保留共享虚拟机设置。独立的 [CI 故障切换手册](2026-07-26-ci-failover-runbook.md)继续拥有故障路由和 Dependabot 排除规则；故障切换优先于主托管标签。
 
 `scripts/ci-workflow.spec.ts` 固定选择器顺序、可移植标签、保守的标准 runner 并发度，以及 Linux 和 Windows 变量的相互独立性。该检查特意不证明任意已配置标签实际存在；GitHub 拥有 runner 注册与分配。
 

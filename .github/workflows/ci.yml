@@ -124,14 +124,16 @@ jobs:
     name: node 24 / coverage
     env:
       # A configured larger hosted runner uses six coverage workers. The
-      # standard runner uses five so the instrumented gate keeps four workers;
-      # lower fan-out drops the large TUI suite's V8 coverage from the aggregate.
+      # standard runner uses five so the instrumented gate keeps four workers,
+      # and serializes the uninstrumented heavy gate so those four workers own
+      # the machine while V8 coverage is collected. Lower fan-out or overlapping
+      # the heavy gate drops coverage contributions even when every test passes.
       # The failover pool shares one 64-core VM across
       # six always-on runner instances, so each instance may use eight while
       # keeping the worst case at 8 × 6 = 48 workers; process-bound suites
       # remain isolated in forks.
       DSH_COVERAGE_MAX_WORKERS: ${{ vars.DSH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]' && '8' || vars.DSH_CI_HOSTED_LINUX_RUNNER != '' && '6' || '5' }}
-      DSH_GATE_CONCURRENCY: '3'
+      DSH_GATE_CONCURRENCY: ${{ vars.DSH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]' && '3' || vars.DSH_CI_HOSTED_LINUX_RUNNER != '' && '3' || '1' }}
     steps:
       - uses: actions/checkout@v6
         with:

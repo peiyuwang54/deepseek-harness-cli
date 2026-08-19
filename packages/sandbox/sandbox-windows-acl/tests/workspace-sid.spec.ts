@@ -12,6 +12,10 @@ import { describe, expect, it } from 'vitest'
 import { tempWriteSid, workspaceWriteSid } from '../src/index.ts'
 
 describe('workspaceWriteSid', () => {
+  it('rejects an empty writable root set', () => {
+    expect(() => workspaceWriteSid([])).toThrow('workspaceWriteSid requires at least one root')
+  })
+
   it('derives a stable capability-shaped SID per writable root set', () => {
     const first = workspaceWriteSid(['C:\\Users\\agent\\repo'])
     const second = workspaceWriteSid(['C:\\Users\\agent\\repo'])

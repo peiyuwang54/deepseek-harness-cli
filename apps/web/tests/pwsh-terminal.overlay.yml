@@ -1,7 +1,7 @@
 # The pwsh terminal-card lane swaps the shipped bash stack for the PowerShell
 # twin: the bash executor row is disabled (patches cannot rename a row — `name`
-# is a guard) and the pwsh executor is inserted. The session preset already
-# owns its scoped pwsh tool. The permission service
+# is a guard), the existing Web tool row is enabled, and the pwsh executor is
+# inserted. The permission service
 # refuses an unconfined executor by design (presets bundle a sandbox mode), so
 # its row is disabled too — this lane renders a seeded session, never a
 # permission decision. The seeded scenario renders the logged pwsh call/result
@@ -14,6 +14,9 @@
 - id: permission
   name: '@deepseek-ai/dsh-permission-presets'
   disabled: true
+- id: tool-pwsh
+  name: '@deepseek-ai/dsh-tool-pwsh'
+  disabled: false
 - insert:
     - id: pwsh-local
       name: '@deepseek-ai/dsh-pwsh-local'

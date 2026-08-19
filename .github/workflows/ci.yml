@@ -126,8 +126,7 @@ jobs:
       # A configured larger hosted runner uses six coverage workers. The
       # standard runner uses five so the instrumented gate keeps four workers,
       # and serializes the uninstrumented heavy gate so those four workers own
-      # the machine while V8 coverage is collected. Lower fan-out or overlapping
-      # the heavy gate drops coverage contributions even when every test passes.
+      # the machine while V8 coverage is collected.
       # The failover pool shares one 64-core VM across
       # six always-on runner instances, so each instance may use eight while
       # keeping the worst case at 8 × 6 = 48 workers; process-bound suites

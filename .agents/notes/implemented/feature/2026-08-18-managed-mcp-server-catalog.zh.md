@@ -30,4 +30,4 @@ catalog 保存环境变量来源名称，而不是解析后的值。`--env KEY[=
 
 常见 MCP 配置现在拥有一个稳定的 CLI 界面，并可在不改变底层插件架构的前提下跨所有随附应用 profile 工作。受管配置保持可检查且确定，密钥值则不会进入持久文件与配置 dump。
 
-服务器可执行文件仍是 agent（智能体）沙箱之外的受信任本地代码，CLI 也不会安装它们。系统不提供 OAuth 与启用／禁用状态。catalog 变更需要新进程；[运行时重载](2026-08-18-mcp-runtime-status-and-reload.md)只会重连已经根据当前文件组合的实例。单元测试固定解析、修改、权限、引用解析、脱敏和生成的 patch；built-bin e2e 测试固定真实命令分派与 dump 组合。由于管理命令无需启动 profile，也不会产生 transcript 事件，因此不添加 Session 快照。
+服务器可执行文件仍是 agent（智能体）沙箱之外的受信任本地代码，CLI 也不会安装它们。[启用与停用状态](2026-08-18-mcp-capability-management.md)和 [OAuth](2026-08-18-mcp-oauth.md)会扩展同一份 catalog，同时保持其密钥引用规则不变。catalog 变更需要新进程；[运行时重载](2026-08-18-mcp-runtime-status-and-reload.md)只会重连已经根据当前文件组合的实例。单元测试固定解析、修改、权限、引用解析、脱敏和生成的 patch；built-bin e2e 测试固定真实命令分派与 dump 组合。由于管理命令无需启动 profile，也不会产生 transcript 事件，因此不添加 Session 快照。

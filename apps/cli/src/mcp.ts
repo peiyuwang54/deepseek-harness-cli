@@ -11,6 +11,7 @@ import {
   DEFAULT_OAUTH_REDIRECT_URL,
   createPersistentOAuthClientProvider,
 } from '@deepseek-ai/dsh-mcp-client'
+import type { Config as McpClientConfig } from '@deepseek-ai/dsh-mcp-client'
 import { auth } from '@modelcontextprotocol/sdk/client/auth.js'
 
 const CONFIG_VERSION = 0
@@ -58,6 +59,19 @@ interface StoredOAuthConfig {
 }
 
 type StoredMcpServer = StoredStdioServer | StoredHttpServer
+
+/** One managed MCP entry resolved for a connectivity diagnostic. */
+export type ManagedMcpTarget = {
+  readonly name: string
+  readonly transport: StoredMcpServer['transport']
+  readonly enabled: false
+} | {
+  readonly name: string
+  readonly transport: StoredMcpServer['transport']
+  readonly enabled: true
+  readonly failOnStartupError: boolean
+  readonly config: McpClientConfig
+}
 
 interface McpConfigFile {
   readonly version: 0
@@ -491,6 +505,60 @@ function resolveReferences(
   }))
 }
 
+function resolveClientConfig(
+  name: string,
+  server: StoredMcpServer,
+  environment: NodeJS.ProcessEnv,
+  redact: boolean,
+): McpClientConfig {
+  return server.transport === 'stdio'
+    ? {
+      transport: server.transport,
+      serverName: name,
+      command: server.command,
+      args: [...server.args],
+      env: resolveReferences(server.env, environment, name, 'environment entry', redact),
+      cwd: server.cwd ?? '',
+      toolCallTimeoutMs: server.timeoutMs ?? 60_000,
+      failOnStartupError: server.failOnStartupError ?? false,
+    }
+    : {
+      transport: server.transport,
+      serverName: name,
+      url: server.url,
+      headers: resolveReferences(server.headers, environment, name, 'header', redact),
+      ...(server.oauth === undefined ? {} : {
+        oauthStatePath: server.oauth.statePath,
+        oauthRedirectUrl: server.oauth.redirectUrl,
+      }),
+      toolCallTimeoutMs: server.timeoutMs ?? 60_000,
+      failOnStartupError: server.failOnStartupError ?? false,
+    }
+}
+
+/**
+ * Resolve the managed MCP catalog for connection diagnostics.
+ * @param filename - catalog path.
+ * @param environment - environment used to resolve enabled entries' secret references.
+ * @returns Stable name-sorted targets; disabled entries never resolve credentials.
+ */
+export function managedMcpTargets(
+  filename = mcpConfigPath(),
+  environment: NodeJS.ProcessEnv = process.env,
+): ManagedMcpTarget[] {
+  return Object.entries(readConfig(filename).servers)
+    .toSorted(([left], [right]) => left.localeCompare(right))
+    .map(([name, server]) => server.enabled === false
+      ? { name, transport: server.transport, enabled: false }
+      : {
+        name,
+        transport: server.transport,
+        enabled: true,
+        failOnStartupError: server.failOnStartupError ?? false,
+        config: resolveClientConfig(name, server, environment, false),
+      })
+}
+
 /** Resolve the user-level MCP catalog path. */
 export function mcpConfigPath(): string {
   return resolve(resolveDshHome(), MCP_CONFIG_FILENAME)
@@ -527,33 +595,19 @@ function projectManagedMcpPatches(
   const rows = Object.entries(config.servers)
     .filter(([, server]) => server.enabled !== false)
     .toSorted(([left], [right]) => left.localeCompare(right))
-    .map(([name, server]) => ({
-      id: `managed-mcp-${name}`,
-      name: '@deepseek-ai/dsh-mcp-client',
-      config: server.transport === 'stdio'
-        ? {
-          transport: server.transport,
-          serverName: name,
-          command: server.command,
-          args: [...server.args],
-          env: resolveReferences(server.env, environment, name, 'environment entry', redact),
-          cwd: server.cwd ?? '',
-          ...(server.timeoutMs === undefined ? {} : { toolCallTimeoutMs: server.timeoutMs }),
-          ...(server.failOnStartupError === undefined ? {} : { failOnStartupError: server.failOnStartupError }),
-        }
-        : {
-          transport: server.transport,
-          serverName: name,
-          url: server.url,
-          headers: resolveReferences(server.headers, environment, name, 'header', redact),
-          ...(server.oauth === undefined ? {} : {
-            oauthStatePath: server.oauth.statePath,
-            oauthRedirectUrl: server.oauth.redirectUrl,
-          }),
-          ...(server.timeoutMs === undefined ? {} : { toolCallTimeoutMs: server.timeoutMs }),
-          ...(server.failOnStartupError === undefined ? {} : { failOnStartupError: server.failOnStartupError }),
+    .map(([name, server]) => {
+      const resolved = resolveClientConfig(name, server, environment, redact)
+      const { toolCallTimeoutMs, failOnStartupError, ...base } = resolved
+      return {
+        id: `managed-mcp-${name}`,
+        name: '@deepseek-ai/dsh-mcp-client',
+        config: {
+          ...base,
+          ...(server.timeoutMs === undefined ? {} : { toolCallTimeoutMs }),
+          ...(server.failOnStartupError === undefined ? {} : { failOnStartupError }),
         },
-    }))
+      }
+    })
   return rows.length === 0 ? [] : [{ insert: rows }]
 }
 

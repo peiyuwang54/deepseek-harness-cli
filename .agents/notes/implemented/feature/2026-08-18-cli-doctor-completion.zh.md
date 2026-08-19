@@ -10,7 +10,7 @@ Status: implemented
 
 ## Decision
 
-启动器提供不挂载 profile 的 `deepseek doctor [--json]`。它报告 Node 与平台支持、workspace 和 Harness home 的访问、凭据是否存在、MCP catalog 语法、随附运行时资产和终端能力。只有阻断性检查失败时才返回非零状态。`deepseek completion <shell>` 输出 bash、zsh、fish 和 PowerShell 的静态补全脚本，并同时注册两个随附命令名。
+启动器提供不挂载 profile 的 `deepseek doctor [--json]`。它报告 Node 与平台支持、workspace 和 Harness home 的访问、凭据是否存在、受管 MCP 配置与[有界连接诊断](2026-08-19-mcp-connectivity-diagnostics.md)、随附运行时资产和终端能力。只有阻断性检查失败时才返回非零状态。`deepseek completion <shell>` 输出 bash、zsh、fish 和 PowerShell 的静态补全脚本，并同时注册两个随附命令名。
 
 ## Alternatives considered
 
@@ -19,4 +19,4 @@ Status: implemented
 
 ## Consequences
 
-Doctor 不会访问模型、启动 MCP 服务器或修改用户文件。缺少 API Key、Harness home、非 TTY 输出和未声明 truecolor 都是警告；配置格式错误、workspace 无法访问、不支持的 Node 或运行时资产不完整属于阻断性错误。补全脚本覆盖启动器命令和常用参数，不尝试发现第三方插件命令。
+Doctor 不会访问模型或修改用户文件。它只会为有界连接诊断启动已启用的受管 MCP 服务器，并在每次探测后立即关闭。缺少 API Key、Harness home、非 TTY 输出、未声明 truecolor 或可选 MCP 失败都是警告；配置格式错误、必需 MCP 失败、workspace 无法访问、不支持的 Node 或运行时资产不完整属于阻断性错误。补全脚本覆盖启动器命令和常用参数，不尝试发现第三方插件命令。

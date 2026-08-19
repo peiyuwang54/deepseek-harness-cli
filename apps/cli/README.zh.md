@@ -21,6 +21,8 @@
 | `dsh plugin --profile <name> source <package>` | 显示插件的解析目录和声明的来源。 |
 | `dsh plugin --profile <name> enable/disable <package>` | 切换下次启动时生效的组合包层。 |
 | `dsh plugin --profile <name> install/update/remove ...` | 通过 pnpm 管理依赖（`install` 是 `add` 的别名）。 |
+| `deepseek doctor [--json]` | 不启动 profile，验证安装并探测已启用的受管 MCP 服务器。 |
+| `deepseek completion <shell>` | 输出 bash、zsh、fish 或 PowerShell 补全。 |
 
 运行命令时所在的目录将作为默认 workspace 根目录。`web`、`tui` 和 `headless` profile 在首次使用时会从随附模板自动初始化；其他任何 profile 都必须通过 `dsh plugin` 创建。
 

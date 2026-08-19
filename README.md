@@ -95,7 +95,7 @@ deepseek doctor --json
 deepseek completion zsh > ~/.zsh/completions/_deepseek
 ```
 
-`doctor` also checks shipped profile overlays and presets, the optional Web frontend asset, installation channel, sandbox runner, truecolor, mouse input, and clipboard support. Host capability checks are warnings; a missing runtime asset or unsupported Node version is blocking.
+`doctor` also checks shipped profile overlays and presets, the optional Web frontend asset, installation channel, sandbox runner, truecolor, mouse input, clipboard support, and every enabled managed MCP connection. MCP probes start the configured server with a 5000 ms per-request timeout; `--mcp-timeout-ms` changes it. Optional server failures and host capability checks are warnings; a required MCP server failure, missing runtime asset, or unsupported Node version is blocking.
 
 Inspect and validate a profile's installed plugin bundles without starting it:
 

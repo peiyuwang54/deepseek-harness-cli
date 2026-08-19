@@ -7,6 +7,8 @@ import { platform as hostPlatform, release } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import { probeMcpConnection } from '@deepseek-ai/dsh-mcp-client'
+import { managedMcpTargets } from './mcp.ts'
 
 type DoctorStatus = 'pass' | 'warn' | 'fail'
 
@@ -41,6 +43,8 @@ export interface DoctorCommandOptions {
   readonly stderr?: (text: string) => void
   /** Runtime asset root; defaults to the CLI package root. */
   readonly assetRoot?: string
+  /** MCP connection probe override used by tests and embedders. */
+  readonly probeMcp?: typeof probeMcpConnection
 }
 
 interface DoctorReport {
@@ -50,12 +54,42 @@ interface DoctorReport {
 }
 
 const USAGE = `Usage:
-  deepseek doctor [--json]
+  deepseek doctor [--json] [--mcp-timeout-ms N]
 
 Checks the Node runtime, workspace, harness home, API credentials, MCP catalog,
-runtime assets, and terminal capabilities without booting a profile.`
+enabled MCP connections, runtime assets, and terminal capabilities without
+booting a profile.`
 
 const MIN_NODE = { major: 22, minor: 19, patch: 0 }
+const DEFAULT_MCP_PROBE_TIMEOUT_MS = 5_000
+
+interface DoctorArguments {
+  readonly json: boolean
+  readonly mcpTimeoutMs: number
+}
+
+function parseDoctorArguments(args: readonly string[]): DoctorArguments {
+  let json = false
+  let mcpTimeoutMs = DEFAULT_MCP_PROBE_TIMEOUT_MS
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index]
+    if (argument === '--json') {
+      json = true
+      continue
+    }
+    if (argument === '--mcp-timeout-ms') {
+      const raw = args[index + 1]
+      if (raw === undefined) throw new Error('--mcp-timeout-ms needs a positive integer')
+      const parsed = Number(raw)
+      if (!Number.isSafeInteger(parsed) || parsed <= 0) throw new Error('--mcp-timeout-ms needs a positive integer')
+      mcpTimeoutMs = parsed
+      index += 1
+      continue
+    }
+    throw new Error(`unknown option ${JSON.stringify(argument)}`)
+  }
+  return { json, mcpTimeoutMs }
+}
 
 function parseVersion(version: string): readonly [number, number, number] | undefined {
   const match = /^(\d+)\.(\d+)\.(\d+)/u.exec(version)
@@ -125,17 +159,47 @@ function checkCredentials(home: string, env: NodeJS.ProcessEnv): DoctorCheck {
   return check('credentials', 'warn', 'no DeepSeek API key was found', 'set DEEPSEEK_API_KEY or run the credential setup flow')
 }
 
-function checkMcp(home: string): DoctorCheck {
+async function checkMcp(
+  home: string,
+  env: NodeJS.ProcessEnv,
+  timeoutMs: number,
+  probe: typeof probeMcpConnection,
+): Promise<DoctorCheck[]> {
   const filename = join(home, 'mcp.json')
-  if (!existsSync(filename)) return check('mcp', 'pass', 'MCP catalog is not configured')
   try {
-    const decoded = JSON.parse(readFileSync(filename, 'utf8')) as { version?: unknown; servers?: unknown }
-    if (decoded.version !== 0 || typeof decoded.servers !== 'object' || decoded.servers === null || Array.isArray(decoded.servers)) {
-      return check('mcp', 'fail', 'MCP catalog has an unsupported format', filename)
+    const targets = managedMcpTargets(filename, env)
+    if (targets.length === 0) return [check('mcp', 'pass', 'MCP catalog is not configured')]
+    const results: DoctorCheck[] = [check('mcp', 'pass', `MCP catalog is valid (${String(targets.length)} servers)`, filename)]
+    for (const target of targets) {
+      if (!target.enabled) {
+        results.push(check(`mcp:${target.name}`, 'pass', 'MCP server is disabled', target.transport))
+        continue
+      }
+      try {
+        const result = await probe(target.config, timeoutMs)
+        results.push(check(
+          `mcp:${target.name}`,
+          'pass',
+          `MCP server connected (${String(result.toolCount)} tools)`,
+          target.transport,
+        ))
+      } catch (error) {
+        const secretValues = Object.values(target.config.transport === 'stdio' ? target.config.env : target.config.headers)
+          .filter(value => value.length > 0)
+          .toSorted((left, right) => right.length - left.length)
+        let detail = error instanceof Error ? error.message : String(error)
+        for (const secret of secretValues) detail = detail.replaceAll(secret, '<redacted>')
+        results.push(check(
+          `mcp:${target.name}`,
+          target.failOnStartupError ? 'fail' : 'warn',
+          'MCP server connection failed',
+          detail,
+        ))
+      }
     }
-    return check('mcp', 'pass', 'MCP catalog is valid', filename)
-  } catch {
-    return check('mcp', 'fail', 'MCP catalog is not valid JSON', filename)
+    return results
+  } catch (error) {
+    return [check('mcp', 'fail', 'MCP catalog is invalid', error instanceof Error ? error.message : String(error))]
   }
 }
 
@@ -245,7 +309,7 @@ function checkClipboard(env: NodeJS.ProcessEnv, platform: string): DoctorCheck {
     : check('clipboard', 'warn', `clipboard command ${command} was not found`, 'copy and paste shortcuts may be unavailable')
 }
 
-function buildReport(options: DoctorCommandOptions): DoctorReport {
+async function buildReport(options: DoctorCommandOptions, mcpTimeoutMs: number): Promise<DoctorReport> {
   const env = options.env ?? process.env
   const assetRoot = options.assetRoot ?? resolve(dirname(fileURLToPath(import.meta.url)), '..')
   const home = options.home ?? resolveDshHome(undefined, env)
@@ -259,7 +323,7 @@ function buildReport(options: DoctorCommandOptions): DoctorReport {
   checks.push(checkWorkspace(resolve(options.cwd ?? process.cwd())))
   checks.push(checkHome(home))
   checks.push(checkCredentials(home, env))
-  checks.push(checkMcp(home))
+  checks.push(...await checkMcp(home, env, mcpTimeoutMs, options.probeMcp ?? probeMcpConnection))
   checks.push(checkAssets(assetRoot))
   checks.push(checkInstallation(assetRoot, env))
   const platform = options.platform ?? hostPlatform()
@@ -290,7 +354,7 @@ function renderHuman(report: DoctorReport): string {
  * @param options - injectable environment, paths, and output sinks.
  * @returns zero when no check fails, otherwise one.
  */
-export function runDoctor(args: readonly string[], options: DoctorCommandOptions = {}): number {
+export async function runDoctor(args: readonly string[], options: DoctorCommandOptions = {}): Promise<number> {
   const stdout = options.stdout ?? ((text) => { process.stdout.write(text) })
   const stderr = options.stderr ?? ((text) => { process.stderr.write(text) })
   try {
@@ -299,10 +363,9 @@ export function runDoctor(args: readonly string[], options: DoctorCommandOptions
       stdout(`${USAGE}\n`)
       return 0
     }
-    const json = args.includes('--json')
-    if (args.some(arg => arg !== '--json')) throw new Error(`unknown option ${JSON.stringify(args.find(arg => arg !== '--json'))}`)
-    const report = buildReport(options)
-    stdout(json ? `${JSON.stringify(report, null, 2)}\n` : renderHuman(report))
+    const parsed = parseDoctorArguments(args)
+    const report = await buildReport(options, parsed.mcpTimeoutMs)
+    stdout(parsed.json ? `${JSON.stringify(report, null, 2)}\n` : renderHuman(report))
     return report.ok ? 0 : 1
   } catch (error) {
     stderr(`dsh doctor: ${error instanceof Error ? error.message : String(error)}\n${USAGE}\n`)

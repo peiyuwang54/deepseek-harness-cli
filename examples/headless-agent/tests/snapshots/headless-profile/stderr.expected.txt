@@ -1,1 +1,1 @@
-dsh: SERVER: CLI mock provider failed
+deepseek exec: SERVER: CLI mock provider failed

@@ -50,6 +50,7 @@ const {
   class MockClient {
     connect = mockConnect
     close = mockClose
+    getServerCapabilities = vi.fn(() => ({ tools: {} }))
     listTools = mockListTools
     callTool = mockCallTool
     listResources = mockListResources

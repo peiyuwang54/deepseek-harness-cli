@@ -95,7 +95,7 @@ deepseek doctor --json
 deepseek completion zsh > ~/.zsh/completions/_deepseek
 ```
 
-`doctor` 还会检查随附的 profile overlay 与预置目录、可选 Web 前端资产、安装渠道、沙箱执行器、真彩色、鼠标输入和剪贴板支持。主机能力检查是警告；缺少运行时资产或 Node 版本不受支持会阻断启动。
+`doctor` 还会检查随附的 profile overlay 与预置目录、可选 Web 前端资产、安装渠道、沙箱执行器、真彩色、鼠标输入、剪贴板支持和每个已启用的受管 MCP 连接。MCP 探测会以 5000 毫秒的单次请求超时启动已配置服务器；`--mcp-timeout-ms` 可以修改该值。可选服务器失败与主机能力检查属于警告；必需 MCP 服务器失败、缺少运行时资产或 Node 版本不受支持会阻断启动。
 
 可以在不启动 profile 的情况下查看并验证已安装的插件组合包：
 

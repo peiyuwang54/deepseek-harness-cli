@@ -37,6 +37,7 @@ const { mockConnect, mockClose, mockListTools, mockCallTool, mockSetNotification
     onclose: (() => void) | undefined
     connect = mockConnect
     close = mockClose
+    getServerCapabilities = vi.fn(() => ({ tools: {} }))
     request = mockRequest
     setNotificationHandler = mockSetNotificationHandler
     constructor() { instances.push(this) }

@@ -50,10 +50,10 @@ function fixture(): { home: string; assetRoot: string; cwd: string } {
 }
 
 describe('doctor command', () => {
-  it('reports healthy injected installation state as JSON', () => {
+  it('reports healthy injected installation state as JSON', async () => {
     const paths = fixture()
     let output = ''
-    const code = runDoctor(['--json'], {
+    const code = await runDoctor(['--json'], {
       ...paths,
       env: { DEEPSEEK_API_KEY: 'redacted', COLORTERM: 'truecolor' },
       nodeVersion: '22.19.0',
@@ -70,11 +70,11 @@ describe('doctor command', () => {
     expect(output).not.toContain('redacted')
   })
 
-  it('reports a missing hoisted profile overlay by package specifier', () => {
+  it('reports a missing hoisted profile overlay by package specifier', async () => {
     const paths = fixture()
     rmSync(join(paths.assetRoot, '..', 'dsh-base', 'cordis.patch.yml'))
     let output = ''
-    expect(runDoctor(['--json'], {
+    expect(await runDoctor(['--json'], {
       ...paths,
       stdout: (text) => { output += text },
     })).toBe(1)
@@ -85,10 +85,10 @@ describe('doctor command', () => {
     }))
   })
 
-  it.runIf(process.platform === 'win32')('detects Windows system commands without a version flag', () => {
+  it.runIf(process.platform === 'win32')('detects Windows system commands without a version flag', async () => {
     const paths = fixture()
     let output = ''
-    expect(runDoctor(['--json'], {
+    expect(await runDoctor(['--json'], {
       ...paths,
       platform: 'win32',
       stdout: (text) => { output += text },
@@ -98,26 +98,117 @@ describe('doctor command', () => {
     expect(report.checks).toContainEqual(expect.objectContaining({ id: 'clipboard', status: 'pass', message: 'clipboard command clip is available' }))
   })
 
-  it('returns a blocking status for unsupported Node or malformed MCP', () => {
+  it('returns a blocking status for unsupported Node or malformed MCP', async () => {
     const paths = fixture()
     writeFileSync(join(paths.home, 'mcp.json'), '{')
     let output = ''
-    const code = runDoctor([], {
+    const code = await runDoctor([], {
       ...paths,
       nodeVersion: '20.0.0',
       stdout: (text) => { output += text },
     })
     expect(code).toBe(1)
     expect(output).toContain('Node.js 20.0.0 is unsupported')
-    expect(output).toContain('MCP catalog is not valid JSON')
+    expect(output).toContain('MCP catalog is invalid')
   })
 
-  it('rejects unknown flags and prints help', () => {
+  it('probes enabled MCP servers, skips disabled entries, and preserves optional startup failures as warnings', async () => {
+    const paths = fixture()
+    writeFileSync(join(paths.home, 'mcp.json'), JSON.stringify({
+      version: 0,
+      servers: {
+        enabled: { transport: 'stdio', command: 'enabled-server', args: [] },
+        disabled: { transport: 'stdio', command: 'disabled-server', args: [], enabled: false },
+        optional: {
+          transport: 'streamable-http',
+          url: 'https://example.com/mcp',
+          headers: { Authorization: 'MCP_SECRET' },
+        },
+      },
+    }))
+    const probed: string[] = []
+    let output = ''
+    expect(await runDoctor(['--json', '--mcp-timeout-ms', '1234'], {
+      ...paths,
+      env: { MCP_SECRET: 'secret-value' },
+      stdout: (text) => { output += text },
+      probeMcp: async (config, timeoutMs) => {
+        probed.push(config.serverName)
+        expect(timeoutMs).toBe(1234)
+        if (config.serverName === 'optional') throw new Error('offline secret-value')
+        return { toolCount: 2 }
+      },
+    })).toBe(0)
+    expect(probed).toEqual(['enabled', 'optional'])
+    const checks = parseDoctorOutput(output).checks
+    expect(checks).toContainEqual(expect.objectContaining({ id: 'mcp:enabled', status: 'pass', message: 'MCP server connected (2 tools)' }))
+    expect(checks).toContainEqual(expect.objectContaining({ id: 'mcp:disabled', status: 'pass', message: 'MCP server is disabled' }))
+    expect(checks).toContainEqual(expect.objectContaining({ id: 'mcp:optional', status: 'warn', detail: 'offline <redacted>' }))
+    expect(output).not.toContain('secret-value')
+  })
+
+  it('makes a required MCP startup failure blocking', async () => {
+    const paths = fixture()
+    writeFileSync(join(paths.home, 'mcp.json'), JSON.stringify({
+      version: 0,
+      servers: {
+        required: {
+          transport: 'stdio',
+          command: 'required-server',
+          args: [],
+          failOnStartupError: true,
+        },
+      },
+    }))
+    let output = ''
+    expect(await runDoctor(['--json'], {
+      ...paths,
+      stdout: (text) => { output += text },
+      probeMcp: async () => { throw new Error('unreachable') },
+    })).toBe(1)
+    expect(parseDoctorOutput(output).checks).toContainEqual(expect.objectContaining({
+      id: 'mcp:required',
+      status: 'fail',
+      detail: 'unreachable',
+    }))
+  })
+
+  it('connects to a managed stdio server through the production probe', async () => {
+    const paths = fixture()
+    writeFileSync(join(paths.home, 'mcp.json'), JSON.stringify({
+      version: 0,
+      servers: {
+        fixture: {
+          transport: 'stdio',
+          command: process.execPath,
+          args: [
+            '--import',
+            'tsx/esm',
+            join(process.cwd(), 'packages/mcp/mcp-client/tests/fixture-server.ts'),
+          ],
+          cwd: process.cwd(),
+          failOnStartupError: true,
+        },
+      },
+    }))
+    let output = ''
+    expect(await runDoctor(['--json', '--mcp-timeout-ms', '5000'], {
+      ...paths,
+      stdout: (text) => { output += text },
+    })).toBe(0)
+    expect(parseDoctorOutput(output).checks).toContainEqual(expect.objectContaining({
+      id: 'mcp:fixture',
+      status: 'pass',
+      message: 'MCP server connected (6 tools)',
+    }))
+  })
+
+  it('rejects unknown flags and prints help', async () => {
     let error = ''
-    expect(runDoctor(['--bogus'], { stderr: (text) => { error += text } })).toBe(1)
+    expect(await runDoctor(['--bogus'], { stderr: (text) => { error += text } })).toBe(1)
     expect(error).toContain('unknown option')
     let help = ''
-    expect(runDoctor(['--help'], { stdout: (text) => { help += text } })).toBe(0)
+    expect(await runDoctor(['--help'], { stdout: (text) => { help += text } })).toBe(0)
     expect(help).toContain('deepseek doctor [--json]')
   })
 })

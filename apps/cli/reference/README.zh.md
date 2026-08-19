@@ -58,11 +58,12 @@ deepseek mcp remove filesystem
 
 ## Doctor 与 Shell 补全
 
-`deepseek doctor` 不会启动 profile，而是检查 Node 版本、平台、workspace、`$DSH_HOME`、凭据、MCP catalog、随附运行时资产以及交互式终端能力。没有阻断性错误时返回 0；缺少 API Key 或输出不是交互终端等警告会显示出来，但不会阻止诊断。自动化脚本可以使用 `--json`。
+`deepseek doctor` 不会启动 profile，而是检查 Node 版本、平台、workspace、`$DSH_HOME`、凭据、受管 MCP catalog 与连接、随附运行时资产以及交互式终端能力。每个已启用的受管服务器都会接受有界的真实 initialize 与工具发现探测；禁用条目不会启动。服务器探测失败通常是警告，只有 catalog 条目设置 `failOnStartupError` 时才会阻断；无效配置始终会阻断。没有阻断性错误时返回 0；缺少 API Key 或输出不是交互终端等警告会显示出来，但不会阻止诊断。自动化脚本可以使用 `--json`，并通过 `--mcp-timeout-ms <ms>` 修改默认 5000 毫秒的单次请求探测超时。
 
 ```sh
 deepseek doctor
 deepseek doctor --json
+deepseek doctor --mcp-timeout-ms 10000
 ```
 
 `deepseek completion <shell>` 为 `bash`、`zsh`、`fish` 或 `powershell` 输出补全脚本。请按照对应 shell 的常规补全配置加载输出；脚本同时覆盖 `deepseek` 与 `dsh`。

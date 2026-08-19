@@ -58,11 +58,12 @@ Managed servers load only into the three shipped app profiles and require a rest
 
 ## Doctor and shell completion
 
-`deepseek doctor` checks the Node version, platform, workspace, `$DSH_HOME`, credentials, MCP catalog, shipped runtime assets, and interactive terminal capabilities without booting a profile. It returns zero when there are no blocking errors; warnings such as a missing API key or non-interactive output remain visible but do not block diagnosis. Use `--json` for automation.
+`deepseek doctor` checks the Node version, platform, workspace, `$DSH_HOME`, credentials, managed MCP catalog and connections, shipped runtime assets, and interactive terminal capabilities without booting a profile. Each enabled managed server receives a bounded real initialize and tool-discovery probe; disabled entries are not started. A failed server is a warning unless its catalog entry sets `failOnStartupError`, while invalid configuration remains blocking. It returns zero when there are no blocking errors; warnings such as a missing API key or non-interactive output remain visible but do not block diagnosis. Use `--json` for automation and `--mcp-timeout-ms <ms>` to change the per-request probe timeout from 5000 ms.
 
 ```sh
 deepseek doctor
 deepseek doctor --json
+deepseek doctor --mcp-timeout-ms 10000
 ```
 
 `deepseek completion <shell>` prints a completion script for `bash`, `zsh`, `fish`, or `powershell`. Source the output in the shell's normal completion configuration; the script covers both `deepseek` and `dsh`.

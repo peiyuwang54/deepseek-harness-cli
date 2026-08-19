@@ -71,7 +71,8 @@ Every MCP tool has two names: the raw MCP name (sent on the wire in `tools/call`
 
 ## Behavior
 
-- On connect: plugin activation awaits `listTools()` and registers each tool via `ctx.tools.register()` under its public name before the composition starts its first turn. Initial connection, discovery, or registration failure is always logged; it rejects activation when `failOnStartupError` is true and otherwise activates with no tools.
+- On connect: plugin activation drains `tools/list` when the server advertises Tools and registers each result via `ctx.tools.register()` under its public name before the composition starts its first turn. A server that advertises only Resources or Prompts remains connected with zero tools. Initial connection, discovery, or registration failure is always logged; it rejects activation when `failOnStartupError` is true and otherwise activates with no tools.
+- `probeMcpConnection()` uses the same credential-scrubbed stdio or Streamable HTTP transport for a bounded initialize and tool-discovery diagnostic, then closes the server without registering tools.
 - Listens for `notifications/tools/list_changed` → re-syncs; a fetch-phase failure keeps the previous generation registered, while a registration conflict rolls back the attempted generation and leaves no tools from that server.
 - Tool execute: `client.callTool({ name: rawName, arguments }, { signal })` with timeout + abort support—the public name is never sent to the server.
 - Canonical success is `{ content: JsonValue[], structuredContent? }`; complete JSON MCP blocks survive for programmatic callers. A supported advertised `outputSchema` validates `structuredContent`; unsupported schema vocabulary falls back to unconstrained `JsonValue`.

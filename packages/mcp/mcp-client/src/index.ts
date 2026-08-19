@@ -24,6 +24,8 @@ import type {} from '@deepseek-ai/dsh-tools'
 
 export type { McpResult } from './tools.ts'
 export type { ReconnectConfig, ResolvedReconnectPolicy } from './connection.ts'
+export { probeMcpConnection } from './probe.ts'
+export type { McpProbeResult } from './probe.ts'
 export {
   DEFAULT_OAUTH_REDIRECT_URL,
   PersistentOAuthClientProvider,

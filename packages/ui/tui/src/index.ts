@@ -2190,6 +2190,13 @@ export function createTuiChat(
   let commandHubOperations = Promise.resolve()
   let archiveInFlight = false
   let deleteInFlight = false
+  const trackCommandHubOverlay = (session: TuiOverlaySession): void => {
+    commandHubOverlay = session
+    void session.closed.then(() => {
+      if (commandHubOverlay === session) commandHubOverlay = undefined
+    })
+    requestRender()
+  }
   const openActionDialog = (
     title: string,
     choices: readonly ActionDialogChoice[],
@@ -2217,11 +2224,7 @@ export function createTuiChat(
         margin: 1,
       },
     }, 'composer')
-    commandHubOverlay = session
-    void session.closed.then(() => {
-      if (commandHubOverlay === session) commandHubOverlay = undefined
-    })
-    requestRender()
+    trackCommandHubOverlay(session)
   }
 
   const externalImportGateway = runtime.externalImport ?? localExternalImportGateway
@@ -2274,11 +2277,7 @@ export function createTuiChat(
         margin: 1,
       },
     }, 'composer')
-    commandHubOverlay = session
-    void session.closed.then(() => {
-      if (commandHubOverlay === session) commandHubOverlay = undefined
-    })
-    requestRender()
+    trackCommandHubOverlay(session)
   }
 
   const runImportCommand = async (rawInput: string, signal: AbortSignal): Promise<CommandResult> => {

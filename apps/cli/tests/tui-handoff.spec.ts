@@ -1,5 +1,6 @@
 import type { ChildProcess } from 'node:child_process'
 import { EventEmitter } from 'node:events'
+import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
@@ -52,8 +53,8 @@ describe('TUI process handoff', () => {
       args: ['--resume=old', '--future'],
     }, { sessionId: SessionId('next') }, '/work')).toEqual([
       '--profile', 'tui',
-      '--patch', '/work/local.yml',
-      '--patch', '/fixed.yml',
+      '--patch', resolve('/work/local.yml'),
+      '--patch', resolve('/fixed.yml'),
       '--future',
       '--resume', 'next',
     ])
@@ -73,7 +74,7 @@ describe('TUI process handoff', () => {
       '--inspect',
       `--loader=${pathToFileURL('/old/workspace/loader.mjs').href}`,
       '--import=file:///fixed/preload.mjs',
-      '-r', '/old/workspace/instrumentation.cjs',
+      '-r', resolve('/old/workspace/instrumentation.cjs'),
       '--require=/dependencies/instrumentation-package/index.mjs',
     ])
     expect(resolveModule).toHaveBeenCalledTimes(2)
@@ -90,7 +91,7 @@ describe('TUI process handoff', () => {
     )).toBe([
       '--trace-warnings',
       '--import', pathToFileURL('/dependencies/tsx/env/index.mjs').href,
-      '--require', '"/old/workspace/instrumentation files/preload.cjs"',
+      '--require', `"${resolve('/old/workspace/instrumentation files/preload.cjs')}"`,
     ].join(' '))
     expect(() => relocatableNodeOptions('--require "unterminated', '/old/workspace', resolveModule))
       .toThrow('unmatched double quote')
@@ -133,12 +134,12 @@ describe('TUI process handoff', () => {
     expect(internals.execve).toHaveBeenCalledWith('/runtime/node', [
       '/runtime/node',
       '--import', pathToFileURL('/resolved/tsx/esm/index.mjs').href,
-      '/old/workspace/source/bin.ts',
+      resolve('/old/workspace/source/bin.ts'),
       '--profile', 'tui',
-      '--patch', '/old/workspace/overlay.yml',
+      '--patch', resolve('/old/workspace/overlay.yml'),
     ], {
       ORIGINAL: 'yes',
-      NODE_OPTIONS: '--require /old/workspace/environment-preload.cjs',
+      NODE_OPTIONS: `--require ${resolve('/old/workspace/environment-preload.cjs')}`,
     })
     expect(internals.spawn).not.toHaveBeenCalled()
     expect(beginReplacement).toHaveBeenCalledOnce()
@@ -170,9 +171,9 @@ describe('TUI process handoff', () => {
     expect(lifecycle.shutdown).toHaveBeenCalledWith(1)
     expect(internals.spawn).toHaveBeenCalledWith('/runtime/node', [
       '--conditions=development',
-      '/install/dsh.js',
+      resolve('/install/dsh.js'),
       '--profile', 'tui',
-      '--patch', '/old/workspace/overlay.yml',
+      '--patch', resolve('/old/workspace/overlay.yml'),
       '--resume', 'next',
     ], {
       cwd: '/new/workspace',
@@ -199,7 +200,7 @@ describe('TUI process handoff', () => {
     void host.start('/workspace/fresh')
     await vi.waitFor(() => { expect(internals.spawn).toHaveBeenCalledOnce() })
     expect(internals.spawn).toHaveBeenCalledWith('/runtime/node', [
-      '/install/dsh.js', '--profile', 'custom-tui',
+      resolve('/install/dsh.js'), '--profile', 'custom-tui',
     ], expect.objectContaining({ cwd: '/workspace/fresh' }))
   })
 

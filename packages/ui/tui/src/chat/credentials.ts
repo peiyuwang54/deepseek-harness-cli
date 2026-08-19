@@ -41,6 +41,13 @@ export function createCredentialsController(deps: CredentialsControllerDeps): Cr
 
   const credentials = (): CredentialProvider | undefined => ctx.get('credentials')
   const closeOverlay = (): void => { void overlay?.close() }
+  const trackOverlay = (session: TuiOverlaySession): void => {
+    overlay = session
+    void session.closed.then(() => {
+      if (overlay === session) overlay = undefined
+    })
+    deps.requestRender()
+  }
 
   const reportFailure = (error: unknown): void => {
     if (deps.isDisposed()) return
@@ -81,11 +88,7 @@ export function createCredentialsController(deps: CredentialsControllerDeps): Cr
         margin: 1,
       },
     }, 'composer')
-    overlay = session
-    void session.closed.then(() => {
-      if (overlay === session) overlay = undefined
-    })
-    deps.requestRender()
+    trackOverlay(session)
   }
 
   const removeSaved = async (): Promise<void> => {
@@ -129,11 +132,7 @@ export function createCredentialsController(deps: CredentialsControllerDeps): Cr
         margin: 1,
       },
     }, 'composer')
-    overlay = session
-    void session.closed.then(() => {
-      if (overlay === session) overlay = undefined
-    })
-    deps.requestRender()
+    trackOverlay(session)
   }
 
   const showStatus = (info: CredentialInfo): void => {
@@ -174,11 +173,7 @@ export function createCredentialsController(deps: CredentialsControllerDeps): Cr
         margin: 1,
       },
     }, 'composer')
-    overlay = session
-    void session.closed.then(() => {
-      if (overlay === session) overlay = undefined
-    })
-    deps.requestRender()
+    trackOverlay(session)
   }
 
   const describe = async (): Promise<CredentialInfo | undefined> => {

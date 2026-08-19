@@ -615,7 +615,7 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       })
       expect(headlessHelp.code).toBe(0)
       expect(headlessHelp.stderr).toBe('')
-      expect(headlessHelp.stdout).toContain('Usage: dsh --profile headless')
+      expect(headlessHelp.stdout).toContain('Usage: deepseek exec')
 
       const missingTask = await runBuiltBin(['--profile', 'headless'], {
         DSH_HOME: home,
@@ -1082,7 +1082,7 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-client-/)
     }, 30_000)
 
-    it('prints the shipped terminal profile over base without Host or browser layers', async () => {
+    it('prints the shipped terminal profile over base without web Host or browser layers', async () => {
       const { stdout, code, stderr } = await runBuiltBin(
         ['tui', '--dump-default-config'],
         { DSH_HOME: home },
@@ -1096,7 +1096,8 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       expect(stdout).toContain("name: '@deepseek-ai/dsh-tui/prompt'")
       expect(stdout).toContain("name: '@deepseek-ai/dsh-client-ui-theme'")
       expect(stdout).toContain("name: '@deepseek-ai/dsh-client-locale'")
-      expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-host-/)
+      expect(stdout).toContain("name: '@deepseek-ai/dsh-host-plugin-inventory'")
+      expect(stdout).not.toContain("name: '@deepseek-ai/dsh-host-webserver'")
       expect(stdout).not.toContain("name: '@deepseek-ai/dsh-web-app'")
       expect(stdout).not.toMatch(/name: '@deepseek-ai\/dsh-client-(?!(?:ui-theme|locale)')/)
     }, 30_000)

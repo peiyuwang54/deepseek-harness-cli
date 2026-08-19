@@ -1190,7 +1190,8 @@ describe('shared settings, appearance, and workspaces', () => {
 
   it('creates a path entry and hands off a fresh session while preserving the old header', async () => {
     const status = vi.fn(() => Promise.resolve('ok' as const))
-    const target = workspaceFixture('created-workspace', '/fresh-project', 'fresh-project', status)
+    const freshProject = resolve('/fresh-project')
+    const target = workspaceFixture('created-workspace', freshProject, 'fresh-project', status)
     const create = vi.fn(() => Promise.resolve(target))
     // oxlint-disable-next-line prefer-const -- handoff runs later but closes over the post-setup harness.
     let mounted: Awaited<ReturnType<typeof setup>> | undefined
@@ -1214,9 +1215,9 @@ describe('shared settings, appearance, and workspaces', () => {
     result.terminal.send('/workspace /fresh-project')
     result.terminal.send('\r')
     await tick(); await tick()
-    expect(create).toHaveBeenCalledWith('/fresh-project')
+    expect(create).toHaveBeenCalledWith(freshProject)
     expect(status).toHaveBeenCalledTimes(1)
-    expect(handoff).toHaveBeenCalledWith('/fresh-project')
+    expect(handoff).toHaveBeenCalledWith(freshProject)
     expect(result.session.header.cwd).toBe('/workspace')
     expect(result.terminal.stopped).toBeGreaterThan(0)
     expect(result.terminal.output).toContain('Workspace switch failed: test host retained process')
@@ -4678,7 +4679,9 @@ describe('pi-tui chat lifecycle and transcript', () => {
     await mkdir(join(cwd, 'docs'), { recursive: true })
     await writeFile(join(cwd, 'src', 'source-file.ts'), 'export const source = true\n')
     await writeFile(join(cwd, 'docs', 'design notes.md'), '# Design\n')
-    await writeFile(join(cwd, 'unsafe\nfile.ts'), 'unsafe name\n')
+    if (process.platform !== 'win32') {
+      await writeFile(join(cwd, 'unsafe\nfile.ts'), 'unsafe name\n')
+    }
     const result = await setup({
       cwd,
       tools: {
@@ -4725,10 +4728,12 @@ describe('pi-tui chat lifecycle and transcript', () => {
       await vi.waitFor(() => { expect(result.agent.sent).toHaveLength(2) })
       expect(result.agent.sent[1]).toEqual([{ type: 'text', text: '@"docs/design notes.md"' }])
 
-      result.terminal.send('@unsafe')
-      await tick()
-      expect(result.terminal.output).not.toContain('File · unsafe')
-      result.terminal.send('\x03')
+      if (process.platform !== 'win32') {
+        result.terminal.send('@unsafe')
+        await tick()
+        expect(result.terminal.output).not.toContain('File · unsafe')
+        result.terminal.send('\x03')
+      }
     } finally {
       await result.controller.dispose()
       const assembly = await result.ctx.systemPrompt.assemble(assembleContextFor(result.agent))

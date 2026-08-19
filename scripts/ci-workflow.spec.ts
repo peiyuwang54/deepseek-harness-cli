@@ -56,12 +56,15 @@ describe('CI workflow', () => {
     const commandSteps = windows.steps.filter((step): step is Record<string, unknown> & { run: string } => (
       isRecord(step) && typeof step.run === 'string'
     ))
+    const installWine = commandSteps.find(step => step.name === 'Install Wine')
 
     // Required PR job: Wine on ubuntu-latest, runs wine-windows-gates.sh.
     expect(windows['runs-on']).toBe('ubuntu-latest')
     expect(windows.name).toBe('windows node 24 / wine blocking')
     expect(windows.if).toBe("github.event_name == 'pull_request'")
     expect(commandSteps.some(step => step.run.includes('wine-windows-gates.sh'))).toBe(true)
+    expect(installWine?.run).toContain('dpkg --unpack "$HOME"/wine-debs/*.deb')
+    expect(installWine?.run).toContain('apt-get install -y --no-install-recommends --no-download wine')
 
     // windows-native: non-blocking native job with failover, runs windows-complete.
     // Its pool is resolved by the Windows-specific switch.
@@ -432,15 +435,7 @@ describe('Python release workflows', () => {
     expect(manylinuxAddon).toMatchObject({ if: "runner.os == 'Linux'" })
     expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_x86_64')
     expect(JSON.stringify(manylinuxAddon)).toContain('manylinux_2_28_aarch64')
-    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm')
-    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro')
-    expect(JSON.stringify(manylinuxAddon)).toContain('DSH_NODE_BIN_DIR:$DSH_PNPM_BIN_DIR:$PATH')
-    expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_build_from_source=true')
-    expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_python=/opt/python/cp310-cp310/bin/python')
-    expect(JSON.stringify(manylinuxAddon)).toContain(
-      'pnpm --filter @deepseek-ai/dsh-subprocess-local rebuild node-pty',
-    )
-    expect(JSON.stringify(manylinuxAddon)).not.toContain('make -C build')
+    expectManylinuxNodePtyRebuild(manylinuxAddon)
     expect(JSON.stringify(manylinuxAddon)).toContain('node-pty-glibc-versions.txt')
     expect(JSON.stringify(manylinuxAddon)).toContain('le 2.28')
     expect(macosCheck).toMatchObject({ if: "runner.os == 'macOS'" })
@@ -572,15 +567,7 @@ describe('CLI release workflow', () => {
     expect(pnpmSetup).toMatchObject({
       with: { dest: runnerPrivatePnpmDestination },
     })
-    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm')
-    expect(JSON.stringify(manylinuxAddon)).toContain('$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro')
-    expect(JSON.stringify(manylinuxAddon)).toContain('DSH_NODE_BIN_DIR:$DSH_PNPM_BIN_DIR:$PATH')
-    expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_build_from_source=true')
-    expect(JSON.stringify(manylinuxAddon)).toContain('npm_config_python=/opt/python/cp310-cp310/bin/python')
-    expect(JSON.stringify(manylinuxAddon)).toContain(
-      'pnpm --filter @deepseek-ai/dsh-subprocess-local rebuild node-pty',
-    )
-    expect(JSON.stringify(manylinuxAddon)).not.toContain('make -C build')
+    expectManylinuxNodePtyRebuild(manylinuxAddon)
     expect(readFileSync(resolve(root, 'scripts/exe-build/pipeline.ts'), 'utf8')).toContain(
       "shell: process.platform === 'win32' && command.toLowerCase().endsWith('.cmd')",
     )
@@ -609,6 +596,17 @@ function loadWorkflow(path: string): Record<string, unknown> {
   const workflow: unknown = yaml.load(readFileSync(resolve(root, path), 'utf8'))
   if (!isRecord(workflow)) throw new TypeError(`${path} must define a workflow`)
   return workflow
+}
+
+function expectManylinuxNodePtyRebuild(step: unknown): void {
+  const serialized = JSON.stringify(step)
+  expect(serialized).toContain('$RUNNER_TEMP/setup-pnpm:$RUNNER_TEMP/setup-pnpm')
+  expect(serialized).toContain('$RUNNER_TOOL_CACHE:$RUNNER_TOOL_CACHE:ro')
+  expect(serialized).toContain('DSH_NODE_BIN_DIR:$DSH_PNPM_BIN_DIR:$PATH')
+  expect(serialized).toContain('npm_config_build_from_source=true')
+  expect(serialized).toContain('npm_config_python=/opt/python/cp310-cp310/bin/python')
+  expect(serialized).toContain('pnpm --filter @deepseek-ai/dsh-subprocess-local rebuild node-pty')
+  expect(serialized).not.toContain('make -C build')
 }
 
 function workflowEvent(workflow: Record<string, unknown>, event: string): Record<string, unknown> {

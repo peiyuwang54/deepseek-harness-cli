@@ -28,7 +28,7 @@ const PROMPTS = [
   'Create the relative path policy-neutral.txt in the current workspace containing exactly POLICY_NEUTRAL_OK, verify its contents, then report completion.',
 ] as const
 
-const PRESET_LABELS = ['Read Only', 'Full access', 'Workspace Write'] as const
+const PRESET_LABELS = ['Ask for approval', 'Full access', 'Approve for me'] as const
 
 function requestSystems(events: readonly SessionEvent[]): string[] {
   return events.flatMap((event) => {
@@ -111,7 +111,7 @@ describe('web e2e: current sandbox policy reaches the model before tools', () =>
 
     await input.fill('/permissions read-only')
     await input.press('Enter')
-    await page.getByRole('button', { name: 'Access mode, current: Read Only' }).waitFor({ timeout: 10_000 })
+    await page.getByRole('button', { name: 'Access mode, current: Ask for approval' }).waitFor({ timeout: 10_000 })
     const settled = scaffold.whenTurnSettled()
     await input.fill(PROMPTS[3])
     await input.press('Enter')
@@ -137,7 +137,7 @@ describe('web e2e: current sandbox policy reaches the model before tools', () =>
     expect(contexts[1]).toContain('Approval prompts are disabled in this session')
 
     if (sessionWorkspace === undefined) throw new Error('permission-policy scenario observed no session workspace')
-    expect(contexts[2]).toContain(`Current DSH file policy: workspace-write. Any available operation enforced by the DSH file sandbox may modify files under the session workspace: ${JSON.stringify(canonicalPath(sessionWorkspace))}. Some platform temporary areas may also be writable.`)
+    expect(contexts[2]).toContain(`Current DSH file policy: workspace-write. Any available operation enforced by the DSH file sandbox may modify files under these writable roots: ${JSON.stringify([canonicalPath(sessionWorkspace)])}. Some platform temporary areas may also be writable.`)
     expect(contexts[2]).toContain('Approval policy: ask.')
     expect(contexts[2]).not.toContain('Approval prompts are disabled in this session')
     expect(contexts[3]).toContain('Current DSH file policy: read-only.')

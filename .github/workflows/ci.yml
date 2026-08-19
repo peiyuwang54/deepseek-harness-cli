@@ -394,7 +394,8 @@ jobs:
       - name: Install Wine
         run: |
           if compgen -G "$HOME/wine-debs/*.deb" > /dev/null; then
-            sudo apt-get install -y --no-install-recommends "$HOME"/wine-debs/*.deb
+            sudo dpkg --unpack "$HOME"/wine-debs/*.deb
+            sudo apt-get install -y --no-install-recommends --no-download wine
           else
             sudo apt-get update
             sudo apt-get install -y --no-install-recommends --download-only wine

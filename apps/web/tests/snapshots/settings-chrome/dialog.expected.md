@@ -22,8 +22,8 @@
     - text: 标准模式
     - img
   - text: 权限 选择新会话的默认权限模式
-  - button "Workspace Write":
-    - text: Workspace Write
+  - button "Approve for me":
+    - text: Approve for me
     - img
   - text: 语言
   - button "中文":

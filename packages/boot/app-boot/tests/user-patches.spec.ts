@@ -358,9 +358,9 @@ describe('boot with user patches', () => {
       // Default compose: the user layer IS the whole patch list, so a
       // fresh generation replaces the app-owned layer instead of stacking on it.
       await dispose()
+      writeFileSync(filename, '- id: noop\n  config:\n    value: identity\n')
       const disposeDefault = await watchUserPatches(ctx, { binName: NAME, filename })
       try {
-        writeFileSync(filename, '- id: noop\n  config:\n    value: identity\n')
         await eventually(() => (entryConfig(ctx, 'noop') as { value?: string }).value === 'identity', 'default-compose user patch was not applied')
       } finally {
         await disposeDefault()

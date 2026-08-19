@@ -1,0 +1,10 @@
+# Minimal keyless composition for loading the browser MCP overlay against the
+# package-owned fixture server in browser-mcp-config.spec.ts.
+- id: system-prompt
+  name: cordis:browser-test-system-prompt
+
+- id: tools
+  name: cordis:browser-test-tools
+
+- id: mcp
+  name: cordis:browser-test-mcp

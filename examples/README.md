@@ -8,6 +8,10 @@ Runnable demonstrations of the main DeepSeek Harness interfaces and extension po
 
 Optional overlays that connect supported third-party memory servers through the generic MCP client. See the [memory example reference](mcp-memory/README.md).
 
+## mcp-browser
+
+An opt-in Playwright MCP overlay for validating local browser workflows through accessibility snapshots, interactions, console output, network requests, and saved screenshots. See the [browser validation reference](mcp-browser/README.md).
+
 ## headless-agent
 
 A non-interactive agent that accepts one task, runs it, and emits a selected machine-readable or human-readable output format. See the [headless example reference](headless-agent/README.md).

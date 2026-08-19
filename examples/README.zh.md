@@ -8,6 +8,10 @@
 
 通过通用 MCP 客户端连接受支持第三方记忆服务器的可选 overlay。详见[记忆示例参考](mcp-memory/README.md)。
 
+## mcp-browser
+
+一份可选的 Playwright MCP overlay，用于通过无障碍快照、交互、控制台输出、网络请求和已保存的截图验证本地浏览器工作流。详见[浏览器验证参考](mcp-browser/README.md)。
+
 ## headless-agent
 
 非交互式 agent（智能体）：接受一项任务并运行，然后以选定的机器可读或人类可读格式输出结果。详见[无头示例参考](headless-agent/README.md)。

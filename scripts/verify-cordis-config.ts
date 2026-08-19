@@ -36,7 +36,7 @@ const root = resolve(import.meta.dirname, '..')
 const appOverlayFiles = new Set([
   'examples/web-cordis/cordis.yml',
   'examples/web-schedule/cordis.yml',
-  ...globSync('examples/mcp-memory/*.cordis.yml', { cwd: root }),
+  ...globSync('examples/mcp-*/*.cordis.yml', { cwd: root }),
 ])
 const metadataFields = ['id', 'name', 'group', 'inject', 'intercept', 'isolate'] as const
 

@@ -74,31 +74,18 @@ For automation, set `DEEPSEEK_API_KEY` before launch (`$env:DEEPSEEK_API_KEY="yo
 deepseek
 deepseek --full-auto
 deepseek --yolo
-deepseek --sandbox read-only --ask-for-approval ask
-deepseek exec --sandbox workspace-write --ask-for-approval never "review this repository"
 ```
 
-Use `--sandbox` to select `read-only`, `workspace-write`, or `danger-full-access`; use `--ask-for-approval` to select `ask` or `never`. The explicit controls persist with the session and cannot be combined with `--full-auto` or `--yolo`. `--yolo` is dangerous and belongs only in an isolated environment. Use `/permissions` to switch to a named preset during a session.
-
-Add another writable project directory while keeping `workspace-write` confinement:
-
-```sh
-deepseek --add-dir ../shared
-deepseek exec --add-dir ../shared "update both projects"
-```
-
-Repeat `--add-dir` for multiple directories. Relative paths resolve from the starting project directory and remain attached when the session is resumed. The option does not make a `read-only` session writable.
+Use `/permissions` during a session, or pass `--sandbox` and `--ask-for-approval` for exact controls. `--yolo` disables both confinement and approval prompts, so use it only in an isolated environment. See the [CLI behavior reference](apps/cli/reference/README.md#terminal-front-door) and [permission presets](packages/interaction/permission-presets/README.md).
 
 ### MCP servers
 
 ```sh
 deepseek mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
-deepseek mcp add remote --url https://example.com/mcp --header Authorization=MCP_TOKEN
 deepseek mcp list
-deepseek mcp remove filesystem
 ```
 
-`--env KEY[=SOURCE]` and `--header NAME=SOURCE` save environment-variable references, not secret values. For an HTTP server, `deepseek mcp auth <name>` completes OAuth through a loopback browser callback and stores tokens outside the catalog. Restart the CLI after an add, remove, enable, or disable. Inside a running session, use `/mcp`, `/mcp tools`, `/mcp desc`, `/mcp schema`, `/mcp auth <server>`, `/mcp resources`, or `/mcp prompts` to inspect live MCP capabilities, and `/mcp reload [server]` to reconnect the current configuration.
+Use `/mcp` in a running session to inspect connected servers. For HTTP OAuth, run `deepseek mcp auth <name>`. See [MCP server management](apps/cli/reference/README.md#mcp-server-management) and the [MCP client reference](packages/mcp/mcp-client/README.md) for transports, credentials, reloads, and capability details.
 
 Diagnose an installation without starting a profile, or install shell completion for both command names:
 

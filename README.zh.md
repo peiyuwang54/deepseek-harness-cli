@@ -74,31 +74,18 @@ deepseek exec resume --last "continue"
 deepseek
 deepseek --full-auto
 deepseek --yolo
-deepseek --sandbox read-only --ask-for-approval ask
-deepseek exec --sandbox workspace-write --ask-for-approval never "review this repository"
 ```
 
-`--sandbox` 可选择 `read-only`、`workspace-write` 或 `danger-full-access`，`--ask-for-approval` 可选择 `ask` 或 `never`。显式控制会随 Session 持久化，且不能与 `--full-auto` 或 `--yolo` 组合。`--yolo` 风险很高，只能在隔离环境中使用。运行中可用 `/permissions` 切换到具名 preset。
-
-在保持 `workspace-write` 限制的同时，可添加其他可写项目目录：
-
-```sh
-deepseek --add-dir ../shared
-deepseek exec --add-dir ../shared "update both projects"
-```
-
-多个目录可重复传入 `--add-dir`。相对路径以启动时的项目目录为基准解析，恢复会话时仍然有效。该选项不会让 `read-only` 会话获得写权限。
+运行中可用 `/permissions` 切换权限，也可以用 `--sandbox` 和 `--ask-for-approval` 指定精确策略。`--yolo` 会同时关闭沙箱限制和审批提示，只应在隔离环境中使用。详见 [CLI 行为参考](apps/cli/reference/README.md#terminal-front-door) 与[权限预设](packages/interaction/permission-presets/README.md)。
 
 ### MCP 服务器
 
 ```sh
 deepseek mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem .
-deepseek mcp add remote --url https://example.com/mcp --header Authorization=MCP_TOKEN
 deepseek mcp list
-deepseek mcp remove filesystem
 ```
 
-`--env KEY[=SOURCE]` 与 `--header NAME=SOURCE` 保存环境变量引用，而不是密钥值。对于 HTTP server，`deepseek mcp auth <name>` 会通过 loopback 浏览器回调完成 OAuth，并把 token 保存在 catalog 之外。添加、删除、启用或停用服务器后请重启 CLI。在运行中的会话里，可用 `/mcp`、`/mcp tools`、`/mcp desc`、`/mcp schema`、`/mcp auth <server>`、`/mcp resources` 或 `/mcp prompts` 检查实时 MCP 能力，并用 `/mcp reload [server]` 重连当前配置。
+在运行中的会话里用 `/mcp` 查看已连接的服务器；HTTP OAuth 使用 `deepseek mcp auth <name>`。传输方式、凭据、重连与能力详情见 [MCP 服务器管理](apps/cli/reference/README.md#mcp-server-management) 和 [MCP 客户端参考](packages/mcp/mcp-client/README.md)。
 
 可以在不启动 profile 的情况下诊断安装，也可以为两个命令名安装 Shell 补全：
 

@@ -171,6 +171,7 @@ describe('HMR exact config paths', () => {
   it('normalizes refresh failures and broadcasts them without escaping the watcher', { timeout: 20_000 }, async () => {
     const dir = mkdtempSync(join(tmpdir(), 'dsh-hmr-config-'))
     const filename = join(dir, 'plugins.yml')
+    writeFileSync(filename, 'invalid')
     const ctx = await bootHmr(dir)
     const failure = Promise.withResolvers<{ filename: string; error: Error }>()
     let failureCount = 0
@@ -183,7 +184,6 @@ describe('HMR exact config paths', () => {
         failure.resolve({ filename: failedFilename, error })
       })
       await ctx.hmr.registerConfig(filename, () => { throw 42 })
-      writeFileSync(filename, 'invalid')
 
       const observed = await failure.promise
       expect(observed.filename).toBe(filename)

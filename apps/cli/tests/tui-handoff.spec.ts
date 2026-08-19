@@ -91,7 +91,7 @@ describe('TUI process handoff', () => {
     )).toBe([
       '--trace-warnings',
       '--import', pathToFileURL('/dependencies/tsx/env/index.mjs').href,
-      '--require', `"${resolve('/old/workspace/instrumentation files/preload.cjs')}"`,
+      '--require', JSON.stringify(resolve('/old/workspace/instrumentation files/preload.cjs')),
     ].join(' '))
     expect(() => relocatableNodeOptions('--require "unterminated', '/old/workspace', resolveModule))
       .toThrow('unmatched double quote')

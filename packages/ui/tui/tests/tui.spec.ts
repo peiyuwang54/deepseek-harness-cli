@@ -3598,17 +3598,19 @@ describe('pi-tui chat lifecycle and transcript', () => {
     result.session.append('compaction/start', { compactionId: LIVE_COMPACTION_ID, turn: null })
     clock = 1_000
     result.terminal.output = ''
-    await new Promise(resolve => setTimeout(resolve, 75))
+    await vi.waitFor(() => {
+      expect(result.terminal.output).toContain('Context being compacted 1.0s')
+    }, { timeout: 10_000 })
 
     expect(result.terminal.output).toContain('› │Describe')
-    expect(result.terminal.output).toContain('Context being compacted 1.0s')
     expect(promptWidth(result.terminal.output)).toBe(idleWidth)
     expect(result.terminal.progress.at(-1)).toBe(true)
 
     clock = 1_450
     result.terminal.output = ''
-    await new Promise(resolve => setTimeout(resolve, 75))
-    expect(result.terminal.output).toContain('Context being compacted 1.4s')
+    await vi.waitFor(() => {
+      expect(result.terminal.output).toContain('Context being compacted 1.4s')
+    }, { timeout: 10_000 })
 
     await dispose(result)
   })
@@ -5417,8 +5419,8 @@ describe('pi-tui chat lifecycle and transcript', () => {
       result.terminal.send('\r')
       await vi.waitFor(() => {
         expect(result.session.events.at(-1)?.type).toBe('tui/user-shell-result')
-      })
-      expect(result.terminal.output).toContain('runner unavailable')
+        expect(result.terminal.output).toContain('runner unavailable')
+      }, { timeout: 10_000 })
     } finally {
       await dispose(result)
       await rm(cwd, { recursive: true, force: true })

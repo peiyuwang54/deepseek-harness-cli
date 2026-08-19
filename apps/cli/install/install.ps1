@@ -10,6 +10,9 @@
 #   -InstallDir / DEEPSEEK_HARNESS_CLI_INSTALL_DIR
 #   -BaseUrl / DEEPSEEK_HARNESS_CLI_BASE_URL
 #   -ReleasesUrl / DEEPSEEK_HARNESS_CLI_RELEASES_URL
+#   -DownloadAttempts / DEEPSEEK_HARNESS_CLI_DOWNLOAD_ATTEMPTS
+#   -DownloadTimeoutSeconds / DEEPSEEK_HARNESS_CLI_DOWNLOAD_TIMEOUT_SECONDS
+#   -DownloadRetryDelaySeconds / DEEPSEEK_HARNESS_CLI_DOWNLOAD_RETRY_DELAY_SECONDS
 #
 # Integrity is sha256-verified against the sidecar published with the release.
 # This script never clones the repository.
@@ -20,6 +23,9 @@ param(
     [string]$InstallDir = $env:DEEPSEEK_HARNESS_CLI_INSTALL_DIR,
     [string]$BaseUrl = $env:DEEPSEEK_HARNESS_CLI_BASE_URL,
     [string]$ReleasesUrl = $env:DEEPSEEK_HARNESS_CLI_RELEASES_URL,
+    [string]$DownloadAttempts = $env:DEEPSEEK_HARNESS_CLI_DOWNLOAD_ATTEMPTS,
+    [string]$DownloadTimeoutSeconds = $env:DEEPSEEK_HARNESS_CLI_DOWNLOAD_TIMEOUT_SECONDS,
+    [string]$DownloadRetryDelaySeconds = $env:DEEPSEEK_HARNESS_CLI_DOWNLOAD_RETRY_DELAY_SECONDS,
     [switch]$SkipPath
 )
 
@@ -43,6 +49,68 @@ function Write-Step {
     Write-Host "deepseek-harness-cli: $Message"
 }
 
+function Resolve-IntegerOption {
+    param(
+        [string]$Value,
+        [int]$DefaultValue,
+        [string]$Name,
+        [int]$Minimum,
+        [int]$Maximum
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $DefaultValue
+    }
+
+    $parsed = 0
+    if (-not [int]::TryParse($Value, [ref]$parsed) -or $parsed -lt $Minimum -or $parsed -gt $Maximum) {
+        throw "deepseek-harness-cli: $Name must be an integer from $Minimum through $Maximum."
+    }
+    return $parsed
+}
+
+$downloadAttemptsValue = Resolve-IntegerOption $DownloadAttempts 3 "DownloadAttempts" 1 10
+$downloadTimeoutSecondsValue = Resolve-IntegerOption $DownloadTimeoutSeconds 300 "DownloadTimeoutSeconds" 1 3600
+$downloadRetryDelaySecondsValue = Resolve-IntegerOption $DownloadRetryDelaySeconds 2 "DownloadRetryDelaySeconds" 0 60
+
+function Invoke-Download {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Uri,
+        [string]$OutFile
+    )
+
+    for ($attempt = 1; $attempt -le $downloadAttemptsValue; $attempt++) {
+        try {
+            $request = @{
+                Uri = $Uri
+                UseBasicParsing = $true
+                TimeoutSec = $downloadTimeoutSecondsValue
+            }
+            if ([string]::IsNullOrWhiteSpace($OutFile)) {
+                return Invoke-WebRequest @request
+            }
+
+            Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue
+            Invoke-WebRequest @request -OutFile $OutFile
+            return
+        } catch {
+            if (-not [string]::IsNullOrWhiteSpace($OutFile)) {
+                Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue
+            }
+            if ($attempt -eq $downloadAttemptsValue) {
+                $message = "deepseek-harness-cli: download failed after $downloadAttemptsValue attempts: $Uri"
+                throw [System.InvalidOperationException]::new($message, $_.Exception)
+            }
+
+            Write-Step "download failed ($attempt/$downloadAttemptsValue): $Uri; retrying in $downloadRetryDelaySecondsValue seconds"
+            if ($downloadRetryDelaySecondsValue -gt 0) {
+                Start-Sleep -Seconds $downloadRetryDelaySecondsValue
+            }
+        }
+    }
+}
+
 if ($env:PROCESSOR_ARCHITECTURE -ne "AMD64" -and $env:PROCESSOR_ARCHITEW6432 -ne "AMD64") {
     throw "deepseek-harness-cli: unsupported architecture $($env:PROCESSOR_ARCHITECTURE); supported: Windows x64."
 }
@@ -53,7 +121,7 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     # 403 for shared or CI egress addresses.
     $tags = @()
     try {
-        $feed = [xml](Invoke-WebRequest -Uri $ReleasesUrl -UseBasicParsing).Content
+        $feed = [xml](Invoke-Download -Uri $ReleasesUrl).Content
         $tags = @(
             $feed.feed.entry |
                 ForEach-Object { ($_.link.href -split '/releases/tag/')[-1] } |
@@ -65,7 +133,8 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     if ($tags.Count -eq 0) {
         # The feed is a fixed-length window, so a CLI release can age out of it
         # once other tag families publish more recently.
-        $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases?per_page=100"
+        $releasesResponse = Invoke-Download -Uri "https://api.github.com/repos/$Repo/releases?per_page=100"
+        $releases = $releasesResponse.Content | ConvertFrom-Json
         $tags = @(
             $releases |
                 ForEach-Object { $_.tag_name } |
@@ -91,8 +160,8 @@ New-Item -ItemType Directory -Path $tmp | Out-Null
 try {
     $tarball = Join-Path $tmp "deepseek-harness-cli.tar.gz"
     $shaFile = Join-Path $tmp "deepseek-harness-cli.tar.gz.sha256"
-    Invoke-WebRequest -Uri $tarballUrl -OutFile $tarball -UseBasicParsing
-    Invoke-WebRequest -Uri $shaUrl -OutFile $shaFile -UseBasicParsing
+    Invoke-Download -Uri $tarballUrl -OutFile $tarball
+    Invoke-Download -Uri $shaUrl -OutFile $shaFile
 
     $expected = ((Get-Content -LiteralPath $shaFile -Raw) -split "\s+")[0].ToLowerInvariant()
     $actual = (Get-FileHash -LiteralPath $tarball -Algorithm SHA256).Hash.ToLowerInvariant()

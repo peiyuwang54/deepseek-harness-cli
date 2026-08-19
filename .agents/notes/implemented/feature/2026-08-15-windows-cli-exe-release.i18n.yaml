@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-15-windows-cli-exe-release.md
-2026-08-15-windows-cli-exe-release.md: f638086f8e0df569d16379793b0607c802f31330
-2026-08-15-windows-cli-exe-release.zh.md: 1dbd4d13c319efa607ca90052caa48e07438d95b
+2026-08-15-windows-cli-exe-release.md: 4f4348cde0756be5957c5fce91043180dece48d6
+2026-08-15-windows-cli-exe-release.zh.md: ba6b9aaaa1a3171be4b99c0732fec2cfbd0da67a

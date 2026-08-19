@@ -16,13 +16,13 @@ Status: implemented
 
 发布 tarball 名称保持 `<cpu>-<os>`，以便与 [`apps/cli/install/install.sh`](../../../../apps/cli/install/install.sh) 一致：`deepseek-harness-cli-x64-win.tar.gz`。[`scripts/gen-dsh-cask.ts`](../../../../scripts/gen-dsh-cask.ts) 读取同样的 `cpu-os` sidecar；Homebrew 仍只覆盖 macOS 与 Linux。
 
-[`apps/cli/install/install.ps1`](../../../../apps/cli/install/install.ps1) 下载该 tarball，校验 sha256，安装到 `$HOME/.deepseek-harness-cli/bin`，写出 `dsh.cmd` 与 `deepseek.cmd`，并把该目录追加到用户 PATH。它从不 clone 仓库。[目录打包器](2026-08-15-windows-cli-directory-package.md)仍是源码树路径。
+[`apps/cli/install/install.ps1`](../../../../apps/cli/install/install.ps1) 下载该 tarball，校验 sha256，安装到 `$HOME/.deepseek-harness-cli/bin`，写出 `dsh.cmd` 与 `deepseek.cmd`，并把该目录追加到用户 PATH。每次元数据与资产请求都有有限的超时时间和重试次数；重试前会删除未完整下载的临时文件，下载或校验失败不会替换已安装的可执行程序。参数与环境变量可配置尝试次数、单次请求超时和重试间隔。安装器从不 clone 仓库。[目录打包器](2026-08-15-windows-cli-directory-package.md)仍是源码树路径。
 
 win-arm64 未发布。Authenticode 签名未发布。
 
 ## 测试
 
-`scripts/exe-build/config.spec.ts` 解析 `node24-win-x64` 与 `.exe` 文件名。`scripts/package-dsh-cli-npm.spec.ts` 映射 `win32`/`x64` 并布局一份假的 Windows 包。`scripts/dsh-cli-install-ps1.spec.ts` 固定下载 URL、哈希校验与“不 clone”约定。`scripts/ci-workflow.spec.ts` 固定 CLI 发布 plan 任务中的 `node24-win-x64 windows-2025`。
+`scripts/exe-build/config.spec.ts` 解析 `node24-win-x64` 与 `.exe` 文件名。`scripts/package-dsh-cli-npm.spec.ts` 映射 `win32`/`x64` 并布局一份假的 Windows 包。`scripts/dsh-cli-install-ps1.spec.ts` 固定 URL、哈希校验、“不 clone”规则和有限重试策略，再让 PowerShell 安装器连接本地 Atom feed 以及在成功前返回两次临时失败的 tarball 端点；第二个用例会耗尽重试次数并保留已安装的可执行程序。构建包验证会把生成的 tarball 连续两次安装到带空格的 Unicode 路径，比对构建与安装后的哈希，运行三个命令名，要求 `doctor --json` 返回健康的资产结果，启动 Web profile，并让 headless 通过真实适配器连接无 key mock server 完成一个 turn。`scripts/ci-workflow.spec.ts` 固定 CLI 发布 plan 任务中的 `node24-win-x64 windows-2025`。
 
 ## 考虑过的备选方案
 
@@ -34,6 +34,10 @@ win-arm64 未发布。Authenticode 签名未发布。
 
 **在同一矩阵中发布 win-arm64。**此次不采用：本 fork 没有已验证的托管 arm64 Windows runner，下载安装器也会拒绝非 x64 主机。
 
+**使用 PowerShell 内置的 Web 重试参数。**否决，因为受支持的 Windows PowerShell 5.1 不提供该 PowerShell 7 参数。
+
+**持续重试直到网络恢复。**否决，因为无人值守安装需要有限的失败时间和可用于处理问题的最终 URL。
+
 ## 影响
 
-一旦存在 `deepseek-harness-cli-v*` release，Windows x64 用户可以用 `irm …/install.ps1 | iex` 或 `npm install -g @peiyu_wang/deepseek-harness-cli` 安装。每次 CLI 发布都会占用一台 Windows 托管 runner。该二进制未经签名。Homebrew 不会获得 Windows bottle。
+一旦存在 `deepseek-harness-cli-v*` release，Windows x64 用户可以用 `irm …/install.ps1 | iex` 或 `npm install -g @peiyu_wang/deepseek-harness-cli` 安装。PowerShell 安装器可以容忍短暂的发布服务故障；默认三次尝试与单次请求 300 秒超时可能延后最终失败，部署方可以调整这两个值与重试间隔。每次 CLI 发布都会占用一台 Windows 托管 runner。该二进制未经签名。Homebrew 不会获得 Windows bottle。

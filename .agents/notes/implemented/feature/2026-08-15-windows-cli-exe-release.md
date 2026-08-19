@@ -16,13 +16,13 @@ This fork's users are on Windows. The [directory package](2026-08-15-windows-cli
 
 Release tarball names stay `<cpu>-<os>` so they match [`apps/cli/install/install.sh`](../../../../apps/cli/install/install.sh): `deepseek-harness-cli-x64-win.tar.gz`. [`scripts/gen-dsh-cask.ts`](../../../../scripts/gen-dsh-cask.ts) reads the same `cpu-os` sidecars; Homebrew still covers only macOS and Linux.
 
-[`apps/cli/install/install.ps1`](../../../../apps/cli/install/install.ps1) downloads that tarball, verifies sha256, installs into `$HOME/.deepseek-harness-cli/bin`, writes `dsh.cmd` and `deepseek.cmd`, and appends the directory to the user PATH. It never clones the repository. The [directory packer](2026-08-15-windows-cli-directory-package.md) remains the source-tree path.
+[`apps/cli/install/install.ps1`](../../../../apps/cli/install/install.ps1) downloads that tarball, verifies sha256, installs into `$HOME/.deepseek-harness-cli/bin`, writes `dsh.cmd` and `deepseek.cmd`, and appends the directory to the user PATH. Every metadata and asset request has a bounded timeout and retry count; an incomplete temporary file is removed before retry, and no download or checksum failure replaces the installed executable. Parameters and environment variables configure the attempt count, per-request timeout, and retry delay. The installer never clones the repository. The [directory packer](2026-08-15-windows-cli-directory-package.md) remains the source-tree path.
 
 win-arm64 is unpublished. Authenticode signing is unpublished.
 
 ## Testing
 
-`scripts/exe-build/config.spec.ts` parses `node24-win-x64` and the `.exe` filename. `scripts/package-dsh-cli-npm.spec.ts` maps `win32`/`x64` and layouts a fake Windows package. `scripts/dsh-cli-install-ps1.spec.ts` pins the download URL, hash check, and no-clone contract. `scripts/ci-workflow.spec.ts` pins `node24-win-x64 windows-2025` on the CLI release plan job.
+`scripts/exe-build/config.spec.ts` parses `node24-win-x64` and the `.exe` filename. `scripts/package-dsh-cli-npm.spec.ts` maps `win32`/`x64` and layouts a fake Windows package. `scripts/dsh-cli-install-ps1.spec.ts` pins the URL, hash check, no-clone rule, and bounded policy, then runs the PowerShell installer against a local Atom feed and a tarball endpoint that returns two transient failures before succeeding; a second case exhausts the retry budget and preserves an installed executable. Built-package verification installs the generated tarball twice under a Unicode path with spaces, compares the built and installed hashes, runs all three command names, requires a healthy `doctor --json` asset result, serves the Web profile, and completes a headless turn through the real adapter against the keyless mock server. `scripts/ci-workflow.spec.ts` pins `node24-win-x64 windows-2025` on the CLI release plan job.
 
 ## Alternatives considered
 
@@ -34,6 +34,10 @@ win-arm64 is unpublished. Authenticode signing is unpublished.
 
 **Publish win-arm64 in the same matrix.** Rejected for this change: there is no proven hosted arm64 Windows runner in this fork, and the download installer refuses non-x64 hosts.
 
+**Use PowerShell's built-in web retry parameter.** Rejected because Windows PowerShell 5.1 is supported and does not provide that PowerShell 7 parameter.
+
+**Retry until the network recovers.** Rejected because unattended installation needs a bounded failure time and an actionable final URL.
+
 ## Consequences
 
-Windows x64 users can install with `irm …/install.ps1 | iex` or `npm install -g @peiyu_wang/deepseek-harness-cli` once a `deepseek-harness-cli-v*` release exists. Every CLI release now spends a Windows hosted runner. The binary is unsigned. Homebrew does not gain a Windows bottle.
+Windows x64 users can install with `irm …/install.ps1 | iex` or `npm install -g @peiyu_wang/deepseek-harness-cli` once a `deepseek-harness-cli-v*` release exists. The PowerShell installer tolerates short release-service outages, while the default three attempts and 300-second per-request timeout can delay a final failure; deployments may tune both values and the retry delay. Every CLI release spends a Windows hosted runner. The binary is unsigned. Homebrew does not gain a Windows bottle.

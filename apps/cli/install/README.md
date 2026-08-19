@@ -1,14 +1,14 @@
-# deepseek-harness-cli — curl installer
+# deepseek-harness-cli — download installers
 
 English | [中文](README.zh.md)
 
-The `install.sh` script downloads the single-file `deepseek-harness-cli` executable from this fork's `deepseek-harness-cli-v*` GitHub Releases, installs it as `deepseek`, `dsh`, and `deepseek-harness-cli` under `$HOME/.deepseek-harness-cli/bin`, then adds that directory to your shell `PATH`.
+The `install.sh` and `install.ps1` scripts download the single-file `deepseek-harness-cli` executable from this fork's `deepseek-harness-cli-v*` GitHub Releases, install it as `deepseek`, `dsh`, and `deepseek-harness-cli` under `$HOME/.deepseek-harness-cli/bin`, then add that directory to your user `PATH`.
 
-Supported targets: macOS (`arm64`, `x64`) and Linux (`arm64`, `x64`). The script
-runs on plain POSIX `sh`; it needs only `curl`, `tar`, and a sha256 tool
-(`shasum` on macOS, `sha256sum` on Linux).
+Supported targets are macOS (`arm64`, `x64`), Linux (`arm64`, `x64`), and Windows (`x64`). The POSIX script needs `curl`, `tar`, and a sha256 tool (`shasum` on macOS, `sha256sum` on Linux). The Windows script runs on Windows PowerShell 5.1 or PowerShell 7 and uses the system `tar.exe`.
 
 ## Install
+
+### macOS and Linux
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh
@@ -16,9 +16,17 @@ curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/ma
 
 After it finishes, restart your shell (or run the printed `export PATH=…` line), then run `deepseek` or `dsh`.
 
-### Options
+### Windows
 
-Flags are passed after `--`:
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.ps1 | iex"
+```
+
+After it finishes, open a new terminal, then run `deepseek` or `dsh`.
+
+## Options
+
+POSIX flags are passed after `--`:
 
 ```sh
 # Install to a custom directory instead of $HOME/.deepseek-harness-cli
@@ -28,12 +36,18 @@ curl -fsSL <install-url> | sh -s -- --to /usr/local
 curl -fsSL <install-url> | sh -s -- --version 0.1.0-rc.5
 ```
 
-The same values are available as environment variables for scripting:
-`DEEPSEEK_HARNESS_CLI_VERSION`, `DEEPSEEK_HARNESS_CLI_INSTALL_DIR`, and
-`DEEPSEEK_HARNESS_CLI_BASE_URL` (the latter lets mirrors or tests point the
-installer at a different download base). `DEEPSEEK_HARNESS_CLI_RELEASES_URL`
-selects the feed the installer reads to discover the newest release when no
-version is pinned.
+The PowerShell script accepts named parameters:
+
+```powershell
+# Install to a custom directory and pin a release
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -InstallDir C:\Tools\deepseek -Version 0.1.0-rc.11
+```
+
+Both scripts accept `DEEPSEEK_HARNESS_CLI_VERSION`, `DEEPSEEK_HARNESS_CLI_INSTALL_DIR`, `DEEPSEEK_HARNESS_CLI_BASE_URL`, and `DEEPSEEK_HARNESS_CLI_RELEASES_URL` for automation, mirrors, and version pinning. The PowerShell installer also accepts `DownloadAttempts`, `DownloadTimeoutSeconds`, and `DownloadRetryDelaySeconds`, or the corresponding `DEEPSEEK_HARNESS_CLI_DOWNLOAD_*` environment variables. Defaults are three attempts, 300 seconds per request, and two seconds between attempts.
+
+## Download recovery
+
+The PowerShell installer applies the timeout and retry policy to release discovery, the tarball, and its checksum sidecar. It deletes an incomplete temporary file before retrying and reports the failing URL after the final attempt. A failed download or checksum check does not replace an existing installation.
 
 ## Integrity
 
@@ -50,4 +64,5 @@ Tests are keyless and mock the release server over localhost:
 
 ```sh
 python3 apps/cli/install/tests/test_install_sh.py
+pnpm exec vitest run scripts/dsh-cli-install-ps1.spec.ts
 ```

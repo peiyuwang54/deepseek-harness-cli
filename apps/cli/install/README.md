@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-The `install.sh` and `install.ps1` scripts download the single-file `deepseek-harness-cli` executable from this fork's `deepseek-harness-cli-v*` GitHub Releases, install it as `deepseek`, `dsh`, and `deepseek-harness-cli` under `$HOME/.deepseek-harness-cli/bin`, then add that directory to your user `PATH`.
+The `install.sh` and `install.ps1` scripts download the `deepseek-harness-cli` application executable and its required ripgrep sidecar from this fork's `deepseek-harness-cli-v*` GitHub Releases, install the application as `deepseek`, `dsh`, and `deepseek-harness-cli` under `$HOME/.deepseek-harness-cli/bin`, then add that directory to your user `PATH`.
 
 Supported targets are macOS (`arm64`, `x64`), Linux (`arm64`, `x64`), and Windows (`x64`). The POSIX script needs `curl`, `tar`, and a sha256 tool (`shasum` on macOS, `sha256sum` on Linux). The Windows script runs on Windows PowerShell 5.1 or PowerShell 7 and uses the system `tar.exe`.
 

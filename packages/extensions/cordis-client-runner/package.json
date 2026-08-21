@@ -51,11 +51,9 @@
     "@deepseek-ai/dsh-client-connection": "workspace:^",
     "@deepseek-ai/dsh-client-modules": "workspace:^",
     "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
     "@deepseek-ai/dsh-client-ui-theme": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "react": "^18.2.0"
+    "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis-plugin-loader": "workspace:^",
@@ -63,7 +61,6 @@
     "@deepseek-ai/dsh-client-connection": "workspace:^",
     "@deepseek-ai/dsh-client-modules": "workspace:^",
     "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
     "@deepseek-ai/dsh-client-ui-theme": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@types/react": "~18.3.1",

@@ -1,9 +1,9 @@
 /** Shared Web/TUI locale preference and terminal-native copy. */
 
-import { settingsNamespace, type SettingsProvider } from '@deepseek-ai/dsh-settings'
+import type { SettingsNamespace, SettingsProvider } from '@deepseek-ai/dsh-settings'
 
 /** Durable namespace also consumed by the browser locale runtime. */
-export const TUI_LOCALE_SETTINGS_NAMESPACE = settingsNamespace('locale')
+export const TUI_LOCALE_SETTINGS_NAMESPACE = 'locale' as SettingsNamespace
 
 /** Locale with complete terminal-owned copy. */
 export type TuiLocale = 'en' | 'zh' | 'zh-tw' | 'ar' | 'fr' | 'ru' | 'es' | 'ja' | 'ko'

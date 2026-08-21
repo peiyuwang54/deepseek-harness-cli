@@ -30,6 +30,8 @@ curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/ma
 
 <a id="install-windows"></a>
 
+The command starts the Web UI at `http://127.0.0.1:3080` by default and opens it in the default browser for a local launch. An SSH launch only prints the host URL because the SSH client or editor owns the local forwarded address. Pass `--no-open` to run the server without opening a browser. See [Web UI guide](docs/user/guide/index.md).
+
 Windows:
 
 ```powershell
@@ -131,6 +133,8 @@ pnpm dsh
 ```
 
 Source builds require Node.js `^22.19` or `>=24` and pnpm `11.7.0`.
+
+`pnpm run build` prepares the repository artifacts. `pnpm dsh web` uses those built artifacts without rebuilding.
 
 ## Docs
 

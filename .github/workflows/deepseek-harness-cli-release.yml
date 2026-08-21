@@ -167,6 +167,9 @@ jobs:
             echo "::error::$exe reports '$actual' but the release version is '$VERSION'"
             exit 1
           }
+          rg="$exe-rg"
+          [ -x "$rg" ] || { echo "::error::$rg missing or not executable"; exit 1; }
+          "$rg" --version > /dev/null
 
       - name: Smoke test profile composition
         run: |
@@ -212,6 +215,8 @@ jobs:
           path: |
             dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}
             dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}.exe
+            dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}-rg
+            dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}.exe-rg
             dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}-spawn-helper
           if-no-files-found: error
           retention-days: 7
@@ -257,6 +262,8 @@ jobs:
             mkdir -p "$stage/bin"
             cp "$exe" "$stage/bin/$dest_name"
             chmod +x "$stage/bin/$dest_name"
+            cp "$exe-rg" "$stage/bin/$dest_name-rg"
+            chmod +x "$stage/bin/$dest_name-rg"
             if [ "$os" = macos ]; then
               cp "dist-exe/deepseek-harness-cli-$target-spawn-helper" "$stage/bin/deepseek-harness-cli-spawn-helper"
               chmod +x "$stage/bin/deepseek-harness-cli-spawn-helper"

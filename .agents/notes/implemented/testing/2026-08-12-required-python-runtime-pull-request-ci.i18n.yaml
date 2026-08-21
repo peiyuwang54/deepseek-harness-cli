@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/testing/2026-08-12-required-python-runtime-pull-request-ci.md
-2026-08-12-required-python-runtime-pull-request-ci.md: 8458d8d8c3d124ddaf433b83f08ec57ce3bd3102
-2026-08-12-required-python-runtime-pull-request-ci.zh.md: 8388da7a1f4de6de76fee9c96c3a40c319b7d8a3
+2026-08-12-required-python-runtime-pull-request-ci.md: 716de242b4a65d84b7a468a86e9a2cb4698eb5bd
+2026-08-12-required-python-runtime-pull-request-ci.zh.md: 4255427e2a83ad86c6a82f35a5f1fd8849fd84dc

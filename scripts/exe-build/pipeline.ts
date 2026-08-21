@@ -15,6 +15,7 @@ import { dirname, join, resolve, sep } from 'node:path'
 import { OUT_DIR, PKG_SPEC, Target, productFileName, type BuildCli, type ExeProduct } from './config.ts'
 import { ASSET_GLOBS, collectBundlePatchOverlays, expandGlob, findUncoveredAssets } from './asset-coverage.ts'
 import { copyPackageTree, materializePackageLinks } from './package-tree.ts'
+import { resolveLinuxNodePtyAddon } from '../build-exe-for-python-sdk-native-pty.ts'
 
 const root = resolve(import.meta.dirname, '..', '..')
 
@@ -198,7 +199,7 @@ class ExeBuild {
   /**
    * Package one target; SEA mode accepts one target per invocation.
    * @param target - the pkg target triple to build.
-   * @returns the executable path and, on macOS, its helper path.
+   * @returns the executable and configured sidecar paths.
    */
   async pack(target: Target): Promise<string[]> {
     const product = join(this.outDir, productFileName(this.product.outputBasename, target))
@@ -217,7 +218,9 @@ class ExeBuild {
     if (!this.cli.dryRun && !existsSync(product)) {
       throw new Error(`${this.product.label}: product ${product} is missing after the pkg run; inspect ${this.outDir}.`)
     }
-    if (target.platform !== 'macos') return [product]
+    const products = [product]
+    if (this.product.ripgrepSidecar) products.push(await this.copyRipgrepSidecar(target, product))
+    if (target.platform !== 'macos') return products
     const spawnHelper = `${product}-spawn-helper`
     const source = join(this.staging, 'node_modules', 'node-pty', 'prebuilds', `darwin-${target.arch}`, 'spawn-helper')
     if (this.cli.dryRun) {
@@ -226,7 +229,32 @@ class ExeBuild {
       await copyFile(source, spawnHelper)
       await chmod(spawnHelper, 0o755)
     }
-    return [product, spawnHelper]
+    return [...products, spawnHelper]
+  }
+
+  /** Copy the target ripgrep binary beside the executable for native spawning. */
+  private async copyRipgrepSidecar(target: Target, product: string): Promise<string> {
+    const platform = target.platform === 'macos' ? 'darwin' : target.platform === 'win' ? 'win32' : 'linux'
+    const executable = target.platform === 'win' ? 'rg.exe' : 'rg'
+    const source = join(
+      this.staging,
+      'node_modules',
+      '@vscode',
+      `ripgrep-${platform}-${target.arch}`,
+      'bin',
+      executable,
+    )
+    const destination = `${product}-rg`
+    if (this.cli.dryRun) {
+      console.log(`${this.product.label}: [dry-run] cp ${source} ${destination}`)
+      return destination
+    }
+    if (!existsSync(source)) {
+      throw new Error(`${this.product.label}: target ripgrep binary is missing at ${source}.`)
+    }
+    await copyFile(source, destination)
+    await chmod(destination, 0o755)
+    return destination
   }
 
   /**
@@ -239,7 +267,11 @@ class ExeBuild {
     if (this.cli.dryRun) console.log(`${this.product.label}: [dry-run] rm -rf ${stagedBuild}`)
     else await rm(stagedBuild, { recursive: true, force: true })
     if (target.platform !== 'linux') return
-    const source = join(root, this.product.linuxPtySource)
+    const source = resolveLinuxNodePtyAddon(
+      join(root, this.product.linuxPtyPackageDir),
+      target.arch,
+      this.product.label,
+    )
     const destination = join(stagedBuild, 'Release', 'pty.node')
     if (this.cli.dryRun) {
       console.log(`${this.product.label}: [dry-run] cp ${source} ${destination}`)

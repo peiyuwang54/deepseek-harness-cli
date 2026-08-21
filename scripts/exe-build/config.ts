@@ -48,8 +48,10 @@ export interface ExeProduct {
   readonly deploySourceNodeModules: string
   /** Documentation excluded from the staged closure root. */
   readonly deployOnlyDocs: readonly string[]
-  /** Host-built node-pty addon staged into Linux closures. */
-  readonly linuxPtySource: string
+  /** Installed node-pty package whose target addon is staged into Linux closures. */
+  readonly linuxPtyPackageDir: string
+  /** Whether to ship the target ripgrep binary beside the executable. */
+  readonly ripgrepSidecar: boolean
   /**
    * Glob patterns, relative to the staging root, selecting files the composed
    * application reads at runtime. Every match must be covered by an asset glob

@@ -41,6 +41,8 @@ describe('generateCask', () => {
     expect(cask).toContain('binary "bin/deepseek-harness-cli", target: "deepseek"')
     expect(cask).toContain('binary "bin/deepseek-harness-cli", target: "dsh"')
     expect(cask).toContain('binary "bin/deepseek-harness-cli"')
+    expect(cask).toContain('binary "bin/deepseek-harness-cli-rg"')
+    expect(cask).toContain('binary "bin/deepseek-harness-cli-spawn-helper"')
   })
 
   it('adds a livecheck that matches deepseek-harness-cli-v<version> tags', () => {

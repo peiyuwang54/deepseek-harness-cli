@@ -4,10 +4,10 @@
  * @module @deepseek-ai/dsh-tui/chat/settings
  */
 
-import {
-  settingsNamespace,
-  type SettingsDescriptor,
-  type SettingsProvider,
+import type {
+  SettingsDescriptor,
+  SettingsNamespace,
+  SettingsProvider,
 } from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import type { Context } from '@deepseek-ai/cordis'
@@ -48,16 +48,16 @@ const TUI_THEME_PREFERENCES = ['light', 'dark', 'system'] as const
 export type TuiThemePreference = typeof TUI_THEME_PREFERENCES[number]
 
 /** Shared settings namespace registered by the theme Host plugin. */
-const TUI_THEME_SETTINGS_NAMESPACE = settingsNamespace('ui-theme')
+const TUI_THEME_SETTINGS_NAMESPACE = 'ui-theme' as SettingsNamespace
 
 /** TUI-owned settings namespace for the terminal accent hue. */
-const TUI_ACCENT_SETTINGS_NAMESPACE = settingsNamespace('ui-accent')
+const TUI_ACCENT_SETTINGS_NAMESPACE = 'ui-accent' as SettingsNamespace
 
 /** TUI-owned settings namespace for terminal title and status presentation. */
-const TUI_TERMINAL_SETTINGS_NAMESPACE = settingsNamespace('ui-terminal')
+const TUI_TERMINAL_SETTINGS_NAMESPACE = 'ui-terminal' as SettingsNamespace
 
 /** TUI-owned settings namespace for optional terminal completion notifications. */
-const TUI_NOTIFICATIONS_SETTINGS_NAMESPACE = settingsNamespace('ui-notifications')
+const TUI_NOTIFICATIONS_SETTINGS_NAMESPACE = 'ui-notifications' as SettingsNamespace
 
 /** Communication styles exposed by the Codex-shaped `/personality` command. */
 const TUI_PERSONALITIES = ['friendly', 'pragmatic'] as const
@@ -69,7 +69,7 @@ export type TuiPersonality = typeof TUI_PERSONALITIES[number]
 const DEFAULT_TUI_PERSONALITY: TuiPersonality = 'friendly'
 
 /** TUI-owned settings namespace for the model communication style. */
-export const TUI_PERSONALITY_SETTINGS_NAMESPACE = settingsNamespace('agent-personality')
+export const TUI_PERSONALITY_SETTINGS_NAMESPACE = 'agent-personality' as SettingsNamespace
 
 /** Prompt text contributed for each communication style. */
 const PERSONALITY_PROMPTS: Readonly<Record<TuiPersonality, string>> = {

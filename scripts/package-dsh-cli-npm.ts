@@ -2,7 +2,7 @@
  * Lay out the npm distribution of the deepseek-harness-cli: one main shim package at
  * `@peiyu_wang/deepseek-harness-cli@<ver>` and one per-platform package at
  * `@peiyu_wang/deepseek-harness-cli@<ver>-<os>-<cpu>`. The per-platform packages carry the
- * single-file exe under `bin/` (plus the macOS spawn-helper) and are selected by
+ * application exe and ripgrep sidecar under `bin/` (plus the macOS spawn-helper) and are selected by
  * npm through `os`/`cpu` plus optionalDependencies aliases — the same contract
  * OpenAI Codex uses. The layout is importable so tests can package the host
  * target without a registry; `main()` prints the produced package directories.
@@ -74,7 +74,7 @@ function platformManifest(target: PlatformTarget, version: string) {
 }
 
 /**
- * Copy one target's exe (and macOS spawn-helper) into a publishable package
+ * Copy one target's exe, ripgrep sidecar, and macOS spawn-helper into a publishable package
  * directory whose package.json carries the matching `os`/`cpu` fields.
  * @param outDir - the packaging output root.
  * @param target - the platform being packaged.
@@ -96,6 +96,13 @@ export async function layoutPlatformPackage(
   const destName = target.os === 'win' ? 'deepseek-harness-cli.exe' : 'deepseek-harness-cli'
   await copyFile(exeSource, join(binDir, destName))
   await chmod(join(binDir, destName), 0o755)
+
+  const ripgrepSource = `${exeSource}-rg`
+  if (!existsSync(ripgrepSource)) {
+    throw new Error(`package-dsh-cli-npm: ${ripgrepSource} missing — build the ${target.os} target first.`)
+  }
+  await copyFile(ripgrepSource, join(binDir, `${destName}-rg`))
+  await chmod(join(binDir, `${destName}-rg`), 0o755)
 
   if (target.os === 'macos') {
     const helperSource = `${exeSource}-spawn-helper`

@@ -57,7 +57,7 @@ The [CLI behavior reference](reference/README.md) owns exact layer precedence, f
 
 ## Install
 
-`dsh` ships as a single-file executable for macOS (`arm64`, `x64`), Linux (`arm64`, `x64`), and Windows (`x64`). On macOS or Linux, install it with any one of these:
+`dsh` ships as an application executable with a target-native ripgrep sidecar for macOS (`arm64`, `x64`), Linux (`arm64`, `x64`), and Windows (`x64`). On macOS or Linux, install it with any one of these:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh

@@ -63,8 +63,8 @@ describe('CI workflow', () => {
     expect(windows.name).toBe('windows node 24 / wine blocking')
     expect(windows.if).toBe("github.event_name == 'pull_request'")
     expect(commandSteps.some(step => step.run.includes('wine-windows-gates.sh'))).toBe(true)
-    expect(installWine?.run).toContain('dpkg --unpack "$HOME"/wine-debs/*.deb')
-    expect(installWine?.run).toContain('apt-get install -y --no-install-recommends --no-download wine')
+    expect(installWine?.run).toContain('dpkg -i "$HOME"/wine-debs/*.deb')
+    expect(installWine?.run).toContain('apt-get install -y --no-install-recommends "$HOME"/wine-debs/*.deb')
 
     // windows-native: non-blocking native job with failover, runs windows-complete.
     // Its pool is resolved by the Windows-specific switch.
@@ -81,6 +81,9 @@ describe('CI workflow', () => {
     expect(windowsRunsOn.indexOf('DSH_CI_HOSTED_WINDOWS_RUNNER')).toBeLessThan(windowsRunsOn.indexOf('windows-2025'))
     expect(windowsNative.name).toBe('windows node 24 / native complete')
     expect(windowsNative.if).toBe("github.event_name == 'pull_request'")
+    expect(windowsNative.env).toMatchObject({
+      DSH_COVERAGE_TEST_TIMEOUT_MS: '30000',
+    })
     const nativeCommandSteps = (windowsNative.steps as unknown[]).filter((step): step is Record<string, unknown> & { run: string } => (
       isRecord(step) && typeof step.run === 'string'
     ))
@@ -119,9 +122,11 @@ describe('CI workflow', () => {
       throw new TypeError('Linux CI jobs must define runner-sized concurrency environments')
     }
     expect(node24.env.DSH_GATE_CONCURRENCY).toContain("|| '2'")
-    expect(node24Coverage.env.DSH_COVERAGE_MAX_WORKERS).toContain("|| '5'")
-    expect(node24Coverage.env.DSH_GATE_CONCURRENCY).toContain("|| '1'")
+    expect(node24Coverage.env.DSH_COVERAGE_MAX_WORKERS).toContain("|| '3'")
+    expect(node24Coverage.env.DSH_COVERAGE_PARTITIONS).toContain("|| '2'")
+    expect(node24Coverage.env.DSH_GATE_CONCURRENCY).toContain("|| '2'")
     expect(node24Consumers.env.DSH_GATE_CONCURRENCY).toContain("|| '2'")
+    expect(node24Consumers.env.DSH_WEB_SNAPSHOT_WORKERS).toContain("|| '2'")
     expect(node24Consumers.env.DSH_SNAPSHOT_MAX_CONCURRENCY).toContain("|| '4'")
     expect(aggregate['runs-on']).toContain('DSH_CI_FAILOVER_LINUX')
     expect(aggregate['runs-on']).not.toContain('DSH_CI_FAILOVER_WINDOWS')
@@ -310,6 +315,10 @@ describe('Real-API e2e workflow', () => {
       },
       run: 'pnpm run test:e2e',
     })
+    expect(steps.find(step => step.name === 'Prepare bubblewrap (unrestrict userns)')).toMatchObject({
+      run: 'bash scripts/prepare-ci-bubblewrap.sh',
+    })
+    expect(JSON.stringify(steps)).not.toContain('apt-get')
   })
 })
 
@@ -353,7 +362,10 @@ describe('Python release workflows', () => {
       },
     })
     expect(pythonCompat.strategy).toMatchObject({ matrix: { python: ['3.10', '3.14'] } })
-    expect(JSON.stringify(pythonCompat.steps)).toContain('deepseek-harness-sdk==${{ steps.compatibility-version.outputs.version }}')
+    const pythonCompatSteps = JSON.stringify(pythonCompat.steps)
+    expect(pythonCompatSteps).toContain('dist/deepseek_harness_sdk-$VERSION-py3-none-any.whl')
+    expect(pythonCompatSteps).toContain('dist/deepseek_harness_runtime_bin-$VERSION-py3-none-manylinux_2_28_x86_64.whl')
+    expect(pythonCompatSteps).not.toContain('--find-links')
     const validateSteps = JSON.stringify(validate.steps)
     const authorize = validate.steps.filter(isRecord).find(step => step.name === 'Authorize publication request')
     if (!isRecord(authorize) || typeof authorize.run !== 'string') {
@@ -429,7 +441,14 @@ describe('Python release workflows', () => {
     expect(plan.if).toContain('inputs.ci')
     expect(plan.if).toContain('inputs.release')
     expect(JSON.stringify(plan.steps)).toContain('pep440_version')
-    expect(JSON.stringify(workflow)).toContain('macosx_14_0_arm64')
+    const workflowJson = JSON.stringify(workflow)
+    expect(workflowJson).toContain('macosx_14_0_arm64')
+    expect(workflowJson).toContain('dist-python/$SDK_WHEEL')
+    expect(workflowJson).toContain('dist-python/$RUNTIME_WHEEL')
+    expect(workflowJson).toContain('/work/dist-python/$SDK_WHEEL')
+    expect(workflowJson).toContain('/work/dist-python/$RUNTIME_WHEEL')
+    expect(workflowJson).not.toContain('--find-links dist-python')
+    expect(workflowJson).not.toContain('--find-links /work/dist-python')
     expect(pnpmSetup).toMatchObject({
       with: { dest: runnerPrivatePnpmDestination },
     })
@@ -560,6 +579,11 @@ describe('CLI release workflow', () => {
     const manylinuxAddon = buildSteps.find(step => (
       isRecord(step) && step.name === 'Rebuild Linux node-pty against manylinux 2.28'
     ))
+    const productSmoke = buildSteps.find(step => isRecord(step) && step.name === 'Smoke test --version')
+    const productUpload = buildSteps.find(step => (
+      isRecord(step) && step.uses === 'actions/upload-artifact@v4'
+    ))
+    const tarballs = packageSteps.find(step => isRecord(step) && step.name === 'Build release tarballs and sha256 sidecars')
     const pnpmSetup = buildSteps.find(step => (
       isRecord(step) && typeof step.uses === 'string' && step.uses.startsWith('pnpm/action-setup@')
     ))
@@ -569,6 +593,9 @@ describe('CLI release workflow', () => {
       with: { dest: runnerPrivatePnpmDestination },
     })
     expectManylinuxNodePtyRebuild(manylinuxAddon)
+    expect(JSON.stringify(productSmoke)).toContain('$exe-rg')
+    expect(JSON.stringify(productUpload)).toContain('.exe-rg')
+    expect(JSON.stringify(tarballs)).toContain('$stage/bin/$dest_name-rg')
     expect(readFileSync(resolve(root, 'scripts/exe-build/pipeline.ts'), 'utf8')).toContain(
       "shell: process.platform === 'win32' && command.toLowerCase().endsWith('.cmd')",
     )

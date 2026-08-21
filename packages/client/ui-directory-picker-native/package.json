@@ -45,15 +45,12 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
     "@deepseek-ai/dsh-client-ui-workspace": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "react": "^18.2.0"
+    "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
     "@deepseek-ai/dsh-client-ui-workspace": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@testing-library/react": "^16.1.0",

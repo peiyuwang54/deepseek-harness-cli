@@ -16,7 +16,7 @@ Billing health, a runner definition's `Ready` state, and a large autoscaling cei
 
 The three Linux primary jobs, Node compatibility, Python SDK unit suite, Python runtime validation, and `windows node 24 / wine blocking` remain dependencies of `all checks passed`; `windows node 24 / native complete` is deliberately absent. Branch protection continues to require `e2e` and `all checks passed`. With no primary-label variables, every required job has a standard GitHub-hosted assignment. A configured label that cannot allocate still leaves its jobs queued; deleting the variable restores the portable assignment, while the independent self-hosted switches remain available for a configured-pool outage.
 
-The [larger-runner decision](2026-07-22-evidence-based-larger-hosted-runners.md) owns the measured higher-capacity profile. The [serial cross-platform reference](2026-07-21-serial-cross-platform-ci-reference.md) remains the independent completeness check, and the manual larger-runner suites retain size comparisons without expanding the ordinary required matrix.
+The [larger-runner decision](2026-07-22-evidence-based-larger-hosted-runners.md) owns the measured higher-capacity profile. The [serial cross-platform reference](2026-07-21-serial-cross-platform-ci-reference.md) remains the independent completeness check, provided by the self-hosted `vm-backup`/`dsh-win-ci` standby lanes on `master`; the only hosted serial reference is the disabled `serial-macos`. The manual larger-runner suites retain size comparisons without expanding the ordinary required matrix.
 
 ## Alternatives considered
 

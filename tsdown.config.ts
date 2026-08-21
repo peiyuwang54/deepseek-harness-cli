@@ -1,5 +1,12 @@
+import { existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'tsdown'
-import { typertPlugin } from './packages/typert/generator/lib/types/tsdown-plugin.js'
+
+const emittedPlugin = new URL('./packages/typert/generator/lib/types/tsdown-plugin.js', import.meta.url)
+const pluginModule = existsSync(fileURLToPath(emittedPlugin))
+  ? emittedPlugin.href
+  : './packages/typert/generator/src/tsdown-plugin.ts'
+const { typertPlugin } = await import(pluginModule)
 
 function isBuildFaceClient(value: unknown): boolean {
   if (value === undefined || value === 'host') return false

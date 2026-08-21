@@ -32,6 +32,7 @@
   ],
   "license": "MIT",
   "peerDependencies": {
+    "@deepseek-ai/dsh-attachment": "workspace:^",
     "@deepseek-ai/dsh-credentials": "workspace:^",
     "@deepseek-ai/dsh-launch-environment": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
@@ -46,6 +47,7 @@
     "@deepseek-ai/schemastery": "workspace:^"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-attachment": "workspace:^",
     "@deepseek-ai/dsh-credentials": "workspace:^",
     "@deepseek-ai/dsh-launch-environment": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",

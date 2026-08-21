@@ -24,7 +24,8 @@ const CLI_PRODUCT: ExeProduct = {
   stagingDir: 'dist-exe/.staging/cli',
   deploySourceNodeModules: 'apps/cli/exe/node_modules',
   deployOnlyDocs: [],
-  linuxPtySource: 'packages/subprocess/subprocess-local/node_modules/node-pty/build/Release/pty.node',
+  linuxPtyPackageDir: 'packages/subprocess/subprocess-local/node_modules/node-pty',
+  ripgrepSidecar: true,
   // Runtime-read data trees the booted profiles read: the shipped
   // agent-preset root under @deepseek-ai/dsh's own config, and the web
   // frontend dist the web profile serves.

@@ -35,6 +35,7 @@
     "@deepseek-ai/dsh-commands": "workspace:^",
     "@deepseek-ai/dsh-goal": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@deepseek-ai/dsh-llm": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^"
   },
   "devDependencies": {

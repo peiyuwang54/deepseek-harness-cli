@@ -8,7 +8,7 @@ English | [中文](2026-07-22-web-multimodal-image-input-and-durable-attachments
 
 Before this change, the Web composer accepted only text: `InputBar` received a string draft, `ConversationController.send()` created text content, and the host forwarded that content to the agent. Users could not paste an image, inspect it before sending, submit an image-only prompt, or recover sent images from history.
 
-This is not only a composer gap. Core needs a durable image content block, providers need explicit modality handling, and the session log must reconstruct everything visible to a model. [The previous image-block removal](../../implemented/simplification/2026-07-04-drop-image-content-block.md) rejected a partial design that could silently lose or flatten images. A browser object URL, local path, provider URL, or base64 payload cannot be canonical session content.
+This is not only a composer gap. Core needs a durable image content block, providers need explicit modality handling, and the session log must reconstruct everything visible to a model. [The previous image-block removal](../../archived/simplification/2026-07-04-drop-image-content-block.md) rejected a partial design that could silently lose or flatten images. A browser object URL, local path, provider URL, or base64 payload cannot be canonical session content.
 
 The [Web client architecture](../../implemented/architecture/2026-07-19-gui-web-client-architecture.md) keeps components pure and per-session composer state in `ctx.conversation`; the [GUI layering and RPC protocol](../../implemented/architecture/2026-07-19-gui-layering-and-rpc-protocol.md) makes durable events the source of truth for both live rendering and history replay. Image intake, persistence, provider conversion, and rendering therefore need one explicit lifecycle.
 
@@ -124,11 +124,11 @@ Model catalog entries gain optional merge-extensible input modality declarations
 
 The host is the authoritative preflight boundary. It resolves the session's latest routed provider/model, falling back through agent options to host defaults; if that model explicitly excludes image input, it rejects the prompt before writing any attachment or event, and the client restores the draft. Image-bearing prompt admission and model selection share one per-agent serial boundary, and a dequeued prompt remains pending until its durable message event publishes ([ordering decision](../bug-fix/2026-07-29-atomic-web-image-admission.md)); a steering carrier gates from its enqueue until its `steering/message` event publishes, closing the outbox hop that never enters the queued mirror. Selection rejects a text-only target while an image is pending publication or remains in the session's current derived history. Compaction can remove old images and make a later text-only selection valid; idle without publication releases a claimed queued carrier, while steering retained in the outbox stays gated until publication or discard. `session.updateQueue` edits accept text content only, so a queue edit cannot inject an image past this admission boundary. Unknown capability proceeds to the adapter guard so uncatalogued model identifiers remain usable. The browser rejects unsupported declared image media types before allocating preview URLs, but it does not snapshot deployment limits or model capability: a handshake snapshot cannot represent a session's current target after `session.selectModel`, and deployment policy may change independently. The host validates the complete batch against current byte, count, aggregate, media, dimension, pixel, and routed-model policy before writing any attachment or event; its rejection announces through the composer's transient toast.
 
-The Pi-AI adapter is the first visual-input route: it resolves `ctx.attachments` at request time, recursively converts each durable image reference including references nested inside tool results, and emits native image content only for models that declare image input. The shipped composition registers Pi-AI OpenAI and Anthropic routes alongside the text-only default DeepSeek route; selecting the active provider/model remains a host composition or profile concern rather than an image-input CLI feature. Request-time service resolution keeps Cordis load order from freezing optional attachment availability. The hand-written DeepSeek adapter throws typed `UNSUPPORTED_CONTENT` for an image anywhere in the request, including nested tool results. No adapter may flatten or skip an image.
+Pi-AI and the direct DeepSeek adapter resolve `ctx.attachments` at request time, recursively convert each durable image reference including references nested inside tool results, and emit native image content only for models that declare image input. The direct route accepts configured image-capable catalog entries but does not advertise a vision model until its endpoint is ready; its Flash, Pro, custom models without an image declaration, and unlisted pass-through ids remain text-only. Request-time service resolution keeps Cordis load order from freezing optional attachment availability. No adapter may flatten or skip a retained image; unsupported roles and models fail with typed `UNSUPPORTED_CONTENT`.
 
 Core supports structured assistant image blocks, but no current production provider route is certified for image output. Any future output-capable adapter must retrieve provider bytes under bounded size and time policy, validate them through the same attachment service, persist them, and only then publish the atomic `ImageBlock`. A URL in assistant Markdown remains text and is never downloaded automatically.
 
-Provider-neutral token estimation does not guess visual pricing from image dimensions; provider-reported usage remains authoritative. ACP renders an explicit image marker until that protocol API gains native image support rather than silently omitting the block.
+Provider-neutral token estimation does not guess visual pricing from image dimensions; provider-reported usage remains authoritative. ACP advertises image prompts only when its configured exact route and attachment deployment can accept them, persists inline input before publishing the user event, and re-reads committed assistant image references for native ACP image updates. MCP keeps canonical raw blocks for programmatic callers while projecting admitted images to durable core blocks; Code Mode carries any settled image-bearing sub-result through the outer result as logged source-attributed context.
 
 Compaction replays the selected conversation prefix, including image references, into the configured summarization route. A visual-capable route resolves those references through its adapter; a text-only route fails explicitly instead of silently dropping the visual context. The synthesized checkpoint remains text-only, and `compaction-basic` rejects image summary output with `UNSUPPORTED_CONTENT`.
 
@@ -140,9 +140,9 @@ Composer thumbnails and each `MessageImage` own ephemeral original-preview state
 
 ### Limits and trust boundaries
 
-Version one accepts PNG, JPEG, WebP, and GIF only. SVG and remote URLs are excluded. Default limits are 5 MiB per image, 20 images and 100 MiB aggregate image bytes per message, and 40 million intrinsic pixels per image. These deployment-varying limits are validated backend configuration and enforced by the host before persistence. The client connection carrier has an independent configurable `maxRequestBodyBytes` cap (160 MiB by default) for every API request and fails load if it cannot hold the attachment service's aggregate image limit after base64 and envelope expansion; lowering image policy therefore never silently lowers the carrier limit for valid text or other RPCs. A body without a declared length is rejected the moment it crosses the cap rather than drained to its end.
+Version one accepts PNG, JPEG, WebP, and GIF only. SVG and remote URLs are excluded. Default limits are 3.5 MiB per image, 20 images and 100 MiB aggregate image bytes per message, 40 million intrinsic pixels per image, and 2000 pixels on either side. These deployment-varying limits are validated backend configuration and enforced by the host before persistence. The client connection carrier has an independent configurable `maxRequestBodyBytes` cap (160 MiB by default) for every API request and fails load if it cannot hold the attachment service's aggregate image limit after base64 and envelope expansion; lowering image policy therefore never silently lowers the carrier limit for valid text or other RPCs. A body without a declared length is rejected the moment it crosses the cap rather than drained to its end.
 
-Malformed base64, unsupported or mismatched media, truncated image payloads, excess bytes, excess image count, excess pixels, missing objects, and integrity mismatches return stable structured failures. Original filenames are reduced to a display basename, control characters are removed, and no local path is logged or returned to the browser.
+Malformed base64, unsupported or mismatched media, truncated image payloads, excess bytes, excess image count, excess pixels, excess per-side dimensions, missing objects, and integrity mismatches return stable structured failures. Original filenames are reduced to a display basename, control characters are removed, and no local path is logged or returned to the browser.
 
 ### Package and surface changes
 
@@ -152,18 +152,20 @@ Malformed base64, unsupported or mismatched media, truncated image payloads, exc
 | `packages/attachment/attachment-local` | Private content-addressed storage, complete raster decoding, integrity verification, and configuration. |
 | `packages/llm/llm` | Role-neutral `ImageBlock` and input-modality metadata. |
 | `packages/llm/llm-pi-ai` | Resolve durable supported image input into native provider content. |
-| `packages/llm/llm-deepseek` | Reject image content explicitly. |
+| `packages/llm/llm-deepseek` | Resolve declared official vision input and reject images for text-only models. |
 | `packages/compaction/compaction-basic` | Preserve images in summary input and reject non-text checkpoint output explicitly. |
-| `packages/host/apiproxy` and `packages/bundle/base` | Narrow upload wire, routed-model preflight, delegation to shared batch admission, persist-before-event ordering, session-authorized reads, and default profile composition. |
+| `packages/host/apiproxy` and `packages/bundle/base` | Narrow upload wire, shared batch admission, limits and routed-model preflight, persist-before-event ordering, session-authorized reads, and default profile composition. |
 | `packages/client/connection` and `packages/client/runtime` | Bounded request buffering, wire types, fixture images, prompt uploads, attachment reads, and durable-reference folding. |
 | `packages/client/ui-conversation` | Per-session draft images, attachment rail, user and assistant image controls, and original preview. |
-| `packages/acp/acp` | Explicit fallback rendering for image blocks. |
+| `packages/acp/acp` | Conditional native image capability, atomic inline-image admission, and verified assistant-image delivery. |
+| `packages/mcp/mcp-client` | Lossless canonical MCP results plus capability-gated durable image projection and explicit diagnostics for unsupported rich blocks. |
+| `packages/core/tools` | Generic Code Mode forwarding of settled image-bearing sub-results after the outer result. |
 
 The attachment packages form the interface/implementation side of one capability seam. Composer behavior stays in the conversation object layer, provider conversion stays in adapters, and no change is required in `agent-loop`.
 
 ### Implementation
 
-The implemented slice includes the attachment seam and shared batch admission, role-neutral image block, Pi-AI input conversion, DeepSeek rejection, durable host and TUI ordering, Web upload/read protocol, current image-limit enforcement, bounded Web request bodies, in-memory draft images, paste/drop rail, user and assistant history rendering, single-click preview, compaction handling, and keyless assembled Web coverage.
+The implemented slice includes the attachment seam and shared batch admission, role-neutral image block, Pi-AI and direct DeepSeek input conversion, durable Web/ACP/MCP and TUI ordering, Web upload/read protocol, conditional ACP image wire support, lossless MCP canonical results with durable image projection, generic Code Mode rich-result forwarding, current image-limit enforcement, bounded Web request bodies, in-memory draft images, paste/drop rail, user and assistant history rendering, single-click preview, compaction handling, and keyless assembled Web and ACP coverage.
 
 No compatibility shim is required for the pre-release prompt wire; all call sites and fixtures change with the introducing slice.
 
@@ -193,13 +195,25 @@ Composer presentation can use a generic attachment rail, but provider semantics 
 
 UI state can be stale and does not protect direct SDK, ACP, replay, or uncatalogued model paths. Silent filtering changes user intent. Provider enforcement remains mandatory, while UI checks are optional earlier feedback.
 
+### Add a generic RichContent service above the core content vocabulary
+
+Rejected because the core already has the role-neutral `ContentBlock` vocabulary and attachment references. A second generic service would duplicate ordering, capability, logging, and lifetime semantics while still requiring each wire adapter to parse its own protocol. Narrow image adapters around the existing core preserve ownership and leave audio/resources to earn their own lifecycle contracts.
+
+### Normalize MCP results into core content as the canonical tool value
+
+Rejected because Code Mode and programmatic callers need the complete MCP JSON blocks and optional `structuredContent`; replacing that value with a Native projection would make the bridge lossy. MCP retains the protocol value and prepares a separate model projection, with final post-execute policy remaining authoritative.
+
+### Perform attachment reads and writes inside synchronous output renderers
+
+Rejected because tool renderers are pure, synchronous, and replayable. MCP prepares image projection during async execution and installs it only at the registry's finalization boundary; ACP performs async admission and output conversion in its transport lifecycle. Code Mode forwarding observes the already settled final content instead of giving individual image tools private parent-token behavior.
+
 ## Testing
 
 - Storage tests cover content-addressed deduplication, private permissions, admission failures, corruption/missing-object failures, and reading history after deployment limits are lowered.
 - Host and protocol tests cover persist-before-event ordering, absence of base64 in logs, session-scoped authorization, capability rejection, upload limits, bounded HTTP request bodies, image-admission/model-selection races (queued and steering placements), pending publication, idle release without publication, text-only queue edits, and selection against current derived history after compaction.
 - Client unit tests cover paste and drop, mixed clipboard text, image-only send, draft restoration, ordering, draft/session-scope/application object-URL cleanup, and a deferred historical read that completes after disposal; the keyless assembled built-client lane (`apps/web/tests/image-display.snapshot.ts`, `DSH_EXAMPLE_MODE=lib pnpm run test:snapshot`) covers the historical user and assistant galleries over the authorized attachment route, the original-size lightbox, and the composer paste rail.
 - Adapter and compaction tests cover native Pi-AI image conversion, late attachment-service composition, text-only rejection, recursively nested tool-result images, preserved summary input, and explicit image-output rejection.
-- Attachment and TUI tests cover all-member validation before writes, mixed text/image ordering, local-path normalization, and durable-reference reuse across prompt history.
+- Attachment, TUI, MCP, ACP, and Code Mode tests cover all-member validation before writes, mixed text/image ordering, local-path normalization, durable-reference reuse across prompt history, no inline base64 in durable events, exact route-capability gates, explicit unsupported-content diagnostics, post-execute replacement/block precedence, cancellation during admission, verified assistant-image delivery, and generic nested-image forwarding. A keyless assembled ACP snapshot sends a real inline PNG and pins only its durable reference in the session log.
 - A credentialed real-API test sends a PNG through the Anthropic `claude-opus-4-8` route and requires the model to identify its QR code.
 - The current production adapter set has no certified image-output route; output-provider certification remains outside version one.
 

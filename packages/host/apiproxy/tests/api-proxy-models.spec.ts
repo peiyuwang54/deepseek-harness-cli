@@ -13,7 +13,6 @@ import AttachmentStore, {
   AttachmentId,
   type ImageAttachmentRef,
   type SaveImageAttachment,
-  type StoredImageAttachment,
 } from '@deepseek-ai/dsh-attachment'
 import LlmRuntime, { LlmAdapter, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type {
@@ -146,28 +145,24 @@ describe('Web session model selection', () => {
       height: 1,
       ...input.name === undefined ? {} : { name: input.name },
     }))
-    class RecordingAttachmentStore extends AttachmentStore {
-      readonly imageLimits = {
+    const attachments = {
+      imageLimits: {
         maxImageBytes: 4,
         maxImagesPerMessage: 2,
         maxMessageImageBytes: 4,
         maxImagePixels: 4,
-        mediaTypes: ['image/png'] as const,
-      }
-
-      override validateImage(input: SaveImageAttachment): Promise<void> {
-        return validateImage(input)
-      }
-
-      override saveImage(input: SaveImageAttachment): Promise<ImageAttachmentRef> {
-        return saveImage(input)
-      }
-
-      override readImage(_ref: ImageAttachmentRef): Promise<StoredImageAttachment> {
-        return Promise.reject(new Error('not used'))
-      }
+        maxImageDimension: 2000,
+        mediaTypes: ['image/png'],
+      },
+      validateImage,
+      saveImage,
     }
-    await ctx.plugin(RecordingAttachmentStore)
+    ctx.provide('attachments', {
+      ...attachments,
+      saveImages(inputs: readonly Parameters<typeof saveImage>[0][]) {
+        return AttachmentStore.prototype.saveImages.call(attachments, inputs)
+      },
+    } as never)
     const followup = vi.fn()
     Object.assign(agent, { followup })
     const api = createApiProxy(ctx, {

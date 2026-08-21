@@ -24,7 +24,7 @@
 
 | Profile | 参数 |
 |---|---|
-| `web` | `--host`、`--port`、可重复的 `--trusted-host` |
+| `web` | `--host`、`--port`、可重复的 `--trusted-host`、`--no-open` |
 | `tui` | `--resume <session>`、可重复的 `--add-dir`、`--sandbox`、`--ask-for-approval` 和权限快捷参数 |
 | `headless` | 任务文本；`--json`、`--ephemeral`、可重复的 `--image`／`--add-dir`、输出控制、精确权限控制、快捷参数与 `resume` |
 
@@ -81,6 +81,18 @@ deepseek completion bash >> ~/.bash_completion
 
 `source <package>` 会打印已解析的包目录和声明的仓库。`enable <package>` 与 `disable <package>` 无需 pnpm 即可切换组合包层；新的列表会在下次启动 profile 时生效。
 
+Codex 与 Claude Code subagent provider 是两个彼此独立的可选 Bundle。可以只添加一个包、在同一命令中添加两个包，或独立移除任一包：
+
+```sh
+dsh plugin --profile <name> add @deepseek-ai/dsh-subagent-codex
+dsh plugin --profile <name> add @deepseek-ai/dsh-subagent-claude-code
+dsh plugin --profile <name> add @deepseek-ai/dsh-subagent-codex @deepseek-ai/dsh-subagent-claude-code
+dsh plugin --profile <name> remove @deepseek-ai/dsh-subagent-codex
+dsh plugin --profile <name> remove @deepseek-ai/dsh-subagent-claude-code
+```
+
+pnpm 操作成功后只会改变磁盘上的 Profile manifest 与 Bundle 列表；正在运行的 Profile 会保留本次启动时的 Bundle 集合。添加、移除或更新 Bundle 后须重启该 Profile。这个启动边界只适用于 Bundle 成员变化，Profile 或 home 中普通 `cordis.patch.yml` 的编辑通过热重载生效。下一次启动时，每个已安装 Bundle 只注册自己的休眠 Host provider；还须在复制出的 Preset 中单独启用对应工具行，新 Agent 才能看到该工具。[Codex provider README](../../../packages/subagent/subagent-codex/README.md)与 [Claude Code provider README](../../../packages/subagent/subagent-claude-code/README.md)负责可执行文件、身份验证、载荷与失败细节；[base Bundle 参考](../../../packages/bundle/base/README.md)负责默认依赖闭包。
+
 ```sh
 dsh plugin --profile tui add github:deepseek-harness/turtle-ui
 dsh plugin --profile tui list
@@ -109,16 +121,17 @@ dsh tui --help
 
 ## Web 别名
 
-`dsh web` 是 `--profile web` 的硬编码别名；写在它之后的 flag 属于 web 应用，由组合包中的普通提供方解析。`--host` 和 `--port` 覆盖承载它们的那些行的组合取值，可重复的 `--trusted-host` 通过 `ctx.webRuntime.trustedHosts` 提供本次调用的 authority（部署表达式会拼接自己的 authority），客户端插件 HMR（热模块替换）接收器始终挂载，在单独运行的 `pnpm run dev:web` watcher 重建客户端 bundle 之前保持空闲。
+`dsh web` 是 `--profile web` 的硬编码别名；写在它之后的 flag 属于 web 应用，由组合包中的普通提供方解析。`--host` 和 `--port` 覆盖承载它们的那些行的组合取值，可重复的 `--trusted-host` 通过 `ctx.webRuntime.trustedHosts` 提供本次调用的 authority（部署表达式会拼接自己的 authority），`--no-open` 则只对本次调用关闭默认浏览器交接。客户端插件 HMR（热模块替换）接收器始终挂载，在单独运行的 `pnpm run dev:web` watcher 重建客户端 bundle 之前保持空闲。
 
 ```sh
 dsh web
+dsh web --no-open
 dsh web --patch ./extra.cordis.yml
 dsh web --dump-config
 dsh web --help
 ```
 
-生产 Web 运行器需要已构建的包和前端产物（`pnpm run build`）。默认服务地址是 `http://127.0.0.1:3080`。CLI 目前有意不支持 `--host 0.0.0.0`，并会以用法错误退出；`--trusted-host` 可添加 `/api` 浏览器信任围栏接受的具名 authority。
+生产 Web 运行器需要已构建的包和前端产物（`pnpm run build`）。默认服务地址是 `http://127.0.0.1:3080`；本机启动时，只在完整 Loader 配置树结算后才用默认浏览器打开该规范宿主机 URL。继承的 `SSH_CONNECTION` 或 `SSH_TTY` 非空时会跳过浏览器交接，因为本地转发地址由 SSH 客户端或编辑器持有；宿主机 URL 仍会打印。CLI 目前有意不支持 `--host 0.0.0.0`，并会以用法错误退出。本机交接前会打印英文提示 `dsh web: opening the default browser; pass --no-open to disable`；若操作系统交接失败，stderr 诊断会说明原因、给出 URL 供手动访问，服务器仍继续运行。`--trusted-host` 可添加 `/api` 浏览器信任围栏接受的具名 authority。
 
 进程关闭时，插件树最多有 5 秒完成 dispose。首次收到 `SIGINT` 或 `SIGTERM` 时会开始优雅排空：`SIGTERM` 是监督进程发出的常规停止请求，在所有运行模式下都以 0 退出；`SIGINT` 则报告 130。第二次收到信号时会立即强制退出。如果一次性运行在正常结束时已经卡在 dispose 阶段，第一次按下 `Ctrl+C` 就会直接升级为强制退出，而不会被忽略。
 

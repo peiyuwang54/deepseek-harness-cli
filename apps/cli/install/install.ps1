@@ -193,10 +193,15 @@ try {
     if (-not (Test-Path -LiteralPath $exe)) {
         throw "deepseek-harness-cli: $tarballUrl did not contain bin/deepseek-harness-cli.exe"
     }
+    $ripgrep = Join-Path $tmp "bin\deepseek-harness-cli.exe-rg"
+    if (-not (Test-Path -LiteralPath $ripgrep)) {
+        throw "deepseek-harness-cli: $tarballUrl did not contain bin/deepseek-harness-cli.exe-rg"
+    }
 
     $binDir = Join-Path $InstallDir "bin"
     New-Item -ItemType Directory -Path $binDir -Force | Out-Null
     Copy-Item -LiteralPath $exe -Destination (Join-Path $binDir "deepseek-harness-cli.exe") -Force
+    Copy-Item -LiteralPath $ripgrep -Destination (Join-Path $binDir "deepseek-harness-cli.exe-rg") -Force
 
     $launcher = @"
 @echo off

@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh",
-  "description": "DeepSeek CLI profile boot, MCP management, plugins, and shipped app aliases",
+  "description": "dsh CLI profile boot, MCP management, plugin management, and shipped browser/TUI aliases",
   "version": "0.1.0-rc.12",
   "publishConfig": {
     "access": "public"
@@ -66,6 +66,7 @@
     "@deepseek-ai/dsh-tool-ask-user": "workspace:^",
     "@deepseek-ai/dsh-tool-bash": "workspace:^",
     "@deepseek-ai/dsh-tool-bash-persistent": "workspace:^",
+    "@deepseek-ai/dsh-tool-pwsh-persistent": "workspace:^",
     "@deepseek-ai/dsh-tool-cordis": "workspace:^",
     "@deepseek-ai/dsh-tool-fs": "workspace:^",
     "@deepseek-ai/dsh-tool-fs-search": "workspace:^",

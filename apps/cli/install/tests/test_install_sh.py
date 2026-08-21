@@ -151,12 +151,14 @@ class InstallerTestCase(unittest.TestCase):
         path.write_text(content)
         path.chmod(0o755)
 
-    def make_tarball(self, os_name: str, version: str = VERSION) -> bytes:
-        """Real tar.gz with bin/deepseek-harness-cli (+ bin/deepseek-harness-cli-spawn-helper on macOS)."""
+    def make_tarball(self, os_name: str, version: str = VERSION, *, include_ripgrep: bool = True) -> bytes:
+        """Real tar.gz with the CLI, ripgrep sidecar, and macOS spawn helper."""
         buf = io.BytesIO()
         with tarfile.open(fileobj=buf, mode="w:gz") as tar:
             dsh = f"#!/bin/sh\necho fake-dsh {version}\n"
             self._add_to_tar(tar, "bin/deepseek-harness-cli", dsh)
+            if include_ripgrep:
+                self._add_to_tar(tar, "bin/deepseek-harness-cli-rg", "#!/bin/sh\necho ripgrep\n")
             if os_name == "macos":
                 self._add_to_tar(tar, "bin/deepseek-harness-cli-spawn-helper", "#!/bin/sh\necho helper\n")
         return buf.getvalue()
@@ -211,6 +213,9 @@ class InstallerTestCase(unittest.TestCase):
         short_binary = install_dir / "bin" / "dsh"
         self.assertTrue(binary.exists(), f"{binary} not installed")
         self.assertTrue(os.access(binary, os.X_OK), f"{binary} not executable")
+        ripgrep = install_dir / "bin" / "deepseek-harness-cli-rg"
+        self.assertTrue(ripgrep.exists(), "ripgrep sidecar not installed")
+        self.assertTrue(os.access(ripgrep, os.X_OK), "ripgrep sidecar not executable")
         self.assertTrue(branded_binary.exists(), f"{branded_binary} not installed")
         self.assertTrue(os.access(branded_binary, os.X_OK), f"{branded_binary} not executable")
         self.assertTrue(short_binary.exists(), f"{short_binary} not installed")
@@ -302,6 +307,15 @@ class InstallerTestCase(unittest.TestCase):
     def test_missing_release_404(self) -> None:
         result = self.run_installer(os_name="macos", arch="arm64", register=False)
         self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.tmp / "install" / "bin" / "deepseek-harness-cli").exists())
+
+    def test_missing_ripgrep_sidecar_aborts(self) -> None:
+        tarball = self.make_tarball("linux", VERSION, include_ripgrep=False)
+        digest = hashlib.sha256(tarball).hexdigest()
+        self.server.register(VERSION, "linux", "x64", tarball, digest)
+        result = self.run_installer(os_name="linux", arch="x64", register=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("deepseek-harness-cli-rg", result.stderr)
         self.assertFalse((self.tmp / "install" / "bin" / "deepseek-harness-cli").exists())
 
     def test_failure_preserves_existing_binary(self) -> None:

@@ -41,7 +41,7 @@ const hostExe = hostStem === undefined
     : existsSync(hostStem)
       ? hostStem
       : undefined
-const HOST_EXE_PRESENT = hostExe !== undefined
+const HOST_EXE_PRESENT = hostExe !== undefined && existsSync(`${hostExe}-rg`)
 
 function runIn(dir: string, command: string, args: string[]): string {
   return execFileSync(command, args, { cwd: dir, encoding: 'utf8', timeout: 120_000 }).trim()
@@ -77,16 +77,33 @@ describe('platformTarget', () => {
 })
 
 describe('layoutPlatformPackage', () => {
+  it('rejects a platform package whose ripgrep sidecar is missing', async () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'dsh-npm-missing-rg-'))
+    try {
+      const distDir = join(tmp, 'dist')
+      mkdirSync(distDir)
+      writeFileSync(join(distDir, 'deepseek-harness-cli-linux-x64'), 'fake-exe')
+      const linux = PLATFORMS.find(target => target.os === 'linux' && target.cpu === 'x64')
+      expect(linux).toBeDefined()
+      await expect(layoutPlatformPackage(join(tmp, 'out'), linux!, '0.0.0-missing-rg', distDir))
+        .rejects.toThrow(/deepseek-harness-cli-linux-x64-rg missing/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
   it('copies the Windows exe basename and npm os field', async () => {
     const tmp = mkdtempSync(join(tmpdir(), 'dsh-npm-win-'))
     try {
       const distDir = join(tmp, 'dist')
       mkdirSync(distDir)
       writeFileSync(join(distDir, 'deepseek-harness-cli-win-x64.exe'), 'fake-exe')
+      writeFileSync(join(distDir, 'deepseek-harness-cli-win-x64.exe-rg'), 'fake-ripgrep')
       const win = PLATFORMS.find(target => target.os === 'win' && target.cpu === 'x64')
       expect(win).toBeDefined()
       const packageDir = await layoutPlatformPackage(join(tmp, 'out'), win!, '0.0.0-win', distDir)
       expect(existsSync(join(packageDir, 'bin', 'deepseek-harness-cli.exe'))).toBe(true)
+      expect(existsSync(join(packageDir, 'bin', 'deepseek-harness-cli.exe-rg'))).toBe(true)
       const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8')) as {
         os: string[]
         cpu: string[]
@@ -108,6 +125,8 @@ describe('layoutPlatformPackage', () => {
       const fakeExe = join(distDir, 'deepseek-harness-cli-linux-x64')
       writeFileSync(fakeExe, '#!/bin/sh\nexit 0\n')
       chmodSync(fakeExe, 0o755)
+      writeFileSync(`${fakeExe}-rg`, '#!/bin/sh\nexit 0\n')
+      chmodSync(`${fakeExe}-rg`, 0o755)
       const linux = PLATFORMS.find(target => target.os === 'linux' && target.cpu === 'x64')
       expect(linux).toBeDefined()
       const packageDir = await layoutPlatformPackage(join(tmp, 'out'), linux!, '0.0.0-mode', distDir)
@@ -121,6 +140,8 @@ describe('layoutPlatformPackage', () => {
 
       const mode = statSync(join(unpacked, 'package', 'bin', 'deepseek-harness-cli')).mode
       expect(mode & 0o111).not.toBe(0)
+      const ripgrepMode = statSync(join(unpacked, 'package', 'bin', 'deepseek-harness-cli-rg')).mode
+      expect(ripgrepMode & 0o111).not.toBe(0)
     } finally {
       rmSync(tmp, { recursive: true, force: true })
     }

@@ -3,14 +3,14 @@
  * @module @deepseek-ai/dsh-tui/chat/credentials
  */
 
-import { credentialRef, type CredentialInfo, type CredentialProvider } from '@deepseek-ai/dsh-credentials'
+import type { CredentialInfo, CredentialProvider, CredentialRef } from '@deepseek-ai/dsh-credentials'
 import { errorChain, normalizeApiKey } from '@deepseek-ai/dsh-llm'
 import { ActionDialog, CredentialDialog } from '../components/dialogs.ts'
 import type { TuiOverlaySession } from '../extension/types.ts'
 import type { ChannelNotice, ChatChannelDeps } from './channel.ts'
 import { tuiCredentialCopy, type TuiLocale } from './language.ts'
 
-const DEEPSEEK_API_KEY = credentialRef('DEEPSEEK_API_KEY')
+const DEEPSEEK_API_KEY = 'DEEPSEEK_API_KEY' as CredentialRef
 
 /** Collaborators for the TUI credential controller. */
 export interface CredentialsControllerDeps extends ChatChannelDeps, ChannelNotice {

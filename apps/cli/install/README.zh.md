@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-`install.sh` 与 `install.ps1` 脚本从本 fork 的 `deepseek-harness-cli-v*` GitHub Releases 下载单文件 `deepseek-harness-cli` 可执行程序，以 `deepseek`、`dsh` 和 `deepseek-harness-cli` 三个名称安装到 `$HOME/.deepseek-harness-cli/bin`，并把该目录追加进用户 `PATH`。
+`install.sh` 与 `install.ps1` 脚本从本 fork 的 `deepseek-harness-cli-v*` GitHub Releases 下载 `deepseek-harness-cli` 应用可执行程序及其必需的 ripgrep 伴随文件，以 `deepseek`、`dsh` 和 `deepseek-harness-cli` 三个名称安装应用到 `$HOME/.deepseek-harness-cli/bin`，并把该目录追加进用户 `PATH`。
 
 支持目标为 macOS（`arm64`、`x64`）、Linux（`arm64`、`x64`）与 Windows（`x64`）。POSIX 脚本需要 `curl`、`tar` 与一个 sha256 工具（macOS 用 `shasum`，Linux 用 `sha256sum`）。Windows 脚本运行于 Windows PowerShell 5.1 或 PowerShell 7，并使用系统 `tar.exe`。
 

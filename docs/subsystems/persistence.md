@@ -242,7 +242,7 @@ interface SessionPersistenceSnapshot {
 Both implement the same abstract `SessionPersistence` (locate/create/append/delete/prepare/load/inspect/readFrom/list/listSnapshots over `SessionEvent`, with optional cancellation where no destructive write has started) and pass the shared `runPersistenceContract` suite:
 
 - **[dsh-session-persistence-jsonl](../../packages/session/session-persistence-jsonl)** — an append-only logical JSONL log per session, stored as checksummed concatenated Zstandard frames by default or raw lines by configuration, with crash-safe atomic writes, interrupted-turn recovery, and a read/replay path.
-- **[dsh-session-persistence-sqlite](../../packages/session/session-persistence-sqlite)** — `node:sqlite`, one row per `SessionEvent`. The row fields `(session_id, seq, type, time, data, source_event_seqs, surface_op)` map 1:1 onto the event, including optional surface metadata, so there is no parallel persisted schema to keep in sync.
+- **[dsh-session-persistence-sqlite](../../packages/session/session-persistence-sqlite)** — an opt-in `node:sqlite` backend using schema 17 to store exact same-block delta runs in bounded physical `text-chunks`, `reasoning-chunks`, and `tool-call-chunks` rows. It reconstructs the complete logical event stream before returning it, packs only newly durable batches, and rejects older schemas rather than migrating them.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 

@@ -16,7 +16,7 @@ Status: implemented
 
 三项 Linux 主作业、Node 兼容性、Python SDK 单元测试套件、Python 运行时验证和 `windows node 24 / wine blocking` 继续作为 `all checks passed` 的依赖项；`windows node 24 / native complete` 被刻意排除。分支保护继续要求 `e2e` 和 `all checks passed`。未设置主选标签变量时，每个必需作业都有 GitHub 托管的标准分配。无法分配的已配置标签仍会让对应作业持续排队；删除该变量会恢复可移植分配，而独立的自托管开关仍可用于已配置池故障。
 
-[大型 runner 决策](2026-07-22-evidence-based-larger-hosted-runners.md)拥有已测量的更高容量配置。[跨平台串行参考流程](2026-07-21-serial-cross-platform-ci-reference.md)继续作为独立的完整性检查，手动大型 runner 套件则保留规格比较，同时不扩大普通必需矩阵。
+[大型 runner 决策](2026-07-22-evidence-based-larger-hosted-runners.md)拥有已测量的更高容量配置。[跨平台串行参考流程](2026-07-21-serial-cross-platform-ci-reference.md)继续作为独立的完整性检查，现由 `master` 上公司自有 `vm-backup`／`dsh-win-ci` 自托管热备通道提供；仅存的托管串行参考是禁用的 `serial-macos`。手动大型 runner 套件则保留规格比较，同时不扩大普通必需矩阵。
 
 ## 曾考虑的替代方案
 

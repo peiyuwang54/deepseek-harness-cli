@@ -241,8 +241,8 @@ interface SessionPersistenceSnapshot {
 
 两者都实现同一个抽象 `SessionPersistence`（在 `SessionEvent` 上执行 locate/create/append/delete/prepare/load/inspect/readFrom/list/listSnapshots，并在破坏性写入开始前可选支持取消），并通过共享的 `runPersistenceContract` 套件：
 
-- **[dsh-session-persistence-jsonl](../../packages/session/session-persistence-jsonl)**——每个会话一份仅追加的逻辑 JSONL 日志，默认存储为带 checksum 的连续 Zstandard frame，也可配置为原始行；支持崩溃安全的原子写入、被中断轮次的恢复以及读取/回放路径。
-- **[dsh-session-persistence-sqlite](../../packages/session/session-persistence-sqlite)**：基于 `node:sqlite`，每个 `SessionEvent` 一行。行字段 `(session_id, seq, type, time, data, source_event_seqs, surface_op)` 与事件 1:1 映射（包含可选的 surface 元数据），因此没有需要保持同步的并行持久化 schema。
+- **[dsh-session-persistence-jsonl](../../packages/session/session-persistence-jsonl)**——逐会话仅追加的逻辑 JSONL 日志，默认存储为带 checksum 的连续 Zstandard frame，也可配置为原始行；支持崩溃安全的原子写入、被中断轮次的恢复以及读取/回放路径。
+- **[dsh-session-persistence-sqlite](../../packages/session/session-persistence-sqlite)**：一个可选启用的 `node:sqlite` 后端，使用 schema 17 把同一分片块中字段完全匹配的 delta 连续段存为有界物理 `text-chunks`、`reasoning-chunks` 与 `tool-call-chunks` 行。它在返回前重建完整逻辑事件流，只打包新增的持久批次，并拒绝旧 schema，而不是执行迁移。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 

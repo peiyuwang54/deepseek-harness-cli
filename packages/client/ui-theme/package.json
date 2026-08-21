@@ -26,7 +26,6 @@
       "types": "./lib/types/client/index.d.ts",
       "default": "./lib/client.js"
     },
-    "./styles/*": "./lib/styles/*",
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
@@ -50,12 +49,10 @@
     "@deepseek-ai/dsh-client-connection": "workspace:^",
     "@deepseek-ai/dsh-client-locale": "workspace:^",
     "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-primitives": "workspace:^",
     "@deepseek-ai/dsh-client-ui-settings": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
     "@deepseek-ai/dsh-host-webserver": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
-    "react": "^18.2.0"
+    "@deepseek-ai/dsh-settings": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
@@ -69,7 +66,9 @@
     "@deepseek-ai/dsh-host-webserver": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@types/react": "~18.3.1",
-    "react": "^18.2.0"
+    "react": "^18.2.0",
+    "@deepseek-ai/dsh-settings": "workspace:^",
+    "@deepseek-ai/dsh-client-connection": "workspace:^"
   },
   "files": [
     "lib/index.js",
@@ -83,7 +82,6 @@
     "watch": "tsdown --watch"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-settings": "workspace:^",
     "clsx": "^2.0.0",
     "@deepseek-ai/schemastery": "workspace:^"
   }

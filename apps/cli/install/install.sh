@@ -147,10 +147,12 @@ if [ ! -x "$TMP/bin/deepseek-harness-cli" ]; then
   echo "deepseek-harness-cli: ${TARBALL_URL} did not contain an executable bin/deepseek-harness-cli" >&2
   exit 1
 fi
+[ -x "$TMP/bin/deepseek-harness-cli-rg" ] || { echo "deepseek-harness-cli: package is missing executable bin/deepseek-harness-cli-rg" >&2; exit 1; }
 if [ "$OS" = macos ]; then
   [ -f "$TMP/bin/deepseek-harness-cli-spawn-helper" ] || { echo "deepseek-harness-cli: macOS package is missing bin/deepseek-harness-cli-spawn-helper" >&2; exit 1; }
 fi
 install -m 0755 "$TMP/bin/deepseek-harness-cli" "$INSTALL_DIR/bin/deepseek-harness-cli"
+install -m 0755 "$TMP/bin/deepseek-harness-cli-rg" "$INSTALL_DIR/bin/deepseek-harness-cli-rg"
 ln -sf deepseek-harness-cli "$INSTALL_DIR/bin/deepseek"
 ln -sf deepseek-harness-cli "$INSTALL_DIR/bin/dsh"
 if [ "$OS" = macos ]; then

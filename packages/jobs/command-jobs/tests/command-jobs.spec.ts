@@ -39,7 +39,7 @@ function agent(): Agent {
 }
 
 async function run(ctx: Context, owner: Agent, line: string) {
-  const execution = await ctx.commands.execute(owner, line, new AbortController().signal)
+  const execution = await ctx.commands.execute(owner, line, [], new AbortController().signal)
   if (execution === undefined) throw new Error(`command was not registered: ${line}`)
   return execution.result
 }

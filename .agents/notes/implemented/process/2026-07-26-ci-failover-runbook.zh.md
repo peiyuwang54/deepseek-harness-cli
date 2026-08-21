@@ -32,7 +32,7 @@ Status: implemented
 
 1. 仓库 **Settings → Secrets and variables → Actions → Variables → New repository variable**：名称 `DSH_CI_FAILOVER_LINUX`（Linux 池故障）或 `DSH_CI_FAILOVER_WINDOWS`（Windows 池故障），值 `selfhosted`。
 2. 重新触发必需作业，使其重新解析运行器池。已经为托管标签**排队**的作业不会重定向，也无法原地 re-run，因此对于本手册所述的无限排队故障，应取消卡住的运行并 re-run all jobs，或推送一个新提交；“Re-run failed jobs”只有在作业真正失败（而非仍在排队）时才有用。
-3. 切换到此完成。Linux 故障切换状态下工作流还会自动：把 `DSH_COVERAGE_MAX_WORKERS` 降为 8、`DSH_SNAPSHOT_MAX_CONCURRENCY` 降为 12（按 6 个常驻实例定容：最坏情况下，6 × 8 = 48 个覆盖率工作进程运行在 64 核虚拟机上）（共享虚拟机的争抢上限），并跳过托管路径的 pnpm 缓存恢复（虚拟机的持久 store 直接提供热安装）。Windows 开关没有这类并发或缓存分支；它只重定向原生 Windows 作业的运行器池。
+3. 切换到此完成。Linux 故障切换状态下，工作流还会把 `DSH_SNAPSHOT_MAX_CONCURRENCY` 降为 12，以限制共享虚拟机上的争抢，并跳过托管路径的 pnpm 缓存恢复，因为虚拟机的持久 store 会直接提供热安装。覆盖率在两个 Linux 池上都使用 4 个单 worker 插桩分区与 2 个豁免 worker。Windows 开关没有并发或缓存分支；它只重定向原生 Windows 作业的运行器池。
 
 #**Dependabot 例外。**两个开关的选择器都刻意排除了 `dependabot[bot]`：故障切换期间，Dependabot 拉取请求继续在托管池排队，而不是把依赖项提供的代码放到持久化虚拟机上执行。故障期间 Dependabot PR 持续排队是预期行为而非切换失败；托管池恢复后它会自行完成。
 

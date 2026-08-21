@@ -5,12 +5,13 @@
 
 import { randomUUID } from 'node:crypto'
 import { mkdir, stat } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { dirname } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type { Agent, ModelSelection, ModelSelectionRef, AgentOptions, AgentStatus } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-presets/types'
-import { AttachmentError } from '@deepseek-ai/dsh-attachment'
+import { AttachmentError, admitEncodedImages } from '@deepseek-ai/dsh-attachment'
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { contentHasImage, createUserMessage, freezeMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { errorChain } from '@deepseek-ai/dsh-llm'
@@ -30,8 +31,7 @@ import {
 // Type-only: brings the `ctx.tools` Context merge into this program (viewFor reads presenters).
 import {
   InvalidPresetIdError, PresetExistsError, PresetMountError,
-  PresetNotWritableError, resolveSessionPreset,
-  SETTINGS_NAMESPACE as AGENT_PRESET_SETTINGS_NAMESPACE, UnknownPresetError,
+  PresetNotWritableError, resolveSessionPreset, UnknownPresetError,
 } from '@deepseek-ai/dsh-agent-presets'
 import type { PresetBearingSession } from '@deepseek-ai/dsh-agent-presets'
 import type {} from '@deepseek-ai/dsh-tools'
@@ -113,20 +113,6 @@ import { canOpenNativePath, openNativePath, openNativeTextFile } from './native-
 /** Page size when history is called without maxMessages. */
 const DEFAULT_MAX_MESSAGES = 50
 
-/**
- * Non-model settings namespaces intentionally served to the Web client. The
- * plugin-owned entries (`agent-loop`, `bash`, `web-search-deepseek`) are the
- * host-plane sections the plugin configuration page edits; a namespace absent
- * here answers `settings-not-exposed` even when its owner registered it, so
- * adding a section to that page is a decision made here rather than by the
- * registering plugin. Moving that declaration to `settings.register()`, so a
- * plugin can expose its own configuration without a change in this package,
- * is deferred work.
- */
-const WEB_SETTINGS_NAMESPACES = [
-  'agent-loop', 'shell', 'locale', 'permission', 'ui-conversation', 'ui-theme', 'web-search-deepseek',
-] as const
-
 /** Provider work budget: at most 100 calls and 2,000 inspected hits. */
 const SESSION_SEARCH_PROVIDER_CALL_LIMIT = 100
 
@@ -138,42 +124,17 @@ export const DEFAULT_COLD_BLANK_PROBE_MAX_BYTES = 1024
 /** Conversation message event types (the pagination counting unit). */
 const MESSAGE_TYPES = new Set(['user/message', 'assistant/message'])
 
-/** Decode the browser payload while rejecting non-canonical base64 forms. */
-function decodeBase64(data: string): Uint8Array {
-  const decoded = Buffer.from(data, 'base64')
-  if (data.length === 0 || decoded.toString('base64') !== data) {
-    throw new AttachmentError('Image upload is not canonical base64.', 'INVALID_IMAGE_BASE64')
-  }
-  return new Uint8Array(decoded)
-}
-
 /** Validate one prompt as a batch before publishing any durable image object. */
 async function durablePromptContent(ctx: Context, content: readonly PromptContentPart[]): Promise<ContentBlock[]> {
   if (content.every(part => part.type === 'text')) {
     return content.map(part => ({ type: 'text', text: part.text }))
   }
-  const prepared = content.map(part => part.type === 'text'
-    ? part
-    : { part, data: decodeBase64(part.data) })
-  const images = prepared.filter((part): part is Extract<typeof part, { data: Uint8Array }> => 'data' in part)
-  const references = await ctx.attachments.saveImages(images.map(image => ({
-    data: image.data,
-    mediaType: image.part.mediaType,
-    ...image.part.name === undefined ? {} : { name: image.part.name },
-  })))
-  const blocks: ContentBlock[] = []
-  let imageIndex = 0
-  for (const item of prepared) {
-    if (!('data' in item)) {
-      blocks.push({ type: 'text', text: item.text })
-      continue
-    }
-    const attachment = references[imageIndex++]
-    /* v8 ignore next -- each prepared image supplied exactly one saveImages input and therefore one ordered ref. */
-    if (attachment === undefined) throw new Error('attachment batch result did not preserve input cardinality')
-    blocks.push({ type: 'image', attachment })
-  }
-  return blocks
+  const refs = await admitEncodedImages(ctx.attachments, content.filter(part => part.type === 'image'))
+  let next = 0
+  return content.map(part => part.type === 'text'
+    ? { type: 'text', text: part.text }
+    // admitEncodedImages returns one reference per image part in order.
+    : { type: 'image', attachment: refs[next++] as ImageAttachmentRef })
 }
 
 /** Search durable content for an image reference, including nested tool results. */
@@ -233,16 +194,6 @@ function referencedImage(events: readonly SessionEvent[], attachmentId: string):
   }
   return undefined
 }
-
-/**
- * Product settings intentionally exposed beside model-provider namespaces.
- *
- * The agent-preset namespace carries one field — which preset a session with
- * no explicit choice is composed from — and both browser surfaces that offer
- * that choice write it through `settings.update`, so it has to cross the
- * configuration boundary or the pickers silently fail to persist.
- */
-const PRODUCT_SETTINGS_NAMESPACES = new Set(['ui-onboarding', AGENT_PRESET_SETTINGS_NAMESPACE])
 
 /** Strict browser-zone profile: UTC or an IANA Area/Location-style identifier. */
 const IANA_TIME_ZONE = /^[A-Za-z][A-Za-z0-9_+.-]*(?:\/[A-Za-z0-9_+.-]+)+$/
@@ -1933,39 +1884,11 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     }
   }
 
-  /** Settings namespaces whose changes can invalidate the model catalog. */
-  function modelProviderNamespaces(): Set<string> {
-    return new Set(ctx.llm.listConfigurableProviders().map(entry => entry.settingsNs))
-  }
-
-  /**
-   * The settings namespaces this proxy serves: configurable model providers
-   * plus the small explicit Web preference and product-owned allowlists. The
-   * settings seam remains general; a future registration does not become
-   * remotely readable or writable by default.
-   */
-  function exposedNamespaces(): Set<string> {
-    const exposed = modelProviderNamespaces()
-    for (const ns of WEB_SETTINGS_NAMESPACES) exposed.add(ns)
-    for (const ns of PRODUCT_SETTINGS_NAMESPACES) exposed.add(ns)
-    return exposed
-  }
-
-  /** Refuse a namespace outside the explicit configuration-client boundary. */
-  function notExposed(request: RpcRequest<unknown>, ns: string): RpcResponse<SettingsNamespaceView> {
-    return err(request, {
-      code: 'settings-not-exposed',
-      message: `settings namespace "${ns}" is not exposed to configuration clients`,
-      details: { ns },
-    })
-  }
-
   /**
    * Run one settings write (merge or wholesale replace) and acknowledge with
-   * the namespace's new redacted view. A namespace outside the configuration
-   * boundary is refused before the seam is touched; every seam refusal —
-   * unknown or invalid namespace, read-only provider, schema validation,
-   * storage — becomes one `settings-rejected` carrying the seam's own message.
+   * the namespace's new redacted view. Every seam refusal — unknown or invalid
+   * namespace, read-only provider, schema validation, storage — becomes one
+   * `settings-rejected` carrying the seam's own message.
    */
   async function settingsWrite(
     request: RpcRequest<unknown>,
@@ -1996,11 +1919,10 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     try {
       branded = settingsNamespace(ns)
     } catch (error: unknown) {
-      // A malformed name is a client bug, reported as such; it could never be
-      // in the exposed set either, so naming the real fault costs no ground.
+      // A malformed name can address no registration, so it fails exactly as
+      // an unregistered one does.
       return rejected(error)
     }
-    if (!exposedNamespaces().has(ns)) return notExposed(request, ns)
     try {
       if (mode === 'update') await settings.update(branded, section, expectedRevision)
       else if (mode === 'replace') await settings.replace(branded, section, expectedRevision)
@@ -2928,6 +2850,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           provider: selection.provider,
           model: selection.model,
           attachedSessions: ctx.agents.list().length,
+          home: homedir(),
           canOpenPath: canOpenPaths(),
         }))
       },
@@ -3255,13 +3178,10 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       describe(request) {
         const settings = ctx.get('settings')
         if (settings === undefined) return Promise.resolve(err(request, settingsAbsent()))
-        const exposed = exposedNamespaces()
         return Promise.resolve(ok(request, {
           writable: settings.writable,
           hasDocument: settings.documentPath !== undefined,
-          namespaces: settings.describe({ redactSecrets: true })
-            .filter(descriptor => exposed.has(String(descriptor.ns)))
-            .map(namespaceView),
+          namespaces: settings.describe({ redactSecrets: true }).map(namespaceView),
         }))
       },
       async openDocument(request, signal) {

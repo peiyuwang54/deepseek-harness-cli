@@ -57,7 +57,7 @@ profile 目录包含一个 `package.json`，其中记录树外插件依赖，以
 
 ## 安装
 
-`dsh` 以单文件可执行程序的形式，为 macOS（`arm64`、`x64`）、Linux（`arm64`、`x64`）与 Windows（`x64`）发布。在 macOS 或 Linux 上可任选以下一种方式安装：
+`dsh` 以应用可执行程序及目标平台原生 ripgrep 伴随文件的形式，为 macOS（`arm64`、`x64`）、Linux（`arm64`、`x64`）与 Windows（`x64`）发布。在 macOS 或 Linux 上可任选以下一种方式安装：
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/master/apps/cli/install/install.sh | sh

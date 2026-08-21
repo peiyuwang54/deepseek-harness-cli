@@ -3479,7 +3479,7 @@ export function createTuiChat(
     }
     const controller = new AbortController()
     commandControllers.add(controller)
-    void ctx.commands.execute(agent, normalizedText, controller.signal).then(
+    void ctx.commands.execute(agent, normalizedText, [], controller.signal).then(
       (execution) => {
         if (disposed) return
         if (execution === undefined) {

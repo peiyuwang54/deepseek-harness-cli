@@ -59,6 +59,7 @@ export function generateCask(version: string, shas: PlatformShas): string {
     on_intel do
       sha256 "${shas['macos-x64']}"
     end
+    binary "bin/deepseek-harness-cli-spawn-helper"
   end
 
   on_linux do
@@ -73,6 +74,7 @@ export function generateCask(version: string, shas: PlatformShas): string {
   binary "bin/deepseek-harness-cli", target: "deepseek"
   binary "bin/deepseek-harness-cli", target: "dsh"
   binary "bin/deepseek-harness-cli"
+  binary "bin/deepseek-harness-cli-rg"
 
   livecheck do
     url :url

@@ -31,6 +31,7 @@ describe('apps/cli/install/install.ps1', () => {
   it('installs the exe and cmd launchers under .deepseek-harness-cli/bin', () => {
     expect(installer).toContain('.deepseek-harness-cli')
     expect(installer).toContain('deepseek-harness-cli.exe')
+    expect(installer).toContain('deepseek-harness-cli.exe-rg')
     expect(installer).toContain('dsh.cmd')
     expect(installer).toContain('deepseek.cmd')
   })
@@ -60,6 +61,7 @@ describe('apps/cli/install/install.ps1', () => {
     try {
       mkdirSync(join(payload, 'bin'), { recursive: true })
       writeFileSync(join(payload, 'bin', 'deepseek-harness-cli.exe'), executableBody)
+      writeFileSync(join(payload, 'bin', 'deepseek-harness-cli.exe-rg'), 'ripgrep sidecar')
       await execFileAsync('tar.exe', ['-czf', tarballPath, '-C', payload, 'bin'])
       const tarball = readFileSync(tarballPath)
       const checksum = createHash('sha256').update(tarball).digest('hex')
@@ -123,6 +125,7 @@ describe('apps/cli/install/install.ps1', () => {
       expect(stdout).toContain('download failed (1/3)')
       expect(stdout).toContain('download failed (2/3)')
       expect(readFileSync(join(installDir, 'bin', 'deepseek-harness-cli.exe'), 'utf8')).toBe(executableBody)
+      expect(readFileSync(join(installDir, 'bin', 'deepseek-harness-cli.exe-rg'), 'utf8')).toBe('ripgrep sidecar')
     } finally {
       await closeServer(server)
       rmSync(root, { recursive: true, force: true })

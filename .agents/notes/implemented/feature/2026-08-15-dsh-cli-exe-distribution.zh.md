@@ -8,20 +8,20 @@ Status: implemented
 
 `deepseek-harness-cli` 产品（`apps/cli`，`@deepseek-ai/dsh`）此前没有任何可安装产物：唯一运行方式是从源码检出后用 `pnpm dsh …`。本 fork 希望在 macOS 与 Linux 上提供与 OpenAI Codex 相同的一行安装体验，覆盖三个通道——curl|sh 安装器、npm 全局安装、Homebrew cask——让终端用户永远不需要从源码构建。
 
-Python SDK 已经通过 `@yao-pkg/pkg` 的 `--sea` 模式发布单文件可执行程序，但那条管线是 Python 分发专属的 532 行定制脚本，CLI 也没有部署根、没有闭包门禁、没有发布 workflow。让 CLI 复用该可执行管线，意味着先把它抽取出来。
+Python SDK 已经通过 `@yao-pkg/pkg` 的 `--sea` 模式发布应用可执行程序，但那条管线是 Python 分发专属的 532 行定制脚本，CLI 也没有部署根、没有闭包门禁、没有发布 workflow。让 CLI 复用该可执行管线，意味着先把它抽取出来。
 
 ## 决策
 
-`deepseek-harness-cli` 按平台以单文件可执行程序分发，与 Python 运行时共用同一条 `--sea` 管线，并通过三个通道发布。一个发布 workflow 构建五个目标，从同一份字节组装各通道的产物，并一起发布。
+`deepseek-harness-cli` 按平台以应用可执行程序及目标平台原生 ripgrep 伴随文件分发，与 Python 运行时共用同一条 `--sea` 管线，并通过三个通道发布。macOS 还会分发原生 node-pty spawn helper。一个发布 workflow 构建五个目标，从同一份字节组装各通道的产物，并一起发布。
 
 ### 共享 exe 管线
 
 `scripts/build-exe-for-python-sdk.ts` 被拆分为共享管线与薄产品定义：
 
 - [`scripts/exe-build/config.ts`](../../../../scripts/exe-build/config.ts)——`ExeProduct` / `BuildCli` 产品契约、`DEFAULT_NODE_RANGE = 'node24'` 与 `dist-exe` 输出目录。
-- [`scripts/exe-build/pipeline.ts`](../../../../scripts/exe-build/pipeline.ts)——`ExeBuild` 管线：`--targets` 解析、逐目标的 `pkg --sea` 调用、资产覆盖校验、`prepareNativePty`、macOS `-spawn-helper` 打包。
+- [`scripts/exe-build/pipeline.ts`](../../../../scripts/exe-build/pipeline.ts)——`ExeBuild` 管线：`--targets` 解析、逐目标的 `pkg --sea` 调用、资产覆盖校验、`prepareNativePty`、目标平台原生 `-rg` 打包，以及 macOS `-spawn-helper` 打包。
 - [`scripts/exe-build/asset-coverage.ts`](../../../../scripts/exe-build/asset-coverage.ts)——`ASSET_GLOBS` 与基于它的覆盖检查。
-- [`scripts/build-exe-for-python-sdk.ts`](../../../../scripts/build-exe-for-python-sdk.ts) 与 [`scripts/build-dsh-cli-exe.ts`](../../../../scripts/build-dsh-cli-exe.ts)——产品：Python SDK 运行时与 `deepseek-harness-cli`（`deployFilter: '@deepseek-ai/dsh'`、`entryBin: 'node_modules/@deepseek-ai/dsh/lib/bin.js'`、`outputBasename: 'deepseek-harness-cli'`）。Python 构建的行为不变。
+- [`scripts/build-exe-for-python-sdk.ts`](../../../../scripts/build-exe-for-python-sdk.ts) 与 [`scripts/build-dsh-cli-exe.ts`](../../../../scripts/build-dsh-cli-exe.ts)——产品：Python SDK 运行时与 `deepseek-harness-cli`（`deployFilter: '@deepseek-ai/dsh'`、`entryBin: 'node_modules/@deepseek-ai/dsh/lib/bin.js'`、`outputBasename: 'deepseek-harness-cli'`）。两个产品都通过共享产品配置选择原生 PTY 输入与 ripgrep 伴随文件。
 
 管线在 Windows 上通过 pnpm 的 `.cmd` shim 解析 pnpm。Node 在该平台不能直接执行命令 shim，因此子进程 runner 只对 `.cmd` 启用宿主 shell；所有命令和参数都来自固定的产品配置或经过校验的目标枚举。
 
@@ -42,15 +42,15 @@ CLI 部署根是 `apps/cli/exe`（`deepseek-harness-cli-exe-pkg`，镜像 SDK �
 
 ### 通道 1：GitHub Releases 的 curl|sh
 
-[`apps/cli/install/install.sh`](../../../../apps/cli/install/install.sh) 是一个 POSIX `sh` 安装器：检测 `uname -s`/`-m`（macOS/Linux，arm64/x64；其余平台直接报错），解析版本（显式 `--version`/`DEEPSEEK_HARNESS_CLI_VERSION`，否则取 GitHub API `releases?per_page=100` 中最新的 `deepseek-harness-cli-v*` tag，该查询包含预发布版本），从 `releases/download/deepseek-harness-cli-v<ver>/` 下载 `deepseek-harness-cli-<arch>-<os>.tar.gz` 及其 `.sha256` 伴随文件，用 `shasum`（macOS）或 `sha256sum`（Linux）校验摘要，再以 `install -m 0755` 把 `bin/deepseek-harness-cli`（macOS 另有 `bin/deepseek-harness-cli-spawn-helper`）装进 `$HOME/.deepseek-harness-cli/bin`（或 `--to <dir>`），并幂等地把该目录追加进 shell rc。校验和不匹配会删除下载并退出非零；失败安装绝不留下半成品二进制。[`tests/test_install_sh.py`](../../../../apps/cli/install/tests/test_install_sh.py) 用 mock 发布服务器与 mock 的 `uname`/`shasum`/`sha256sum` 对它做无 key 测试。安装器从 raw `master` URL 获取，因此它随分支演进、与发布 tag 解耦；脚本本身在运行时解析最新版本。
+[`apps/cli/install/install.sh`](../../../../apps/cli/install/install.sh) 是一个 POSIX `sh` 安装器：检测 `uname -s`/`-m`（macOS/Linux，arm64/x64；其余平台直接报错），解析版本（显式 `--version`/`DEEPSEEK_HARNESS_CLI_VERSION`，否则取 GitHub API `releases?per_page=100` 中最新的 `deepseek-harness-cli-v*` tag，该查询包含预发布版本），从 `releases/download/deepseek-harness-cli-v<ver>/` 下载 `deepseek-harness-cli-<arch>-<os>.tar.gz` 及其 `.sha256` 伴随文件，用 `shasum`（macOS）或 `sha256sum`（Linux）校验摘要，再以 `install -m 0755` 把 `bin/deepseek-harness-cli` 及其必需的 `bin/deepseek-harness-cli-rg` 伴随文件（macOS 另有 `bin/deepseek-harness-cli-spawn-helper`）装进 `$HOME/.deepseek-harness-cli/bin`（或 `--to <dir>`），并幂等地把该目录追加进 shell rc。校验和不匹配或伴随文件集合不完整时，会在替换应用前以非零状态退出。[`tests/test_install_sh.py`](../../../../apps/cli/install/tests/test_install_sh.py) 用 mock 发布服务器与 mock 的 `uname`/`shasum`/`sha256sum` 对它做无 key 测试。安装器从 raw `master` URL 获取，因此它随分支演进、与发布 tag 解耦；脚本本身在运行时解析最新版本。
 
 ### 通道 2：npm 全局安装
 
-沿用 Codex 的 npm 契约，落在 npm 账号的作用域下。主包 `@peiyu_wang/deepseek-harness-cli`（版本 `X.Y.Z`）是一个薄 ESM shim，对外提供 `deepseek-harness-cli`、`deepseek` 与 `dsh`；五个平台包以 `X.Y.Z-<os>-<cpu>` 发布同名版本，并带 `os`/`cpu` 字段。每个平台 manifest 都把可执行文件登记为内部命令 `deepseek-harness-cli-platform`，因为 npm 会把普通打包文件存为 0644；独立命令名既保留执行权限，又不会与公开 shim 冲突。shim 通过纯函数 `platformTarget()` 映射 `process.platform`/`process.arch`（`darwin`→`macos`、`linux`；`arm64`、`x64`；其余报错并列出受支持目标），用 `createRequire` 解析 `@peiyu_wang/deepseek-harness-cli-<os>-<cpu>/bin/deepseek-harness-cli`，以继承 stdio 的方式 spawn，转发 SIGINT/SIGTERM/SIGHUP，并以子进程退出码退出。主 manifest 通过 `optionalDependencies` 别名选择平台包（`"@peiyu_wang/deepseek-harness-cli-macos-arm64": "npm:@peiyu_wang/deepseek-harness-cli@<ver>-macos-arm64"`，以及其余四个）——这是 npm 按宿主 `os`/`cpu` 条件化依赖的唯一方式。dist-tag：主包在预发布时以 `next`、稳定版以 `latest` 发布；每个平台包以其各自的 `macos-arm64` / `macos-x64` / `linux-arm64` / `linux-x64` / `win-x64` tag 发布。[`scripts/package-dsh-cli-npm.ts`](../../../../scripts/package-dsh-cli-npm.ts) 从已构建的 exe 布局出两种包形态；[`scripts/dsh-npm-shim.js`](../../../../scripts/dsh-npm-shim.js) 是随包发布的 shim。无 key 的 spec 先确认平台载荷经 npm pack 后仍可执行，再把主包与宿主平台包解压进伪装的全局安装目录，并断言 shim 复现宿主 exe 的 `--version` 输出。
+沿用 Codex 的 npm 契约，落在 npm 账号的作用域下。主包 `@peiyu_wang/deepseek-harness-cli`（版本 `X.Y.Z`）是一个薄 ESM shim，对外提供 `deepseek-harness-cli`、`deepseek` 与 `dsh`；五个平台包以 `X.Y.Z-<os>-<cpu>` 发布同名版本，并带 `os`/`cpu` 字段。每个平台包都包含应用及其匹配的 `-rg` 伴随文件，macOS 包还包含 spawn helper。其 manifest 把应用登记为内部命令 `deepseek-harness-cli-platform`，因为 npm 会把普通打包文件存为 0644；独立命令名既保留执行权限，又不会与公开 shim 冲突。shim 通过纯函数 `platformTarget()` 映射 `process.platform`/`process.arch`（`darwin`→`macos`、`linux`；`arm64`、`x64`；其余报错并列出受支持目标），用 `createRequire` 解析 `@peiyu_wang/deepseek-harness-cli-<os>-<cpu>/bin/deepseek-harness-cli`，以继承 stdio 的方式 spawn，转发 SIGINT/SIGTERM/SIGHUP，并以子进程退出码退出。主 manifest 通过 `optionalDependencies` 别名选择平台包（`"@peiyu_wang/deepseek-harness-cli-macos-arm64": "npm:@peiyu_wang/deepseek-harness-cli@<ver>-macos-arm64"`，以及其余四个）——这是 npm 按宿主 `os`/`cpu` 条件化依赖的唯一方式。dist-tag：主包在预发布时以 `next`、稳定版以 `latest` 发布；每个平台包以其各自的 `macos-arm64` / `macos-x64` / `linux-arm64` / `linux-x64` / `win-x64` tag 发布。[`scripts/package-dsh-cli-npm.ts`](../../../../scripts/package-dsh-cli-npm.ts) 拒绝不完整的伴随文件集合，并从已构建产品布局出两种包形态；[`scripts/dsh-npm-shim.js`](../../../../scripts/dsh-npm-shim.js) 是随包发布的 shim。无 key 的 spec 先确认两个打包后的可执行程序仍可执行，再把主包与宿主平台包解压进伪装的全局安装目录，并断言 shim 复现宿主应用的 `--version` 输出。
 
 ### 通道 3：Homebrew cask
 
-[`scripts/gen-dsh-cask.ts`](../../../../scripts/gen-dsh-cask.ts) 依据发布版本与四个 tarball 的 sha256 伴随文件渲染 `deepseek-harness-cli` cask。因为四个 tarball 摘要各不相同，cask 以 `on_macos`/`on_linux` 嵌套 `on_arm`/`on_intel` 的 sha256 块，用 Homebrew 的 `arch`/`os` 宏构造各平台 URL，并把可执行文件暴露为 `deepseek-harness-cli`、`deepseek` 与 `dsh`，同时加入匹配 `deepseek-harness-cli-v(\d+\.\d+\.\d+(?:-rc\.\d+)?)` tag 的 `livecheck`。CI 把生成的 `Casks/d/deepseek-harness-cli.rb` 推到 `peiyuwang54/homebrew-dsh` tap，因此 `brew install peiyuwang54/dsh/deepseek-harness-cli` 即解析到该 cask。
+[`scripts/gen-dsh-cask.ts`](../../../../scripts/gen-dsh-cask.ts) 依据发布版本与四个 tarball 的 sha256 伴随文件渲染 `deepseek-harness-cli` cask。因为四个 tarball 摘要各不相同，cask 以 `on_macos`/`on_linux` 嵌套 `on_arm`/`on_intel` 的 sha256 块，用 Homebrew 的 `arch`/`os` 宏构造各平台 URL，把应用暴露为 `deepseek-harness-cli`、`deepseek` 与 `dsh`，在其旁链接 ripgrep 伴随文件和 macOS spawn helper，并加入匹配 `deepseek-harness-cli-v(\d+\.\d+\.\d+(?:-rc\.\d+)?)` tag 的 `livecheck`。CI 把生成的 `Casks/d/deepseek-harness-cli.rb` 推到 `peiyuwang54/homebrew-dsh` tap，因此 `brew install peiyuwang54/dsh/deepseek-harness-cli` 即解析到该 cask。
 
 ### 发布 workflow
 

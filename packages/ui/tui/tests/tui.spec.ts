@@ -3075,9 +3075,10 @@ describe('pi-tui chat lifecycle and transcript', () => {
     expect(result.terminal.output).not.toContain('prose line 5')
 
     result.terminal.send('\x0f')
-    await tick()
-    expect(result.terminal.output).toContain('Context · prose-context')
-    expect(result.terminal.output).toContain('prose line 5')
+    await vi.waitFor(() => {
+      expect(result.terminal.output).toContain('Context · prose-context')
+      expect(result.terminal.output).toContain('prose line 5')
+    })
     // Characters that break a strict XML parse survive unescaped and unexpanded.
     expect(result.terminal.output).toContain('&logo=deepseek')
     expect(result.terminal.output).toContain('packages/<group>/<pkg>/')
@@ -4243,7 +4244,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
 
     // A second /details while the selector is open replaces the overlay
     // instead of stacking a second one behind it.
-    await result.ctx.commands.execute(result.agent, '/details', new AbortController().signal)
+    await result.ctx.commands.execute(result.agent, '/details', [], new AbortController().signal)
     await tick()
 
     // Each Tab applies one step immediately while the dialog stays open:

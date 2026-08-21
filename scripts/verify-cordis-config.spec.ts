@@ -3,8 +3,16 @@
  * package resolution.
  */
 
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { chooserRootDependencyErrors, metadataExpressionErrors } from './verify-cordis-config.ts'
+import {
+  bundleManifestPaths,
+  bundlePluginDependencyErrors,
+  chooserRootDependencyErrors,
+  metadataExpressionErrors,
+} from './verify-cordis-config.ts'
 
 describe('verify-cordis-config metadata expressions', () => {
   it('accepts a disabled !!js expression', () => {
@@ -60,6 +68,48 @@ describe('verify-cordis-config runtime-created packages', () => {
 
     expect(chooserRootDependencyErrors(chooser, incomplete, 'apps/cli/package.json')).toEqual([
       'packages/bundle/web-app/cordis.patch.yml: @deepseek-ai/dsh-host-directory-picker-native must be declared directly in apps/cli/package.json dependencies because @deepseek-ai/dsh-host-directory-picker-auto creates it through the Loader root',
+    ])
+  })
+})
+
+describe('workspace Bundle discovery and product dependency closures', () => {
+  it('discovers a Bundle outside packages/bundle from its manifest declaration', () => {
+    const fixture = mkdtempSync(join(tmpdir(), 'dsh-bundle-discovery-'))
+    try {
+      const bundleDir = join(fixture, 'packages/subagent/example')
+      const plainDir = join(fixture, 'packages/bundle/plain')
+      mkdirSync(bundleDir, { recursive: true })
+      mkdirSync(plainDir, { recursive: true })
+      writeFileSync(join(bundleDir, 'package.json'), JSON.stringify({
+        name: '@deepseek-ai/dsh-subagent-example',
+        dsh: { bundle: { patch: './cordis.patch.yml' } },
+      }))
+      writeFileSync(join(plainDir, 'package.json'), JSON.stringify({
+        name: '@deepseek-ai/dsh-plain',
+      }))
+
+      expect(bundleManifestPaths(fixture)).toEqual([
+        'packages/subagent/example/package.json',
+      ])
+    } finally {
+      rmSync(fixture, { recursive: true, force: true })
+    }
+  })
+
+  it('allows a Bundle to mount itself but rejects an undeclared plugin package', () => {
+    const manifestPath = 'packages/subagent/example/package.json'
+    const file = 'packages/subagent/example/cordis.patch.yml'
+    const manifest = {
+      name: '@deepseek-ai/dsh-subagent-example',
+      dependencies: {},
+    }
+    const self = { file, name: '@deepseek-ai/dsh-subagent-example' }
+    expect(bundlePluginDependencyErrors(manifestPath, manifest, [self])).toEqual([])
+    expect(bundlePluginDependencyErrors(manifestPath, manifest, [
+      self,
+      { file, name: '@deepseek-ai/dsh-missing-plugin' },
+    ])).toEqual([
+      `${file}: @deepseek-ai/dsh-missing-plugin must be declared in ${manifestPath} dependencies`,
     ])
   })
 })

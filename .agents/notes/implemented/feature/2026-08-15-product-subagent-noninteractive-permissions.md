@@ -32,7 +32,7 @@ Every query disables `AskUserQuestion`. Non-bypass permission callbacks deny ins
 
 ### Codex
 
-Codex defaults to `never` and accepts the three native non-interactive modes exposed by Codex 0.147.0. The Provider starts the fixed app-server command, then maps the selected mode into official `thread/start` fields because CLI-global permission flags do not configure threads created later by an app-server client:
+Codex defaults to `never` and accepts the three native non-interactive modes exposed by Codex 0.149.0. The Provider starts the fixed app-server command, then maps the selected mode into official `thread/start` fields because CLI-global permission flags do not configure threads created later by an app-server client:
 
 | Value | `thread/start` fields | Native behavior |
 | --- | --- | --- |

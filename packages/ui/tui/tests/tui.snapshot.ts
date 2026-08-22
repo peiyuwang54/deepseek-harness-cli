@@ -2280,8 +2280,11 @@ describe('TUI terminal-state snapshots', () => {
       harness.terminal.send('/mention src/index.ts')
       harness.terminal.send('\r')
     })
+    harness.terminal.send('\x03')
+    harness.terminal.send('/pwd')
+    harness.terminal.send('\r')
+    await harness.terminal.flush()
     await renderAfter(harness, () => {
-      harness.terminal.send('\x03')
       harness.terminal.send('/diff')
       harness.terminal.send('\r')
     })

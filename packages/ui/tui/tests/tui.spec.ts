@@ -1017,6 +1017,41 @@ describe('shared settings, appearance, and workspaces', () => {
     await dispose(result)
   })
 
+  it('reports cwd aliases and maps /cd onto fresh-workspace handoff', async () => {
+    const target = workspaceFixture('cd-workspace', '/secondary', 'Secondary project')
+    const create = vi.fn(() => Promise.resolve(target))
+    const handoff = vi.fn<NonNullable<TuiRuntime['handoffWorkspace']>>(
+      () => Promise.reject(new Error('test host retained process')),
+    )
+    const result = await setup({
+      cwd: '/workspace',
+      handoffWorkspace: handoff,
+      configureContext: composeFrontDoorServices((ctx) => {
+        ctx.provide('workspaceRegistry', { list: () => [], create } as never)
+      }),
+    })
+
+    for (const command of ['/pwd', '/cwd']) {
+      result.terminal.send(command)
+      result.terminal.send('\r')
+      await tick()
+    }
+    expect(result.terminal.output.match(/Current working directory: \/workspace/gu)).toHaveLength(2)
+
+    result.terminal.send('/pwd unexpected')
+    result.terminal.send('\r')
+    await tick()
+    expect(result.terminal.output).toContain('Usage: /pwd or /cwd (no arguments)')
+
+    result.terminal.send('/cd /secondary')
+    result.terminal.send('\r')
+    await tick(); await tick()
+    expect(create).toHaveBeenCalledWith('/secondary')
+    expect(handoff).toHaveBeenCalledWith('/secondary')
+    expect(result.session.header.cwd).toBe('/workspace')
+    await dispose(result)
+  })
+
   it('confirms, flushes, and durably archives the main session before exit', async () => {
     const archiveSession = vi.fn(() => Promise.resolve())
     const result = await setup({

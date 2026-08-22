@@ -32,7 +32,7 @@ Claude Code 默认使用 `dontAsk`，而且只接受锁定版本 Agent SDK 支�
 
 ### Codex
 
-Codex 默认使用 `never`，并接受 Codex 0.147.0 公开的三种原生非交互模式。提供方启动固定的 app-server 命令，再把所选模式映射为官方 `thread/start` 字段，因为 CLI 全局权限 flag 不会配置之后由 app-server 客户端创建的线程：
+Codex 默认使用 `never`，并接受 Codex 0.149.0 公开的三种原生非交互模式。提供方启动固定的 app-server 命令，再把所选模式映射为官方 `thread/start` 字段，因为 CLI 全局权限 flag 不会配置之后由 app-server 客户端创建的线程：
 
 | 值 | `thread/start` 字段 | 原生行为 |
 | --- | --- | --- |

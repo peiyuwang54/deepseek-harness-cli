@@ -1,7 +1,7 @@
-terminal 92x32 buffer=normal length=34 base=2 viewport=2
+terminal 92x32 buffer=normal length=36 base=4 viewport=4
 lifecycle started=1 stopped=0 progress=inactive
 title "Command parity — DSH snapshot"
-cursor visible column=3 viewportRow=28 bufferRow=30
+cursor visible column=3 viewportRow=28 bufferRow=32
 buffer
 0| " DEEPSEEK HARNESS v0.1.0"
   style 1-8 fg=bright-blue bold
@@ -28,47 +28,50 @@ buffer
 12| "Inserted workspace reference @src/index.ts.                                                 "
   style 0-42 dim
 13| <blank>
-14| "Git diff                                                                                    "
+14| "Current working directory: /workspace/project                                               "
+  style 0-44 dim
+15| <blank>
+16| "Git diff                                                                                    "
   style 0-7 fg=bright-blue
-15| "diff --git a/src/index.ts b/src/index.ts                                                    "
+17| "diff --git a/src/index.ts b/src/index.ts                                                    "
   style 0-39 dim
-16| "--- a/src/index.ts                                                                          "
+18| "--- a/src/index.ts                                                                          "
   style 0-17 dim
-17| "+++ b/src/index.ts                                                                          "
+19| "+++ b/src/index.ts                                                                          "
   style 0-17 dim
-18| "@@ -1 +1 @@                                                                                 "
+20| "@@ -1 +1 @@                                                                                 "
   style 0-10 fg=bright-blue
-19| "-old command                                                                                "
+21| "-old command                                                                                "
   style 0-11 fg=red
-20| "+new command                                                                                "
+22| "+new command                                                                                "
   style 0-11 fg=green
-21| "diff --git a/notes.txt b/notes.txt                                                          "
+23| "diff --git a/notes.txt b/notes.txt                                                          "
   style 0-33 dim
-22| "new file mode 100644                                                                        "
+24| "new file mode 100644                                                                        "
   style 0-19 fg=cyan
-23| "--- /dev/null                                                                               "
+25| "--- /dev/null                                                                               "
   style 0-12 dim
-24| "+++ b/notes.txt                                                                             "
+26| "+++ b/notes.txt                                                                             "
   style 0-14 dim
-25| "@@ -0,0 +1 @@                                                                               "
+27| "@@ -0,0 +1 @@                                                                               "
   style 0-12 fg=bright-blue
-26| "+untracked note                                                                             "
+28| "+untracked note                                                                             "
   style 0-14 fg=green
-27-28| <blank>
-29| "                                                                                            "
+29-30| <blank>
+31| "                                                                                            "
   style 0-91 bg=ansi-236
-30| " › │Describe a task, @ a file, or / for commands                                            "
+32| " › │Describe a task, @ a file, or / for commands                                            "
   style 0-0 bg=ansi-236
   style 1-1 fg=bright-blue bg=ansi-236 bold
   style 2-2 bg=ansi-236 dim
   style 3-3 bg=ansi-236
   style 4-47 bg=ansi-236 dim
   style 48-91 bg=ansi-236
-31| "                                                                                            "
+33| "                                                                                            "
   style 0-91 bg=ansi-236
-32| "  Enter send · Shift+Enter newline · / commands"
+34| "  Enter send · Shift+Enter newline · / commands"
   style 0-46 dim
-33| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
+35| "                                            ▸   deepseek-v4-flash [alt+m]  ↑0 ↓0  0% context"
   style 44-45 dim
   style 48-72 dim
   style 75-79 dim

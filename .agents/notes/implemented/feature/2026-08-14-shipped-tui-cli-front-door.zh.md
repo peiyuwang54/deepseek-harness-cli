@@ -16,7 +16,7 @@ DeepSeek Harness 保留了随发行版交付的 Web 应用和单次执行／head
 
 启动阶段会在依赖较重的 runner 激活前发布一个新的 `main-session-<uuid>` 身份，或指定的 `--resume` 身份。Runner 等待 Loader 结算，在尚未发布的 Agent setup 中安装配置的模型选择，按该精确身份创建或恢复 Agent，挂载 renderer，然后移除启动期选择，让 TUI 的 `/model` 控制器拥有最终决定权。新建 setup 会解析并记录有效默认 agent preset，然后挂载它；resume setup 则挂载 `resolveSessionPreset(session)`，因此带有后续持久化空白会话切换的 Web 来源会话会重新获得当时的历史组合，而非今天的默认值。Bundle 会禁用 preset 名单持有的每个 base 模型侧 row，因此所选 preset 是这些能力的唯一来源，`minimal` 不会继承 standard／code 栈。Prompt registry 以可单独寻址的 `@deepseek-ai/dsh-tui/prompt` Loader 行先于 runner 挂载。正常启动要求 stdin 与 stdout 都是 TTY，否则会提前失败；`--help` 仍可安全输出到 pipe。Pipe 与自动化使用现有 headless profile。
 
-Settings 与 workspace 状态属于 Host 平面的产品服务，而非浏览器所有权。TUI profile 组合与 Web 相同的文件设置 provider 和 `ui-theme.preference` schema，以及相同的 JSON storage／domain／workspace registry 栈。`/settings` 是一个脱敏 namespace／document hub，而非 Web React 表单的克隆；`/theme` 只 mutate preference 字段，因此绝不会因替换脱敏 section 而擦除同级 secret。`/workspace` 读取持久 registry 并请求全新会话 handoff；它绝不改写已绑定会话不可变的 `SessionHeader.cwd`。
+Settings 与 workspace 状态属于 Host 平面的产品服务，而非浏览器所有权。TUI profile 组合与 Web 相同的文件设置 provider 和 `ui-theme.preference` schema，以及相同的 JSON storage／domain／workspace registry 栈。`/settings` 是一个脱敏 namespace／document hub，而非 Web React 表单的克隆；`/theme` 只 mutate preference 字段，因此绝不会因替换脱敏 section 而擦除同级 secret。`/workspace` 与 `/cd` 读取持久 registry 并请求全新会话 handoff；`/pwd` 与 `/cwd` 报告有效目录，这些命令都绝不改写已绑定会话不可变的 `SessionHeader.cwd`。
 
 DeepSeek 认证仍由共享 `ctx.credentials` provider 持有。所选 DeepSeek 路由没有配置 `DEEPSEEK_API_KEY` 时，终端会打开一个附着 composer 的首次使用掩码输入框；之后切换到 DeepSeek 模型也会执行同一检查。原始值会从瞬时输入组件直接交给 `credentials.set`，绝不进入编辑器历史、命令文本、Session 事件或 transcript 输出。`/credentials` 只公开配置状态、provider 来源与可写性，并且只接受通过该掩码组件输入的替换值。TUI 无法覆盖从启动环境继承的只读凭据，删除操作也只针对 provider 管理的已保存值。
 
@@ -186,4 +186,4 @@ Renderer 由纯工具测试、Agent／Session 集成测试、真实 Approval 服
 
 ## 后果
 
-DeepSeek Harness 再次拥有受支持的交互式终端产品，可通过 `deepseek` 或兼容写法 `dsh tui` 调用；`dsh web`、`--profile headless`、ACP 与其他入口仍彼此独立。产品新增 renderer 包、随发行版 bundle、pi-tui patch、终端快照和平台生命周期义务，因此新的 Cordis service／catalog 与软件包发布面必须持续生成并测试。TUI 有意只支持文本终端，且没有跨进程会话锁。随附 CLI 持有 `/resume` 与 `/workspace` 的进程替换；省略这些 callback 的自定义 renderer embedding 会退化为警告，而不会改变当前会话。
+DeepSeek Harness 再次拥有受支持的交互式终端产品，可通过 `deepseek` 或兼容写法 `dsh tui` 调用；`dsh web`、`--profile headless`、ACP 与其他入口仍彼此独立。产品新增 renderer 包、随发行版 bundle、pi-tui patch、终端快照和平台生命周期义务，因此新的 Cordis service／catalog 与软件包发布面必须持续生成并测试。TUI 有意只支持文本终端，且没有跨进程会话锁。随附 CLI 持有 `/resume`、`/workspace` 与 `/cd` 的进程替换；省略这些 callback 的自定义 renderer embedding 会退化为警告，而不会改变当前会话。

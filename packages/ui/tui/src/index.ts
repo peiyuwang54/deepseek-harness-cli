@@ -249,10 +249,12 @@ const REVIEW_CHANGES_PROMPT = 'Review the current workspace changes, including u
 /** Commands safe to expose while an ephemeral side thread owns the terminal. */
 const SIDE_CONVERSATION_COMMANDS = new Set([
   'copy',
+  'cwd',
   'diff',
   'export',
   'ide',
   'mention',
+  'pwd',
   'raw',
   'status',
   'usage',
@@ -3419,6 +3421,28 @@ export function createTuiChat(
         workspaceController.queueWorkspaceCommand(rawInput)
         return { kind: 'success' }
       },
+    })
+    commandCtx.commands.register({
+      name: 'cd',
+      description: 'Choose or add a workspace and start a fresh session there',
+      input: { hint: '[directory]' },
+      handler: ({ rawInput }) => {
+        workspaceController.queueWorkspaceCommand(rawInput)
+        return { kind: 'success' }
+      },
+    })
+    const workingDirectoryHandler = ({ rawInput }: { rawInput: string }): CommandResult => rawInput.trim() === ''
+      ? { kind: 'success', text: `Current working directory: ${displayText(cwd)}` }
+      : { kind: 'error', text: 'Usage: /pwd or /cwd (no arguments)' }
+    commandCtx.commands.register({
+      name: 'pwd',
+      description: 'Show the current working directory',
+      handler: workingDirectoryHandler,
+    })
+    commandCtx.commands.register({
+      name: 'cwd',
+      description: 'Show the current working directory',
+      handler: workingDirectoryHandler,
     })
     commandCtx.commands.register({
       name: 'status',

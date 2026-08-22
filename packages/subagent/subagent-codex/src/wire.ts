@@ -1,5 +1,5 @@
 /**
- * Minimal Codex app-server 0.147.0 protocol adapter. The shared JSON-RPC
+ * Minimal Codex app-server 0.149.0 protocol adapter. The shared JSON-RPC
  * transport owns framing and request correlation; this module owns only the
  * product methods, current thread/turn association, unattended approval
  * responses, and terminal-answer selection.
@@ -151,6 +151,7 @@ function failureInfo(turn: JsonObject): {
       case 'usageLimitExceeded':
       case 'serverOverloaded':
       case 'cyberPolicy':
+      case 'misalignmentPolicyViolation':
       case 'internalServerError':
       case 'unauthorized':
       case 'badRequest':

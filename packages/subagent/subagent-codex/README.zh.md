@@ -10,9 +10,9 @@
 
 已发布的 `run.result` 恰好启动一个轮次。它只接受与此次运行的线程和轮次匹配的通知，随后等待权威的终止通知 `turn/completed`。以最后一条 `phase: "final_answer"` 的 `agentMessage` 为准；若 Codex 没有发出明确的最终阶段，则以最后一条 `phase: null` 的消息作为兼容性回退。过程说明绝不会取代上述任一答案；成功完成的轮次若没有非空白答案，结果也会判为错误。
 
-对于命令与文件审批，无人值守的提供方会从请求给出的决策选项中选择一项不予批准的决策，并优先选择 `cancel`；稳定的 0.147.0 请求形态没有决策选项列表，因此回退到 `decline`。它对权限请求返回作用域限于当前轮次的空权限集，不向用户输入请求提供任何答案，并拒绝 MCP elicitation。若请求在无人值守模式下没有合法响应，或是未知服务器请求，此次运行就会失败。wire 只记录有效模式、请求类别、决定与固定的安全原因，也会识别被拒绝的命令／文件 item 和 `sandboxError` 终态。Codex 0.147.0 的部分早期 `never` 拒绝和 sandbox violation 只写入结构化 stderr，因此提供方会 pipe stderr、原样转发给 Host，并在每次运行的有界尾缓冲中匹配两个固定签名；原始 stderr 不会进入诊断。
+对于命令与文件审批，无人值守的提供方会从请求给出的决策选项中选择一项不予批准的决策，并优先选择 `cancel`；没有提供决策选项列表的请求会回退到 `decline`。它对权限请求返回作用域限于当前轮次的空权限集，不向用户输入请求提供任何答案，并拒绝 MCP elicitation。若请求在无人值守模式下没有合法响应，或是未知服务器请求，此次运行就会失败。wire 只记录有效模式、请求类别、决定与固定的安全原因，也会识别被拒绝的命令／文件 item 和 `sandboxError` 终态。Codex 0.149.0 的部分早期 `never` 拒绝和 sandbox violation 只写入结构化 stderr，因此提供方会 pipe stderr、原样转发给 Host，并在每次运行的有界尾缓冲中匹配两个固定签名；原始 stderr 不会进入诊断。
 
-本地取消会在结果竞态中胜出并映射为 `aborted`。对于失败轮次，诊断会保留 Codex 0.147.0 `codexErrorInfo` 联合中的全部十一种字符串与五种对象 variant；四种连接／stream variant 会在上游提供时保留数值 `httpStatusCode`，而 `activeTurnNotSteerable` 不公开 `turnKind`。诊断还会注明 `turn-start`、`turn` 或 `process`，分别包含可用的退出码与信号，并对无法识别或格式错误的值使用 `unknown`，且不复制原始字段。`contextWindowExceeded` 仍映射为 `max-tokens`；其他任何远端中断或失败仍映射为 `error`，且该提供方不会产生 `refusal`。参与失败的权限决定会跟在结构化失败行之后。成功与本地取消都不附带这两类事实。
+本地取消会在结果竞态中胜出并映射为 `aborted`。对于失败轮次，诊断会保留 Codex 0.149.0 `codexErrorInfo` 联合中的全部十二种字符串与五种对象 variant，包括 `misalignmentPolicyViolation`；四种连接／stream variant 会在上游提供时保留数值 `httpStatusCode`，而 `activeTurnNotSteerable` 不公开 `turnKind`。诊断还会注明 `turn-start`、`turn` 或 `process`，分别包含可用的退出码与信号，并对无法识别或格式错误的值使用 `unknown`，且不复制原始字段。`contextWindowExceeded` 仍映射为 `max-tokens`；其他任何远端中断或失败仍映射为 `error`，且该提供方不会产生 `refusal`。参与失败的权限决定会跟在结构化失败行之后。成功与本地取消都不附带这两类事实。
 
 `dispose()`（资源释放）具有幂等性：如果当前的两个标识符均已知，它会尽力请求 `turn/interrupt`，关闭 JSON-RPC 通信链路，结束标准输入，调用共享的进程树逐级终止机制，等待整棵进程树退出，并移除 stderr observer。独立清理拒绝使用固定的 `teardown` 阶段与可用进程结果。当启动与回滚同时失败时，顶层聚合消息会保留两条安全阶段说明，而原始失败仍只在内部可见。
 
@@ -35,7 +35,7 @@
 | `approve-for-me` | `approvalPolicy: on-request`、`approvalsReviewer: auto_review`、`sandbox: workspace-write` | 由 Codex 自动评审权限请求，不等待人工。 |
 | `dangerously-bypass-approvals-and-sandbox` | `approvalPolicy: never`、`sandbox: danger-full-access` | 跳过审批与 sandbox；必须显式选择该值。 |
 
-生产环境会解析锁定的 `@openai/codex@0.147.0` 依赖所声明的 `codex` bin，并使用当前 Node 可执行文件启动该 JavaScript wrapper。Wrapper 会选择匹配的原生平台载荷；提供方既不检查也不回退 `PATH` 中的宿主 `codex`。父会话 cwd、`HOME` 与 `CODEX_HOME` 继续让原生 Codex 配置和身份验证保持权威，而提供方只覆盖选定线程的 approval／reviewer／sandbox 字段。其他项目、模型、provider、MCP、hook、skill 与账户设置仍由原生机制负责。本插件不选择模型、不创建 `CODEX_HOME`、不执行登录，也不探测账户。子进程 seam 会先移除具有凭证特征的环境变量，再应用显式 `env` 覆盖。
+生产环境会解析锁定的 `@openai/codex@0.149.0` 依赖所声明的 `codex` bin，并使用当前 Node 可执行文件启动该 JavaScript wrapper。Wrapper 会选择匹配的原生平台载荷；提供方既不检查也不回退 `PATH` 中的宿主 `codex`。父会话 cwd、`HOME` 与 `CODEX_HOME` 继续让原生 Codex 配置和身份验证保持权威，而提供方只覆盖选定线程的 approval／reviewer／sandbox 字段。其他项目、模型、provider、MCP、hook、skill 与账户设置仍由原生机制负责。本插件不选择模型、不创建 `CODEX_HOME`、不执行登录，也不探测账户。子进程 seam 会先移除具有凭证特征的环境变量，再应用显式 `env` 覆盖。
 
 本包是可选的 Profile Bundle。将它安装进目标 Profile 后重启该 Profile；安装会把官方 wrapper 与一个兼容的原生平台载荷带入该 Profile，而包所声明的 `cordis.patch.yml` 层只注册休眠的 `codex` Host provider，不会启动 Codex 进程。移除该包后，下一次 Profile 启动会撤回这一 provider 及其私有运行时闭包。
 
@@ -94,7 +94,7 @@ dsh --profile <name>
 
 ## 产品兼容性与证据
 
-生产环境的协议层有意只实现这一单次执行约定所需的 app-server 方法。运行时依赖与六个 optional-dependency alias 均锁定到 `@openai/codex@0.147.0` / `codex-cli 0.147.0`。普通安装会按当前操作系统与 CPU 选择一个载荷。对于当前 darwin-arm64 载荷，`npm pack --dry-run --json @openai/codex@0.147.0-darwin-arm64` 报告压缩包为 111,199,052 字节、解包后为 274,777,843 字节。该包包含原生 `codex`、`codex-code-mode-host`、`rg` 与 `zsh` 资源；其他平台可能不同，这些数值只用于披露而不是安装阈值。
+生产环境的协议层有意只实现这一单次执行约定所需的 app-server 方法。运行时依赖与六个 optional-dependency alias 均锁定到 `@openai/codex@0.149.0` / `codex-cli 0.149.0`。普通安装会按当前操作系统与 CPU 选择一个载荷。对于当前 darwin-arm64 载荷，`npm pack --dry-run --json @openai/codex@0.149.0-darwin-arm64` 报告压缩包为 114,101,870 字节、解包后为 282,476,979 字节。该包包含原生 `codex`、`codex-code-mode-host`、`rg` 与 `zsh` 资源；其他平台可能不同，这些数值只用于披露而不是安装阈值。
 
 生成的 schema 证据与包测试会固定全部十六种 error-info variant、HTTP status 所在位置、六个生命周期阶段、进程结果、终止原因映射、unknown 回退、脱敏、权限顺序、取消、并发与清理聚合。无密钥真实产品测试会驱动包内 wrapper 连接回环 Responses fixture，并观测包内 argv、确切的 Bearer 密钥、原始任务、逐字节完全一致的最终回答、线程级 `never` 对环境中 `on-request` 的覆盖、自动评审启动、不产生文件副作用的无人值守拒绝、真实 `internalServerError`、测试拥有临时存储中的显式危险绕过写入、携带安全退出事实的进程／协议失败，以及 wrapper／原生进程完全停稳。同一层级还会证明两个命名实例保留彼此独立的环境与原生模式。
 
@@ -136,7 +136,7 @@ Codex 子级会在一个全新的临时线程中，以单个轮次接收这些�
 - **静态选择实例**：Profile 配置项固定提供方名称与工具绑定；调用无法动态选择提供方，而且每个公开工具都需要唯一的 `toolName`。
 - **身份验证与账户状态仍由原生机制管理**：Bundle 会提供 CLI，但不会创建账户、登录、信任项目或改写 Codex 设置；配置与身份验证失败会公开其生命周期阶段与安全的 `unknown` 回退，而不会增加单独的公开分类体系。
 - **委派时必须存在原生平台载荷**：省略 optional dependencies 的安装、不受支持的平台以及缺失或损坏的载荷都会在第一次运行时失败；不会回退到宿主 CLI。
-- **兼容性由开发证据锁定**：若要从已验证的 0.147.0 协议基线升级，必须重新生成上游 schema 证据，并重新运行握手、答案选择、审批、取消、无密钥真实产品以及带密钥的 DeepSeek 随机数测试。
+- **兼容性由开发证据锁定**：若要从已验证的 0.149.0 协议基线升级，必须重新生成上游 schema 证据，并重新运行握手、答案选择、审批、取消、无密钥真实产品以及带密钥的 DeepSeek 随机数测试。
 - **没有人工审批路径**：已知的无人值守审批请求会被拒绝，未知服务器请求会以默认拒绝方式使运行失败；三种 Profile 模式都不会创建 DSH 交互通道或逐次调用 allow 策略。
 - **assistant 载荷仅包含最终文本**：失败运行可以额外公开独立的安全诊断；推理、过程说明、中间消息、工具通信、用量信息、原始 stderr 和工作区差异不会进入父会话，通用 Job id、通知与状态来自共享作业运行时。
 - **没有可选的共享能力**：对于本提供方，共享服务会拒绝输出 schema、子任务角色设定、工具筛选和 harness 深度强制约束。

@@ -26,11 +26,11 @@ viewport
   style 9-83 dim
 9| "  archive        Archive this session and exit"
   style 9-45 dim
-10| "  clear          Clear the terminal and start a new chat"
+10| "  cd             [directory] — Choose or add a workspace and start a fresh session there"
+  style 4-87 dim
+11| "  clear          Clear the terminal and start a new chat"
   style 7-55 dim
-11| "  copy           Copy the latest assistant response to the terminal clipboard"
-  style 6-76 dim
-12| "  (1/50)"
+12| "  (1/53)"
   style 0-7 dim
 13| "                                                  ▸   deepseek-v4-pro [alt+m]  ↑0 ↓0  0% context"
   style 50-51 dim

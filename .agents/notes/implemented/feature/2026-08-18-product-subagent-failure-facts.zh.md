@@ -28,7 +28,7 @@ Product subagent failure (product: <product>; stage: <stage>; category: <categor
 
 ### Claude Code 事实
 
-Agent SDK 0.3.220 定义四种错误子类型：`error_during_execution`、`error_max_turns`、`error_max_budget_usd` 和 `error_max_structured_output_retries`。Claude Code 提供方会把每种准确子类型保留为类别，同时维持共享终止原因 `error`。标记为错误或内容空白的成功消息使用 `invalid-success`，缺失结果使用 `missing-result`，SDK 给出终态结果前发生的进程退出使用 `process-exit`，无法识别的值或异常使用 `unknown`，且不会复制原值。
+Agent SDK 0.3.252 定义四种错误子类型：`error_during_execution`、`error_max_turns`、`error_max_budget_usd` 和 `error_max_structured_output_retries`。Claude Code 提供方会把每种准确子类型保留为类别，同时维持共享终止原因 `error`。标记为错误或内容空白的成功消息使用 `invalid-success`，缺失结果使用 `missing-result`，SDK 给出终态结果前发生的进程退出使用 `process-exit`，无法识别的值或异常使用 `unknown`，且不会复制原值。
 
 | 阶段 | 归属操作 | 可观察失败 |
 | --- | --- | --- |
@@ -39,7 +39,7 @@ Agent SDK 0.3.220 定义四种错误子类型：`error_during_execution`、`erro
 
 ### Codex 事实
 
-Codex app-server 0.149.0 定义十二种字符串类别与五种对象 variant。提供方会保留 `contextWindowExceeded`、`sessionBudgetExceeded`、`usageLimitExceeded`、`serverOverloaded`、`cyberPolicy`、`misalignmentPolicyViolation`、`internalServerError`、`unauthorized`、`badRequest`、`threadRollbackFailed`、`sandboxError` 和 `other`。它还会保留 `httpConnectionFailed`、`responseStreamConnectionFailed`、`responseStreamDisconnected`、`responseTooManyFailedAttempts` 与 `activeTurnNotSteerable`；四种连接／stream variant 会保留数值 `httpStatusCode`，而 active-turn variant 不公开 `turnKind`。未知字符串、同时含其他 variant 的对象、格式错误值与未分类异常统一使用 `unknown`。
+Codex app-server 0.152.0 定义十三种字符串类别与五种对象 variant。提供方会保留 `contextWindowExceeded`、`sessionBudgetExceeded`、`usageLimitExceeded`、`rateLimitExceeded`、`serverOverloaded`、`cyberPolicy`、`misalignmentPolicyViolation`、`internalServerError`、`unauthorized`、`badRequest`、`threadRollbackFailed`、`sandboxError` 和 `other`。它还会保留 `httpConnectionFailed`、`responseStreamConnectionFailed`、`responseStreamDisconnected`、`responseTooManyFailedAttempts` 与 `activeTurnNotSteerable`；四种连接／stream variant 会保留数值 `httpStatusCode`，而 active-turn variant 不公开 `turnKind`。未知字符串、同时含其他 variant 的对象、格式错误值与未分类异常统一使用 `unknown`。
 
 | 阶段 | 归属操作 | 可观察失败 |
 | --- | --- | --- |
@@ -64,7 +64,7 @@ Codex app-server 0.149.0 定义十二种字符串类别与五种对象 variant�
 
 ## Verification
 
-Claude Code 包测试固定四种 SDK 子类型、无效成功、缺失结果、未知值与异常、四个阶段、相互独立的退出码与信号字段、权限事实顺序、脱敏、成功结果与取消时省略诊断、并发运行隔离和清理完成。Codex 包测试固定全部十六种 error-info variant、HTTP status 存在与缺失、六个阶段、unknown 回退、终止原因保持不变、权限顺序、脱敏、取消、并发与清理聚合。真实 SDK/CLI fixture 会产生真实的 Claude `error_max_turns`，真实 app-server fixture 会产生真实的 Codex `internalServerError`；两个 fixture 都覆盖进程／协议失败与整棵进程树完全停稳。无密钥 ACP snapshot 会在前台错误输出、后台完成通知和 `job_output` 中记录两个产品各自的准确诊断。
+Claude Code 包测试固定四种 SDK 子类型、无效成功、缺失结果、未知值与异常、四个阶段、相互独立的退出码与信号字段、权限事实顺序、脱敏、成功结果与取消时省略诊断、并发运行隔离和清理完成。Codex 包测试固定全部十八种 error-info variant、HTTP status 存在与缺失、六个阶段、unknown 回退、终止原因保持不变、权限顺序、脱敏、取消、并发与清理聚合。真实 SDK/CLI fixture 会产生真实的 Claude `error_max_turns`，真实 app-server fixture 会产生真实的 Codex `internalServerError`；两个 fixture 都覆盖进程／协议失败与整棵进程树完全停稳。无密钥 ACP snapshot 会在前台错误输出、后台完成通知和 `job_output` 中记录两个产品各自的准确诊断。
 
 ## Alternatives considered
 

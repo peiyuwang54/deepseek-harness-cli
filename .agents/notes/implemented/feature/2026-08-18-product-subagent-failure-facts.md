@@ -28,7 +28,7 @@ Successful results and local cancellation expose no failure fact. Raw product er
 
 ### Claude Code facts
 
-Agent SDK 0.3.220 defines four error subtypes: `error_during_execution`, `error_max_turns`, `error_max_budget_usd`, and `error_max_structured_output_retries`. The Claude Code Provider preserves each exact subtype as the category while keeping the shared stop reason `error`. An error-marked or blank success uses `invalid-success`, a missing result uses `missing-result`, a process exit before an SDK terminal result uses `process-exit`, and an unrecognized value or exception uses `unknown` without copying the value.
+Agent SDK 0.3.252 defines four error subtypes: `error_during_execution`, `error_max_turns`, `error_max_budget_usd`, and `error_max_structured_output_retries`. The Claude Code Provider preserves each exact subtype as the category while keeping the shared stop reason `error`. An error-marked or blank success uses `invalid-success`, a missing result uses `missing-result`, a process exit before an SDK terminal result uses `process-exit`, and an unrecognized value or exception uses `unknown` without copying the value.
 
 | Stage | Owned operation | Observable failure |
 | --- | --- | --- |
@@ -39,7 +39,7 @@ Agent SDK 0.3.220 defines four error subtypes: `error_during_execution`, `error_
 
 ### Codex facts
 
-Codex app-server 0.149.0 defines twelve string categories and five object variants. The Provider preserves `contextWindowExceeded`, `sessionBudgetExceeded`, `usageLimitExceeded`, `serverOverloaded`, `cyberPolicy`, `misalignmentPolicyViolation`, `internalServerError`, `unauthorized`, `badRequest`, `threadRollbackFailed`, `sandboxError`, and `other`. It also preserves `httpConnectionFailed`, `responseStreamConnectionFailed`, `responseStreamDisconnected`, `responseTooManyFailedAttempts`, and `activeTurnNotSteerable`; the four connection/stream variants retain numeric `httpStatusCode`, while the active-turn variant does not expose `turnKind`. Unknown strings, objects with another variant set, malformed values, and unclassified exceptions use `unknown`.
+Codex app-server 0.152.0 defines thirteen string categories and five object variants. The Provider preserves `contextWindowExceeded`, `sessionBudgetExceeded`, `usageLimitExceeded`, `rateLimitExceeded`, `serverOverloaded`, `cyberPolicy`, `misalignmentPolicyViolation`, `internalServerError`, `unauthorized`, `badRequest`, `threadRollbackFailed`, `sandboxError`, and `other`. It also preserves `httpConnectionFailed`, `responseStreamConnectionFailed`, `responseStreamDisconnected`, `responseTooManyFailedAttempts`, and `activeTurnNotSteerable`; the four connection/stream variants retain numeric `httpStatusCode`, while the active-turn variant does not expose `turnKind`. Unknown strings, objects with another variant set, malformed values, and unclassified exceptions use `unknown`.
 
 | Stage | Owned operation | Observable failure |
 | --- | --- | --- |
@@ -64,7 +64,7 @@ Codex app-server 0.149.0 defines twelve string categories and five object varian
 
 ## Verification
 
-Claude Code package tests pin all four SDK subtypes, invalid success, missing result, unknown values and exceptions, all four stages, independent exit code and signal fields, permission-fact ordering, sanitization, successful-result and cancellation omission, concurrent-run isolation, and cleanup completion. Codex package tests pin all sixteen error-info variants, HTTP status presence and absence, all six stages, unknown fallback, stop-reason preservation, permission ordering, sanitization, cancellation, concurrency, and cleanup aggregation. The real SDK/CLI fixture produces an actual Claude `error_max_turns`; the real app-server fixture produces an actual Codex `internalServerError`; both fixtures cover process/protocol failure and whole-tree quiescence. The keyless ACP snapshot records each product's exact diagnostic in foreground error output, a background completion notice, and `job_output`.
+Claude Code package tests pin all four SDK subtypes, invalid success, missing result, unknown values and exceptions, all four stages, independent exit code and signal fields, permission-fact ordering, sanitization, successful-result and cancellation omission, concurrent-run isolation, and cleanup completion. Codex package tests pin all eighteen error-info variants, HTTP status presence and absence, all six stages, unknown fallback, stop-reason preservation, permission ordering, sanitization, cancellation, concurrency, and cleanup aggregation. The real SDK/CLI fixture produces an actual Claude `error_max_turns`; the real app-server fixture produces an actual Codex `internalServerError`; both fixtures cover process/protocol failure and whole-tree quiescence. The keyless ACP snapshot records each product's exact diagnostic in foreground error output, a background completion notice, and `job_output`.
 
 ## Alternatives considered
 

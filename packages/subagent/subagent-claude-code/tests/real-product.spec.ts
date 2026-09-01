@@ -284,7 +284,7 @@ function startRequest(
   })
 }
 
-describe('real Claude Agent SDK 0.3.220 and its distributed Claude Code 2.1.220 fixture', {
+describe('real Claude Agent SDK 0.3.252 and its distributed Claude Code 2.1.252 fixture', {
   timeout: 60_000,
 }, () => {
   it('inherits host settings and sends the exact task and fake key to local Messages', async () => {
@@ -294,13 +294,13 @@ describe('real Claude Agent SDK 0.3.220 and its distributed Claude Code 2.1.220 
       kind: 'complete',
       text: sentinel,
     })
-    expect(sdkPackage.version).toBe('0.3.220')
-    expect(sdkPackage.claudeCodeVersion).toBe('2.1.220')
-    expect(sdkPackage.optionalDependencies[platformPackage]).toBe('0.3.220')
+    expect(sdkPackage.version).toBe('0.3.252')
+    expect(sdkPackage.claudeCodeVersion).toBe('2.1.252')
+    expect(sdkPackage.optionalDependencies[platformPackage]).toBe('0.3.252')
     const version = await execFileAsync(claudeBin, ['--version'], {
       env: { ...process.env, ...harness.env },
     })
-    expect(version.stdout.trim()).toBe('2.1.220 (Claude Code)')
+    expect(version.stdout.trim()).toBe('2.1.252 (Claude Code)')
 
     const run = await startRequest(harness, task)
     await expect(run.result).resolves.toEqual({
@@ -313,7 +313,7 @@ describe('real Claude Agent SDK 0.3.220 and its distributed Claude Code 2.1.220 
       (message): message is SDKSystemMessage =>
         message.type === 'system' && message.subtype === 'init',
     )
-    expect(initMessage?.claude_code_version).toBe('2.1.220')
+    expect(initMessage?.claude_code_version).toBe('2.1.252')
     const spawnedExecutable = harness.spawnSpecs[0]?.argv[0]
     expect(spawnedExecutable).toBeDefined()
     expect(process.platform === 'win32'
@@ -541,7 +541,7 @@ describe('real Claude Agent SDK 0.3.220 and its distributed Claude Code 2.1.220 
     })
     expect(fixture.requests).toHaveLength(2)
     expect(JSON.stringify(fixture.requests[1]?.body.messages))
-      .toContain('ExitPlanMode exists but is not enabled in this context')
+      .toContain('ExitPlanMode is disabled for this session')
     await run.dispose()
     await expectQuiescent(harness.handles)
   })

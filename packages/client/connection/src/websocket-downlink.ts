@@ -11,6 +11,20 @@ import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api'
 
 type Frame = MuxFrame | HostFrame
 
+/** Default interval between Host WebSocket liveness probes. */
+export const DEFAULT_WEBSOCKET_HEARTBEAT_INTERVAL_MS = 30_000
+
+/** Default consecutive unanswered probes tolerated before termination. */
+export const DEFAULT_WEBSOCKET_MISSED_HEARTBEAT_LIMIT = 2
+
+/** Resolved Host WebSocket liveness policy. */
+export interface WebSocketHeartbeatOptions {
+  /** Interval between liveness probes. */
+  heartbeatIntervalMs: number
+  /** Consecutive unanswered probes tolerated before termination. */
+  missedHeartbeatLimit: number
+}
+
 function serverRequest(frame: RpcRequest<Frame>): ServerRequest {
   return {
     type: 'server-request',
@@ -51,9 +65,21 @@ function failureFrame(error: unknown): RpcRequest<Frame> {
 export class WebSocketDownlinks {
   private readonly server = new WebSocketServer({ noServer: true })
   private readonly pumps = new Set<Promise<void>>()
+  private readonly missedHeartbeats = new WeakMap<WebSocket, number>()
+  private readonly finalHeartbeatChecks = new Set<NodeJS.Immediate>()
+  private heartbeatTimer: NodeJS.Timeout | undefined
 
-  /** @param api - host API supplying the typed event streams. */
-  constructor(private readonly api: ApiProxy) {}
+  /**
+   * @param api - host API supplying the typed event streams.
+   * @param heartbeat - resolved liveness policy.
+   */
+  constructor(
+    private readonly api: ApiProxy,
+    private readonly heartbeat: WebSocketHeartbeatOptions = {
+      heartbeatIntervalMs: DEFAULT_WEBSOCKET_HEARTBEAT_INTERVAL_MS,
+      missedHeartbeatLimit: DEFAULT_WEBSOCKET_MISSED_HEARTBEAT_LIMIT,
+    },
+  ) {}
 
   /**
    * Upgrade one socket and pump the mux stream until either side closes.
@@ -86,6 +112,12 @@ export class WebSocketDownlinks {
    * @returns A promise resolving after every socket and source iterator stops.
    */
   async close(): Promise<void> {
+    if (this.heartbeatTimer !== undefined) {
+      clearInterval(this.heartbeatTimer)
+      this.heartbeatTimer = undefined
+    }
+    for (const check of this.finalHeartbeatChecks) clearImmediate(check)
+    this.finalHeartbeatChecks.clear()
     for (const socket of this.server.clients) socket.terminate()
     await new Promise<void>((resolve, reject) => {
       this.server.close((error) => {
@@ -104,6 +136,9 @@ export class WebSocketDownlinks {
   ): void {
     this.server.handleUpgrade(req, socket, head, (websocket) => {
       const abort = new AbortController()
+      this.missedHeartbeats.set(websocket, 0)
+      websocket.on('pong', () => { this.missedHeartbeats.set(websocket, 0) })
+      this.startHeartbeat()
       websocket.once('close', () => { abort.abort() })
       websocket.once('error', () => { abort.abort() })
       websocket.once('message', () => {
@@ -113,6 +148,30 @@ export class WebSocketDownlinks {
       this.pumps.add(pump)
       void pump.then(() => { this.pumps.delete(pump) })
     })
+  }
+
+  private startHeartbeat(): void {
+    if (this.heartbeatTimer !== undefined) return
+    this.heartbeatTimer = setInterval(() => {
+      for (const socket of this.server.clients) {
+        if (socket.readyState !== WebSocket.OPEN) continue
+        const missed = this.missedHeartbeats.get(socket) as number
+        if (missed >= this.heartbeat.missedHeartbeatLimit) {
+          const check = setImmediate(() => {
+            this.finalHeartbeatChecks.delete(check)
+            if (socket.readyState === WebSocket.OPEN
+              && (this.missedHeartbeats.get(socket) as number) >= this.heartbeat.missedHeartbeatLimit) {
+              socket.terminate()
+            }
+          })
+          this.finalHeartbeatChecks.add(check)
+          continue
+        }
+        this.missedHeartbeats.set(socket, missed + 1)
+        socket.ping()
+      }
+    }, this.heartbeat.heartbeatIntervalMs)
+    this.heartbeatTimer.unref()
   }
 
   private async pump<F extends Frame>(

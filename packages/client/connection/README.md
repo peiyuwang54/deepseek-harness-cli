@@ -10,7 +10,16 @@ The node half guards every entry under `/api` before bridging or upgrading (`src
 
 ## `/api` WebSocket downlinks
 
-`/api/events.mux` and `/api/events.host` each accept a WebSocket upgrade and send only the corresponding `ServerRequest` text messages to the browser; the client sends no application data over these sockets. If either socket ends, the current connection generation fails and rebuilds both streams; readiness still requires both sockets to be open and the `host.describe` HTTP call to succeed. Host teardown terminates both sockets, aborts their sources, and waits for source cleanup before returning. Ordinary network GETs to these paths return 426 with no SSE fallback; `toFetchHandler`'s SSE codec serves only the isomorphic in-process carrier.
+`/api/events.mux` and `/api/events.host` each accept a WebSocket upgrade and send only the corresponding `ServerRequest` text messages to the browser; the client sends no application data over these sockets. The Host probes each socket every `webSocketHeartbeatIntervalMs`; a Pong resets its consecutive-miss count, and a socket that remains open after `webSocketMissedHeartbeatLimit` unanswered probes gets one final event-loop turn for a delayed Pong before termination. If either socket ends, the current connection generation fails and rebuilds both streams; readiness still requires both sockets to be open and the `host.describe` HTTP call to succeed. Host teardown stops the heartbeat timer and pending final checks, terminates both sockets, aborts their sources, and waits for source cleanup before returning. Ordinary network GETs to these paths return 426 with no SSE fallback; `toFetchHandler`'s SSE codec serves only the isomorphic in-process carrier.
+
+## Configuration
+
+| Key | Default | Meaning |
+|---|---:|---|
+| `trustedHosts` | `[]` | Non-loopback `host[:port]` authorities accepted by the browser-trust fence. |
+| `maxRequestBodyBytes` | 160 MiB | Maximum buffered JSON body for each `/api` request. |
+| `webSocketHeartbeatIntervalMs` | `30000` | Positive integer interval between Host liveness probes. |
+| `webSocketMissedHeartbeatLimit` | `2` | Positive integer count of consecutive unanswered probes tolerated before the final delayed-Pong check and termination. |
 
 ## Model Experience
 

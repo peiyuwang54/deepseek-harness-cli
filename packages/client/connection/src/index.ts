@@ -9,7 +9,12 @@ import { API_PATH, HOST_EVENTS_PATH, MUX_EVENTS_PATH } from './api-path.ts'
 import { bridge, DEFAULT_MAX_REQUEST_BODY_BYTES } from './http-bridge.ts'
 import { assertTrustedAuthority, isTrustedApiRequest } from './api-request-trust.ts'
 import { HostConnectionService } from './rpc-host.ts'
-import { rejectWebSocketUpgrade, WebSocketDownlinks } from './websocket-downlink.ts'
+import {
+  DEFAULT_WEBSOCKET_HEARTBEAT_INTERVAL_MS,
+  DEFAULT_WEBSOCKET_MISSED_HEARTBEAT_LIMIT,
+  rejectWebSocketUpgrade,
+  WebSocketDownlinks,
+} from './websocket-downlink.ts'
 
 export type {
   ConnectionRpcAuthority,
@@ -59,12 +64,24 @@ export interface ConnectionConfig {
   trustedHosts?: string[]
   /** Maximum buffered JSON body for every `/api` request. */
   maxRequestBodyBytes?: number
+  /** Interval between Host WebSocket liveness probes. */
+  webSocketHeartbeatIntervalMs?: number
+  /** Consecutive unanswered probes tolerated before terminating a downlink. */
+  webSocketMissedHeartbeatLimit?: number
 }
 
 export const Config: z<ConnectionConfig> = z.object({
   trustedHosts: z.array(String).default([]),
   maxRequestBodyBytes: z.natural().min(1).default(DEFAULT_MAX_REQUEST_BODY_BYTES),
+  webSocketHeartbeatIntervalMs: z.natural().min(1).default(DEFAULT_WEBSOCKET_HEARTBEAT_INTERVAL_MS),
+  webSocketMissedHeartbeatLimit: z.natural().min(1).default(DEFAULT_WEBSOCKET_MISSED_HEARTBEAT_LIMIT),
 })
+
+function assertPositiveInteger(value: number, field: string): void {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`client-connection ${field} must be a positive integer`)
+  }
+}
 
 /**
  * Methods gated to loopback even on a trusted-host deployment. Native dialogs
@@ -131,6 +148,12 @@ export function apply(ctx: Context, config?: ConnectionConfig): void {
   // The Loader resolves schema defaults; hand-built test contexts may pass none.
   const trustedHosts = config?.trustedHosts ?? []
   const maxRequestBodyBytes = config?.maxRequestBodyBytes ?? DEFAULT_MAX_REQUEST_BODY_BYTES
+  const webSocketHeartbeatIntervalMs = config?.webSocketHeartbeatIntervalMs
+    ?? DEFAULT_WEBSOCKET_HEARTBEAT_INTERVAL_MS
+  const webSocketMissedHeartbeatLimit = config?.webSocketMissedHeartbeatLimit
+    ?? DEFAULT_WEBSOCKET_MISSED_HEARTBEAT_LIMIT
+  assertPositiveInteger(webSocketHeartbeatIntervalMs, 'webSocketHeartbeatIntervalMs')
+  assertPositiveInteger(webSocketMissedHeartbeatLimit, 'webSocketMissedHeartbeatLimit')
   // Config boundary: a malformed entry fails the load loudly here rather than
   // silently authorizing its hostname prefix at request time.
   for (const entry of trustedHosts) assertTrustedAuthority(entry)
@@ -173,7 +196,10 @@ export function apply(ctx: Context, config?: ConnectionConfig): void {
   ctx.effect(() => ctx.webServer.register(route), 'client-connection: /api route')
   ctx.inject(['apiProxy'], (apiCtx) => {
     assertImageBodyCapacity(apiCtx, maxRequestBodyBytes)
-    const downlinks = new WebSocketDownlinks(apiCtx.apiProxy)
+    const downlinks = new WebSocketDownlinks(apiCtx.apiProxy, {
+      heartbeatIntervalMs: webSocketHeartbeatIntervalMs,
+      missedHeartbeatLimit: webSocketMissedHeartbeatLimit,
+    })
     const registerDownlink = (
       path: string,
       handle: WebUpgradeRoute['handler'],

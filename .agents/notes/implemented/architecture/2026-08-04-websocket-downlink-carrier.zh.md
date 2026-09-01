@@ -20,9 +20,11 @@ WebSocket 只承担 host→browser 下行。所有 client→host unary 调用和
 
 浏览器 abort 或 socket close 会取消对应的 host 流；插件 teardown 还会等待该 source iterator 完成清理。host 流中途抛错时，载体发送一个现有的 `stream/error` frame 后关闭 socket；客户端把该 frame 收敛为连接丢失，不投递给业务 sink。每条 WebSocket 独立报告 open，既有 readiness handshake 仍等待 mux、host 都 open 且 `host.describe` HTTP 调用成功后才发布 connected。
 
+Host 会发送可配置的 WebSocket 心跳探测，默认间隔 30 秒，并允许连续漏答两次 Pong。Pong 会清零计数。达到上限时，系统会把终止安排到下一个事件循环轮次并再次检查计数，因此已经在途的延迟 Pong 仍可保留 socket。任一下行结束都会启用既有的 generation 级重连。Teardown 会先清除 interval 与所有待执行的最终检查，再终止 socket 并等待 source 清理，因此资源释放后不会残留存活探测 callback。
+
 ## Verification
 
-webserver 约定测试钉住 upgrade pathname 分发、重复注册拒绝、资源释放与 teardown；connection 的真实网络测试钉住两条 WebSocket 各自的信任检查、open、schema 信封、frame 顺序、流错误与关闭时取消；客户端测试同时证明下行创建 `ws:`／`wss:` URL，而 unary 与 `respond` 仍调用 HTTP `fetch`。组装后的 keyless 浏览器回放继续覆盖 Chromium、真实 host、HTTP 上行与 WebSocket 下行整链。
+webserver 约定测试钉住 upgrade pathname 分发、重复注册拒绝、资源释放与 teardown；connection 的真实网络测试钉住两条 WebSocket 各自的信任检查、open、schema 信封、frame 顺序、流错误、关闭时取消、连续漏答上限与延迟 Pong 恢复；客户端测试同时证明下行创建 `ws:`／`wss:` URL，而 unary 与 `respond` 仍调用 HTTP `fetch`。组装后的 keyless 浏览器回放继续覆盖 Chromium、真实 host、HTTP 上行与 WebSocket 下行整链。
 
 ## Alternatives considered
 

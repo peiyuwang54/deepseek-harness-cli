@@ -103,6 +103,15 @@ describe('connection node half', () => {
     expect(routes).toHaveLength(0)
   })
 
+  it('fails loud on invalid WebSocket heartbeat policy', () => {
+    const ctx = new Context()
+    ctx.provide('webServer', fakeHttpServer([], []) as WebServer)
+    expect(() => { apply(ctx, { webSocketHeartbeatIntervalMs: 0 }) })
+      .toThrow(/webSocketHeartbeatIntervalMs must be a positive integer/)
+    expect(() => { apply(ctx, { webSocketMissedHeartbeatLimit: 1.5 }) })
+      .toThrow(/webSocketMissedHeartbeatLimit must be a positive integer/)
+  })
+
   it('fails the load on a trustedHosts entry that is not a bare authority', async () => {
     const routes: WebRoute[] = []
     const upgrades: WebUpgradeRoute[] = []

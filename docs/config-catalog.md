@@ -409,10 +409,14 @@ export interface ConnectionConfig {
   trustedHosts?: string[]
   /** Maximum buffered JSON body for every `/api` request. */
   maxRequestBodyBytes?: number
+  /** Interval between Host WebSocket liveness probes. */
+  webSocketHeartbeatIntervalMs?: number
+  /** Consecutive unanswered probes tolerated before terminating a downlink. */
+  webSocketMissedHeartbeatLimit?: number
 }
 ```
 
-Source: [`packages/client/connection/src/index.ts:50`](../packages/client/connection/src/index.ts)
+Source: [`packages/client/connection/src/index.ts:55`](../packages/client/connection/src/index.ts)
 
 <a id="deepseek-aidsh-client-hmr"></a>
 
@@ -1345,8 +1349,9 @@ export interface StdioConfig {
   transport: 'stdio'
   /**
    * Stable local namespace for this server's model-facing tool names
-   * (`mcp__<serverName>__<rawName>`). Must match `[A-Za-z0-9_-]{1,32}` and be
-   * unique across live mcp-client instances.
+   * (`mcp__<serverName>__<rawName>`). Must match `[A-Za-z0-9_:@/.-]+` and be
+   * unique across live mcp-client instances. Package-style identities such as
+   * `npm:@modelcontextprotocol/server-sequential.thinking` are accepted.
    */
   serverName: string
   /** Executable used to start the server. */
@@ -1371,8 +1376,9 @@ export interface StreamableHttpConfig {
   transport: 'streamable-http'
   /**
    * Stable local namespace for this server's model-facing tool names
-   * (`mcp__<serverName>__<rawName>`). Must match `[A-Za-z0-9_-]{1,32}` and be
-   * unique across live mcp-client instances.
+   * (`mcp__<serverName>__<rawName>`). Must match `[A-Za-z0-9_:@/.-]+` and be
+   * unique across live mcp-client instances. Package-style identities such as
+   * `npm:@modelcontextprotocol/server-sequential.thinking` are accepted.
    */
   serverName: string
   /** MCP endpoint URL. */
@@ -1404,7 +1410,7 @@ export interface ReconnectConfig {
 }
 ```
 
-Source: [`packages/mcp/mcp-client/src/index.ts:103`](../packages/mcp/mcp-client/src/index.ts)
+Source: [`packages/mcp/mcp-client/src/index.ts:105`](../packages/mcp/mcp-client/src/index.ts)
 
 <a id="deepseek-aidsh-message-feedback"></a>
 
@@ -2064,10 +2070,16 @@ export interface Config {
    * this is spilled and replaced with a preview derived from this same budget.
    */
   maxInlineBytes?: number
+  /**
+   * Exact ToolRuntime-name overrides, in UTF-8 bytes. An entry applies even
+   * when `maxInlineBytes` is omitted; unlisted tools use the global cap or pass
+   * through when no global cap exists.
+   */
+  toolMaxInlineBytes?: Record<string, number>
 }
 ```
 
-Source: [`packages/spill/spill-policy/src/index.ts:60`](../packages/spill/spill-policy/src/index.ts)
+Source: [`packages/spill/spill-policy/src/index.ts:62`](../packages/spill/spill-policy/src/index.ts)
 
 <a id="deepseek-aidsh-storage-domain"></a>
 

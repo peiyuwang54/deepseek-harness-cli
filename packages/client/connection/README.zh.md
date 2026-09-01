@@ -10,7 +10,16 @@ node 半侧在桥接或 upgrade 前守卫 `/api` 下的每个入口（`src/api-r
 
 ## `/api` WebSocket 下行
 
-`/api/events.mux` 与 `/api/events.host` 各接受一条 WebSocket upgrade，并只向浏览器发送对应的 `ServerRequest` 文本消息；客户端不会在这些 socket 上发送业务数据。任一 socket 结束都会使当前 connection generation 失败并重建两条流，连接就绪仍要求两条 socket 均已打开且 `host.describe` HTTP 调用成功。Host teardown 会终止两条 socket、中止各自的 source，并等待 source 清理完成后再返回。普通网络 GET 这些路径会返回 426，不保留 SSE（Server-Sent Events）回退；`toFetchHandler` 的 SSE 编解码只服务进程内同构载体。
+`/api/events.mux` 与 `/api/events.host` 各接受一条 WebSocket upgrade，并只向浏览器发送对应的 `ServerRequest` 文本消息；客户端不会在这些 socket 上发送业务数据。Host 每隔 `webSocketHeartbeatIntervalMs` 探测每条 socket；Pong 会清零连续漏答计数，仍保持打开但连续 `webSocketMissedHeartbeatLimit` 次未回答的 socket 会再获得一个事件循环轮次来接收延迟 Pong，之后才会终止。任一 socket 结束都会使当前 connection generation 失败并重建两条流，连接就绪仍要求两条 socket 均已打开且 `host.describe` HTTP 调用成功。Host teardown 会停止心跳 timer 与待执行的最终检查、终止两条 socket、中止各自的 source，并等待 source 清理完成后再返回。普通网络 GET 这些路径会返回 426，不保留 SSE（Server-Sent Events）回退；`toFetchHandler` 的 SSE 编解码只服务进程内同构载体。
+
+## 配置
+
+| 键 | 默认值 | 含义 |
+|---|---:|---|
+| `trustedHosts` | `[]` | 浏览器信任栅栏接受的非 loopback `host[:port]` authority。 |
+| `maxRequestBodyBytes` | 160 MiB | 每个 `/api` 请求允许缓冲的最大 JSON body。 |
+| `webSocketHeartbeatIntervalMs` | `30000` | Host 两次存活探测之间的正整数毫秒间隔。 |
+| `webSocketMissedHeartbeatLimit` | `2` | 执行延迟 Pong 最终检查并终止前，允许连续漏答的正整数次数。 |
 
 ## 模型体验
 

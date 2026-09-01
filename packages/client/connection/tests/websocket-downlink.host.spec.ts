@@ -155,6 +155,98 @@ describe('WebSocket downlinks', () => {
     await vi.waitFor(() => { expect(aborted).toBe(true) })
   })
 
+  it('requires two missed heartbeats before terminating an unresponsive socket', async () => {
+    const downlinks = new WebSocketDownlinks(api(idle, idle), {
+      heartbeatIntervalMs: 20,
+      missedHeartbeatLimit: 2,
+    })
+    const host = await serve(downlinks)
+    running.push(host.close)
+    const socket = new WebSocket(`${host.origin}${MUX_EVENTS_PATH}`, { autoPong: false })
+    await once(socket, 'open')
+    const accepted = await acceptedSocket(downlinks)
+    const terminated = vi.spyOn(accepted, 'terminate')
+    const closed = once(socket, 'close')
+
+    await once(socket, 'ping')
+    await once(socket, 'ping')
+    expect(terminated).not.toHaveBeenCalled()
+    await vi.waitFor(() => { expect(terminated).toHaveBeenCalledOnce() })
+    await closed
+  })
+
+  it('keeps a slow socket when Pong arrives before the final liveness check', async () => {
+    const downlinks = new WebSocketDownlinks(api(idle, idle), {
+      heartbeatIntervalMs: 20,
+      missedHeartbeatLimit: 2,
+    })
+    const host = await serve(downlinks)
+    running.push(host.close)
+    const socket = new WebSocket(`${host.origin}${MUX_EVENTS_PATH}`, { autoPong: false })
+    await once(socket, 'open')
+    const accepted = await acceptedSocket(downlinks)
+    const terminated = vi.spyOn(accepted, 'terminate')
+
+    await once(socket, 'ping')
+    await once(socket, 'ping')
+    let finalCheck: (() => void) | undefined
+    const immediate = vi.spyOn(globalThis, 'setImmediate').mockImplementation((callback) => {
+      finalCheck = callback
+      return 0 as unknown as NodeJS.Immediate
+    })
+    try {
+      await vi.waitFor(() => { expect(finalCheck).toBeDefined() })
+      accepted.emit('pong', Buffer.alloc(0))
+      finalCheck?.()
+      expect(terminated).not.toHaveBeenCalled()
+    } finally {
+      immediate.mockRestore()
+      const closed = once(socket, 'close')
+      socket.close()
+      await closed
+    }
+  })
+
+  it('does not ping a socket that is already closing', async () => {
+    const downlinks = new WebSocketDownlinks(api(idle, idle), {
+      heartbeatIntervalMs: 20,
+      missedHeartbeatLimit: 2,
+    })
+    const host = await serve(downlinks)
+    running.push(host.close)
+    const socket = new WebSocket(`${host.origin}${MUX_EVENTS_PATH}`)
+    await once(socket, 'open')
+    const accepted = await acceptedSocket(downlinks)
+    const ping = vi.spyOn(accepted, 'ping')
+
+    socket.pause()
+    accepted.close()
+    expect(accepted.readyState).toBe(WebSocket.CLOSING)
+    await new Promise<void>((resolve) => { setTimeout(resolve, 25) })
+    expect(ping).not.toHaveBeenCalled()
+
+    const closed = once(socket, 'close')
+    socket.resume()
+    await closed
+  })
+
+  it('cancels pending final heartbeat checks during teardown', async () => {
+    const downlinks = new WebSocketDownlinks(api(idle, idle))
+    const pending = setImmediate(() => {})
+    const checks = (downlinks as unknown as {
+      finalHeartbeatChecks: Set<NodeJS.Immediate>
+    }).finalHeartbeatChecks
+    checks.add(pending)
+    const clear = vi.spyOn(globalThis, 'clearImmediate')
+
+    try {
+      await downlinks.close()
+      expect(clear).toHaveBeenCalledWith(pending)
+    } finally {
+      clear.mockRestore()
+    }
+  })
+
   it('sends stream/error before closing when a source fails', async () => {
     const downlinks = new WebSocketDownlinks(api(
       async function * () {

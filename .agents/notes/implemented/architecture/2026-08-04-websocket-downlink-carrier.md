@@ -20,9 +20,11 @@ WebSocket carries only the host→browser downlink. All client→host unary call
 
 A browser abort or socket close cancels the corresponding host stream; plugin teardown also waits for that source iterator's cleanup. If a host stream throws midway, the carrier sends one existing `stream/error` frame and then closes the socket; the client treats that frame as connection loss rather than delivering it to a business sink. Each WebSocket reports open independently, and the existing readiness handshake still waits until mux and host are both open and the `host.describe` HTTP call has succeeded before publishing connected.
 
+The Host sends configurable WebSocket heartbeat probes, defaulting to 30 seconds, and tolerates two consecutive missed Pong responses. A Pong resets the count. Reaching the limit schedules termination for the next event-loop turn and checks the count again, so a delayed Pong that was already in transit can preserve the socket. Ending either downlink activates the existing generation-wide reconnect. Teardown clears the interval and every pending final check before terminating sockets and awaiting source cleanup, so no liveness callback survives disposal.
+
 ## Verification
 
-Webserver contract tests pin upgrade-pathname dispatch, duplicate-registration rejection, disposal, and teardown; connection real-network tests pin each WebSocket's trust check, open, schema envelope, frame order, stream error, and close cancellation; client tests also prove that downlinks create `ws:`/`wss:` URLs while unary calls and `respond` still use HTTP `fetch`. The assembled keyless browser replay continues to cover Chromium, a real host, HTTP uplink, and the full WebSocket downlink chain.
+Webserver contract tests pin upgrade-pathname dispatch, duplicate-registration rejection, disposal, and teardown; connection real-network tests pin each WebSocket's trust check, open, schema envelope, frame order, stream error, close cancellation, consecutive missed-heartbeat threshold, and delayed-Pong rescue; client tests also prove that downlinks create `ws:`/`wss:` URLs while unary calls and `respond` still use HTTP `fetch`. The assembled keyless browser replay continues to cover Chromium, a real host, HTTP uplink, and the full WebSocket downlink chain.
 
 ## Alternatives considered
 

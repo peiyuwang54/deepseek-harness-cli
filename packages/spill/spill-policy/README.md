@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-The **tool-result spill policy**: a `tools/post-execute` transformer that keeps oversized plain-text tool results out of the model's context. When a final result exceeds `maxInlineBytes`, it saves the FULL text through [`ctx.spillStore`](../spill) and replaces the model-facing result with a bounded head/tail preview plus the backend's locator and retrieval hint.
+The **tool-result spill policy**: a `tools/post-execute` transformer that keeps oversized plain-text tool results out of the model's context. When a final result exceeds its exact `toolMaxInlineBytes` entry or the `maxInlineBytes` fallback, it saves the FULL text through [`ctx.spillStore`](../spill) and replaces the model-facing result with a bounded head/tail preview plus the backend's locator and retrieval hint.
 
 This plugin registers **no service** and owns no storage or preview mechanics: preview is [`@deepseek-ai/dsh-output-retention`](../../util/output-retention) (`TextRetainer`), storage is `ctx.spillStore`. It only decides WHEN to spill and composes the notice.
 
@@ -10,15 +10,18 @@ This plugin registers **no service** and owns no storage or preview mechanics: p
 
 | Key | Default | Meaning |
 |---|---|---|
-| `maxInlineBytes` | *(omitted)* | Model-facing context cap for a plain-text result, in UTF-8 bytes (a non-negative integer; validated at load). **Omitted disables the policy entirely** (the plugin registers nothing). When set, a larger result is spilled and replaced with a preview derived from the same budget (head/tail split). |
+| `maxInlineBytes` | *(omitted)* | Global fallback cap for a plain-text result, in UTF-8 bytes (a non-negative integer; validated at load). An unlisted tool is uncapped when this field is omitted. |
+| `toolMaxInlineBytes` | `{}` | Exact ToolRuntime-name to UTF-8 byte-cap map. An entry takes precedence over `maxInlineBytes` and works without a global fallback. |
+
+Omitting `maxInlineBytes` and leaving `toolMaxInlineBytes` empty disables the policy entirely: the plugin registers nothing. This permits a deployment to cap only selected tools, including normalized MCP public names, without changing unrelated results.
 
 ## Behavior
 
 1. Let the tool run (delegates via `next()`, so it bounds whatever a downstream hook accepted).
 2. Skip nested executions (`exec.parent` is present — their DURABLE copy is bounded by the dispatch-log arm below), accepted value replacements (the registry must revalidate and rerender them), `read` (avoids a `read → spill → read again` loop), and any non-`accept` decision (a `block`'s corrective feedback passes through).
 3. Flatten the accepted content only when it is **plain text** (all `text` blocks); a result with any non-text block is left untouched.
-4. If its UTF-8 size is `≤ maxInlineBytes`, leave it unchanged.
-5. Otherwise save the full text and replace the result with a preview + this notice, sized so the whole replacement (preview + blank line + notice) stays within `maxInlineBytes` — the notice's byte cost is reserved out of the budget, so the preview shrinks to fit and the model-facing result never exceeds the cap:
+4. Resolve an exact `toolMaxInlineBytes` entry first, then `maxInlineBytes`; an uncapped tool passes through. If the UTF-8 size is within the resolved cap, leave it unchanged.
+5. Otherwise save the full text and replace the result with a preview + this notice, sized so the whole replacement (preview + blank line + notice) stays within the resolved cap — the notice's byte cost is reserved out of the budget, so the preview shrinks to fit and the model-facing result never exceeds the cap:
 
    ```text
    <retained head/tail preview>
@@ -26,7 +29,7 @@ This plugin registers **no service** and owns no storage or preview mechanics: p
    (Omitted N bytes. Full formatted result stored at: /…/session-…/…-web_fetch.txt. Use read with offset/limit, or grep this path to search within it.)
    ```
 
-   When the notice alone fills the budget (a tiny cap or a long locator) the preview is empty and only the notice is returned. If even that notice-only replacement would exceed `maxInlineBytes`, the policy keeps the inline result — it never emits a replacement over the cap (and a within-cap replacement is always smaller than the original, so this also means spilling never adds bytes).
+   When the notice alone fills the budget (a tiny cap or a long locator) the preview is empty and only the notice is returned. If even that notice-only replacement would exceed the resolved cap, the policy keeps the inline result — it never emits a replacement over the cap (and a within-cap replacement is always smaller than the original, so this also means spilling never adds bytes).
 
 **Best-effort:** no session owner, no `ctx.spillStore` backend, or a `saveText` rejection ⇒ the policy logs a warning and returns the original result. A spill failure never turns a successful call into an `isError` or hides the inline result. A successful replacement changes only `content`; the canonical programmatic value is preserved.
 
@@ -42,11 +45,11 @@ The policy sees only the FINAL formatted model-facing result—not a tool's inte
 
 #### What the model sees
 
-Results at or below `maxInlineBytes`, nested results, `read` results, blocked decisions, and results containing non-text blocks are unchanged. An oversized plain-text model-facing result becomes a bounded head/tail preview followed by `(Omitted <bytes> bytes. Full formatted result stored at: <locator>. <retrievalHint>)`; storage or ownership failures leave the original result visible.
+Uncapped results, results within their resolved cap, nested results, `read` results, blocked decisions, and results containing non-text blocks are unchanged. An oversized plain-text model-facing result becomes a bounded head/tail preview followed by `(Omitted <bytes> bytes. Full formatted result stored at: <locator>. <retrievalHint>)`; storage or ownership failures leave the original result visible.
 
 #### Token effect
 
-A successful replacement is at most `maxInlineBytes` UTF-8 bytes and remains in history until compaction; the full spill text is not resent to the model.
+A successful replacement is at most the resolved per-tool or global UTF-8 byte cap and remains in history until compaction; the full spill text is not resent to the model.
 
 #### KV Cache effect
 

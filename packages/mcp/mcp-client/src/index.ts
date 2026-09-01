@@ -42,8 +42,8 @@ export const inject = ['tools', 'mcp']
 /** Default timeout for individual MCP tool calls (ms). */
 const DEFAULT_TOOL_CALL_TIMEOUT_MS = 60_000
 
-/** Valid `serverName`, kept below the public tool-name budget. */
-const SERVER_NAME_PATTERN = /^[A-Za-z0-9_-]{1,32}$/
+/** Valid `serverName`, including package-style MCP catalog identities. */
+const SERVER_NAME_PATTERN = /^[A-Za-z0-9_:@/.-]+$/
 
 // ---- Config ----
 
@@ -53,8 +53,9 @@ export interface StdioConfig {
   transport: 'stdio'
   /**
    * Stable local namespace for this server's model-facing tool names
-   * (`mcp__<serverName>__<rawName>`). Must match `[A-Za-z0-9_-]{1,32}` and be
-   * unique across live mcp-client instances.
+   * (`mcp__<serverName>__<rawName>`). Must match `[A-Za-z0-9_:@/.-]+` and be
+   * unique across live mcp-client instances. Package-style identities such as
+   * `npm:@modelcontextprotocol/server-sequential.thinking` are accepted.
    */
   serverName: string
   /** Executable used to start the server. */
@@ -79,8 +80,9 @@ export interface StreamableHttpConfig {
   transport: 'streamable-http'
   /**
    * Stable local namespace for this server's model-facing tool names
-   * (`mcp__<serverName>__<rawName>`). Must match `[A-Za-z0-9_-]{1,32}` and be
-   * unique across live mcp-client instances.
+   * (`mcp__<serverName>__<rawName>`). Must match `[A-Za-z0-9_:@/.-]+` and be
+   * unique across live mcp-client instances. Package-style identities such as
+   * `npm:@modelcontextprotocol/server-sequential.thinking` are accepted.
    */
   serverName: string
   /** MCP endpoint URL. */

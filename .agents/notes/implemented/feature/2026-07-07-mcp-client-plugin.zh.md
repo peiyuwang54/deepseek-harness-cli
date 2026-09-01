@@ -54,7 +54,7 @@ interface StreamableHttpConfig {
 type Config = StdioConfig | StreamableHttpConfig
 ```
 
-`serverName` 是稳定的本地标识，用于在模型可见名称（见下文）中为该服务器的工具提供命名空间。它有意设计为用户配置，而非远端的 `serverInfo.name`：远端名称是不可信输入、跨部署不唯一（同一服务器的生产和预发布实例报告相同名称）、且可能在服务器升级时变化——这些都不得静默重命名模型可见工具。多个活跃实例使用重复的 `serverName` 属于配置错误：后加载的实例在启动时以可操作的错误消息失败，绝不静默覆盖或跳过。短 `serverName`（如 `gh`）也是缩短公开名称的配置手段。
+`serverName` 是稳定的本地标识，用于在模型可见名称（见下文）中为该服务器的工具提供命名空间。它有意设计为用户配置，而非远端的 `serverInfo.name`：远端名称是不可信输入、跨部署不唯一（同一服务器的生产和预发布实例报告相同名称）、且可能在服务器升级时变化——这些都不得静默重命名模型可见工具。名称接受 `[A-Za-z0-9_:@/.-]+`，包括 `npm:@modelcontextprotocol/server-sequential.thinking` 等 catalog 标识；只有公开工具名会被规范化，注册表、生命周期、OAuth 与 wire 标识仍保留配置值。多个活跃实例使用重复的 `serverName` 属于配置错误：后加载的实例在启动时以可操作的错误消息失败，绝不静默覆盖或跳过。短 `serverName`（如 `gh`）也是缩短公开名称的配置手段。
 
 `cordis.yml` 用法示例：
 

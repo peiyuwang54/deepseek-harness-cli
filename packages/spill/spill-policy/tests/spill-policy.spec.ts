@@ -89,7 +89,11 @@ function textOf(content: ContentBlock[]): string {
 }
 
 describe('disabled mode', () => {
-  it('registers no post-execute listener when maxInlineBytes is omitted', async () => {
+  it('is a direct-apply no-op when both cap settings are absent', () => {
+    expect(() => { SpillPolicy.apply(new Context(), {}) }).not.toThrow()
+  })
+
+  it('registers no post-execute listener when both cap settings are omitted', async () => {
     const { ctx, spill } = await setup({})
     ctx.tools.register(textTool('big', 'x'.repeat(1000)))
     const result = await ctx.tools.execute(exec('big'))
@@ -120,6 +124,12 @@ describe('config validation', () => {
 
   it('rejects a fractional maxInlineBytes at load', async () => {
     await expect(setup({ maxInlineBytes: 1.5 })).rejects.toThrow(/non-negative integer/)
+  })
+
+  it('rejects invalid per-tool caps and empty tool names at load', async () => {
+    await expect(setup({ toolMaxInlineBytes: { big: -1 } })).rejects.toThrow(/toolMaxInlineBytes\["big"\]/)
+    await expect(setup({ toolMaxInlineBytes: { big: 1.5 } })).rejects.toThrow(/non-negative integer/)
+    await expect(setup({ toolMaxInlineBytes: { '': 10 } })).rejects.toThrow(/non-empty tool names/)
   })
 
 })
@@ -168,6 +178,37 @@ describe('oversized plain-text replacement', () => {
     const result = await ctx.tools.execute(exec('small'))
     expect(textOf(result.content)).toBe('tiny')
     expect(spill?.saves).toHaveLength(0)
+  })
+
+  it('uses an exact tool override before the global fallback', async () => {
+    const { ctx, spill } = await setup({
+      maxInlineBytes: 1_000,
+      toolMaxInlineBytes: { limited: 200 },
+    })
+    const body = 'x'.repeat(500)
+    ctx.tools.register(textTool('limited', body))
+    ctx.tools.register(textTool('ordinary', body))
+
+    const limited = await ctx.tools.execute(exec('limited'))
+    const ordinary = await ctx.tools.execute(exec('ordinary'))
+
+    expect(Buffer.byteLength(textOf(limited.content), 'utf8')).toBeLessThanOrEqual(200)
+    expect(textOf(ordinary.content)).toBe(body)
+    expect(spill?.saves.map(save => save.source.toolName)).toEqual(['limited'])
+  })
+
+  it('can cap one tool without setting a global fallback', async () => {
+    const { ctx, spill } = await setup({ toolMaxInlineBytes: { limited: 200 } })
+    const body = 'x'.repeat(500)
+    ctx.tools.register(textTool('limited', body))
+    ctx.tools.register(textTool('uncapped', body))
+
+    const limited = await ctx.tools.execute(exec('limited'))
+    const uncapped = await ctx.tools.execute(exec('uncapped'))
+
+    expect(textOf(limited.content)).toContain('Full formatted result stored at')
+    expect(textOf(uncapped.content)).toBe(body)
+    expect(spill?.saves).toHaveLength(1)
   })
 
   it('leaves a result with a non-text block unchanged', async () => {
@@ -236,12 +277,16 @@ describe('read skip', () => {
 
 describe('the durable dispatch-log arm', () => {
   /** Boot code mode + the policy + the worker runtime; run one program via the real bridge. */
-  async function runCodeWith(program: string, maxInlineBytes: number, extraTools: ToolDefinition[] = []) {
+  async function runCodeWith(
+    program: string,
+    policy: number | SpillPolicy.Config,
+    extraTools: ToolDefinition[] = [],
+  ) {
     const ctx = new Context()
     await ctx.plugin(SystemPrompt)
     await ctx.plugin(ToolRuntime, { mode: 'code' })
     await ctx.plugin(StubStore)
-    await ctx.plugin(SpillPolicy, { maxInlineBytes })
+    await ctx.plugin(SpillPolicy, typeof policy === 'number' ? { maxInlineBytes: policy } : policy)
     await ctx.plugin(WorkerThreadCodeRuntime, {})
     const events: { type: string; data: unknown }[] = []
     const agent = {
@@ -284,6 +329,27 @@ describe('the durable dispatch-log arm', () => {
       source: { toolName: 'huge_read', callId: 'parent-1:code:1', label: 'dispatch' },
     })
     expect(save?.content).toBe('H'.repeat(2_000))
+  })
+
+  it('uses the sub-call tool override without requiring a global cap', async () => {
+    const { events, spill } = await runCodeWith(
+      'return (await tools.huge_read({}))[0].text.length',
+      { toolMaxInlineBytes: { huge_read: 200 } },
+    )
+    const settle = events.find(event => event.type === 'tool/code-dispatch')
+    const logged = (settle!.data as { content: { text: string }[] }).content[0]!.text
+    expect(Buffer.byteLength(logged, 'utf8')).toBeLessThanOrEqual(200)
+    expect(spill.saves.filter(entry => entry.source.label === 'dispatch')).toHaveLength(1)
+  })
+
+  it('leaves an unlisted sub-call uncapped when only another tool has an override', async () => {
+    const { events, spill } = await runCodeWith(
+      'return (await tools.huge_read({}))[0].text.length',
+      { toolMaxInlineBytes: { small_read: 200 } },
+    )
+    const settle = events.find(event => event.type === 'tool/code-dispatch')
+    expect((settle!.data as { content: { text: string }[] }).content[0]!.text).toBe('H'.repeat(2_000))
+    expect(spill.saves.filter(entry => entry.source.label === 'dispatch')).toHaveLength(0)
   })
 
   it('leaves a non-text sub-result log unchanged (flatten declines)', async () => {

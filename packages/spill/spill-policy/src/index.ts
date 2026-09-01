@@ -1,10 +1,10 @@
 /**
  * The spill-policy PLUGIN: a `tools/post-execute` result transformer that keeps
  * oversized plain-text tool results out of the model's context. When a final
- * result's UTF-8 size exceeds `maxInlineBytes`, it saves the FULL text to a
- * session-scoped spill artifact (`ctx.spillStore`) and replaces the
- * model-facing result with a bounded head/tail preview plus the backend's
- * locator and retrieval guidance.
+ * result's UTF-8 size exceeds its exact tool override or `maxInlineBytes`, it
+ * saves the FULL text to a session-scoped spill artifact (`ctx.spillStore`)
+ * and replaces the model-facing result with a bounded head/tail preview plus
+ * the backend's locator and retrieval guidance.
  *
  * It registers NO service and owns NO storage or preview mechanics: preview is
  * `@deepseek-ai/dsh-output-retention` (`TextRetainer`), storage is `ctx.spillStore`.
@@ -17,7 +17,8 @@
  *
  * ## Deliberately narrow
  *
- * - Omitted `maxInlineBytes` ⇒ the plugin registers nothing (a true no-op).
+ * - Both `maxInlineBytes` and `toolMaxInlineBytes` omitted or empty ⇒ the
+ *   plugin registers nothing (a true no-op).
  * - Plain-text results only: a result carrying any non-text block is left
  *   untouched (the policy knows only the final formatted text, not tool
  *   internals).
@@ -64,6 +65,12 @@ export interface Config {
    * this is spilled and replaced with a preview derived from this same budget.
    */
   maxInlineBytes?: number
+  /**
+   * Exact ToolRuntime-name overrides, in UTF-8 bytes. An entry applies even
+   * when `maxInlineBytes` is omitted; unlisted tools use the global cap or pass
+   * through when no global cap exists.
+   */
+  toolMaxInlineBytes?: Record<string, number>
 }
 
 /** Cordis plugin name used by loader diagnostics. */
@@ -74,6 +81,7 @@ export const inject = ['tools']
 
 export const Config: z<Config> = z.object({
   maxInlineBytes: z.number(),
+  toolMaxInlineBytes: z.dict(z.number()),
 })
 
 /** All-text content flattened to one UTF-8 string, or `undefined` if any block is non-text. */
@@ -109,16 +117,28 @@ function spillNotice(omitted: Omitted, ref: SpillRef): string {
 
 export function apply(ctx: Context, config: Config): void {
   const maxInlineBytes = config.maxInlineBytes
-  // Omitted ⇒ no automatic spill policy: register nothing at all.
-  if (maxInlineBytes === undefined) return
+  const toolMaxInlineBytes = config.toolMaxInlineBytes ?? {}
+  // Both omitted/empty ⇒ no automatic spill policy: register nothing at all.
+  if (maxInlineBytes === undefined && Object.keys(toolMaxInlineBytes).length === 0) return
+
   // Validate at LOAD, not per call: a negative/fractional cap would reach
   // TextRetainer's assertBudget and throw, turning every oversized-result call
   // into an isError. A bad config must fail the deployment, not the tool.
-  if (!Number.isInteger(maxInlineBytes) || maxInlineBytes < 0) {
-    throw new Error(`spill-policy: maxInlineBytes must be a non-negative integer (got ${maxInlineBytes})`)
+  function assertCap(value: number, field: string): void {
+    if (!Number.isInteger(value) || value < 0) {
+      throw new Error(`spill-policy: ${field} must be a non-negative integer (got ${value})`)
+    }
   }
-  // Narrowed once for the nested arms (closure narrowing does not survive awaits).
-  const cap: number = maxInlineBytes
+  if (maxInlineBytes !== undefined) assertCap(maxInlineBytes, 'maxInlineBytes')
+  for (const [toolName, value] of Object.entries(toolMaxInlineBytes)) {
+    if (toolName.length === 0) throw new Error('spill-policy: toolMaxInlineBytes keys must be non-empty tool names')
+    assertCap(value, `toolMaxInlineBytes[${JSON.stringify(toolName)}]`)
+  }
+
+  /** Exact per-tool cap, global fallback, or `undefined` when this tool is uncapped. */
+  function capFor(toolName: string): number | undefined {
+    return Object.hasOwn(toolMaxInlineBytes, toolName) ? toolMaxInlineBytes[toolName] : maxInlineBytes
+  }
 
   /**
    * Spill `text` and build the bounded replacement (preview + notice), or
@@ -134,6 +154,7 @@ export function apply(ctx: Context, config: Config): void {
     toolName: string,
     callId: CallId,
     label: 'result' | 'dispatch',
+    cap: number,
   ): Promise<string | undefined> {
     if (sessionId === undefined) {
       ctx.logger.warn(`spill-policy: no session owner for ${toolName} ${label}; keeping the inline content`)
@@ -196,13 +217,15 @@ export function apply(ctx: Context, config: Config): void {
     if (decision.kind !== 'accept' || Object.hasOwn(decision, 'value')
       || exec.parent !== undefined || exec.name === 'read') return decision
 
+    const cap = capFor(exec.name)
+    if (cap === undefined) return decision
     const content = decision.content ?? result.content
     const text = flattenPlainText(content)
     if (text === undefined) return decision
     const totalBytes = Buffer.byteLength(text, 'utf8')
-    if (totalBytes <= maxInlineBytes) return decision
+    if (totalBytes <= cap) return decision
 
-    const replacedText = await spillReplacement(text, totalBytes, ownerSessionId(exec), exec.name, exec.callId, 'result')
+    const replacedText = await spillReplacement(text, totalBytes, ownerSessionId(exec), exec.name, exec.callId, 'result', cap)
     if (replacedText === undefined) return decision
     const replaced: ContentBlock[] = [{ type: 'text', text: replacedText }]
     return { kind: 'accept', content: replaced, ...decision.additionalContexts ? { additionalContexts: decision.additionalContexts } : {} }
@@ -221,11 +244,13 @@ export function apply(ctx: Context, config: Config): void {
     // happen here, and read is precisely the tool that produces huge logs.
     const text = flattenPlainText(content)
     if (text === undefined) return content
+    const cap = capFor(dispatch.name)
+    if (cap === undefined) return content
     const totalBytes = Buffer.byteLength(text, 'utf8')
-    if (totalBytes <= maxInlineBytes) return content
+    if (totalBytes <= cap) return content
 
     const replacedText = await spillReplacement(
-      text, totalBytes, ownerSessionId(dispatch.exec), dispatch.name, dispatch.subCallId, 'dispatch')
+      text, totalBytes, ownerSessionId(dispatch.exec), dispatch.name, dispatch.subCallId, 'dispatch', cap)
     if (replacedText === undefined) return content
     return [{ type: 'text', text: replacedText }]
   }, { prepend: true })

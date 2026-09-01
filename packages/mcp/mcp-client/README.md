@@ -39,12 +39,14 @@ One plugin instance per MCP server in `cordis.yml`:
 
 The model sees `mcp__github__create_issue`, `mcp__web__search`, … — the same server-qualified shape Claude Code and Codex use. HMR hot-swaps: editing the entry triggers disconnect + reconnect without process restart; an unchanged `serverName` reproduces identical tool names.
 
+Package-style server identities are accepted directly, so a catalog entry may keep an identity such as `npm:@modelcontextprotocol/server-sequential.thinking` instead of inventing a local alias. Characters outside the model tool-name vocabulary are normalized only in the public tool name; the MCP registry, connection status, OAuth lookup, logs, and wire calls retain the configured identity.
+
 ## Config
 
 | Field | Transport | Required | Description |
 |---|---|---|---|
 | `transport` | both | yes | `"stdio"` or `"streamable-http"` |
-| `serverName` | both | yes | Namespace for this server's model-facing tool names; `[A-Za-z0-9_-]{1,32}`, unique across live instances |
+| `serverName` | both | yes | Namespace for this server's model-facing tool names; `[A-Za-z0-9_:@/.-]+`, unique across live instances; package-style identities are accepted |
 | `command` | stdio | yes | Executable to spawn |
 | `args` | stdio | no | Arguments passed to the command |
 | `env` | stdio | no | Extra env vars merged on top of scrubbed ambient env |

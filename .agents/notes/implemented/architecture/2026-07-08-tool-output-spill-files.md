@@ -61,24 +61,26 @@ interface SpillRef {
 
 ### Spill policy
 
-`dsh-spill-policy` is a `tools/post-execute` result transformer with one configuration knob:
+`dsh-spill-policy` is a `tools/post-execute` result transformer with a global fallback and exact per-tool overrides:
 
 ```ts ignore-check
 interface Config {
-  /** Omitted means no automatic spill policy. Present means apply to oversized plain text tool results. */
+  /** Omitted leaves tools without an exact override uncapped. */
   maxInlineBytes?: number
+  /** Exact ToolRuntime-name overrides; an entry works without a global fallback. */
+  toolMaxInlineBytes?: Record<string, number>
 }
 ```
 
-When `maxInlineBytes` is omitted the plugin registers nothing (a true no-op). When set, it applies a default policy to final plain-text tool results:
+When `maxInlineBytes` is omitted and `toolMaxInlineBytes` is empty, the plugin registers nothing (a true no-op). Otherwise an exact tool entry takes precedence over the global fallback; an unlisted tool passes through when there is no fallback. The resolved policy applies to final plain-text tool results:
 
 1. Let the tool run normally, delegating via `next()` so a downstream listener settles the result first.
 2. Flatten the accepted final `ContentBlock[]` only when it is entirely plain text; a result with any non-text block is left untouched.
-3. If its UTF-8 byte size is at or below `maxInlineBytes`, leave it unchanged.
+3. Resolve the exact tool cap, then the global fallback. If no cap applies, or its UTF-8 byte size is within that cap, leave it unchanged.
 4. If it is larger, call `ctx.spillStore.saveText()` with the full final text.
 5. Replace the model-facing result with a retained head/tail preview plus the spill reference.
 
-The preview is an implementation default owned by the policy: a head/tail split of `maxInlineBytes` via the retention library's `TextRetainer`. Future config can expose preview sizing only after a second deployment needs it.
+The preview is an implementation default owned by the policy: a head/tail split of the resolved cap via the retention library's `TextRetainer`. Future config can expose preview sizing only after a second deployment needs it.
 
 The replacement text is intentionally generic because the policy only knows the final formatted tool result, not the tool's internal resource:
 
@@ -148,7 +150,7 @@ Those cases can consume `ctx.spillStore` directly in later work. They are not pa
 ## Non-goals
 
 - No new model-facing `artifact_read` or `artifact_search` tool in v1.
-- No per-tool retention configuration in v1.
+- No wildcard, tool-family, or argument-dependent retention rules.
 - No model-facing timeout/truncation arguments.
 - No migration of `read` output into spill files.
 - No replacement for provider/resource caps such as `web-fetch-http.maxBodyChars`.
@@ -158,7 +160,7 @@ Those cases can consume `ctx.spillStore` directly in later work. They are not pa
 
 - `saveFile()` / `linkOrCopy` for existing executor spill files, needed for bash normalization.
 - Tool-owned spill for subagent rollouts (`await run.result`, read in-process child session before `run.dispose()`, save JSONL).
-- Per-tool opt-out or per-tool policy declarations if the built-in `read` skip is insufficient.
+- Explicit per-tool opt-out if the built-in `read` skip and exact cap overrides are insufficient.
 - Remote or database storage backends for ACP or remote environments where a local path is not meaningful.
 - Cleanup and retention policy for old spill files, likely tied to session cleanup.
 
@@ -166,7 +168,7 @@ Those cases can consume `ctx.spillStore` directly in later work. They are not pa
 
 - `dsh-spill` unit tests pin the seam contract: registration as `ctx.spillStore`, one-implementation-per-context, and disposal release.
 - `dsh-spill-local` unit tests cover `saveText`, `encodeSegment` sanitization (separators/tilde/whole-segment dots/empty), the session-hash directory, owner-only permissions, distinct paths per save, the configured/private root, and a storage-failure rejection.
-- `dsh-spill-policy` unit tests drive real tools through `ctx.tools.execute`: disabled-mode no-op, oversized-text replacement, small/non-text passthrough, `read` skip, best-effort fallback (save failure / no backend / no owner), and downstream-composition (bounding a replaced result, preserving `additionalContexts`).
+- `dsh-spill-policy` unit tests drive real tools through `ctx.tools.execute`: disabled-mode no-op, exact per-tool precedence and override-only mode in both native and code-dispatch paths, oversized-text replacement, small/non-text passthrough, `read` skip, best-effort fallback (save failure / no backend / no owner), and downstream-composition (bounding a replaced result, preserving `additionalContexts`).
 - `dsh-tool-web` integration drives `web_fetch` through `ctx.tools.execute` with the real `spill-local` backend + policy, proving the model-facing text changes only by the deliberate spill notice while the spill file holds the full formatted result.
 - The `tui-agent` example loads `spill-local` + `spill-policy`, so its keyless Loader/PTY smoke exercises the real load path (the namespace-plugin export shape + `inject`).
 

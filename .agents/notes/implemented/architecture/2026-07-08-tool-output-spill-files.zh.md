@@ -61,24 +61,26 @@ interface SpillRef {
 
 ### spill 策略
 
-`dsh-spill-policy` 是一个 `tools/post-execute` 结果转换器，只提供一个配置项：
+`dsh-spill-policy` 是一个 `tools/post-execute` 结果转换器，提供全局回退值与精确的逐工具覆盖项：
 
 ```ts ignore-check
 interface Config {
-  /** Omitted means no automatic spill policy. Present means apply to oversized plain text tool results. */
+  /** Omitted leaves tools without an exact override uncapped. */
   maxInlineBytes?: number
+  /** Exact ToolRuntime-name overrides; an entry works without a global fallback. */
+  toolMaxInlineBytes?: Record<string, number>
 }
 ```
 
-省略 `maxInlineBytes` 时，插件不会注册任何内容，是真正的无操作。设置该值后，它会对最终的纯文本工具结果应用默认策略：
+省略 `maxInlineBytes` 且 `toolMaxInlineBytes` 为空时，插件不会注册任何内容，是真正的无操作。否则，精确工具条目优先于全局回退值；没有回退值时，未列出的工具原样通过。解析后的策略会应用于最终纯文本工具结果：
 
 1. 让工具正常运行，通过 `next()` 委托，使下游监听器先结算结果。
 2. 仅当已接受的最终 `ContentBlock[]` 全部是纯文本时，才将其展平；含任何非文本块的结果保持不变。
-3. 如果 UTF-8 字节大小不超过 `maxInlineBytes`，保持不变。
+3. 先解析精确工具上限，再解析全局回退值。如果没有适用上限，或 UTF-8 字节大小没有超过该上限，则保持不变。
 4. 如果超出上限，使用完整的最终文本调用 `ctx.spillStore.saveText()`。
 5. 把模型可见结果替换为保留的首尾预览和 spill 引用。
 
-预览属于策略所有的实现默认值：以 `maxInlineBytes` 为上限，使用保留库的 `TextRetainer` 进行首尾分割。只有第二个部署证明有此需求后，未来配置才会公开预览大小。
+预览属于策略所有的实现默认值：以解析后的上限为预算，使用保留库的 `TextRetainer` 进行首尾分割。只有第二个部署证明有此需求后，未来配置才会公开预览大小。
 
 替换文本刻意保持通用，因为策略只知道最终格式化的工具结果，不了解工具的内部资源：
 
@@ -148,7 +150,7 @@ ctx.tools.register(defineTool({
 ## 非目标
 
 - v1 不增加面向模型的 `artifact_read` 或 `artifact_search` 工具。
-- v1 不增加逐工具的保留配置。
+- 不支持通配符、工具族或依赖参数的保留规则。
 - 不增加面向模型的超时／截断参数。
 - 不把 `read` 输出迁移到 spill 文件。
 - 不取代 `web-fetch-http.maxBodyChars` 等提供方／资源上限。
@@ -158,7 +160,7 @@ ctx.tools.register(defineTool({
 
 - 用于现有执行器 spill 文件的 `saveFile()`／`linkOrCopy`，这是统一 bash 行为所必需的。
 - 由工具负责的 subagent 执行轨迹 spill（`await run.result`，在 `run.dispose()` 前读取进程内子会话，保存 JSONL）。
-- 如果内置的 `read` 跳过规则不足，再增加逐工具选择退出或逐工具策略声明。
+- 如果内置的 `read` 跳过规则和精确上限覆盖项仍不足，再增加显式的逐工具选择退出。
 - 面向 ACP（Agent Client Protocol）或远程环境的远程／数据库存储后端，因为本地路径在这些环境中没有意义。
 - 旧 spill 文件的清理和保留策略，很可能与会话清理绑定。
 
@@ -166,7 +168,7 @@ ctx.tools.register(defineTool({
 
 - `dsh-spill` 单元测试锁定 seam 约定：注册为 `ctx.spillStore`、每个上下文只允许一种实现，并在 dispose（资源释放）时释放。
 - `dsh-spill-local` 单元测试覆盖 `saveText`、`encodeSegment` 清理（分隔符／波浪号／完整路径段的点／空值）、会话哈希目录、仅所有者权限、每次保存生成不同路径、配置根目录／私有根目录，以及存储失败时的拒绝。
-- `dsh-spill-policy` 单元测试通过 `ctx.tools.execute` 驱动真实工具：禁用模式下无操作、替换超大文本、小结果／非文本结果保持不变、跳过 `read`、尽力回退（保存失败／无后端／无所有者），以及下游组合（限制已替换结果、保留 `additionalContexts`）。
+- `dsh-spill-policy` 单元测试通过 `ctx.tools.execute` 驱动真实工具：禁用模式下无操作、原生与 code-dispatch 路径中的精确逐工具优先级和仅覆盖项模式、替换超大文本、小结果／非文本结果保持不变、跳过 `read`、尽力回退（保存失败／无后端／无所有者），以及下游组合（限制已替换结果、保留 `additionalContexts`）。
 - `dsh-tool-web` 集成测试驱动 `web_fetch`，其实际执行路径经过 `ctx.tools.execute`，并使用真实的 `spill-local` 后端与策略；测试证明只有刻意加入的 spill 提示会改变模型可见文本，而 spill 文件保存完整的格式化结果。
 - `tui-agent` 示例加载 `spill-local` 与 `spill-policy`，因此其无密钥 Loader／PTY 冒烟测试会执行真实加载路径（namespace-plugin 导出形态与 `inject`）。
 

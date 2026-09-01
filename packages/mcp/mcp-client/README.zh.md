@@ -39,12 +39,14 @@ MCP 客户端桥接插件：连接外部 [Model Context Protocol](https://modelc
 
 模型会看到 `mcp__github__create_issue`、`mcp__web__search` 等工具，这与 Claude Code 和 Codex 使用的服务器限定形状相同。HMR（热模块替换）支持热替换：编辑配置项会触发断开 + 重新连接，无需重启进程；`serverName` 不变时会生成完全相同的工具名称。
 
+配置可直接保留包风格服务器标识，因此 catalog 条目可以使用 `npm:@modelcontextprotocol/server-sequential.thinking`，无需另造本地别名。只有公开工具名会规范化模型工具名词汇之外的字符；MCP 注册表、连接状态、OAuth 查找、日志与 wire 调用仍保留配置中的原始标识。
+
 ## 配置
 
 | 字段 | 传输 | 必填 | 描述 |
 |---|---|---|---|
 | `transport` | 两者 | 是 | `"stdio"` 或 `"streamable-http"` |
-| `serverName` | 两者 | 是 | 该服务器面向模型工具名称的 namespace；`[A-Za-z0-9_-]{1,32}`，在存活实例中唯一 |
+| `serverName` | 两者 | 是 | 该服务器面向模型工具名称的 namespace；`[A-Za-z0-9_:@/.-]+`，在存活实例中唯一；接受包风格标识 |
 | `command` | stdio | 是 | 要 spawn 的可执行文件 |
 | `args` | stdio | 否 | 传给命令的参数 |
 | `env` | stdio | 否 | 合并到已清理环境中的额外环境变量 |

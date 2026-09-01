@@ -146,20 +146,22 @@ describe('mcp-client plugin module exports', () => {
       serverName: 'bad name!',
       command: 'echo',
     } as never)).toThrow()
-    expect(() => ConfigSchema({
-      transport: 'stdio',
-      serverName: 'x'.repeat(33),
-      command: 'echo',
-    } as never)).toThrow()
   })
 
-  it('Config schema accepts a valid serverName', () => {
+  it('Config schema accepts bare and package-style server names', () => {
     const resolved = ConfigSchema({
       transport: 'stdio',
       serverName: 'github-prod_1',
       command: 'echo',
     } as never)
     expect(resolved.serverName).toBe('github-prod_1')
+
+    const packageStyle = ConfigSchema({
+      transport: 'stdio',
+      serverName: 'npm:@modelcontextprotocol/server-sequential.thinking',
+      command: 'npx',
+    } as never)
+    expect(packageStyle.serverName).toBe('npm:@modelcontextprotocol/server-sequential.thinking')
   })
 
   it('Config schema materializes reconnect defaults and merges partial overrides', () => {

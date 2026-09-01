@@ -163,6 +163,12 @@ describe('publicToolName', () => {
     expect(name.length).toBeLessThanOrEqual(64)
   })
 
+  it('normalizes a package-style server identity without losing its identity', () => {
+    const name = publicToolName('npm:@modelcontextprotocol/server-sequential.thinking', 'plan')
+    expect(name).toMatch(/^mcp__npm__modelcontextprotocol_server-sequential_th_[0-9a-f]{12}$/)
+    expect(name).toHaveLength(64)
+  })
+
   it('truncates over-long names and appends an identity hash', () => {
     const rawName = 'a'.repeat(80)
     const name = publicToolName('srv', rawName)

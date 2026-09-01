@@ -54,7 +54,7 @@ interface StreamableHttpConfig {
 type Config = StdioConfig | StreamableHttpConfig
 ```
 
-`serverName` is the stable local identity that namespaces this server's tools in the model-facing name (below). It is deliberately user configuration, NOT the remote `serverInfo.name`: the remote name is untrusted input, is not unique across deployments (prod and staging instances of one server report the same name), and may change on server upgrade — none of which may silently rename model-facing tools. A duplicate `serverName` across live instances is a configuration error: the later instance fails at load with an actionable message, never silent shadowing or skipping. A short `serverName` (`gh`) is also the knob for shortening public names.
+`serverName` is the stable local identity that namespaces this server's tools in the model-facing name (below). It is deliberately user configuration, NOT the remote `serverInfo.name`: the remote name is untrusted input, is not unique across deployments (prod and staging instances of one server report the same name), and may change on server upgrade — none of which may silently rename model-facing tools. Names accept `[A-Za-z0-9_:@/.-]+`, including catalog identities such as `npm:@modelcontextprotocol/server-sequential.thinking`; only the public tool name is normalized, while the registry, lifecycle, OAuth, and wire identities retain the configured value. A duplicate `serverName` across live instances is a configuration error: the later instance fails at load with an actionable message, never silent shadowing or skipping. A short `serverName` (`gh`) is also the knob for shortening public names.
 
 Example `cordis.yml` usage:
 

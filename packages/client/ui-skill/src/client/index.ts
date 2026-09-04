@@ -33,6 +33,7 @@
 import type { ConnectionHandle, SessionId, SkillEntry } from '@deepseek-ai/dsh-api-remotes/client'
 import type { ClientContext, ISessions } from '@deepseek-ai/dsh-client-runtime/client'
 import type { InputTriggerServiceContract, InputTriggerSource } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
+import { rankByName } from '@deepseek-ai/dsh-client-ui-primitives'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { SkillRow } from './SkillRow.tsx'
@@ -138,8 +139,7 @@ export function apply(ctx: ClientContext): void {
       const skills = await fetchCatalog(session.sessionId)
       // Superseded keystroke: the shared fetch stays warm, this caller yields.
       if (signal.aborted) return []
-      return skills
-        .filter(skill => skill.name.startsWith(query))
+      return rankByName(skills, query)
         .map(skill => ({
           name: skill.name,
           // The user-only marker rides the description (the menu's only

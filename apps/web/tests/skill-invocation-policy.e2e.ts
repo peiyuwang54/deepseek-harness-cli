@@ -96,7 +96,7 @@ describe('web e2e: skill invocation policy through the real host', () => {
   it('renders every user-invocable skill and marks the user-only entry', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-skill-invocation-policy'))
     const input = page.locator('textarea').first()
-    await input.fill('/policy')
+    await input.fill('/plcy')
     const menu = page.getByRole('listbox', { name: 'Trigger suggestions' })
     await expect.poll(
       () => menu.getByRole('option', { name: /policy-shared/ }).count(),

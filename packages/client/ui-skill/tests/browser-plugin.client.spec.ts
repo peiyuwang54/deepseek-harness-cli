@@ -5,7 +5,7 @@
  * the source behavior contract driven directly on the captured source with
  * real ClientSessionContext projections — sessionId addressing, the
  * session-keyed catalog cache (single-flight per key, scope-birth warm
- * prewarm, connection/reset clear), startsWith filtering, RPC-failure
+ * prewarm, connection/reset clear), shared fuzzy ranking, RPC-failure
  * rejection, pick → plain-text outcome (the plain-text-reference decision:
  * .agents/notes/implemented/architecture/2026-07-25-web-input-machine-and-slash-pipeline.md),
  * the synchronous
@@ -170,7 +170,7 @@ describe('apply', () => {
 })
 
 describe('candidates: sessionId addressing', () => {
-  it('lists via {sessionId} and filters by startsWith(query)', async () => {
+  it('lists via {sessionId} and fuzzy-matches ordered name characters', async () => {
     const { list, payloads } = countingList()
     const { source } = await bench(list)
     const items = await source.candidates(proj('s1'), req('co'))
@@ -178,6 +178,9 @@ describe('candidates: sessionId addressing', () => {
     expect(payloads).toEqual([{ sessionId: 's1' }])
     expect(items).toEqual([
       { name: 'commit-helper', description: 'commit flow' },
+      { name: 'code-review', description: 'review flow' },
+    ])
+    await expect(source.candidates(proj('s1'), req('cd-r'))).resolves.toEqual([
       { name: 'code-review', description: 'review flow' },
     ])
   })

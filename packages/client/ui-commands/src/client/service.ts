@@ -15,6 +15,7 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type { CommandResult } from '@deepseek-ai/dsh-commands/types'
 import type { ClientContext, ISessions, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
+import { rankByName } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   CandidateRequest, ClientSessionContext, CommandClaim, PickOutcome, InputTriggerCandidate, InputTriggerPick,
   SubmitEnvelope, SubmitImageAttachment, SubmitOutcome,
@@ -52,69 +53,6 @@ interface LiveState {
   readonly contributions: Map<string, CommandContribution>
   readonly decorations: Map<string, CommandDecoration>
   readonly popups: Map<SessionId, PopupSelectController<ClientSessionContext>>
-}
-
-/** One fuzzy match with its stable source position. */
-interface RankedCandidate {
-  readonly candidate: InputTriggerCandidate
-  readonly index: number
-  readonly prefix: boolean
-  readonly score: number
-}
-
-/** Extra weight for command-name starts and separator boundaries. */
-function boundaryBonus(name: string, index: number): number {
-  return index === 0 || name.charAt(index - 1) === '-' || name.charAt(index - 1) === '_' ? 8 : 0
-}
-
-/**
- * Score the strongest ordered-subsequence alignment in O(name × query).
- * Boundary and adjacent matches earn weight; skipped and leading characters
- * cost weight.
- */
-function fuzzyScore(name: string, query: string): number | undefined {
-  if (query === '') return 0
-  if (query.length > name.length) return undefined
-  const noMatch = Number.NEGATIVE_INFINITY
-  let previous = Array<number>(name.length).fill(noMatch)
-  for (let index = 0; index < name.length; index++) {
-    if (name.charAt(index) === query.charAt(0)) previous[index] = 1 + boundaryBonus(name, index) - index
-  }
-  for (let queryIndex = 1; queryIndex < query.length; queryIndex++) {
-    const current = Array<number>(name.length).fill(noMatch)
-    let bestGapped = noMatch
-    for (let index = 0; index < name.length; index++) {
-      const gappedIndex = index - 2
-      if (gappedIndex >= 0) {
-        const prior = previous[gappedIndex] ?? noMatch
-        if (prior !== noMatch) bestGapped = Math.max(bestGapped, prior + gappedIndex)
-      }
-      if (name.charAt(index) !== query.charAt(queryIndex)) continue
-      const bonus = 1 + boundaryBonus(name, index)
-      const adjacent = index > 0 ? previous[index - 1] ?? noMatch : noMatch
-      if (adjacent !== noMatch) current[index] = adjacent + bonus + 4
-      if (bestGapped !== noMatch) current[index] = Math.max(current[index] ?? noMatch, bestGapped + bonus + 1 - index)
-    }
-    previous = current
-  }
-  let best = noMatch
-  for (const score of previous) best = Math.max(best, score)
-  return best === noMatch ? undefined : best
-}
-
-/** Case-insensitive fuzzy filtering with stable ordering for equal matches. */
-function fuzzyCandidates(candidates: readonly InputTriggerCandidate[], rawQuery: string): readonly InputTriggerCandidate[] {
-  const query = rawQuery.toLowerCase()
-  if (query === '') return candidates
-  const ranked: RankedCandidate[] = []
-  candidates.forEach((candidate, index) => {
-    const name = candidate.name.toLowerCase()
-    const score = fuzzyScore(name, query)
-    if (score !== undefined) ranked.push({ candidate, index, prefix: name.startsWith(query), score })
-  })
-  ranked.sort((left, right) =>
-    Number(right.prefix) - Number(left.prefix) || right.score - left.score || left.index - right.index)
-  return ranked.map(match => match.candidate)
 }
 
 /** Command surface: session-keyed directory + '/' source + contribution registry + per-session popups. */
@@ -261,7 +199,7 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
       }
       rows.push({ name: contribution.name, description: contribution.description })
     }
-    return fuzzyCandidates(
+    return rankByName(
       rows.filter(c => req.position === 'leading' || c.hint === undefined),
       req.query,
     )

@@ -16,7 +16,7 @@ const smokeHome = await mkdtemp(join(tmpdir(), 'dsh-web-smoke-'));
 const output = [];
 const child = spawn(
   executable,
-  ['web', '--host', '127.0.0.1', '--port', String(port)],
+  ['web', '--no-open', '--host', '127.0.0.1', '--port', String(port)],
   {
     env: { ...process.env, DSH_HOME: smokeHome },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -56,6 +56,8 @@ const reportOutput = () => {
   if (output.length > 0) console.error(output.join('').slice(-16_000));
 };
 
+const servesFrontend = (html) => html.includes('window.__DSH_BOOT__') && html.includes('<div id="root"></div>');
+
 try {
   const url = `http://127.0.0.1:${port}/`;
   const deadline = Date.now() + 30_000;
@@ -68,7 +70,7 @@ try {
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(1_500) });
       const html = await response.text();
-      if (response.ok && html.includes('<title>DeepSeek Harness</title>')) {
+      if (response.ok && servesFrontend(html)) {
         ready = true;
         break;
       }
@@ -89,7 +91,7 @@ try {
   }
   const response = await fetch(url, { signal: AbortSignal.timeout(1_500) });
   const html = await response.text();
-  if (!response.ok || !html.includes('<title>DeepSeek Harness</title>')) {
+  if (!response.ok || !servesFrontend(html)) {
     throw new Error('packaged Web profile failed its second response check');
   }
   console.log('packaged Web profile served DeepSeek Harness successfully');

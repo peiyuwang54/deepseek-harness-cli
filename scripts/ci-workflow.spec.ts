@@ -580,6 +580,8 @@ describe('CLI release workflow', () => {
       isRecord(step) && step.name === 'Rebuild Linux node-pty against manylinux 2.28'
     ))
     const productSmoke = buildSteps.find(step => isRecord(step) && step.name === 'Smoke test --version')
+    const profileSmoke = buildSteps.find(step => isRecord(step) && step.name === 'Smoke test profile composition')
+    const packagedWebSmoke = buildSteps.find(step => isRecord(step) && step.name === 'Smoke test packaged Web startup')
     const productUpload = buildSteps.find(step => (
       isRecord(step) && step.uses === 'actions/upload-artifact@v4'
     ))
@@ -594,6 +596,16 @@ describe('CLI release workflow', () => {
     })
     expectManylinuxNodePtyRebuild(manylinuxAddon)
     expect(JSON.stringify(productSmoke)).toContain('$exe-rg')
+    for (const smoke of [productSmoke, profileSmoke, packagedWebSmoke]) {
+      if (!isRecord(smoke) || typeof smoke.run !== 'string') {
+        throw new TypeError('CLI release smoke steps must define shell commands')
+      }
+      expect(smoke.run).toContain('if [ -e "$exe.exe" ]; then exe="$exe.exe"; fi')
+    }
+    const packagedWebSmokeSource = readFileSync(resolve(root, 'scripts/smoke-packaged-web.mjs'), 'utf8')
+    expect(packagedWebSmokeSource).toContain("['web', '--no-open', '--host', '127.0.0.1'")
+    expect(packagedWebSmokeSource).toContain("html.includes('window.__DSH_BOOT__')")
+    expect(packagedWebSmokeSource).toContain("html.includes('<div id=\"root\"></div>')")
     expect(JSON.stringify(productUpload)).toContain('.exe-rg')
     expect(JSON.stringify(tarballs)).toContain('$stage/bin/$dest_name-rg')
     expect(readFileSync(resolve(root, 'scripts/exe-build/pipeline.ts'), 'utf8')).toContain(

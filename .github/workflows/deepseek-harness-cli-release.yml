@@ -160,7 +160,7 @@ jobs:
         run: |
           set -euo pipefail
           exe="$PWD/dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}"
-          if [ ! -e "$exe" ] && [ -e "$exe.exe" ]; then exe="$exe.exe"; fi
+          if [ -e "$exe.exe" ]; then exe="$exe.exe"; fi
           [ -x "$exe" ] || { echo "::error::$exe missing or not executable"; exit 1; }
           actual="$(DSH_TELEMETRY_DISABLED=1 "$exe" --version)"
           [ "$actual" = "$VERSION" ] || {
@@ -175,7 +175,7 @@ jobs:
         run: |
           set -euo pipefail
           exe="$PWD/dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}"
-          if [ ! -e "$exe" ] && [ -e "$exe.exe" ]; then exe="$exe.exe"; fi
+          if [ -e "$exe.exe" ]; then exe="$exe.exe"; fi
           # --version exits before any profile composes; the dumps read every
           # bundle overlay the executable embeds, so a missing pkg asset fails
           # here instead of on the user's first run.
@@ -187,7 +187,7 @@ jobs:
         run: |
           set -euo pipefail
           exe="$PWD/dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}"
-          if [ ! -e "$exe" ] && [ -e "$exe.exe" ]; then exe="$exe.exe"; fi
+          if [ -e "$exe.exe" ]; then exe="$exe.exe"; fi
           DSH_TELEMETRY_DISABLED=1 node scripts/smoke-packaged-web.mjs "$exe" 39460
 
       - name: Check Linux GLIBC requirements

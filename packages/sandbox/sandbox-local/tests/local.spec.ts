@@ -8,7 +8,7 @@
  */
 
 import { mkdtempSync, realpathSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -98,7 +98,7 @@ describe('profile dialects', () => {
   })
 
   it('seatbelt read-only: allow-default with every file write denied except the /dev/null literal', () => {
-    expect(seatbeltProfileArgs(RO)).toEqual(['-p', SEATBELT_RO_PROFILE])
+    expect(seatbeltProfileArgs(RO)[1]).toContain(SEATBELT_RO_PROFILE)
   })
 
   it('seatbelt workspace-write: one more allow for the canonicalized workspace root, /tmp, and the user temp dir', () => {
@@ -109,7 +109,7 @@ describe('profile dialects', () => {
     // where they resolve to the same directory.
     const roots = [...new Set(['/ws', realpathSync('/tmp'), realpathSync(tmpdir())])]
     const allow = `(allow file-write* ${roots.map(root => `(subpath "${root}")`).join(' ')})`
-    expect(seatbeltProfileArgs(WW)).toEqual(['-p', `${SEATBELT_RO_PROFILE} ${allow}`])
+    expect(seatbeltProfileArgs(WW)[1]).toContain(`${SEATBELT_RO_PROFILE} ${allow}`)
   })
 
   it('seatbelt workspace-write dedups a workspace root that already IS the temp dir', () => {
@@ -122,6 +122,17 @@ describe('profile dialects', () => {
 
   it('seatbelt workspace-write grants every declared writable root', () => {
     expect(seatbeltProfileArgs(WW_MULTI)[1]).toContain('(subpath "/shared")')
+  })
+
+  it('seatbelt isolates container daemon sockets, binaries, services, and shared memory', () => {
+    const profile = seatbeltProfileArgs(WW)[1] as string
+    expect(profile).toContain('(literal "/var/run/docker.sock")')
+    expect(profile).toContain(`(subpath "${homedir()}/.docker/run")`)
+    expect(profile).toContain('(literal "/opt/homebrew/bin/docker")')
+    expect(profile).toContain('(subpath "/opt/homebrew/Cellar/docker")')
+    expect(profile).toContain('(literal "/opt/homebrew/bin/podman")')
+    expect(profile).toContain('(xpc-service-name-prefix "com.docker.")')
+    expect(profile).toContain('(ipc-posix-name-prefix "docker")')
   })
 })
 

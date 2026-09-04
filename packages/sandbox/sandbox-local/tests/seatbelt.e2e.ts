@@ -120,4 +120,14 @@ describe.skipIf(!seatbeltUsable)('sandbox-local: real Seatbelt confinement throu
     expect(readFileSync(join(hostTmp, 'scratch.txt'), 'utf8')).toBe('tmp-ok')
     expect(readFileSync(join(userTmp, 'scratch.txt'), 'utf8')).toBe('user-tmp-ok')
   })
+
+  it.runIf(existsSync('/opt/homebrew/bin/docker'))('workspace-write denies an installed Docker entry point', async () => {
+    const workdir = await tempDir(homedir())
+    const sandbox = await provider()
+    const { result } = runConfined(sandbox, '/opt/homebrew/bin/docker --version', {
+      mode: 'workspace-write', workspaceRoot: workdir, additionalWritableRoots: [],
+    })
+    expect(result.status).not.toBe(0)
+    expect(result.stderr.toLowerCase()).toContain('operation not permitted')
+  })
 })

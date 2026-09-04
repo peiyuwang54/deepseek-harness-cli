@@ -48,6 +48,7 @@ const FIRST_PARTY = new Set([
 
 /** Official SDK identity covered by the project's narrow owner authorization. */
 export const CLAUDE_AGENT_SDK_PACKAGE = '@anthropic-ai/claude-agent-sdk'
+const CLAUDE_AGENT_SDK_CONSUMER_MANIFEST = 'packages/subagent/subagent-claude-code/package.json'
 const CLAUDE_PLATFORM_PACKAGE_PREFIX = `${CLAUDE_AGENT_SDK_PACKAGE}-`
 const CLAUDE_PLATFORM_DECLARED_LICENSE = 'SEE LICENSE IN LICENSE.md'
 
@@ -252,38 +253,39 @@ export function claudeDistributionFromManifest(
  *
  * @param virtual - the `.pnpm` virtual store directory to scan.
  * @param name - the external package name, exactly as `node_modules` spells it.
- * @returns the parsed manifest, or `undefined` when neither the prefix match
- *   nor the content scan finds the package's `package.json`.
+ * @param version - exact installed version when more than one remains in the store.
+ * @returns the parsed manifest, or `undefined` when no matching package and version exists.
  */
-export function virtualManifest(virtual: string, name: string): VirtualManifest | undefined {
+export function virtualManifest(virtual: string, name: string, version?: string): VirtualManifest | undefined {
   const prefix = `${name.replace('/', '+')}@`
-  const entry = readdirSync(virtual).find(dir => dir.startsWith(prefix))
-  if (entry !== undefined) {
-    return JSON.parse(readFileSync(resolve(virtual, entry, 'node_modules', name, 'package.json'), 'utf8')) as VirtualManifest
-  }
-  for (const dir of readdirSync(virtual)) {
+  const entries = readdirSync(virtual)
+  const ordered = [...entries.filter(dir => dir.startsWith(prefix)), ...entries.filter(dir => !dir.startsWith(prefix))]
+  for (const dir of ordered) {
     const candidate = resolve(virtual, dir, 'node_modules', name, 'package.json')
-    if (existsSync(candidate)) {
-      return JSON.parse(readFileSync(candidate, 'utf8')) as VirtualManifest
-    }
+    if (!existsSync(candidate)) continue
+    const manifest = JSON.parse(readFileSync(candidate, 'utf8')) as VirtualManifest
+    if (manifest.name === name && (version === undefined || manifest.version === version)) return manifest
   }
   return undefined
 }
 
 /** Resolve one installed external package manifest from either pnpm store. */
-function installedManifest(name: string): VirtualManifest | undefined {
+function installedManifest(name: string, version?: string): VirtualManifest | undefined {
   let manifest: (Manifest & { license?: string; repository?: string | { url?: string }; homepage?: string }) | undefined
   // Workspace-local link farms can expose a dependency that is not linked at
   // the repository root; both are backed by the root workspace's lockfile.
   for (const store of ['node_modules', 'native/landlock-run/node_modules']) {
     const direct = resolve(root, store, name, 'package.json')
     if (existsSync(direct)) {
-      manifest = JSON.parse(readFileSync(direct, 'utf8')) as typeof manifest
-      break
+      const directManifest = JSON.parse(readFileSync(direct, 'utf8')) as typeof manifest
+      if (version === undefined || directManifest?.version === version) {
+        manifest = directManifest
+        break
+      }
     }
     const virtual = resolve(root, store, '.pnpm')
     if (!existsSync(virtual)) continue
-    manifest = virtualManifest(virtual, name)
+    manifest = virtualManifest(virtual, name, version)
     if (manifest !== undefined) break
   }
   return manifest
@@ -303,7 +305,14 @@ function installedMetadata(name: string): { license: string; repo: string } {
 }
 
 function collectClaudeDistribution(): ClaudeDistribution {
-  const manifest = installedManifest(CLAUDE_AGENT_SDK_PACKAGE)
+  const declaredVersion = readManifest(CLAUDE_AGENT_SDK_CONSUMER_MANIFEST)
+    .dependencies?.[CLAUDE_AGENT_SDK_PACKAGE]
+  if (declaredVersion === undefined) {
+    throw new Error(
+      `gen-third-party-notices: ${CLAUDE_AGENT_SDK_CONSUMER_MANIFEST} does not declare ${CLAUDE_AGENT_SDK_PACKAGE}.`,
+    )
+  }
+  const manifest = installedManifest(CLAUDE_AGENT_SDK_PACKAGE, declaredVersion)
   if (manifest === undefined) {
     throw new Error(
       `gen-third-party-notices: cannot resolve ${CLAUDE_AGENT_SDK_PACKAGE}; run \`pnpm install\`.`,
@@ -312,7 +321,7 @@ function collectClaudeDistribution(): ClaudeDistribution {
   const distribution = claudeDistributionFromManifest(manifest)
   let installedPayloads = 0
   for (const payload of distribution.payloads) {
-    const installed = installedManifest(payload.name)
+    const installed = installedManifest(payload.name, payload.version)
     if (installed === undefined) continue
     installedPayloads += 1
     if (

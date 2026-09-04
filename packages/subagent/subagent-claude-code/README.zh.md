@@ -8,7 +8,7 @@
 
 `start(request)` 只接受非空的文本块序列，并根据父会话确定子级 cwd。它会创建一个私有 `AbortController`，调用官方 SDK 的 `query()`，并仅在 SDK 的 `spawnClaudeCodeProcess` 钩子已经提供由 [`dsh-subprocess`](../../subprocess/subprocess/README.md) 管理的活动 CLI 句柄后发布此次运行。若在发布前发生失败或取消，它会关闭 query、终止所有已取得的进程树并等待其退出，然后拒绝 `start()` 调用。
 
-SDK 接收由文本块原样拼接成的任务。提供方会完整迭代 SDK 消息流，而且只接受满足以下条件的 `result` 消息：其 `subtype: "success"`、`is_error: false` 且 `result` 非空白，之后迭代器还须正常结束。所有失败仍映射为 `error`：Agent SDK 0.3.252 的四种错误子类型保留准确类别；标记为错误或内容空白的成功消息成为 `invalid-success`；缺失结果成为 `missing-result`；未分类的 query 失败成为 `unknown`；CLI 提前退出成为 `process-exit`。诊断还会注明当前 `query-start`、`query-run`、`process` 或 `teardown` 阶段，并分别保留已观测到的退出码与信号。该提供方不会产生 `max-tokens` 或 `refusal`。
+SDK 接收由文本块原样拼接成的任务。提供方会完整迭代 SDK 消息流，而且只接受满足以下条件的 `result` 消息：其 `subtype: "success"`、`is_error: false` 且 `result` 非空白，之后迭代器还须正常结束。所有失败仍映射为 `error`：Agent SDK 0.3.260 的四种错误子类型保留准确类别；标记为错误或内容空白的成功消息成为 `invalid-success`；缺失结果成为 `missing-result`；未分类的 query 失败成为 `unknown`；CLI 提前退出成为 `process-exit`。诊断还会注明当前 `query-start`、`query-run`、`process` 或 `teardown` 阶段，并分别保留已观测到的退出码与信号。该提供方不会产生 `max-tokens` 或 `refusal`。
 
 本地取消会在结果竞态中胜出并映射为 `aborted`，且不附带失败诊断。`dispose()`（资源释放）具有幂等性：它会中止此次运行、请求 SDK query 关闭、调用共享的进程树逐级终止机制，并等待整棵进程树退出。SDK 的优雅关闭只表达协议意图；进程是否完全停稳仍以子进程句柄为准。启动与清理拒绝会在 Error 消息中公开同样固定的安全阶段和进程事实，而原始产品或 Host 错误只保留在内部 cause 链与提供方的 Host 日志中。结果失败与独立的清理失败仍彼此分离。
 
@@ -39,7 +39,7 @@ SDK 接收由文本块原样拼接成的任务。提供方会完整迭代 SDK �
 | `plan` | 使用原生规划模式，拒绝执行审批，并把完整计划作为最终答案返回。 |
 | `bypassPermissions` | 显式设置 SDK 的危险确认并跳过权限检查。 |
 
-生产环境会省略 `pathToClaudeCodeExecutable`，因此 Agent SDK 0.3.252 会从自己的平台包中选择匹配的原生 `claude` 或 `claude.exe`，再通过 custom-spawn 钩子把该绝对命令交给 `dsh-subprocess`。提供方不会检查 `PATH`、重复实现平台选择，也不会回退到宿主 `claude`。原生设置与身份验证继续是权威来源，而 `permissionMode` 是唯一的 query 级策略覆盖。本插件不选择模型、不创建产品主目录、不执行登录，也不探测账户。具有凭证特征的环境变量会在显式 `env` 覆盖生效前被清除，因此供子进程使用的 API 密钥或 token 必须在该配置中显式提供。除非被覆盖，`ANTHROPIC_BASE_URL` 等非凭证端点变量以及 `PATH` 和 `HOME` 等普通环境变量仍会被继承；`PATH` 不参与选择 Claude 可执行文件。
+生产环境会省略 `pathToClaudeCodeExecutable`，因此 Agent SDK 0.3.260 会从自己的平台包中选择匹配的原生 `claude` 或 `claude.exe`，再通过 custom-spawn 钩子把该绝对命令交给 `dsh-subprocess`。提供方不会检查 `PATH`、重复实现平台选择，也不会回退到宿主 `claude`。原生设置与身份验证继续是权威来源，而 `permissionMode` 是唯一的 query 级策略覆盖。本插件不选择模型、不创建产品主目录、不执行登录，也不探测账户。具有凭证特征的环境变量会在显式 `env` 覆盖生效前被清除，因此供子进程使用的 API 密钥或 token 必须在该配置中显式提供。除非被覆盖，`ANTHROPIC_BASE_URL` 等非凭证端点变量以及 `PATH` 和 `HOME` 等普通环境变量仍会被继承；`PATH` 不参与选择 Claude 可执行文件。
 
 本包是可选的 Profile Bundle。将它安装进目标 Profile 后重启该 Profile；安装会把锁定的 Agent SDK 与一个兼容的平台 CLI 载荷带入该 Profile，而包所声明的 `cordis.patch.yml` 层只注册休眠的 `claude-code` Host provider，不会启动 Claude 进程。移除该包后，下一次 Profile 启动会撤回这一 provider 及其私有运行时闭包。
 
@@ -98,7 +98,7 @@ dsh --profile <name>
 
 ## 产品兼容性与证据
 
-运行时依赖精确锁定为 `@anthropic-ai/claude-agent-sdk@0.3.252`，其八个平台包都携带 Claude Code 2.1.252。普通安装会按当前操作系统、CPU 及 Linux libc 选择一个载荷。对于当前 darwin-arm64 载荷，`npm pack --dry-run --json` 报告压缩包为 85,375,014 字节、解包后为 197,221,512 字节；其他平台可能不同，这些数值只用于披露而不是安装阈值。无密钥真实产品测试会让 SDK 选择 CLI，通过回环 Messages fixture 运行它，并断言共享子进程 argv 的首项就是该平台包的原生可执行文件。Loader 组合证明安装该 Bundle 只会注册休眠的 Claude Code provider，不会启动产品进程。
+运行时依赖精确锁定为 `@anthropic-ai/claude-agent-sdk@0.3.260`，其八个平台包都携带 Claude Code 2.1.260。普通安装会按当前操作系统、CPU 及 Linux libc 选择一个载荷。对于当前 darwin-arm64 载荷，`npm pack --dry-run --json` 报告压缩包为 86,819,943 字节、解包后为 198,290,024 字节；其他平台可能不同，这些数值只用于披露而不是安装阈值。无密钥真实产品测试会让 SDK 选择 CLI，通过回环 Messages fixture 运行它，并断言共享子进程 argv 的首项就是该平台包的原生可执行文件。Loader 组合证明安装该 Bundle 只会注册休眠的 Claude Code provider，不会启动产品进程。
 
 如果安装时省略 optional dependencies、当前平台不受支持，或所选载荷缺失，提供方注册仍保持休眠，但第一次委派会在 SDK 启动边界失败。调用方只会收到安全的 `query-start` / `unknown` 失败事实；原生载荷错误只保留在内部 cause 链和提供方 Host 日志中。提供方既不会探测宿主 CLI，也不会用它重试。
 

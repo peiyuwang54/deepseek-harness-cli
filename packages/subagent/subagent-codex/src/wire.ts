@@ -1,5 +1,5 @@
 /**
- * Minimal Codex app-server 0.152.0 protocol adapter. The shared JSON-RPC
+ * Minimal Codex app-server 0.153.2 protocol adapter. The shared JSON-RPC
  * transport owns framing and request correlation; this module owns only the
  * product methods, current thread/turn association, unattended approval
  * responses, and terminal-answer selection.

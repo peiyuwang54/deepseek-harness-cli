@@ -26,13 +26,13 @@ Status: implemented
 
 manifest 集合由根 `pnpm-workspace.yaml` 声明的 `packages:` 成员派生，其中包括 Landlock 工作区及其公开包，因此新增成员区域在声明当天就会被读取，而不必等谁想起来去补一份列表。许可证与仓库地址取自根工作区已安装的 pnpm store 和包本地链接场；某个包两处都解析不到时直接失败，而不是留下空单元格。`OVERRIDES` 收录已发布 manifest 答不上来的包：用 Rust 构建、发布时省略 `license` 字段的 npm 可执行包，以及 `modelcontextprotocol/servers` 系列——该仓库正处在 MIT 向 Apache-2.0 的重新许可过程中，实际条款按贡献逐条而定。运行时依赖的许可证若不在宽松清单内即为硬失败：交付 copyleft 是一项分发决策，不该被一次重新生成悄悄吸收。被源码收编的包会与 `vendor/README.md` 交叉核对，出现非 MIT 即报错；`pnpm-workspace.yaml` 的 `patchedDependencies` 列入运行时表格，因为 pnpm 在安装期就会打上这些补丁——交付产物携带的是改动过的 `@earendil-works/pi-tui` 与 `node-pty`，补丁文件本身就是改动的完整记录。
 
-项目所有者另行授权分发每个官方 `@anthropic-ai/claude-agent-sdk` 版本，以及该版本通过 `optionalDependencies` 声明的官方 Claude Code CLI 与平台载荷。生成器将其表示为一项精确匹配直接包身份的例外，而非宽松许可证覆盖项：`SEE LICENSE IN README.md` 与 `SEE LICENSE IN LICENSE.md` 仍归类为非宽松，所有无关的非宽松运行时依赖仍以默认拒绝方式失败。存在该 SDK 时，生成器会读取其已安装 manifest，拒绝不符合官方 SDK 载荷前缀的可选包身份，推导当前 SDK、CLI 与载荷版本，核验已安装宿主载荷的身份、版本和声明许可证字段，并在单独的声明章节中渲染 SDK 声明的完整载荷集合。版本、声明许可证和载荷集合发生变化时无需新的身份授权，但仍须经过常规的依赖、锁文件、兼容性、条款和声明评审。
+项目所有者另行授权分发每个官方 `@anthropic-ai/claude-agent-sdk` 版本，以及该版本通过 `optionalDependencies` 声明的官方 Claude Code CLI 与平台载荷。生成器将其表示为一项精确匹配直接包身份的例外，而非宽松许可证覆盖项：`SEE LICENSE IN README.md` 与 `SEE LICENSE IN LICENSE.md` 仍归类为非宽松，所有无关的非宽松运行时依赖仍以默认拒绝方式失败。存在该 SDK 时，生成器会解析 subagent 提供方 manifest 声明的精确版本，并忽略 pnpm 虚拟 store 中遗留的并行旧版本；随后拒绝不符合官方 SDK 载荷前缀的可选包身份，推导当前 SDK、CLI 与载荷版本，核验已安装宿主载荷的身份、版本和声明许可证字段，并在单独的声明章节中渲染 SDK 声明的完整载荷集合。版本、声明许可证和载荷集合发生变化时无需新的身份授权，但仍须经过常规的依赖、锁文件、兼容性、条款和声明评审。
 
 ## 测试
 
 断言新鲜度的同一个 spec 也用 fixture（测试前置数据）manifest 钉住分层规则，覆盖促成该规则的两个场景：测试支撑包的 `dependencies` 条目，以及没有任何应用挂载的插件包。它还把各解析器钉在那些原本会让某个包无声消失的形态上：不再覆盖全部收编目录的 `vendor/README.md` 表、含 extras 的依赖数组（`"httpx[http2]"`）、完全不带版本的依赖、作者自取名字的 `[dependency-groups]` 表，以及任何硬编码列表都不含的工作区成员区域。这些都是静默漏报路径——正是披露文件最担不起的失败方式。
 
-Claude 分发测试证明：只有精确匹配的直接 SDK 身份会绕过通常的非宽松运行时拒绝；该绕过不会改变许可证分类；载荷集合来自 SDK manifest，而非版本或平台允许列表。SDK 身份错误、载荷缺失或存在无关的可选包身份时，测试都会失败。
+Claude 分发测试证明：只有精确匹配的直接 SDK 身份会绕过通常的非宽松运行时拒绝；该绕过不会改变许可证分类；载荷集合来自 SDK manifest，而非版本或平台允许列表。多版本虚拟 store fixture 证明精确版本选择；SDK 身份错误、载荷缺失或存在无关的可选包身份时，测试都会失败。
 
 ## 考虑过的替代方案
 

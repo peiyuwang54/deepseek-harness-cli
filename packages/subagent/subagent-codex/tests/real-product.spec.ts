@@ -215,18 +215,18 @@ function responseInputTexts(body: Record<string, unknown>): string[] {
   })
 }
 
-describe('real @openai/codex 0.152.0 product', () => {
+describe('real @openai/codex 0.153.2 product', () => {
   it('starts approve-for-me through the real app-server and returns exact text', async () => {
     const sentinel = 'REAL_CODEX_SENTINEL_0_149_0'
     const task = 'Return the fixture sentinel exactly.'
     const { harness, fixture } = await realHarness([
       { kind: 'complete', text: sentinel },
     ], 'approve-for-me')
-    expect(codexPackage.version).toBe('0.152.0')
+    expect(codexPackage.version).toBe('0.153.2')
     const version = await execFileAsync(process.execPath, [codexEntry, '--version'], {
       env: { ...process.env, ...harness.env },
     })
-    expect(version.stdout.trim()).toBe('codex-cli 0.152.0')
+    expect(version.stdout.trim()).toBe('codex-cli 0.153.2')
     const schemaRoot = mkdtempSync(join(tmpdir(), 'dsh-codex-schema-'))
     roots.push(schemaRoot)
     await execFileAsync(process.execPath, [

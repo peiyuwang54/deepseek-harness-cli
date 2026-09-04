@@ -28,7 +28,7 @@ Successful results and local cancellation expose no failure fact. Raw product er
 
 ### Claude Code facts
 
-Agent SDK 0.3.252 defines four error subtypes: `error_during_execution`, `error_max_turns`, `error_max_budget_usd`, and `error_max_structured_output_retries`. The Claude Code Provider preserves each exact subtype as the category while keeping the shared stop reason `error`. An error-marked or blank success uses `invalid-success`, a missing result uses `missing-result`, a process exit before an SDK terminal result uses `process-exit`, and an unrecognized value or exception uses `unknown` without copying the value.
+Agent SDK 0.3.260 defines four error subtypes: `error_during_execution`, `error_max_turns`, `error_max_budget_usd`, and `error_max_structured_output_retries`. The Claude Code Provider preserves each exact subtype as the category while keeping the shared stop reason `error`. An error-marked or blank success uses `invalid-success`, a missing result uses `missing-result`, a process exit before an SDK terminal result uses `process-exit`, and an unrecognized value or exception uses `unknown` without copying the value.
 
 | Stage | Owned operation | Observable failure |
 | --- | --- | --- |
@@ -39,7 +39,7 @@ Agent SDK 0.3.252 defines four error subtypes: `error_during_execution`, `error_
 
 ### Codex facts
 
-Codex app-server 0.152.0 defines thirteen string categories and five object variants. The Provider preserves `contextWindowExceeded`, `sessionBudgetExceeded`, `usageLimitExceeded`, `rateLimitExceeded`, `serverOverloaded`, `cyberPolicy`, `misalignmentPolicyViolation`, `internalServerError`, `unauthorized`, `badRequest`, `threadRollbackFailed`, `sandboxError`, and `other`. It also preserves `httpConnectionFailed`, `responseStreamConnectionFailed`, `responseStreamDisconnected`, `responseTooManyFailedAttempts`, and `activeTurnNotSteerable`; the four connection/stream variants retain numeric `httpStatusCode`, while the active-turn variant does not expose `turnKind`. Unknown strings, objects with another variant set, malformed values, and unclassified exceptions use `unknown`.
+Codex app-server 0.153.2 defines thirteen string categories and five object variants. The Provider preserves `contextWindowExceeded`, `sessionBudgetExceeded`, `usageLimitExceeded`, `rateLimitExceeded`, `serverOverloaded`, `cyberPolicy`, `misalignmentPolicyViolation`, `internalServerError`, `unauthorized`, `badRequest`, `threadRollbackFailed`, `sandboxError`, and `other`. It also preserves `httpConnectionFailed`, `responseStreamConnectionFailed`, `responseStreamDisconnected`, `responseTooManyFailedAttempts`, and `activeTurnNotSteerable`; the four connection/stream variants retain numeric `httpStatusCode`, while the active-turn variant does not expose `turnKind`. Unknown strings, objects with another variant set, malformed values, and unclassified exceptions use `unknown`.
 
 | Stage | Owned operation | Observable failure |
 | --- | --- | --- |

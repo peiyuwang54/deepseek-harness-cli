@@ -59,8 +59,8 @@ type QueryFactory = (params: {
 
 const queryMock = vi.hoisted(() => vi.fn<QueryFactory>())
 
-const CLAUDE_AGENT_SDK_VERSION = '0.3.252'
-const CLAUDE_CODE_VERSION = '2.1.252'
+const CLAUDE_AGENT_SDK_VERSION = '0.3.260'
+const CLAUDE_CODE_VERSION = '2.1.260'
 const CLAUDE_PLATFORM_PACKAGES = [
   '@anthropic-ai/claude-agent-sdk-darwin-arm64',
   '@anthropic-ai/claude-agent-sdk-darwin-x64',

@@ -28,7 +28,7 @@ Product subagent failure (product: <product>; stage: <stage>; category: <categor
 
 ### Claude Code 事实
 
-Agent SDK 0.3.252 定义四种错误子类型：`error_during_execution`、`error_max_turns`、`error_max_budget_usd` 和 `error_max_structured_output_retries`。Claude Code 提供方会把每种准确子类型保留为类别，同时维持共享终止原因 `error`。标记为错误或内容空白的成功消息使用 `invalid-success`，缺失结果使用 `missing-result`，SDK 给出终态结果前发生的进程退出使用 `process-exit`，无法识别的值或异常使用 `unknown`，且不会复制原值。
+Agent SDK 0.3.260 定义四种错误子类型：`error_during_execution`、`error_max_turns`、`error_max_budget_usd` 和 `error_max_structured_output_retries`。Claude Code 提供方会把每种准确子类型保留为类别，同时维持共享终止原因 `error`。标记为错误或内容空白的成功消息使用 `invalid-success`，缺失结果使用 `missing-result`，SDK 给出终态结果前发生的进程退出使用 `process-exit`，无法识别的值或异常使用 `unknown`，且不会复制原值。
 
 | 阶段 | 归属操作 | 可观察失败 |
 | --- | --- | --- |
@@ -39,7 +39,7 @@ Agent SDK 0.3.252 定义四种错误子类型：`error_during_execution`、`erro
 
 ### Codex 事实
 
-Codex app-server 0.152.0 定义十三种字符串类别与五种对象 variant。提供方会保留 `contextWindowExceeded`、`sessionBudgetExceeded`、`usageLimitExceeded`、`rateLimitExceeded`、`serverOverloaded`、`cyberPolicy`、`misalignmentPolicyViolation`、`internalServerError`、`unauthorized`、`badRequest`、`threadRollbackFailed`、`sandboxError` 和 `other`。它还会保留 `httpConnectionFailed`、`responseStreamConnectionFailed`、`responseStreamDisconnected`、`responseTooManyFailedAttempts` 与 `activeTurnNotSteerable`；四种连接／stream variant 会保留数值 `httpStatusCode`，而 active-turn variant 不公开 `turnKind`。未知字符串、同时含其他 variant 的对象、格式错误值与未分类异常统一使用 `unknown`。
+Codex app-server 0.153.2 定义十三种字符串类别与五种对象 variant。提供方会保留 `contextWindowExceeded`、`sessionBudgetExceeded`、`usageLimitExceeded`、`rateLimitExceeded`、`serverOverloaded`、`cyberPolicy`、`misalignmentPolicyViolation`、`internalServerError`、`unauthorized`、`badRequest`、`threadRollbackFailed`、`sandboxError` 和 `other`。它还会保留 `httpConnectionFailed`、`responseStreamConnectionFailed`、`responseStreamDisconnected`、`responseTooManyFailedAttempts` 与 `activeTurnNotSteerable`；四种连接／stream variant 会保留数值 `httpStatusCode`，而 active-turn variant 不公开 `turnKind`。未知字符串、同时含其他 variant 的对象、格式错误值与未分类异常统一使用 `unknown`。
 
 | 阶段 | 归属操作 | 可观察失败 |
 | --- | --- | --- |

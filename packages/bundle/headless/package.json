@@ -1,7 +1,7 @@
 {
   "name": "@deepseek-ai/dsh-headless",
   "description": "The dsh one-shot bundle: a direct core Agent/Session runner with resume, images, JSONL, and structured output, without Host, HTTP, or browser layers",
-  "version": "0.1.0-rc.12",
+  "version": "0.1.0-rc.13",
   "publishConfig": {
     "access": "public"
   },

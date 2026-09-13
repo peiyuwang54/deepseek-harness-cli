@@ -102,6 +102,8 @@ type Config = StdioConfig | StreamableHttpConfig
 4. 无 `presentCall`/`presentResult`——UI 消费方使用提供方无关的通用卡片兜底。
 5. 工具在系统提示词中是透明的——除名称本身外不附加「[via MCP]」标注。
 
+Tools、Resources、URI Templates 或 Prompts 的每个分页列表（包括连接探测）都会跟踪 server 返回的每个 continuation cursor。cursor 重复时会在再次请求前拒绝操作；工具同步仍停留在获取阶段，因此之前注册的世代会继续存活。
+
 ### 公开名称规范化
 
 MCP 允许工具名最长 128 字符且可包含 `.`；DeepSeek 的函数名约定允许 `[A-Za-z0-9_-]` 且最多 64 字符。公开名称按确定性规则规范化：非法字符替换为 `_`，当替换或截断改变了名称时，追加 `(serverName, rawName)` 标识的 12 位十六进制 SHA-256 hash，确保不同的 MCP 标识永远不会坍缩为同一个公开名称：
@@ -205,7 +207,7 @@ v1 否决。它能防止跨服务器冲突，但无法将 MCP 注册与原生 ha
 
 覆盖范围按层级列出；每项行为都放在能够表达它的最低成本层级。
 
-- **单元测试**（`tests/mcp-client.spec.ts`、`tests/apply.spec.ts`，mock MCP SDK）：`publicToolName` 算法（干净名称、规范化、截断加 hash、确定性、不同标识的分离）、raw 与 public 的协议纪律、跨服务器与原生工具共存、重复 `serverName` 加载失败与预留释放、无效工具列表拒绝、注册代切换/回滚、重新同步失败时保留上一代注册、无损规范结果、丰富内容混合顺序、格式错误批次原子性、确切能力／存储拒绝、明确的非图片诊断、post-execute 策略优先级、取消，以及配置 schema 校验。100% 逐文件覆盖率门禁约束该包。
+- **单元测试**（`tests/mcp-client.spec.ts`、`tests/apply.spec.ts`、`tests/probe.spec.ts`，mock MCP SDK）：`publicToolName` 算法（干净名称、规范化、截断加 hash、确定性、不同标识的分离）、raw 与 public 的协议纪律、跨服务器与原生工具共存、重复 `serverName` 加载失败与预留释放、无效工具列表拒绝、每种列表的重复 cursor 拒绝、注册代切换／回滚、重新同步失败时保留上一代注册、无损规范结果、丰富内容混合顺序、格式错误批次原子性、确切能力／存储拒绝、明确的非图片诊断、post-execute 策略优先级、取消，以及配置 schema 校验。100% 逐文件覆盖率门禁约束该包。
 - **E2E**（`tests/mcp-client.e2e.ts`，无需密钥）：使用真实 MCP 协议对接仓库内的 fixture（测试前置数据）服务器、`@modelcontextprotocol/server-everything` 和 `@modelcontextprotocol/server-filesystem`（stdio 传输），以及进程内 `StreamableHTTPServerTransport` 服务器（Streamable HTTP 传输）——命名空间下的发现、带点号名称的端到端规范化、执行往返、持久图片保存／读取且 base64 只保留在规范值中、缺少图片路由时明确拒绝、重复 `serverName` 拒绝，以及 dispose。
 - **快照**：组装后的 ACP 示例负责传输可见的内联图片 transcript 与 Code Mode 图片转发 transcript；包 E2E 负责真实 MCP 协议，因为可运行快照必须保持无密钥且确定，而不是 spawn 第三方服务器包。MCP 工具卡片仍使用通用卡片兜底，无需包专属 UI 快照。
 
@@ -218,4 +220,5 @@ v1 否决。它能防止跨服务器冲突，但无法将 MCP 注册与原生 ha
 - **工具 schema 质量**：MCP 服务器可能暴露描述不佳的工具（模糊的描述、不完整的 JSON Schema）。harness 原样透传——垃圾进垃圾出；这是服务器作者的责任，不是桥接的。
 - **Stdio 进程管理**：行为异常的 MCP 服务器如果忽略信号，可能卡住 dispose。Cordis fiber 的 dispose 具有有界的完全停稳过程；卡住的传输层最终会在框架层面超时。
 - 崩溃恢复在[重连预算](2026-08-06-mcp-client-auto-reconnect.md)内自动进行；耗尽后或配置 `reconnect.enabled: false` 时，可以通过[手动运行时重载](2026-08-18-mcp-runtime-status-and-reload.md)、重启或手写 profile 的 HMR 编辑恢复。
+- server 无法通过循环 cursor 让列表或连接探测一直无法结束。受影响的操作会明确失败；server 修正分页状态后，调用方可以重试。
 - 图片载荷只有通过共享持久附件存储和确切正向路由能力，才能进入模型上下文。音频与嵌入资源载荷仍只存在于执行局部，并附带明确诊断。

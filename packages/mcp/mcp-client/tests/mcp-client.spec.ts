@@ -351,6 +351,20 @@ describe('syncTools', () => {
     expect(ctx.tools.get('mcp__srv__page2')).toBeDefined()
   })
 
+  it('rejects repeated tool cursors without replacing the previous generation', async () => {
+    const stable = createMockClient([{ name: 'stable', inputSchema: { type: 'object' } }])
+    const previous = await syncTools(stable as never, ctx, defaultOpts, new Map())
+    const cycling = createMockClient([])
+    cycling.listTools
+      .mockResolvedValueOnce({ tools: [{ name: 'first', inputSchema: { type: 'object' } }], nextCursor: 'same' })
+      .mockResolvedValueOnce({ tools: [{ name: 'second', inputSchema: { type: 'object' } }], nextCursor: 'same' })
+
+    await expect(syncTools(cycling as never, ctx, defaultOpts, previous)).rejects.toThrow(/repeated pagination cursor "same"/u)
+    expect(cycling.listTools).toHaveBeenCalledTimes(2)
+    expect(ctx.tools.get('mcp__srv__stable')).toBeDefined()
+    expect(ctx.tools.get('mcp__srv__first')).toBeUndefined()
+  })
+
   it('owns output validation independently of the SDK per-page cache', async () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
     serverTransport.onmessage = (message) => {
@@ -1206,6 +1220,29 @@ describe('createTransport', () => {
     expect(transport).toBeDefined()
     expect(transport).toHaveProperty('start')
     expect(transport).toHaveProperty('close')
+  })
+
+  it('requires HTTPS or loopback when Streamable HTTP OAuth is enabled', () => {
+    const oauthStatePath = '/tmp/dsh-mcp-oauth-test.json'
+    expect(() => createTransport({
+      transport: 'streamable-http',
+      serverName: 'remote',
+      url: 'http://mcp.example.test/mcp',
+      headers: {},
+      oauthStatePath,
+      toolCallTimeoutMs: 60_000,
+      failOnStartupError: false,
+    })).toThrow(/must use HTTPS/u)
+
+    expect(createTransport({
+      transport: 'streamable-http',
+      serverName: 'local',
+      url: 'http://localhost:3000/mcp',
+      headers: {},
+      oauthStatePath,
+      toolCallTimeoutMs: 60_000,
+      failOnStartupError: false,
+    })).toHaveProperty('start')
   })
 
   it('scrubs sensitive env vars and forwards the rest', () => {

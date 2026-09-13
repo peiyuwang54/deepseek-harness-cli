@@ -24,6 +24,7 @@ import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { ToolDefinition, ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import { assertSupportedJsonSchema } from '@deepseek-ai/dsh-tools'
 import type { JsonSchemaNode, JsonValue } from '@deepseek-ai/dsh-tools'
+import { advanceMcpCursor } from './pagination.ts'
 
 /** Resolved options relevant to tool bridging. */
 export interface ToolBridgeOptions {
@@ -153,6 +154,7 @@ export async function syncTools(
 
   // Phase 1: fetch and build the next generation without touching the registry.
   const definitions = new Map<string, ToolDefinition>()
+  const cursors = new Set<string>()
   let cursor: string | undefined
   do {
     const response = await listToolsUncached(client, cursor)
@@ -175,8 +177,8 @@ export async function syncTools(
         opts,
       ))
     }
-    cursor = response.nextCursor
-  } while (cursor)
+    cursor = advanceMcpCursor(`mcp-client(${opts.serverName}) tools/list`, response.nextCursor, cursors)
+  } while (cursor !== undefined)
 
   // Phase 2: swap generations.
   for (const dispose of previous.values()) dispose()

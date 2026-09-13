@@ -73,7 +73,7 @@ MCP 客户端桥接插件：连接外部 [Model Context Protocol](https://modelc
 
 ## 行为
 
-- 连接时：服务器声明 Tools 时，插件激活会读取全部 `tools/list` 分页，并在组合开始首个轮次前通过 `ctx.tools.register()` 以公开名称注册每个结果。只声明 Resources 或 Prompts 的服务器会保持连接且工具数为零。初始连接、发现或注册失败始终会记录日志；`failOnStartupError` 为 true 时拒绝激活，否则插件仍会激活但不注册工具。
+- 连接时：服务器声明 Tools 时，插件激活会读取全部 `tools/list` 分页，并在组合开始首个轮次前通过 `ctx.tools.register()` 以公开名称注册每个结果。Tools、Resources、URI 模板、Prompts 和连接探测遇到重复的 continuation cursor 时会拒绝，而不会沿着循环无限请求；工具刷新失败时保留上一世代。只声明 Resources 或 Prompts 的服务器会保持连接且工具数为零。初始连接、发现或注册失败始终会记录日志；`failOnStartupError` 为 true 时拒绝激活，否则插件仍会激活但不注册工具。
 - `probeMcpConnection()` 使用相同的凭据清理 stdio 或 Streamable HTTP 传输执行有界 initialize 与工具发现诊断，随后关闭服务器且不注册工具。
 - 监听 `notifications/tools/list_changed` → 重新同步；获取阶段失败时保留上一世代的注册，注册冲突则会回滚本次尝试的世代，并且不保留该服务器的任何工具。
 - 工具执行：`client.callTool({ name: rawName, arguments }, { signal })`，支持超时 + 中止；公开名称绝不会发给服务器。
@@ -83,7 +83,7 @@ MCP 客户端桥接插件：连接外部 [Model Context Protocol](https://modelc
 - 重连按中断预算控制：连续失败达到 `reconnect.maxAttempts` 次后，该服务器的工具会被注销，重连停止，直到手动重载服务器、HMR 替换或重启 Host。连接存活超过 `maxDelayMs` 会重置预算，因此偶尔崩溃的服务器可以无限恢复，而崩溃循环的服务器——即使短暂连接成功——仍会耗尽上限而非永远重启。
 - 重连状态在日志中对用户可见：reconnecting（warn，含尝试次数和延迟）、recovered（info）、最终失败和 disabled-loss（error）。dispose（资源释放）会取消任何待执行的重连。设置 `reconnect.enabled: false` 时，连接丢失后工具保持注册但调用失败，直到重载——即手动恢复行为。
 - `ctx.mcp.reload(name?)` 会取消待执行的退避，通过同一有界屏障关闭当前世代，等待工具同步静止，再立即尝试建立一个替代世代。同一服务器的并发请求会共享这次替换。立即尝试失败后会恢复使用已配置的自动重连策略。
-- 配置 `oauthStatePath` 的 Streamable HTTP server 使用 MCP SDK OAuth provider。首次运行 `deepseek mcp auth <name>` 会注册客户端，在浏览器中完成 PKCE 授权，并以 `0600` 权限保存 token；后续连接会刷新已保存的 token，且不会把 token 写入 `mcp.json` 或 session log。
+- 配置 `oauthStatePath` 的 Streamable HTTP server 使用 MCP SDK OAuth provider。首次运行 `deepseek mcp auth <name>` 会注册客户端，在浏览器中完成 PKCE 授权，并以 `0600` 权限保存 token；后续连接会刷新已保存的 token，且不会把 token 写入 `mcp.json` 或 session log。启用 OAuth 的远端 MCP server 及其发现到的端点必须使用 HTTPS。传输会拒绝跨源的 `resource_metadata`、远端 server 指向回环／私有／保留地址的请求、不安全的 DNS 结果，以及任意重定向步骤中的不安全目标；回环 MCP server 仍支持 HTTP 开发流程。
 
 ## 消费的服务
 

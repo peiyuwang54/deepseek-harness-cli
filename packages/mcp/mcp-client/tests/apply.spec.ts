@@ -245,6 +245,26 @@ describe('apply (plugin lifecycle)', () => {
     })
   })
 
+  it('rejects repeated Resources, Resource Template, and Prompt cursors', async () => {
+    await apply(ctx, stdioConfig)
+
+    mockListResources
+      .mockResolvedValueOnce({ resources: [], nextCursor: 'resource-cycle' })
+      .mockResolvedValueOnce({ resources: [], nextCursor: 'resource-cycle' })
+    await expect(ctx.mcp.resources('srv')).rejects.toThrow(/resources\/list.*resource-cycle/u)
+
+    mockListResources.mockResolvedValue({ resources: [], nextCursor: undefined })
+    mockListResourceTemplates
+      .mockResolvedValueOnce({ resourceTemplates: [], nextCursor: 'template-cycle' })
+      .mockResolvedValueOnce({ resourceTemplates: [], nextCursor: 'template-cycle' })
+    await expect(ctx.mcp.resources('srv')).rejects.toThrow(/resources\/templates\/list.*template-cycle/u)
+
+    mockListPrompts
+      .mockResolvedValueOnce({ prompts: [], nextCursor: 'prompt-cycle' })
+      .mockResolvedValueOnce({ prompts: [], nextCursor: 'prompt-cycle' })
+    await expect(ctx.mcp.prompts('srv')).rejects.toThrow(/prompts\/list.*prompt-cycle/u)
+  })
+
   it('keeps the Cordis plugin loading until initial discovery publishes its tools', async () => {
     const connection: PromiseWithResolvers<void> = Promise.withResolvers()
     mockConnect.mockImplementation(async () => {

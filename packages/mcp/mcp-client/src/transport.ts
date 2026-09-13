@@ -11,6 +11,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
 import { createPersistentOAuthClientProvider } from './oauth.ts'
+import { createMcpOAuthFetch } from './oauth-security.ts'
 import type { Config } from './index.ts'
 
 /**
@@ -48,6 +49,7 @@ export function createTransport(config: Config): Transport {
         {
           requestInit: { headers: config.headers },
           ...(config.oauthStatePath === undefined ? {} : {
+            fetch: createMcpOAuthFetch(config.url),
             authProvider: createPersistentOAuthClientProvider({
               statePath: config.oauthStatePath,
               ...(config.oauthRedirectUrl === undefined ? {} : { redirectUrl: config.oauthRedirectUrl }),

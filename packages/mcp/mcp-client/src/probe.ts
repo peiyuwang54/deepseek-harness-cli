@@ -3,6 +3,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { createTransport } from './transport.ts'
 import type { Config } from './index.ts'
+import { advanceMcpCursor } from './pagination.ts'
 
 /** Successful connectivity evidence returned by {@link probeMcpConnection}. */
 export interface McpProbeResult {
@@ -24,6 +25,7 @@ export async function probeMcpConnection(config: Config, timeoutMs: number): Pro
   try {
     await client.connect(createTransport(config), { timeout: timeoutMs })
     if (client.getServerCapabilities()?.tools === undefined) return { toolCount: 0 }
+    const cursors = new Set<string>()
     let cursor: string | undefined
     let toolCount = 0
     do {
@@ -32,7 +34,7 @@ export async function probeMcpConnection(config: Config, timeoutMs: number): Pro
         { timeout: timeoutMs },
       )
       toolCount += response.tools.length
-      cursor = response.nextCursor
+      cursor = advanceMcpCursor(`mcp-client(${config.serverName}) tools/list probe`, response.nextCursor, cursors)
     } while (cursor !== undefined)
     return { toolCount }
   } finally {

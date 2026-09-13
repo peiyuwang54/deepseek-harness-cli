@@ -27,6 +27,7 @@ import type {
 } from '@deepseek-ai/dsh-mcp'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { createTransport } from './transport.ts'
+import { advanceMcpCursor } from './pagination.ts'
 import { syncTools } from './tools.ts'
 import type { ToolBridgeOptions, ToolDisposers } from './tools.ts'
 import type { Config } from './index.ts'
@@ -398,6 +399,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
   async function resources(): Promise<McpResourceCatalog> {
     return await withClient(async (current) => {
       const resources: McpResourceCatalog['resources'][number][] = []
+      const resourceCursors = new Set<string>()
       let cursor: string | undefined
       do {
         const response = await current.listResources(
@@ -412,10 +414,11 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
           ...(resource.mimeType === undefined ? {} : { mimeType: resource.mimeType }),
           ...(resource.size === undefined ? {} : { size: resource.size }),
         })))
-        cursor = response.nextCursor
+        cursor = advanceMcpCursor(`${label} resources/list`, response.nextCursor, resourceCursors)
       } while (cursor !== undefined)
 
       const templates: McpResourceCatalog['templates'][number][] = []
+      const templateCursors = new Set<string>()
       cursor = undefined
       do {
         const response = await current.listResourceTemplates(
@@ -429,7 +432,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
           ...(template.description === undefined ? {} : { description: template.description }),
           ...(template.mimeType === undefined ? {} : { mimeType: template.mimeType }),
         })))
-        cursor = response.nextCursor
+        cursor = advanceMcpCursor(`${label} resources/templates/list`, response.nextCursor, templateCursors)
       } while (cursor !== undefined)
       return { resources, templates }
     })
@@ -439,6 +442,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
   async function prompts(): Promise<McpPromptCatalog> {
     return await withClient(async (current) => {
       const prompts: McpPromptCatalog['prompts'][number][] = []
+      const cursors = new Set<string>()
       let cursor: string | undefined
       do {
         const response = await current.listPrompts(
@@ -457,7 +461,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
             })),
           }),
         })))
-        cursor = response.nextCursor
+        cursor = advanceMcpCursor(`${label} prompts/list`, response.nextCursor, cursors)
       } while (cursor !== undefined)
       return { prompts }
     })

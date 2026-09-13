@@ -64,4 +64,25 @@ describe('probeMcpConnection', () => {
     expect(client.listTools).toHaveBeenNthCalledWith(2, { cursor: 'page-2' }, { timeout: 4321 })
     expect(client.close).toHaveBeenCalledOnce()
   })
+
+  it('rejects a repeated Tools cursor and still closes the client', async () => {
+    const client = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      getServerCapabilities: vi.fn(() => ({ tools: {} })),
+      listTools: vi.fn()
+        .mockResolvedValueOnce({ tools: [], nextCursor: 'cycle' })
+        .mockResolvedValueOnce({ tools: [], nextCursor: 'cycle' }),
+      close: vi.fn().mockResolvedValue(undefined),
+    }
+    clientConstructor.mockImplementationOnce(class {
+      readonly connect = client.connect
+      readonly getServerCapabilities = client.getServerCapabilities
+      readonly listTools = client.listTools
+      readonly close = client.close
+    } as unknown as () => typeof client)
+
+    await expect(probeMcpConnection(config, 1000)).rejects.toThrow(/repeated pagination cursor "cycle"/u)
+    expect(client.listTools).toHaveBeenCalledTimes(2)
+    expect(client.close).toHaveBeenCalledOnce()
+  })
 })

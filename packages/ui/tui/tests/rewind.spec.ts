@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process'
-import { readFile, lstat, mkdtemp, rm, symlink, unlink, writeFile } from 'node:fs/promises'
+import { readFile, lstat, mkdir, mkdtemp, rm, symlink, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
-import { ShadowWorkspace } from '../src/chat/rewind.ts'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ShadowWorkspace, createRewindController } from '../src/chat/rewind.ts'
 
 const roots: string[] = []
 
@@ -30,8 +30,62 @@ function git(cwd: string, args: string[]): string {
 }
 
 afterEach(async () => {
+  vi.unstubAllEnvs()
   await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
 })
+
+type ToolsExecuteListener = (
+  exec: { agent: unknown; parent: unknown; signal: { aborted: boolean } },
+  next: () => Promise<unknown>,
+) => Promise<unknown>
+
+/** Minimal controller wiring that reaches the pre-turn checkpoint without a mounted TUI. */
+function rewindControllerHarness(workspace: string, limits: { maxFileBytes: number; maxTotalBytes: number }) {
+  const notices: string[] = []
+  const events: { type: string; data: unknown; seq: number }[] = []
+  let listener: ToolsExecuteListener | undefined
+  const session = {
+    header: { cwd: workspace },
+    events,
+    append(type: string, data: unknown) {
+      const event = { type, data, seq: events.length + 1 }
+      events.push(event)
+      return event
+    },
+  }
+  const agent = { session }
+  const controller = createRewindController({
+    ctx: {
+      on(event: string, candidate: ToolsExecuteListener) {
+        if (event === 'tools/execute') listener = candidate
+        return () => {}
+      },
+      sessions: { flush: () => Promise.resolve(true) },
+    },
+    agent,
+    runtime: {},
+    resolved: {
+      rewindGitTimeoutMs: 10_000,
+      rewindMaxFileBytes: limits.maxFileBytes,
+      rewindMaxTotalBytes: limits.maxTotalBytes,
+    },
+    palette: {},
+    overlayManager: {},
+    appendNotice: (message: string) => { notices.push(message) },
+    agentStatus: () => 'idle',
+    releaseTerminal: () => {},
+    restoreTerminal: () => {},
+    requestRender: () => {},
+  } as never)
+  return {
+    notices,
+    controller,
+    checkpoint: async (): Promise<void> => {
+      if (listener === undefined) throw new Error('tools/execute listener was not registered')
+      await listener({ agent, parent: undefined, signal: { aborted: false } }, () => Promise.resolve({ content: [], isError: false }))
+    },
+  }
+}
 
 describe('ShadowWorkspace', () => {
   it('restores tracked and untracked files without touching real Git metadata or ignored files', async () => {
@@ -106,5 +160,47 @@ describe('ShadowWorkspace', () => {
       maxTotalBytes: 10,
     })
     await expect(shadow.capture()).rejects.toThrow(/per-file limit/u)
+  })
+})
+
+describe('rewind checkpoint failures', () => {
+  it('runs the tool and reports a failed checkpoint once', async () => {
+    const root = await tempRoot()
+    const workspace = join(root, 'workspace')
+    await mkdir(workspace, { recursive: true })
+    vi.stubEnv('DSH_HOME', join(root, 'home'))
+    await writeFile(join(workspace, 'large.bin'), '12345')
+    const harness = rewindControllerHarness(workspace, { maxFileBytes: 4, maxTotalBytes: 1024 })
+
+    await expect(harness.checkpoint()).resolves.toBeUndefined()
+    expect(harness.notices).toHaveLength(1)
+    expect(harness.notices[0]).toContain('Workspace checkpoint failed')
+    expect(harness.notices[0]).toContain('exceeds the per-file limit')
+
+    await harness.checkpoint()
+    expect(harness.notices).toHaveLength(1)
+
+    await unlink(join(workspace, 'large.bin'))
+    await harness.checkpoint()
+    expect(harness.notices).toHaveLength(1)
+
+    await writeFile(join(workspace, 'large.bin'), '12345')
+    await harness.checkpoint()
+    expect(harness.notices).toHaveLength(2)
+    harness.controller.dispose()
+  })
+
+  it('runs a direct shell when the checkpoint fails', async () => {
+    const root = await tempRoot()
+    const workspace = join(root, 'workspace')
+    await mkdir(workspace, { recursive: true })
+    vi.stubEnv('DSH_HOME', join(root, 'home'))
+    await writeFile(join(workspace, 'large.bin'), '12345')
+    const harness = rewindControllerHarness(workspace, { maxFileBytes: 4, maxTotalBytes: 1024 })
+
+    await expect(harness.controller.checkpointDirectShell()).resolves.toBeUndefined()
+    expect(harness.notices).toHaveLength(1)
+    expect(harness.notices[0]).toContain('Workspace checkpoint failed')
+    harness.controller.dispose()
   })
 })

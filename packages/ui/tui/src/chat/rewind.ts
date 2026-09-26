@@ -409,6 +409,7 @@ export function createRewindController(deps: RewindControllerDeps): RewindContro
   let messageOverlay: TuiOverlaySession | undefined
   let modeOverlay: TuiOverlaySession | undefined
   let handoffInFlight = false
+  let reportedCheckpointFailure: string | undefined
 
   const workspace = (): string => agent.session.header.cwd ?? process.cwd()
   const store = (): Promise<ShadowWorkspace> => {
@@ -434,9 +435,29 @@ export function createRewindController(deps: RewindControllerDeps): RewindContro
     await ctx.sessions.flush(agent.session)
   }
 
+  /**
+   * Capture one checkpoint without letting its failure block the caller. The
+   * turn's tool or shell command still runs; `/rewind` simply has no restore
+   * point for it. Repeat failures with the same cause report once.
+   */
+  const attemptCheckpoint = async (kind: WorkspaceCheckpointKind, userSeq?: number, force = false): Promise<void> => {
+    try {
+      await appendCheckpoint(kind, userSeq, force)
+      reportedCheckpointFailure = undefined
+    } catch (error: unknown) {
+      const detail = errorChain(error)
+      if (disposed || detail === reportedCheckpointFailure) return
+      reportedCheckpointFailure = detail
+      deps.appendNotice(
+        `Workspace checkpoint failed: ${detail}. The turn continues without a restore point for it.`,
+        'warning',
+      )
+    }
+  }
+
   const disposeTool = ctx.on('tools/execute', async (exec, next): Promise<ToolExecutionResult> => {
     if (exec.agent === agent && exec.parent === undefined) {
-      await appendCheckpoint('pre-turn', latestHumanSeq())
+      await attemptCheckpoint('pre-turn', latestHumanSeq(), false)
       if (exec.signal.aborted) return next()
     }
     return next()
@@ -567,7 +588,7 @@ export function createRewindController(deps: RewindControllerDeps): RewindContro
       return undefined
     },
     async checkpointDirectShell(): Promise<void> {
-      await appendCheckpoint('direct-shell', latestHumanSeq(), true)
+      await attemptCheckpoint('direct-shell', latestHumanSeq(), true)
     },
     dispose(): void {
       disposed = true

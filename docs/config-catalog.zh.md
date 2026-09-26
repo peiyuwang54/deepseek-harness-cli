@@ -3046,9 +3046,9 @@ export interface TuiConfig {
   gitDiffTimeoutMs?: number
   /** Maximum lifetime in milliseconds of each isolated workspace-checkpoint Git child. */
   rewindGitTimeoutMs?: number
-  /** Maximum bytes accepted from one regular file in an automatic workspace checkpoint. */
+  /** Regular files larger than this are skipped by an automatic workspace checkpoint. */
   rewindMaxFileBytes?: number
-  /** Maximum aggregate regular-file bytes accepted by one automatic workspace checkpoint. */
+  /** Regular files are skipped by an automatic workspace checkpoint once the captured total would exceed this. */
   rewindMaxTotalBytes?: number
   /** Maximum options visible at once in a user-question panel. */
   maxQuestionOptions?: number

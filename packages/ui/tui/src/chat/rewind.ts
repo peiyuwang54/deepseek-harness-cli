@@ -78,10 +78,30 @@ const defaultGitRunner: RewindGitRunner = (command, args, options) => new Promis
   })
 })
 
+/** One regular file left out of a shadow checkpoint tree by a size limit. */
+export interface WorkspaceCheckpointExclusion {
+  /** Workspace-relative path exactly as Git reports it. */
+  readonly path: string
+  /** Size in bytes observed when the checkpoint was captured. */
+  readonly bytes: number
+  /** Limit that excluded the path: the per-file cap or the aggregate cap. */
+  readonly reason: 'per-file' | 'aggregate'
+}
+
+/** Commit produced by one shadow checkpoint capture and the files it skipped. */
+export interface WorkspaceCheckpointCapture {
+  /** Shadow commit id for the captured tree; an unchanged tree reuses the prior id. */
+  readonly commit: string
+  /** Regular files left out of the tree because of a size limit. */
+  readonly excluded: readonly WorkspaceCheckpointExclusion[]
+}
+
 /** Limits and optional process seam for one shadow workspace repository. */
 export interface ShadowWorkspaceOptions {
   readonly timeoutMs: number
+  /** Regular files larger than this are excluded from a capture. */
   readonly maxFileBytes: number
+  /** Regular files are excluded once the captured total would exceed this. */
   readonly maxTotalBytes: number
   readonly dshHome?: string
   readonly git?: RewindGitRunner
@@ -125,6 +145,7 @@ export class ShadowWorkspace {
   private readonly repository: string
   private readonly hooks: string
   private readonly attributes: string
+  private readonly pathspec: string
   private readonly globalConfig: string
   private readonly git: RewindGitRunner
   private readonly env: NodeJS.ProcessEnv
@@ -137,6 +158,7 @@ export class ShadowWorkspace {
     this.repository = join(root, 'repo.git')
     this.hooks = join(root, 'hooks')
     this.attributes = join(root, 'global.attributes')
+    this.pathspec = join(root, 'pathspec')
     this.globalConfig = join(root, 'global.gitconfig')
     this.git = options.git ?? defaultGitRunner
     this.env = safeGitEnvironment(this.globalConfig)
@@ -206,30 +228,67 @@ export class ShadowWorkspace {
     this.initialized = true
   }
 
-  private async preflight(): Promise<void> {
+  /**
+   * Classify every candidate path before staging. Included paths cover
+   * additions, modifications, symbolic links, and index entries whose file is
+   * gone, so their deletion stages. A regular file over the per-file limit, or
+   * one whose size would push the running total past the aggregate limit, is
+   * excluded instead of refusing the whole capture.
+   */
+  private async preflight(): Promise<{ included: string[]; excluded: WorkspaceCheckpointExclusion[] }> {
     const listed = await this.command(['ls-files', '--cached', '--others', '--exclude-standard', '-z'])
     let total = 0
+    const included: string[] = []
+    const excluded: WorkspaceCheckpointExclusion[] = []
     for (const path of parseNullList(listed.stdout)) {
       const target = this.resolveTrackedPath(path)
       let stat
       try {
         stat = await lstat(target)
       } catch (error: unknown) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          included.push(path)
+          continue
+        }
         throw error
       }
-      if (stat.isSymbolicLink()) continue
+      if (stat.isSymbolicLink()) {
+        included.push(path)
+        continue
+      }
       if (!stat.isFile()) {
         throw new Error(`workspace checkpoint does not support special or nested-repository entry: ${path}`)
       }
       if (stat.size > this.options.maxFileBytes) {
-        throw new Error(`workspace checkpoint refused ${path}: ${stat.size} bytes exceeds the per-file limit`)
+        excluded.push({ path, bytes: stat.size, reason: 'per-file' })
+        continue
+      }
+      if (total + stat.size > this.options.maxTotalBytes) {
+        excluded.push({ path, bytes: stat.size, reason: 'aggregate' })
+        continue
       }
       total += stat.size
-      if (total > this.options.maxTotalBytes) {
-        throw new Error(`workspace checkpoint refused the workspace: ${total} bytes exceeds the aggregate limit`)
-      }
+      included.push(path)
     }
+    return { included, excluded }
+  }
+
+  /**
+   * Write one NUL-separated pathspec file below the shadow root. Each entry is
+   * a literal pathspec, so a tracked path containing glob characters names only
+   * itself; the file also keeps an arbitrarily long path list out of argv.
+   * @param paths - workspace-relative paths Git reported.
+   * @returns the arguments that make the next Git command read that file.
+   */
+  private async pathspecArguments(paths: readonly string[]): Promise<string[]> {
+    await writeFile(this.pathspec, `${paths.map(path => `:(literal)${path}`).join('\0')}\0`)
+    return ['--pathspec-from-file', this.pathspec, '--pathspec-file-nul']
+  }
+
+  private async excludeFromIndex(paths: readonly string[]): Promise<void> {
+    if (paths.length === 0) return
+    // `--force` overrides Git's staged-content check; `--cached` still leaves the worktree file alone.
+    await this.command(['rm', '--cached', '--force', '--ignore-unmatch', ...await this.pathspecArguments(paths)])
   }
 
   private resolveTrackedPath(path: string): string {
@@ -263,27 +322,30 @@ export class ShadowWorkspace {
     }
   }
 
-  private async captureNow(): Promise<string> {
+  private async captureNow(): Promise<WorkspaceCheckpointCapture> {
     await this.ensureInitialized()
-    await this.preflight()
-    await this.command(['add', '--all', '--', '.'])
+    const { included, excluded } = await this.preflight()
+    await this.excludeFromIndex(excluded.map(item => item.path))
+    if (included.length > 0) await this.command(['add', '--all', ...await this.pathspecArguments(included)])
     const head = await this.command(['rev-parse', '--verify', 'HEAD'], [0, 128])
     if (head.exitCode === 0) {
       const changed = await this.command(['diff', '--cached', '--quiet'], [0, 1])
-      if (changed.exitCode === 0) return head.stdout.trim()
+      if (changed.exitCode === 0) return { commit: head.stdout.trim(), excluded }
     }
     await this.command(['commit', '--quiet', '--allow-empty', '-m', 'DeepSeek workspace checkpoint'])
     const committed = (await this.command(['rev-parse', 'HEAD'])).stdout.trim()
     if (!/^[0-9a-f]{40,64}$/u.test(committed)) throw new Error('workspace checkpoint produced an invalid commit id')
-    return committed
+    return { commit: committed, excluded }
   }
 
   /**
    * Capture every non-ignored regular file and symbolic link without changing
-   * the real repository's refs or index.
-   * @returns the stable shadow commit id; unchanged trees reuse the prior id.
+   * the real repository's refs or index. Regular files above the configured
+   * per-file or aggregate size limit are left out of the tree, reported as
+   * excluded, and removed from the shadow index so no restore rewrites them.
+   * @returns the stable shadow commit id and the excluded paths; unchanged trees reuse the prior id.
    */
-  capture(): Promise<string> {
+  capture(): Promise<WorkspaceCheckpointCapture> {
     const task = this.operation.then(() => this.captureNow())
     this.operation = task.catch(() => undefined)
     return task
@@ -321,15 +383,19 @@ export class ShadowWorkspace {
     await this.ensureInitialized()
     await this.command(['cat-file', '-e', `${commit}^{commit}`])
     const safety = await this.captureNow()
-    const [currentPaths, targetPaths] = await Promise.all([this.treePaths(safety), this.treePaths(commit)])
-    for (const path of new Set([...currentPaths, ...targetPaths])) await this.assertNoSymlinkParent(path)
+    const [currentPaths, targetPaths] = await Promise.all([this.treePaths(safety.commit), this.treePaths(commit)])
+    const excluded = new Set(safety.excluded.map(item => item.path))
+    for (const path of new Set([...currentPaths, ...targetPaths])) {
+      if (!excluded.has(path)) await this.assertNoSymlinkParent(path)
+    }
     const targetSet = new Set(targetPaths)
     for (const path of currentPaths) {
-      if (!targetSet.has(path)) await this.removeTrackedPath(path)
+      if (!targetSet.has(path) && !excluded.has(path)) await this.removeTrackedPath(path)
     }
     await this.command(['read-tree', commit])
+    await this.excludeFromIndex([...excluded])
     await this.command(['checkout-index', '--all', '--force'])
-    return safety
+    return safety.commit
   }
 
   /**
@@ -409,6 +475,7 @@ export function createRewindController(deps: RewindControllerDeps): RewindContro
   let messageOverlay: TuiOverlaySession | undefined
   let modeOverlay: TuiOverlaySession | undefined
   let handoffInFlight = false
+  let reportedExclusions: string | undefined
 
   const workspace = (): string => agent.session.header.cwd ?? process.cwd()
   const store = (): Promise<ShadowWorkspace> => {
@@ -422,12 +489,30 @@ export function createRewindController(deps: RewindControllerDeps): RewindContro
 
   const latestHumanSeq = (): number | undefined => humanMessages(agent.session.events).at(-1)?.seq
 
+  const reportExclusions = (excluded: readonly WorkspaceCheckpointExclusion[]): void => {
+    if (excluded.length === 0) {
+      reportedExclusions = undefined
+      return
+    }
+    const signature = excluded.map(item => `${item.path}\0${item.bytes}\0${item.reason}`).join('\n')
+    if (signature === reportedExclusions) return
+    reportedExclusions = signature
+    const paths = excluded.map(item => item.path)
+    const shown = paths.length <= 3 ? paths.join(', ') : `${paths.slice(0, 3).join(', ')} and ${paths.length - 3} more`
+    deps.appendNotice(
+      `Workspace checkpoint skipped ${excluded.length} ${excluded.length === 1 ? 'file' : 'files'} over the size limit; `
+      + `/rewind will leave ${excluded.length === 1 ? 'it' : 'them'} untouched: ${shown}`,
+      'warning',
+    )
+  }
+
   const appendCheckpoint = async (kind: WorkspaceCheckpointKind, userSeq?: number, force = false): Promise<void> => {
     if (!force && userSeq !== undefined && checkpointFor(agent.session.events, userSeq) !== undefined) return
-    const commit = await (await store()).capture()
+    const capture = await (await store()).capture()
     if (disposed) return
+    reportExclusions(capture.excluded)
     agent.session.append('tui/workspace-checkpoint', {
-      commit,
+      commit: capture.commit,
       kind,
       ...userSeq === undefined ? {} : { userSeq },
     })

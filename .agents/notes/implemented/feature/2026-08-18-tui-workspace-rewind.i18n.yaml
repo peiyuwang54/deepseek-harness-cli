@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-18-tui-workspace-rewind.md
-2026-08-18-tui-workspace-rewind.md: b36c3c63cddfebb475060ae4fed074330bbff683
-2026-08-18-tui-workspace-rewind.zh.md: 4ac2af8e7a46950a37cacd3d82674800fb1adcb8
+2026-08-18-tui-workspace-rewind.md: eedc06a89d2290c0fc6718677c364ddedc2d7693
+2026-08-18-tui-workspace-rewind.zh.md: 05ab39ac9a559021f60de955dde8b44ae8ea8d53

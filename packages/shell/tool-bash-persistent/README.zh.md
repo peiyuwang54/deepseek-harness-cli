@@ -10,7 +10,7 @@
 |---|---:|---|
 | `backendType` | `shell` | 每个 Agent shell 使用的已注册 PTY 后端。 |
 | `timeoutMs` | `300000` | 单条命令的墙钟时间上限；超时会关闭 shell。 |
-| `maxOutputChars` | `16000` | 命令输出最多保留的字符数；固定诊断会在此后追加。 |
+| `maxOutputChars` | `16000` | 命令输出最多保留的 UTF-16 code unit 数；切割会保留 surrogate pair，固定诊断会在此后追加。 |
 | `description` | 持久 shell 描述 | 面向模型的环境约定。 |
 
 ## 模型体验

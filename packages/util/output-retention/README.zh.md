@@ -14,6 +14,7 @@
 import {
   ItemRetainer, TextRetainer,
   describeOmitted, formatRetentionNotice,
+  truncateWithoutSplittingSurrogatePair,
 } from '@deepseek-ai/dsh-output-retention'
 import type {
   Omitted, PushDecision, RetainedItems, RetainedText,
@@ -27,6 +28,7 @@ import type {
 | `TextRetainer` | 限制面向字节的文本流。`head` / `tail` / `headTail`，并在 `finish()` 时保留 UTF-8 边界。`push()` → `PushDecision`；`finish()` → `RetainedText`。 |
 | `describeOmitted(omitted, unit)` | 标准化的省略子句（`exact` 输出数量；`unknown` 不输出）。 |
 | `formatRetentionNotice(notice, recovery)` | 将标准化的省略子句与工具自有的恢复指引连接起来。 |
+| `truncateWithoutSplittingSurrogatePair(text, maxChars)` | 限制 UTF-16 字符串，且不会在切割位置留下 surrogate pair 的高半部分。 |
 | `Omitted` | `none` / `exact` / `unknown`：省略了多少内容。 |
 | `PushDecision` | `{ kept, truncated }`：每次 push 的保留结果。 |
 
@@ -43,7 +45,7 @@ import type {
 
 ## 字节，而非字符
 
-文本上限和 `omittedBytes` 按**字节**计数，以保证进程/正文安全（子进程管道和 HTTP 正文都是字节流）。跨越码点的分片会被正确处理：`finish()` 会修剪每个切割位置的不完整码点，使返回文本绝不在边界引入替换字符；首尾两侧会分开解码，因此绝不会跨越被省略的中间部分重建码点。按字符或行限制的预览预算属于独立的工具职责。
+文本上限和 `omittedBytes` 按**字节**计数，以保证进程／正文安全（子进程管道和 HTTP 正文都是字节流）。跨越码点的分片会被正确处理：`finish()` 会修剪每个切割位置的不完整码点，使返回文本绝不在边界引入替换字符；首尾两侧会分开解码，因此绝不会跨越被省略的中间部分重建码点。按字符限制的消费方在 UTF-16 code unit 上限可能产生无效 JSON 文本时使用 `truncateWithoutSplittingSurrogatePair()`。按行限制的预览预算仍由工具负责。
 
 ## 工具映射
 

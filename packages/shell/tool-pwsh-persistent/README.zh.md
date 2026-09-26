@@ -10,7 +10,7 @@
 |---|---:|---|
 | `backendType` | `shell` | 每个 Agent shell 使用的已注册 terminal backend。 |
 | `timeoutMs` | `300000` | 单条命令的墙钟上限；超时关闭 shell。 |
-| `maxOutputChars` | `16000` | 保留的命令输出字符上限；固定诊断文本在其后追加。 |
+| `maxOutputChars` | `16000` | 保留的命令输出 UTF-16 code unit 上限；切割会保留 surrogate pair，固定诊断文本在其后追加。 |
 | `description` | 持久 shell 描述 | 模型可见的环境契约。 |
 
 ## 模型体验

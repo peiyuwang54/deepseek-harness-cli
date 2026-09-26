@@ -14,6 +14,7 @@ It is a **library, not a service or plugin**: no `ctx`, registers nothing, emits
 import {
   ItemRetainer, TextRetainer,
   describeOmitted, formatRetentionNotice,
+  truncateWithoutSplittingSurrogatePair,
 } from '@deepseek-ai/dsh-output-retention'
 import type {
   Omitted, PushDecision, RetainedItems, RetainedText,
@@ -27,6 +28,7 @@ import type {
 | `TextRetainer` | Bounds a byte-oriented text stream. `head` / `tail` / `headTail`, UTF-8 boundaries preserved at `finish()`. `push()` → `PushDecision`; `finish()` → `RetainedText`. |
 | `describeOmitted(omitted, unit)` | Standardized omission clause (`exact` prints a count; `unknown` does not). |
 | `formatRetentionNotice(notice, recovery)` | Joins the standardized omission clause with the tool's own recovery guidance. |
+| `truncateWithoutSplittingSurrogatePair(text, maxChars)` | Caps a UTF-16 string without leaving the high half of a surrogate pair at the cut. |
 | `Omitted` | `none` / `exact` / `unknown` — how much was omitted. |
 | `PushDecision` | `{ kept, truncated }` — the per-push retention result. |
 
@@ -43,7 +45,7 @@ The two retainers are separate names, not one generic collector, because they di
 
 ## Bytes, not characters
 
-Text caps and `omittedBytes` count **bytes**, for process/body safety (a child's pipe and an HTTP body are byte streams). A chunk that straddles a codepoint is handled: `finish()` trims a partial codepoint at each cut so the returned text never introduces a replacement char at the boundary, and the two sides are decoded separately so a codepoint is never reconstructed across the omitted middle. Character- or line-level preview budgets are a separate, tool-owned concern.
+Text caps and `omittedBytes` count **bytes**, for process/body safety (a child's pipe and an HTTP body are byte streams). A chunk that straddles a codepoint is handled: `finish()` trims a partial codepoint at each cut so the returned text never introduces a replacement char at the boundary, and the two sides are decoded separately so a codepoint is never reconstructed across the omitted middle. Character-level consumers use `truncateWithoutSplittingSurrogatePair()` when their UTF-16 code-unit cap could otherwise leave invalid JSON text. Line-level preview budgets remain tool-owned.
 
 ## Tool mappings
 

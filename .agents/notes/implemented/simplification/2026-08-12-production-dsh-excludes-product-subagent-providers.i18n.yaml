@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/simplification/2026-08-12-production-dsh-excludes-product-subagent-providers.md
-2026-08-12-production-dsh-excludes-product-subagent-providers.md: cb3eb91e7c1cef530b718855565ec2685aec633a
-2026-08-12-production-dsh-excludes-product-subagent-providers.zh.md: 3c2eae560966396a1986bbcca4e9c6f4fd897606
+2026-08-12-production-dsh-excludes-product-subagent-providers.md: fba4c69b369bfc386b8845f653e641c3d1425a3b
+2026-08-12-production-dsh-excludes-product-subagent-providers.zh.md: ff8838dea6f1afe5e8b0a62df1dca25cb12ec928

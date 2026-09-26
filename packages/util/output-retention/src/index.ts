@@ -441,3 +441,18 @@ export function formatRetentionNotice(
     .filter(part => part.length > 0)
     .join(' ')
 }
+
+/**
+ * Cap `text` at `maxChars` UTF-16 code units without introducing a lone high
+ * surrogate. A cut inside a surrogate pair drops its unpaired first half, so
+ * the returned prefix can be one code unit shorter than the cap. Existing
+ * unpaired surrogates are left unchanged.
+ * @param text - Text to cap.
+ * @param maxChars - Maximum UTF-16 code units to retain.
+ * @returns A prefix no longer than `maxChars` whose cut does not split a surrogate pair.
+ */
+export function truncateWithoutSplittingSurrogatePair(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text
+  const capped = text.slice(0, maxChars)
+  return /[\uD800-\uDBFF]$/u.test(capped) ? capped.slice(0, -1) : capped
+}

@@ -8,7 +8,7 @@
 
 | 键 | 默认值 | 含义 |
 |---|---:|---|
-| `maxOutputChars` | `16000` | 文件和目录查看结果保留的前缀字符数。 |
+| `maxOutputChars` | `16000` | 文件和目录查看结果前缀保留的 UTF-16 code unit 数；切割不会拆分 surrogate pair。 |
 | `description` | 编辑器命令指南 | 面向模型的工具描述。 |
 
 ## 工具

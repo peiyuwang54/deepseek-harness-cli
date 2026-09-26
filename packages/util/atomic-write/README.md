@@ -28,7 +28,7 @@ await withFileLock('/home/u/.dsh/settings.yaml', async () => {
 - **Same-directory sibling** keeps the rename on one filesystem, so the swap stays atomic.
 - Parent directories are created; on any failure the temp is removed and the failure rethrown; readers observe either the old or the new complete content.
 
-`withFileLock` serializes the writers of one file across processes, for the read-render-commit cycles a bare atomic commit cannot make safe on its own. The lock is a `wx`-created `<filename>.lock` sibling, so readers never contend; waiters back off exponentially and fail with a timeout rather than block forever. `EEXIST` identifies contention directly; `EPERM` does so only when a fresh `lstat` confirms that the lock path exists, covering Windows exclusive-create behavior without hiding an unrelated permission failure. A contender never removes the existing lock: age cannot distinguish a crashed owner from a paused live writer.
+`withFileLock` serializes the writers of one file across processes, for the read-render-commit cycles a bare atomic commit cannot make safe on its own. The lock is a `wx`-created `<filename>.lock` sibling containing `<pid>\n`, so readers never contend; waiters back off exponentially and fail with a timeout rather than block forever. `EEXIST` identifies contention directly; `EPERM` does so only when a fresh `lstat` confirms that the lock path exists, covering Windows exclusive-create behavior without hiding an unrelated permission failure. A contender takes over a lock only when a signal probe proves that its recorded process no longer exists. Contenders for one exited holder serialize through a record-specific claim, then re-read the lock and probe again before removing it. Live, malformed, unreadable, self-owned, and cross-user locks remain in place. `waitMs` can extend the default two-second deadline for an operation that legitimately holds the lock longer.
 
 ## Model Experience
 
@@ -42,4 +42,5 @@ None; nothing here enters a request prefix.
 
 - **Atomic, not durable** — no `fsync` of the file or its directory, so after a crash the rename may be observed unwound. The file-backed stores here re-read and republish on boot, keeping durability the caller's policy.
 - **String content only** — no `Buffer` or stream form until a consumer needs one.
-- **Orphaned locks require operator recovery** — a process that exits while holding the lock can leave the sibling behind. Later writers time out without deleting it; an operator removes it only after verifying that no writer still owns it. File age alone is not safe evidence of abandonment.
+- **Some orphaned locks require operator recovery** — a malformed or unreadable record, a PID reused by a live process, or a contender that exits while holding its takeover claim remains for an operator to inspect. File age alone never authorizes removal.
+- **One host and PID namespace** — holder probes run on the contender's host. Writers in different PID namespaces or on several hosts must not share one lock file.

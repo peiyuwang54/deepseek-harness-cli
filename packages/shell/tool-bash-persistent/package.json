@@ -33,6 +33,7 @@
   "peerDependencies": {
     "@deepseek-ai/dsh-agent": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@deepseek-ai/dsh-output-retention": "workspace:^",
     "@deepseek-ai/dsh-terminal": "workspace:^",
     "@deepseek-ai/dsh-timeout": "workspace:^",
     "@deepseek-ai/dsh-tools": "workspace:^",
@@ -47,6 +48,7 @@
     "@deepseek-ai/dsh-agent": "workspace:^",
     "@deepseek-ai/dsh-invariants": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
+    "@deepseek-ai/dsh-output-retention": "workspace:^",
     "@deepseek-ai/dsh-terminal": "workspace:^",
     "@deepseek-ai/dsh-terminal-bash": "workspace:^",
     "@deepseek-ai/dsh-sandbox": "workspace:^",

@@ -9,6 +9,7 @@
     { "path": "../../../vendor/cordis" },
     { "path": "../../core/agent" },
     { "path": "../../core/tools" },
+    { "path": "../../util/output-retention" },
     { "path": "../../terminal/terminal" },
     { "path": "../../runtime-diagnostics/invariants" },
     { "path": "../../util/timeout" }

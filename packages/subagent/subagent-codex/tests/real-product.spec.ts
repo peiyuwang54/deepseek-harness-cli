@@ -87,7 +87,6 @@ async function realInstanceFixture(
     'model_provider = "fixture"',
     'approval_policy = "on-request"',
     'sandbox_mode = "read-only"',
-    'disable_response_storage = true',
     'check_for_update_on_startup = false',
     '',
     '[model_providers.fixture]',
@@ -215,18 +214,18 @@ function responseInputTexts(body: Record<string, unknown>): string[] {
   })
 }
 
-describe('real @openai/codex 0.154.0 product', () => {
+describe('real @openai/codex 0.157.1 product', () => {
   it('starts approve-for-me through the real app-server and returns exact text', async () => {
     const sentinel = 'REAL_CODEX_SENTINEL_0_149_0'
     const task = 'Return the fixture sentinel exactly.'
     const { harness, fixture } = await realHarness([
       { kind: 'complete', text: sentinel },
     ], 'approve-for-me')
-    expect(codexPackage.version).toBe('0.154.0')
+    expect(codexPackage.version).toBe('0.157.1')
     const version = await execFileAsync(process.execPath, [codexEntry, '--version'], {
       env: { ...process.env, ...harness.env },
     })
-    expect(version.stdout.trim()).toBe('codex-cli 0.154.0')
+    expect(version.stdout.trim()).toBe('codex-cli 0.157.1')
     const schemaRoot = mkdtempSync(join(tmpdir(), 'dsh-codex-schema-'))
     roots.push(schemaRoot)
     await execFileAsync(process.execPath, [

@@ -6,12 +6,13 @@
  * up with exactly the stated mode. `withFileLock` serializes cross-process
  * writers of one file through a `wx`-created `<file>.lock` sibling, so a
  * read-modify-write cycle can never resurrect a state another writer just
- * replaced; readers stay lock-free because the rename commit is atomic.
+ * replaced; readers stay lock-free because the rename commit is atomic. A
+ * lock whose recorded holder process no longer exists is taken over.
  * @module @deepseek-ai/dsh-atomic-write
  */
 
-import { randomBytes } from 'node:crypto'
-import { lstat, mkdir, rename, rm, writeFile } from 'node:fs/promises'
+import { createHash, randomBytes } from 'node:crypto'
+import { lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
 /**
@@ -77,6 +78,61 @@ async function isLockContention(error: unknown, lockPath: string): Promise<boole
   }
 }
 
+/** Whether a `<pid>\n` lock record names a process proven to have exited. */
+function holderExited(record: string): boolean {
+  if (!/^\d+\n$/u.test(record)) return false
+  const pid = Number(record.trim())
+  if (pid === 0 || pid > 0x7fffffff || pid === process.pid) return false
+  try {
+    process.kill(pid, 0)
+    return false
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'ESRCH'
+  }
+}
+
+/** Read one lock record; an unreadable or vanished lock proves nothing about its holder. */
+async function readLockRecord(lockPath: string): Promise<string | undefined> {
+  try {
+    return await readFile(lockPath, 'utf8')
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Remove a lock whose holder exited, serialized by a claim derived from the
+ * exact record. The second read and process probe prevent removal after a new
+ * holder acquired the path or reused the recorded PID.
+ * @param lockPath - Existing writer-lock path.
+ * @returns Whether this contender removed the exited holder's lock.
+ */
+async function takeOverExitedLock(lockPath: string): Promise<boolean> {
+  const record = await readLockRecord(lockPath)
+  if (record === undefined || !holderExited(record)) return false
+  const claim = `${lockPath}.takeover-${createHash('sha256').update(record).digest('hex').slice(0, 16)}`
+  try {
+    await writeFile(claim, `${process.pid}\n`, { mode: 0o600, flag: 'wx' })
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === 'EEXIST' || code === 'EPERM') return false
+    throw error
+  }
+  try {
+    if (await readLockRecord(lockPath) !== record || !holderExited(record)) return false
+    try {
+      await rm(lockPath, { force: true })
+    } catch {
+      return false
+    }
+    return true
+  } finally {
+    await rm(claim, { force: true }).catch((_claimRemovalError: unknown) => {
+      // The record-specific claim is obsolete once the lock changes, so cleanup failure cannot block another record.
+    })
+  }
+}
+
 /**
  * Writer-lock protocol constants. These are robustness invariants of the
  * cross-process write protocol, not deployment tunables: contention normally
@@ -85,7 +141,13 @@ async function isLockContention(error: unknown, lockPath: string): Promise<boole
  */
 const LOCK_RETRY_INITIAL_MS = 20
 const LOCK_RETRY_MAX_MS = 200
-const LOCK_TIMEOUT_MS = 2_000
+const DEFAULT_LOCK_WAIT_MS = 2_000
+
+/** Options for one {@link withFileLock} acquisition. */
+export interface FileLockOptions {
+  /** Maximum milliseconds to wait for a live or unprovable holder. */
+  waitMs?: number
+}
 
 /**
  * Hold the cross-process writer lock for `filename` around one operation. The
@@ -94,20 +156,23 @@ const LOCK_TIMEOUT_MS = 2_000
  * only writers contend. `EEXIST` is contention directly; an `EPERM` is
  * contention only when a fresh `lstat` confirms the lock path exists, covering
  * Windows exclusive-create behavior without hiding an unrelated permission
- * failure. Contention backs off exponentially and fails with a timed-out error
- * after the deadline. The contender never removes an existing lock because
- * file age cannot prove that its owner stopped; orphan recovery is an operator
- * action. The parent directory must exist.
+ * failure. A lock whose valid PID record names a process proven absent is
+ * removed through a record-specific claim and retried immediately. Live,
+ * unreadable, malformed, self-owned, and cross-user locks remain contended.
+ * PID probes are host-local, so sharing this lock across hosts or PID
+ * namespaces is unsupported. The parent directory must exist.
  * @param filename - the file whose writers this lock serializes.
  * @param operation - the read-render-commit cycle to run while holding the lock.
+ * @param options - Optional acquisition deadline.
  * @returns the operation's result; the lock releases on both outcomes.
  */
 export async function withFileLock<T>(
   filename: string,
   operation: () => Promise<T>,
+  options?: FileLockOptions,
 ): Promise<T> {
   const lockPath = `${filename}.lock`
-  const deadline = Date.now() + LOCK_TIMEOUT_MS
+  const deadline = Date.now() + (options?.waitMs ?? DEFAULT_LOCK_WAIT_MS)
   let delay = LOCK_RETRY_INITIAL_MS
   for (;;) {
     try {
@@ -115,6 +180,7 @@ export async function withFileLock<T>(
       break
     } catch (error) {
       if (!await isLockContention(error, lockPath)) throw error
+      if (await takeOverExitedLock(lockPath)) continue
     }
     if (Date.now() >= deadline) {
       throw new Error(`atomic-write: timed out waiting for the writer lock at ${lockPath}`)

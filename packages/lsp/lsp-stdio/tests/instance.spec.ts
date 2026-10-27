@@ -148,11 +148,11 @@ describe('LspInstance query and abort', { timeout: 30_000 }, () => {
   })
 
   it('cancels an in-flight request on abort and rejects', async () => {
-    const instance = makeInstance({ LSP_FAKE_HANG: '1' })
+    const received = join(root, 'definition-received')
+    const instance = makeInstance({ LSP_FAKE_HANG: '1', LSP_FAKE_REQUEST_MARKER: received })
     const controller = new AbortController()
-    // Warm the instance first so the abort lands during the hanging request, not during startup.
     const pending = run(instance, 'goToDefinition', controller.signal)
-    await new Promise<void>(resolve => setTimeout(resolve, 300))
+    await vi.waitFor(() => { expect(existsSync(received)).toBe(true) }, { timeout: 20_000 })
     controller.abort(new Error('mid-flight'))
     await expect(pending).rejects.toThrow(/mid-flight/)
   })
@@ -160,10 +160,11 @@ describe('LspInstance query and abort', { timeout: 30_000 }, () => {
   it('terminates the instance when the server ignores $/cancelRequest past the grace', async () => {
     // The hang server never honors cancellation, so after the bounded grace the instance must be torn
     // down (its process closed) rather than left with an active request.
-    const instance = makeInstance({ LSP_FAKE_HANG: '1' }, { killGraceMs: 100 })
+    const received = join(root, 'definition-received')
+    const instance = makeInstance({ LSP_FAKE_HANG: '1', LSP_FAKE_REQUEST_MARKER: received }, { killGraceMs: 100 })
     const controller = new AbortController()
     const pending = run(instance, 'goToDefinition', controller.signal)
-    await new Promise<void>(resolve => setTimeout(resolve, 300))
+    await vi.waitFor(() => { expect(existsSync(received)).toBe(true) }, { timeout: 20_000 })
     controller.abort(new Error('mid-flight'))
     await expect(pending).rejects.toThrow(/mid-flight/)
     expect(instance.dead).toBe(true)

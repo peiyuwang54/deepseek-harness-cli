@@ -64,6 +64,7 @@ describe('TUI file autocomplete grammar', () => {
   it('formats files, directories, quotes, and rejects unsafe editor values', () => {
     expect(formatFileMention({ path: 'src/index.ts', kind: 'file' }, false)).toBe('@src/index.ts')
     expect(formatFileMention({ path: 'src', kind: 'directory' }, false)).toBe('@src/')
+    expect(formatFileMention({ path: 'design notes', kind: 'directory' }, false)).toBe('@"design notes/"')
     expect(formatFileMention({ path: 'docs/design notes.md', kind: 'file' }, false))
       .toBe('@"docs/design notes.md"')
     expect(formatFileMention({ path: 'README.md', kind: 'file' }, true)).toBe('@"README.md"')

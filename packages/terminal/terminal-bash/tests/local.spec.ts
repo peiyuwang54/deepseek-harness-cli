@@ -8,7 +8,7 @@ import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import AgentRegistry, { Inbox } from '@deepseek-ai/dsh-agent'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import TerminalSessionService from '@deepseek-ai/dsh-terminal'
-import type { TerminalSendOperation } from '@deepseek-ai/dsh-terminal'
+import type { TerminalSendOperation, TerminalSessionId } from '@deepseek-ai/dsh-terminal'
 import SandboxProvider from '@deepseek-ai/dsh-sandbox'
 import type { ConfinedArgv, SandboxPolicy } from '@deepseek-ai/dsh-sandbox'
 import SandboxPolicyService from '@deepseek-ai/dsh-sandbox-policy'
@@ -281,6 +281,21 @@ const hasPwsh = spawnSync(
   { encoding: 'utf8' },
 ).status === 0
 
+async function pwshOutput(ctx: Context, agent: Agent, sessionId: TerminalSessionId, command: string, marker: string): Promise<string> {
+  const deadline = Date.now() + 8_000
+  let operation = ctx.terminals.startSend(agent, sessionId, { text: command, submit: true })
+  let output = ''
+  for (;;) {
+    const result = await operation.done
+    expectReadyForNextSend(result.waitReason)
+    output += result.viewport
+    if (output.includes(marker) || Date.now() >= deadline) break
+    operation = ctx.terminals.startSend(agent, sessionId, { text: '', submit: false })
+  }
+  expect(output).toContain(marker)
+  return output
+}
+
 describe.skipIf(!hasPwsh)('terminal-bash pwsh real shell', () => {
   it('bootstraps a persistent pwsh, persists state, and scrubs secrets', async () => {
     const previous = process.env.DSH_TEST_SECRET
@@ -294,19 +309,10 @@ describe.skipIf(!hasPwsh)('terminal-bash pwsh real shell', () => {
       const created = await ctx.terminals.spawn(agent, { type: 'shell', name: 'main', cwd: root })
       expect(created.motd).toContain('dsh> ')
 
-      const first = ctx.terminals.startSend(agent, created.sessionId, {
-        text: '$env:KEEP = "ok"; Set-Location /',
-        submit: true,
-      })
-      expectReadyForNextSend((await first.done).waitReason)
-      const second = ctx.terminals.startSend(agent, created.sessionId, {
-        text: 'Write-Output "keep=$env:KEEP secret=$env:DSH_TEST_SECRET"',
-        submit: true,
-      })
-      const result = await second.done
-      expect(result.viewport).toContain('keep=ok')
-      expect(result.viewport).toContain('secret=')
-      expect(result.viewport).not.toContain('must-not-leak')
+      await pwshOutput(ctx, agent, created.sessionId, '$env:KEEP = "ok"; Set-Location /; Write-Output ("state" + "-ready")', 'state-ready')
+      const output = await pwshOutput(ctx, agent, created.sessionId,
+        'Write-Output "keep=$env:KEEP secret=$env:DSH_TEST_SECRET"', 'keep=ok secret=')
+      expect(output).not.toContain('must-not-leak')
 
       expect(ctx.terminals.read(agent, created.sessionId, { offset: 0, count: 40 }).text).toContain('keep=ok')
       expect(await ctx.terminals.kill(agent, created.sessionId)).toBe(true)
@@ -327,20 +333,12 @@ describe.skipIf(!hasPwsh)('terminal-bash pwsh real shell', () => {
     // The bootstrap itself must have pinned both encodings: the session byte
     // decode is UTF-8, so an un-pinned console writing its host code page
     // garbles every non-ASCII byte that follows.
-    const pinned = ctx.terminals.startSend(agent, created.sessionId, {
-      text: '"console=" + [Console]::OutputEncoding.WebName + " out=" + $OutputEncoding.WebName',
-      submit: true,
-    })
-    const pinnedResult = await pinned.done
-    expect(pinnedResult.viewport).toContain('console=utf-8 out=utf-8')
+    await pwshOutput(ctx, agent, created.sessionId,
+      '"console=" + [Console]::OutputEncoding.WebName + " out=" + $OutputEncoding.WebName', 'console=utf-8 out=utf-8')
     // Char codes keep the submitted line ASCII-only, so the assertion is a
     // pure output-decode check.
-    const sent = ctx.terminals.startSend(agent, created.sessionId, {
-      text: "[Console]::Write([char]0x4E2D + [char]0x6587 + ' encoding-ok')",
-      submit: true,
-    })
-    const result = await sent.done
-    expect(result.viewport).toContain('中文 encoding-ok')
+    await pwshOutput(ctx, agent, created.sessionId,
+      "[Console]::Write([char]0x4E2D + [char]0x6587 + ' encoding-ok')", '中文 encoding-ok')
     await ctx.terminals.kill(agent, created.sessionId)
   }, 30_000)
 })

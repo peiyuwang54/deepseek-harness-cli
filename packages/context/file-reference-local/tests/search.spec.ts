@@ -24,6 +24,7 @@ async function workspace(): Promise<string> {
   await writeFile(join(root, 'docs', 'design notes.md'), 'design')
   await writeFile(join(root, '.hidden', 'secret.txt'), 'hidden')
   await writeFile(join(root, 'node_modules', 'ignored-package', 'index.js'), 'ignored')
+  await symlink(join(root, 'src'), join(root, 'linked-directory'), process.platform === 'win32' ? 'junction' : 'dir')
   try {
     await symlink(join(root, 'src', 'tui.spec.ts'), join(root, 'linked-test.ts'))
   } catch {
@@ -38,6 +39,7 @@ function search(root: string, overrides: Partial<ConstructorParameters<typeof Wo
     maxResults: overrides.maxResults ?? 20,
     maxEntries: overrides.maxEntries ?? 10_000,
     excludedDirectories: overrides.excludedDirectories ?? ['.git', 'node_modules'],
+    respectIgnoreFiles: false,
   })
   searches.push(instance)
   return instance
@@ -75,6 +77,19 @@ describe('file-reference grammar', () => {
 })
 
 describe('WorkspaceFileSearch', () => {
+  it('keeps provider discovery independent of project ignore rules', async () => {
+    const root = await workspace()
+    await writeFile(join(root, '.ignore'), 'README.md\n')
+    await writeFile(join(root, 'src', '.ignore'), 'tui.spec.ts\n')
+    const files = search(root)
+    const signal = new AbortController().signal
+    expect(await files.list('README', signal)).toEqual([
+      { path: 'README.md', kind: 'file' },
+    ])
+    expect(await files.list('tui', signal)).toEqual([{ path: 'src/tui.spec.ts', kind: 'file' }])
+    expect(await files.list('src/tui', signal)).toEqual([{ path: 'src/tui.spec.ts', kind: 'file' }])
+  })
+
   it('lists live directory levels, descends, quotes spaces, and filters hidden/excluded entries', async () => {
     const root = await workspace()
     const files = search(root)

@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { resolve } from 'node:path'
 import * as yaml from 'js-yaml'
 import { describe, expect, it } from 'vitest'
@@ -6,6 +8,9 @@ import { describe, expect, it } from 'vitest'
 const root = resolve(import.meta.dirname, '..')
 const runnerPrivatePnpmDestination = '${{ runner.temp }}/setup-pnpm'
 const canonicalMasterPush = "github.repository == 'deepseek-ai/deepseek-harness' && github.event_name == 'push' && github.ref == 'refs/heads/master'"
+const bashPath = process.platform === 'win32'
+  ? resolve(process.env.ProgramFiles ?? 'C:/Program Files', 'Git/bin/bash.exe')
+  : '/bin/bash'
 
 describe('CI workflow', () => {
   it('isolates every pnpm action setup destination per runner', () => {
@@ -84,6 +89,16 @@ describe('CI workflow', () => {
     expect(windowsNative.env).toMatchObject({
       DSH_COVERAGE_TEST_TIMEOUT_MS: '30000',
     })
+    if (!isRecord(windowsNative.env)) throw new TypeError('Windows CI must define runner-sized concurrency')
+    for (const [name, fallback] of [
+      ['DSH_COVERAGE_MAX_WORKERS', '3'],
+      ['DSH_COVERAGE_PARTITIONS', '2'],
+      ['DSH_GATE_CONCURRENCY', '2'],
+    ] as const) {
+      expect(windowsNative.env[name]).toContain('DSH_CI_FAILOVER_WINDOWS')
+      expect(windowsNative.env[name]).toContain('DSH_CI_HOSTED_WINDOWS_RUNNER')
+      expect(windowsNative.env[name]).toContain(`|| '${fallback}'`)
+    }
     const nativeCommandSteps = (windowsNative.steps as unknown[]).filter((step): step is Record<string, unknown> & { run: string } => (
       isRecord(step) && typeof step.run === 'string'
     ))
@@ -555,6 +570,131 @@ describe('Documentation Pages workflow', () => {
 })
 
 describe('CLI release workflow', () => {
+  it.skipIf(!existsSync(bashPath)).each([
+    ['v1.2.3-rc.4', true],
+    ['1.2.3', true],
+    ['1.2.3; touch injected', false],
+    ['$(touch injected)', false],
+    ['1.2.3\nversion=9.9.9', false],
+    ['01.2.3', false],
+  ])('validates dispatch input %j without executing it', (input, accepted) => {
+    const directory = mkdtempSync(resolve(tmpdir(), 'dsh-release-version-'))
+    try {
+      const run = releaseStepScript('plan', 'Resolve release version')
+      const output = resolve(directory, 'output')
+      writeFileSync(output, '')
+      const result = spawnSync(bashPath, ['-c', run], {
+        cwd: directory, encoding: 'utf8', timeout: 10_000,
+        env: { ...process.env, INPUT_VERSION: input, GITHUB_OUTPUT: output.replaceAll('\\', '/') },
+      })
+      expect(result.status).toBe(accepted ? 0 : 1)
+      expect(readFileSync(output, 'utf8')).toBe(accepted ? `version=${input.replace(/^v/, '')}\n` : '')
+      expect(existsSync(resolve(directory, 'injected'))).toBe(false)
+    } finally {
+      rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
+  it.skipIf(!existsSync(bashPath)).each(['new', 'resume', 'publish-failure', 'registry-failure'])(
+    'keeps the main npm version behind its platform dependencies during %s', (scenario) => {
+      const directory = mkdtempSync(resolve(tmpdir(), 'dsh-release-publish-'))
+      const version = '0.1.0-rc.9'
+      const targets = ['macos-arm64', 'macos-x64', 'linux-arm64', 'linux-x64', 'win-x64']
+      try {
+        for (const target of ['main', ...targets]) {
+          const packageDir = resolve(directory, 'dist-npm', target === 'main' ? 'main' : `platform/${version}-${target}`)
+          mkdirSync(packageDir, { recursive: true })
+          writeFileSync(resolve(packageDir, 'package.json'), JSON.stringify({
+            name: '@test/dsh', version: target === 'main' ? version : `${version}-${target}`,
+          }))
+        }
+        const log = resolve(directory, 'npm-log')
+        writeFileSync(log, '')
+        const registry = `
+          npm() {
+            printf '%s\\n' "$*" >> "$NPM_LOG"
+            case "$1" in
+              view)
+                if [ "$SCENARIO" = registry-failure ]; then echo 'E401 unauthorized' >&2; return 1; fi
+                if [ "$SCENARIO" = resume ] && [[ "$2" == *macos-arm64 ]]; then echo '"published"'; return 0; fi
+                echo 'E404 not found' >&2; return 1 ;;
+              publish)
+                if [ "$SCENARIO" = publish-failure ] && [[ "$2" == *linux-arm64 ]]; then return 1; fi ;;
+            esac
+          }
+        `
+        const result = spawnSync(bashPath, ['-c', registry + releaseStepScript('npm-publish', 'Publish platform packages before the main shim')], {
+          cwd: directory, encoding: 'utf8', timeout: 15_000,
+          env: {
+            ...process.env, VERSION: version, SCENARIO: scenario,
+            RUNNER_TEMP: directory.replaceAll('\\', '/'), NPM_LOG: log.replaceAll('\\', '/'),
+          },
+        })
+        const commands = readFileSync(log, 'utf8').trim().split('\n')
+        const publishes = commands.filter(command => command.startsWith('publish '))
+        if (scenario.endsWith('failure')) {
+          expect(result.status).toBe(1)
+          expect(publishes.some(command => command.includes('./dist-npm/main'))).toBe(false)
+          if (scenario === 'registry-failure') expect(publishes).toHaveLength(0)
+        } else {
+          expect(result.status, result.stderr).toBe(0)
+          expect(publishes).toHaveLength(scenario === 'resume' ? 5 : 6)
+          expect(publishes.at(-1)).toBe('publish ./dist-npm/main --tag next --provenance')
+          expect(commands.at(-1)).toBe(`dist-tag add @test/dsh@${version} latest`)
+        }
+      } finally {
+        rmSync(directory, { recursive: true, force: true })
+      }
+    },
+  )
+
+  it('passes the dispatch version through the environment and validates it before emitting outputs', () => {
+    const workflow = loadWorkflow('.github/workflows/deepseek-harness-cli-release.yml')
+    const plan = workflowJob(workflow, 'plan')
+    const step: unknown = Array.isArray(plan.steps)
+      ? plan.steps.find((value: unknown) => isRecord(value) && value.id === 'version')
+      : undefined
+    expect(step).toMatchObject({ env: { INPUT_VERSION: '${{ github.event.inputs.version }}' } })
+    if (!isRecord(step) || typeof step.run !== 'string') throw new TypeError('version step must define run')
+    expect(step.run).not.toContain('${{ github.event.inputs.version }}')
+    expect(step.run).toContain('[[ "$version" =~')
+    expect(step.run.indexOf('[[ "$version" =~')).toBeLessThan(step.run.indexOf('echo "version='))
+  })
+
+  it('publishes every platform before the shim and permits safe publication retries', () => {
+    const workflow = loadWorkflow('.github/workflows/deepseek-harness-cli-release.yml')
+    const publish = workflowJob(workflow, 'npm-publish')
+    const steps = Array.isArray(publish.steps) ? publish.steps.filter(isRecord) : []
+    const step = steps.find(value => typeof value.run === 'string' && value.run.includes('npm publish'))
+    if (!isRecord(step) || typeof step.run !== 'string') throw new TypeError('publish step must define run')
+    expect(step.run).toContain('npm view')
+    expect(step.run).toContain('E404')
+    expect(step.run.indexOf('publish_package "./dist-npm/platform/')).toBeLessThan(
+      step.run.indexOf('publish_package "./dist-npm/main"'),
+    )
+    expect(step.run).toContain('--provenance')
+    expect(publish.permissions).toMatchObject({ 'id-token': 'write' })
+  })
+
+  it('pins release actions and attests tarballs before their upload', () => {
+    const workflow = loadWorkflow('.github/workflows/deepseek-harness-cli-release.yml')
+    if (!isRecord(workflow.jobs)) throw new TypeError('release workflow must define jobs')
+    for (const job of Object.values(workflow.jobs).filter(isRecord)) {
+      const steps = Array.isArray(job.steps) ? job.steps.filter(isRecord) : []
+      for (const step of steps) {
+        if (typeof step.uses === 'string') expect(step.uses).toMatch(/@[a-f0-9]{40}$/)
+      }
+    }
+    const job = workflowJob(workflow, 'package')
+    const steps = Array.isArray(job.steps) ? job.steps.filter(isRecord) : []
+    const attest = steps.findIndex(step => typeof step.uses === 'string' && step.uses.startsWith('actions/attest@'))
+    const upload = steps.findIndex(step => isRecord(step.with) && step.with.name === 'deepseek-harness-cli-release-assets')
+    expect(attest).toBeGreaterThanOrEqual(0)
+    expect(attest).toBeLessThan(upload)
+    expect(steps[attest]).toMatchObject({ with: { 'subject-path': 'dist-release/*.tar.gz' } })
+    expect(job.permissions).toMatchObject({ 'id-token': 'write', attestations: 'write' })
+  })
+
   it('builds win-x64 on windows-2025 beside the four Unix targets', () => {
     const workflow = loadWorkflow('.github/workflows/deepseek-harness-cli-release.yml')
     const plan = workflowJob(workflow, 'plan')
@@ -583,7 +723,7 @@ describe('CLI release workflow', () => {
     const profileSmoke = buildSteps.find(step => isRecord(step) && step.name === 'Smoke test profile composition')
     const packagedWebSmoke = buildSteps.find(step => isRecord(step) && step.name === 'Smoke test packaged Web startup')
     const productUpload = buildSteps.find(step => (
-      isRecord(step) && step.uses === 'actions/upload-artifact@v4'
+      isRecord(step) && typeof step.uses === 'string' && step.uses.startsWith('actions/upload-artifact@')
     ))
     const tarballs = packageSteps.find(step => isRecord(step) && step.name === 'Build release tarballs and sha256 sidecars')
     const pnpmSetup = buildSteps.find(step => (
@@ -613,12 +753,12 @@ describe('CLI release workflow', () => {
     )
 
     const npmArtifact: unknown = packageSteps.find(step => (
-      isRecord(step) && step.uses === 'actions/upload-artifact@v4'
+      isRecord(step) && typeof step.uses === 'string' && step.uses.startsWith('actions/upload-artifact@')
       && isRecord(step.with) && step.with.name === 'deepseek-harness-cli-npm-packages'
     ))
     const releaseStep: unknown = releaseSteps.find(step => isRecord(step) && step.name === 'Create or refresh the release with assets')
     const npmIdentityStep: unknown = npmPublishSteps.find(step => isRecord(step) && step.name === 'Verify npm publisher identity')
-    const npmStep: unknown = npmPublishSteps.find(step => isRecord(step) && step.name === 'Publish the main shim and per-platform packages')
+    const npmStep: unknown = npmPublishSteps.find(step => isRecord(step) && step.name === 'Publish platform packages before the main shim')
     if (!isRecord(releaseStep) || typeof releaseStep.run !== 'string'
       || !isRecord(npmStep) || typeof npmStep.run !== 'string') {
       throw new TypeError('CLI release and npm publish command steps must define run scripts')
@@ -628,7 +768,7 @@ describe('CLI release workflow', () => {
     expect(releaseStep.run).toContain('release_kind=(--prerelease)')
     expect(npmIdentityStep).toMatchObject({ run: 'npm whoami' })
     expect(npmStep.run).toContain('test -f dist-npm/main/package.json')
-    expect(npmStep.run).toContain('npm publish "./dist-npm/main"')
+    expect(npmStep.run).toContain('publish_package "./dist-npm/main"')
   })
 })
 
@@ -636,6 +776,16 @@ function loadWorkflow(path: string): Record<string, unknown> {
   const workflow: unknown = yaml.load(readFileSync(resolve(root, path), 'utf8'))
   if (!isRecord(workflow)) throw new TypeError(`${path} must define a workflow`)
   return workflow
+}
+
+function releaseStepScript(job: string, name: string): string {
+  const workflow = loadWorkflow('.github/workflows/deepseek-harness-cli-release.yml')
+  const selected = workflowJob(workflow, job)
+  const step: unknown = Array.isArray(selected.steps)
+    ? selected.steps.find((value: unknown) => isRecord(value) && value.name === name)
+    : undefined
+  if (!isRecord(step) || typeof step.run !== 'string') throw new TypeError(`missing release step ${name}`)
+  return step.run
 }
 
 function expectManylinuxNodePtyRebuild(step: unknown): void {

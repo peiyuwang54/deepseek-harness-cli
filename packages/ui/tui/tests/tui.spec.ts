@@ -1018,7 +1018,8 @@ describe('shared settings, appearance, and workspaces', () => {
   })
 
   it('reports cwd aliases and maps /cd onto fresh-workspace handoff', async () => {
-    const target = workspaceFixture('cd-workspace', '/secondary', 'Secondary project')
+    const targetCwd = resolve('/secondary')
+    const target = workspaceFixture('cd-workspace', targetCwd, 'Secondary project')
     const create = vi.fn(() => Promise.resolve(target))
     const handoff = vi.fn<NonNullable<TuiRuntime['handoffWorkspace']>>(
       () => Promise.reject(new Error('test host retained process')),
@@ -1046,8 +1047,8 @@ describe('shared settings, appearance, and workspaces', () => {
     result.terminal.send('/cd /secondary')
     result.terminal.send('\r')
     await tick(); await tick()
-    expect(create).toHaveBeenCalledWith('/secondary')
-    expect(handoff).toHaveBeenCalledWith('/secondary')
+    expect(create).toHaveBeenCalledWith(targetCwd)
+    expect(handoff).toHaveBeenCalledWith(targetCwd)
     expect(result.session.header.cwd).toBe('/workspace')
     await dispose(result)
   })
@@ -4084,7 +4085,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
 
   it('keeps compact token usage in the first footer row and cache rate in session statistics', async () => {
     const empty = await setup({ cwd: '/opt' })
-    expect(empty.terminal.output).toContain('↑0 ↓0')
+    await vi.waitFor(() => { expect(empty.terminal.output).toContain('↑0 ↓0') })
     expect(empty.ctx.tuiPrompt.get('token_meter/usage')).toContain('↑0 ↓0')
     expect(empty.ctx.tuiPrompt.get('token_meter/cache_hit_rate')).toBeUndefined()
     await dispose(empty)
@@ -5333,7 +5334,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
       expect(result.terminal.output).toContain('Shell mode · Enter run · Esc clear')
       result.terminal.output = ''
       result.terminal.send('\r')
-      await vi.waitFor(() => { expect(userShell).toHaveBeenCalledOnce() })
+      await vi.waitFor(() => { expect(userShell).toHaveBeenCalledOnce() }, { timeout: 10_000 })
 
       expect(userShell.mock.calls[0]?.[0].command).toBe('printf hello')
       expect(userShell.mock.calls[0]?.[0].agent).toBe(result.agent)
@@ -5438,6 +5439,7 @@ describe('pi-tui chat lifecycle and transcript', () => {
       expect(aborted).toHaveBeenCalledTimes(2)
       await result.ctx.fiber.dispose()
     } finally {
+      await dispose(result)
       await rm(cwd, { recursive: true, force: true })
     }
   })
@@ -5516,10 +5518,19 @@ describe('pi-tui chat lifecycle and transcript', () => {
       },
     })
 
-    for (const command of ['/model too many model arguments', '/model missing', '/model shared', '/model alpha/a1', '/model alpha a1']) {
+    for (const [command, response] of [
+      ['/model too many model arguments', 'Usage: /model'],
+      ['/model missing', 'Unknown model: missing'],
+      ['/model shared', 'advertised by multiple providers'],
+      ['/model alpha/a1', 'Model selected: alpha/a1'],
+      ['/model alpha a1', 'already alpha/a1'],
+    ] as const) {
+      const outputStart = result.terminal.output.length
       result.terminal.send(command)
       result.terminal.send('\r')
-      await tick()
+      await vi.waitFor(() => {
+        expect(result.terminal.output.slice(outputStart)).toContain(response)
+      }, { timeout: 10_000 })
     }
     expect(result.terminal.output).toContain('Usage: /model')
     expect(result.terminal.output).toContain('Unknown model: missing')

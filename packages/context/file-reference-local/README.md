@@ -6,6 +6,8 @@ Local-filesystem implementation of `ctx.fileReferences`. It maintains one bounde
 
 Tool-result events invalidate the addressed agent's reusable index so later completion observes likely workspace mutations. Agent disposal releases that index and its scoped prompt contribution; plugin disposal awaits every prompt fiber and releases all cached searches.
 
+The `./search` export also supplies the TUI's workspace index. Its resolved `FileSearchConfig` requires `respectIgnoreFiles`: `true` applies repository and project ignore files, while `false` retains basename exclusions only. The service resolves this value to `false`; the TUI supplies its own configured value.
+
 ## Configuration
 
 | Key | Default | Contract |

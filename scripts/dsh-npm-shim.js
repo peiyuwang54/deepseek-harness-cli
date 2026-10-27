@@ -38,11 +38,27 @@ try {
   process.exit(1)
 }
 
-const child = spawn(executable, process.argv.slice(2), { stdio: 'inherit' })
+function failToStart(error) {
+  console.error(`deepseek-harness-cli: failed to start ${executable}: ${error.message}`)
+  process.exit(1)
+}
+
+let child
+try {
+  child = spawn(executable, process.argv.slice(2), { stdio: 'inherit' })
+} catch (error) {
+  failToStart(error)
+}
+child.on('error', failToStart)
+const signalHandlers = ['SIGINT', 'SIGTERM', 'SIGHUP'].map((signal) => {
+  const forward = () => child.kill(signal)
+  process.on(signal, forward)
+  return [signal, forward]
+})
 child.on('exit', (code, signal) => {
-  if (signal) process.kill(process.pid, signal)
+  if (signal) {
+    for (const [forwardedSignal, listener] of signalHandlers) process.off(forwardedSignal, listener)
+    process.kill(process.pid, signal)
+  }
   else process.exit(code ?? 0)
 })
-for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
-  process.on(signal, () => child.kill(signal))
-}

@@ -26,6 +26,10 @@ harness 在 Windows 上没有持久 shell。持久 `bash` 栈按构造就是 POS
 
 一个 backend、两种方言：`shellDialect: 'bash' | 'pwsh'`（默认 `'bash'`；bash 的 argv 和环境默认值保持不变）。有效 `shellPath`/`shellArgs` 按方言解析（bash `/bin/bash --noprofile --norc -i`；pwsh 经共享的 `dsh-pwsh-local` 解析器取 `-NoLogo -NoProfile`，保留交互宿主供子 REPL）。子环境去掉 bash 专属 `PS1`/`PROMPT_COMMAND` 标记并为 pwsh 加 `NO_COLOR`。pwsh 无法从环境安装提示符，因此 backend 在启动时通过会话写入 prompt 函数，并且只接受 backend 的 `stdin_read` 结果；回显引导输入中的可打印提示符字面量不代表就绪。一条 `timeoutMs` 绝对超时计时器负责限制完整启动重试循环，因此 `inferred_idle` 后续 send 无法重新计时。一个不保留 scrollback 的 `@xterm/headless` 实例会消费原始 PTY 数据，并通过 `SubprocessTerminalHandle` 发出终端协议响应；backend 会在调用方输入前排空这些写入，并且只接受协议工作在整次检查期间保持静止时的前台状态，因此调用方输入不会被当作光标位置响应而消费。一个 parser 写入保持活跃，随后到达的原始 chunk 会合并为下一批，从而避免高输出量为每个 chunk 分别调度解析。现有 sanitizer 与有界缓冲区仍负责输出投影。两种方言发出相同的 BEL 终结 OSC `133;D;` 标记，因此 `PROMPT_MARKER_PREFIX`、`CONTROLLED_PROMPT` 与精确尾部就绪逻辑保持共享——标记仍是载荷不被消费的就绪信号，延后的 BEL 事件通道也继续保持延后。
 
+启动提交状态独立于输出：引导代码只执行一次，每次后续 send 仅观察就绪状态。发布的 `motd` 读取现有的有界 scrollback，因为每次 send 的 viewport 只包含该次 send 的输出；较晚到达的空 `stdin_read` 结果不能覆盖较早的启动文本。这复用了会话的保留上限与 UTF-8 字节限制，无需另建累积缓冲区。
+
+不发送输入的轮询可以接受当前前台 stdin 等待状态，无须先离开写入前的等待，因为此时没有发生写入。携带输入的 send 仍要求观察到离开旧等待状态。这使启动后的轮询能够发现已经空闲的 shell，同时保留新输入之后防止误用旧就绪状态的保护。
+
 ### `@deepseek-ai/dsh-tool-pwsh-persistent`
 
 新包镜像 `tool-bash-persistent`：同样的 `Config`（`backendType` 默认 `shell`、`timeoutMs`、`maxOutputChars`、`description`）、同样的 owner 作用域 shell 注册表与每 owner 串行队列、同样的超时/中止/退出/重置路径。工具名是 `pwsh`；它与一次性 `tool-pwsh` 永不共挂，因为预设行按平台互斥。

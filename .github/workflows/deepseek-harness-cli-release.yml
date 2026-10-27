@@ -39,20 +39,26 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Resolve release version
         id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
           set -euo pipefail
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            version="${{ github.event.inputs.version }}"
+          if [ -n "$INPUT_VERSION" ]; then
+            version="$INPUT_VERSION"
           elif [ "$GITHUB_REF_TYPE" = "tag" ]; then
             version="${GITHUB_REF_NAME#deepseek-harness-cli-v}"
           else
             version="$(node -p "require('./apps/cli/package.json').version")"
           fi
           version="${version#v}"
+          if ! [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-rc\.(0|[1-9][0-9]*))?$ ]]; then
+            echo '::error::Release version must be X.Y.Z or X.Y.Z-rc.N (optionally prefixed with v)'
+            exit 1
+          fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Compute the five-target matrix
@@ -88,19 +94,19 @@ jobs:
     env:
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           dest: ${{ runner.temp }}/setup-pnpm
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           cache: pnpm
 
       # Cache pkg's target Node binary; lockfile changes roll the exact key.
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.pkg-cache
           key: pkg-fetch-deepseek-harness-cli-${{ matrix.target }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -209,7 +215,7 @@ jobs:
           EXE: ${{ github.workspace }}/dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}
         run: python3 scripts/check-macos-deployment-target.py "$EXE" "$EXE-spawn-helper"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: deepseek-harness-cli-exe-${{ steps.product.outputs.platform }}
           path: |
@@ -226,16 +232,21 @@ jobs:
     name: package release assets
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     env:
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           dest: ${{ runner.temp }}/setup-pnpm
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
 
@@ -243,7 +254,7 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Download all target executables
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: dist-exe
           merge-multiple: true
@@ -278,21 +289,26 @@ jobs:
       - name: Generate Homebrew cask
         run: pnpm exec tsx scripts/gen-dsh-cask.ts --version "$VERSION" --dir dist-release --out deepseek-harness-cli.rb
 
-      - uses: actions/upload-artifact@v4
+      - name: Attest release tarballs
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: dist-release/*.tar.gz
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: deepseek-harness-cli-release-assets
           path: dist-release
           if-no-files-found: error
           retention-days: 7
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: deepseek-harness-cli-npm-packages
           path: dist-npm
           if-no-files-found: error
           retention-days: 7
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: deepseek-harness-cli-cask
           path: deepseek-harness-cli.rb
@@ -307,7 +323,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: deepseek-harness-cli-release-assets
           path: dist-release
@@ -335,6 +351,9 @@ jobs:
     # Required reviewers and the allowed tags live on this environment; it is
     # the only job that can write to the registry.
     environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
     # Shared with release.yml's npm-publish job: stable/prerelease dist-tags
     # are shared registry state, so the two publishers serialize rather than
     # race. cancel-in-progress: false queues, never cancels.
@@ -342,7 +361,7 @@ jobs:
       group: Release-publish
       cancel-in-progress: false
     steps:
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
@@ -352,12 +371,12 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm whoami
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: deepseek-harness-cli-npm-packages
           path: dist-npm
 
-      - name: Publish the main shim and per-platform packages
+      - name: Publish platform packages before the main shim
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ needs.plan.outputs.version }}
@@ -365,11 +384,26 @@ jobs:
           set -euo pipefail
           if [[ "$VERSION" == *-* ]]; then main_tag=next; else main_tag=latest; fi
           test -f dist-npm/main/package.json
-          npm publish "./dist-npm/main" --tag "$main_tag"
           for target in macos-arm64 macos-x64 linux-arm64 linux-x64 win-x64; do
             test -f "dist-npm/platform/${VERSION}-${target}/package.json"
-            npm publish "./dist-npm/platform/${VERSION}-${target}" --tag "$target"
           done
+          publish_package() {
+            local directory="$1" tag="$2" spec
+            spec="$(node -p "const p = require('$directory/package.json'); p.name + '@' + p.version")"
+            if npm view "$spec" version --json > "$RUNNER_TEMP/npm-view.json" 2> "$RUNNER_TEMP/npm-view-error.txt"; then
+              echo "$spec is already published"
+            elif grep -q 'E404' "$RUNNER_TEMP/npm-view-error.txt"; then
+              npm publish "$directory" --tag "$tag" --provenance
+            else
+              cat "$RUNNER_TEMP/npm-view-error.txt" >&2
+              return 1
+            fi
+            npm dist-tag add "$spec" "$tag"
+          }
+          for target in macos-arm64 macos-x64 linux-arm64 linux-x64 win-x64; do
+            publish_package "./dist-npm/platform/${VERSION}-${target}" "$target"
+          done
+          publish_package "./dist-npm/main" "$main_tag"
           # Before 1.0.0 every release is a prerelease, so `next` alone would leave the
           # default pointer on whatever shipped first and `npm install -g` — the README's
           # quickstart, which resolves `latest` — would serve a stale build forever.
@@ -384,7 +418,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: deepseek-harness-cli-cask
           path: cask-artifact

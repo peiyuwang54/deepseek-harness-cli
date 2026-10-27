@@ -61,6 +61,7 @@ export class LocalFileReferenceService extends FileReferenceService {
       maxResults: config.maxResults ?? DEFAULT_FILE_SEARCH_MAX_RESULTS,
       maxEntries: config.maxEntries ?? DEFAULT_FILE_SEARCH_MAX_ENTRIES,
       excludedDirectories: config.excludedDirectories ?? DEFAULT_FILE_SEARCH_EXCLUDED_DIRECTORIES,
+      respectIgnoreFiles: false,
     }
     validateConfig(this.config)
 

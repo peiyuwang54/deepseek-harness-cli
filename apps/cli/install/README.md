@@ -16,6 +16,8 @@ curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/ma
 
 After it finishes, restart your shell (or run the printed `export PATH=…` line), then run `deepseek` or `dsh`.
 
+For fish, the installer writes a dedicated file under `${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d` and prints a fish-compatible PATH command. For macOS Bash, it updates `.bashrc` and the first existing login profile (`.bash_profile`, `.bash_login`, or `.profile`), creating `.bash_profile` if none exists.
+
 ### Windows
 
 ```powershell
@@ -51,12 +53,17 @@ The PowerShell installer applies the timeout and retry policy to release discove
 
 ## Integrity
 
-The installer verifies the tarball against the
-`deepseek-harness-cli-<arch>-<os>.sha256` sidecar published with the same
-release and aborts on mismatch without touching an already-installed binary.
-Signature verification (minisign) is the planned upgrade path: once public keys
-are published, the download step will additionally verify
-`deepseek-harness-cli-<arch>-<os>.tar.gz.minisig` before installing.
+The installer verifies the tarball against the `deepseek-harness-cli-<arch>-<os>.sha256` sidecar published with the same release and aborts on mismatch without touching an already-installed binary. This detects corruption; replacing both files can bypass it.
+
+The release workflow signs GitHub build provenance for each tarball. To verify a downloaded tarball before installation, use GitHub CLI and require this repository's release workflow identity:
+
+```sh
+gh attestation verify deepseek-harness-cli-x64-linux.tar.gz \
+  --repo peiyuwang54/deepseek-harness-cli \
+  --signer-workflow peiyuwang54/deepseek-harness-cli/.github/workflows/deepseek-harness-cli-release.yml
+```
+
+This explicit verification requires an attestation produced by the release workflow; older releases without one fail verification. The installers and Homebrew cask automatically check checksums only. npm publications also request provenance; switching registry authentication to Trusted Publishing requires the package owner to configure the npm trusted publisher first.
 
 ## Development
 

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
-import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, onTestFailed, onTestFinished } from 'vitest'
 import { parseSessionLog } from '@deepseek-ai/dsh-llm-replay'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import {
@@ -208,7 +208,7 @@ describe('web e2e: composer shortcut steers directly', () => {
     await page.getByRole('button', { name: 'Stop generating' }).waitFor({ timeout: 10_000 })
 
     await input.fill(STEER)
-    await input.press('Meta+Enter')
+    await input.press('ControlOrMeta+Enter')
     await expect.poll(() => input.inputValue(), { timeout: 5_000 }).toBe('')
     expect(await page.locator('[data-queue-dock]').count()).toBe(0)
 
@@ -271,7 +271,7 @@ describe('web e2e: composer shortcut follows the swapped busy behavior', () => {
 
     const queuedText = 'Queued by the complementary Cmd+Enter shortcut.'
     await input.fill(queuedText)
-    await input.press('Meta+Enter')
+    await input.press('ControlOrMeta+Enter')
     const queuedRow = page.locator('[data-queue-dock]').getByRole('listitem').filter({ hasText: queuedText })
     await queuedRow.getByText(queuedText, { exact: true }).waitFor({ timeout: 10_000 })
     expect(await page.locator('[data-pending-steering]').filter({ hasText: queuedText }).count()).toBe(0)
@@ -323,14 +323,26 @@ describe('web e2e: empty-draft Cmd+Enter steers the whole queue', () => {
 
   it.skipIf(MODE === 'record')('queues two messages, then flushes both with an empty-draft Cmd+Enter', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-steer-all'))
+    const modelStarted = Promise.withResolvers<undefined>()
+    const continueModel = Promise.withResolvers<undefined>()
+    const disposeGate = scaffold.ctx.on('llm/stream', async function* (_options, next) {
+      modelStarted.resolve(undefined)
+      await continueModel.promise
+      yield* next()
+    }, { prepend: true })
+    onTestFinished(() => {
+      continueModel.resolve(undefined)
+      disposeGate()
+    })
     const input = page.locator('textarea').first()
     await input.waitFor({ timeout: 10_000 })
     const settled = scaffold.whenTurnSettled(30_000)
 
-    // Call 0 streams a question-tool call; the fills must land inside the
-    // first replay window, before the question composer replaces the textarea.
+    // Hold the model stream until the gesture finishes so a fast replay cannot
+    // replace the textarea with the question composer during keyboard input.
     await input.fill(PROMPT)
     await input.press('Enter')
+    await modelStarted.promise
     await input.fill(STEER_ONE)
     await input.press('Enter')
     await input.fill(STEER_TWO)
@@ -347,23 +359,23 @@ describe('web e2e: empty-draft Cmd+Enter steers the whole queue', () => {
 
     // Empty draft + Cmd+Enter: both queued rows steer in FIFO order, the dock
     // empties, and the pending steering renders at the conversation tail.
-    await input.press('Meta+Enter')
+    await input.press('ControlOrMeta+Enter')
     await expect.poll(
       () => page.locator('[data-pending-steering]').filter({ hasText: /BANANA|ORANGE/ }).count(),
       { timeout: 10_000 },
     ).toBe(2)
     expect(await page.locator('[data-queue-dock]').count()).toBe(0)
-    // The reasoning row streams independently of the steering handoff. Wait
-    // for the block to settle so the mid snapshot does not race its transient
-    // visually-hidden Running label while the question keeps the turn open.
+    continueModel.resolve(undefined)
+    // The question owns this checkpoint; reasoning can finish before the tool
+    // row and question composer reach the browser.
     await page.locator('[data-variant="think"][data-state="ok"]').first().waitFor({ timeout: 10_000 })
+    const composer = page.locator('[data-question-key]')
+    await composer.waitFor({ timeout: 30_000 })
     const mid = await captureStableAria(page, '[class*="centerCol"]', scaffold.workspaceCwd)
     await compareOrRefreshGolden(STEER_ALL_MID, mid, MODE)
 
     // Answer the question; the step closes, the loop drains both steerings
     // into one next-step request, and the final reply obeys both markers.
-    const composer = page.locator('[data-question-key]')
-    await composer.waitFor({ timeout: 30_000 })
     await composer.getByRole('radio', { name: 'Yes' }).click()
     await composer.getByRole('radio', { name: 'Yes' }).press('Enter')
     await settled

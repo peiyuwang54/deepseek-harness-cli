@@ -6,6 +6,8 @@
 
 工具结果事件会使指定 agent 的可复用索引失效，使后续补全能够反映工作区中可能发生的变更。agent 的 dispose（资源释放）会释放该索引及其作用域内的提示词贡献；插件 dispose 会等待所有提示词 fiber，并释放全部缓存的搜索器。
 
+`./search` 导出也为 TUI 提供工作区索引。其解析后的 `FileSearchConfig` 必须指定 `respectIgnoreFiles`：`true` 应用仓库与项目的忽略文件，`false` 仅保留目录基名排除规则。服务将此值解析为 `false`；TUI 则传入自身配置的值。
+
 ## 配置
 
 | 配置键 | 默认值 | 契约 |

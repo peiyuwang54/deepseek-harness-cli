@@ -88,6 +88,7 @@
       "@deepseek-ai/dsh-api-remotes/invariant": ["./packages/api/remotes/src/invariant.ts"],
       "@deepseek-ai/dsh-compaction/checkpoint": ["./packages/compaction/compaction/src/checkpoint.ts"],
       "@deepseek-ai/dsh-compaction/types": ["./packages/compaction/compaction/src/types.ts"],
+      "@deepseek-ai/dsh-file-reference-local/search": ["./packages/context/file-reference-local/src/search.ts"],
       "@deepseek-ai/dsh-file-reference/grammar": ["./packages/context/file-reference/src/grammar.ts"],
       "@deepseek-ai/dsh-file-reference/types": ["./packages/context/file-reference/src/types.ts"],
       "@deepseek-ai/dsh-session-reference/types": ["./packages/context/session-reference/src/types.ts"],

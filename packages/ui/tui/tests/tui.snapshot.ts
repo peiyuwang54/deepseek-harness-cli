@@ -69,6 +69,7 @@ const CHECKPOINTS = [
   'welcome-dashboard',
   'banner-gradient',
   'file-autocomplete',
+  'file-autocomplete-unfiltered',
   'external-editor-draft',
   'user-shell-command',
   'slash-autocomplete',
@@ -905,21 +906,24 @@ describe('TUI terminal-state snapshots', () => {
     await disposeSnapshot(harness)
   })
 
-  it('pins fuzzy file candidates and the active path-only mention', async () => {
+  it.each([true, false])('pins fuzzy file candidates with ignore handling %s', async (respectIgnoreFiles) => {
     const cwd = await mkdtemp(join(tmpdir(), 'dsh-tui-file-snapshot-'))
     await mkdir(join(cwd, 'src'), { recursive: true })
     await writeFile(join(cwd, 'src', 'terminal-special-case.ts'), 'export const marker = true\n')
-    await writeFile(join(cwd, 'src', 'terminal-state.ts'), 'export const state = true\n')
-    await writeFile(join(cwd, '.ignore'), 'src/terminal-state.ts\n')
-    const harness = await setupSnapshot({ cwd, formatCwd: () => '/workspace/project' })
+    await writeFile(join(cwd, 'src', 'terminal-special-hidden.ts'), 'export const state = true\n')
+    await writeFile(join(cwd, 'src', '.ignore'), 'terminal-special-hidden.ts\n')
+    const harness = await setupSnapshot({
+      cwd, formatCwd: () => '/workspace/project',
+      config: { fileSearchRespectIgnoreFiles: respectIgnoreFiles },
+    })
     try {
       harness.terminal.send('@tsc')
       await vi.waitFor(async () => {
         const frame = await harness.terminal.snapshot()
         expect(frame).toContain('File · terminal-special-case.t')
-        expect(frame).not.toContain('terminal-state')
+        expect(frame.includes('terminal-special-hidden')).toBe(!respectIgnoreFiles)
       })
-      await checkpoint('file-autocomplete', harness.terminal)
+      await checkpoint(respectIgnoreFiles ? 'file-autocomplete' : 'file-autocomplete-unfiltered', harness.terminal)
     } finally {
       await disposeSnapshot(harness)
       await rm(cwd, { recursive: true, force: true })

@@ -21,6 +21,8 @@
     { "path": "../../util/home-paths" },
     { "path": "../../host/plugin-inventory" },
     { "path": "../../context/session-reference" },
+    { "path": "../../context/file-reference" },
+    { "path": "../../context/file-reference-local" },
     { "path": "../../session/session-persistence" },
     { "path": "../../session/session-projection" },
     { "path": "../../session/session-projection-cache" },

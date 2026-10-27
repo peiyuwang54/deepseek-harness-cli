@@ -24,6 +24,10 @@
   name: '@deepseek-ai/dsh-terminal-bash'
   config:
     shellDialect: pwsh
+    # Short silence intervals exercise startup follow-up polls on the real shell.
+    pollIntervalMs: 10
+    exactProbeAfterMs: 20
+    idleSilenceMs: 50
     timeoutMs: 30000
 
 - id: acp-agent

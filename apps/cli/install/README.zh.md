@@ -16,6 +16,8 @@ curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/ma
 
 完成后请重启 shell（或运行它打印的 `export PATH=…` 那一行），然后运行 `deepseek` 或 `dsh`。
 
+对于 fish，安装器在 `${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d` 下写入专用文件，并打印兼容 fish 的 PATH 命令。对于 macOS Bash，安装器更新 `.bashrc` 和首个已存在的登录配置文件（`.bash_profile`、`.bash_login` 或 `.profile`）；没有这些文件时创建 `.bash_profile`。
+
 ### Windows
 
 ```powershell
@@ -51,7 +53,17 @@ PowerShell 安装器把超时与重试策略用于发现发布版本、下载 ta
 
 ## 完整性
 
-安装器用同一发布提供的 `deepseek-harness-cli-<arch>-<os>.sha256` 伴随文件校验 tarball，不匹配即中止，且不触碰已安装的二进制。基于 minisign 的签名校验是计划中的升级路径：一旦公开密钥发布，下载步骤会在安装前额外校验 `deepseek-harness-cli-<arch>-<os>.tar.gz.minisig`。
+安装器用同一发布提供的 `deepseek-harness-cli-<arch>-<os>.sha256` 伴随文件校验 tarball，不匹配即中止，且不触碰已安装的二进制。这能检测损坏，但同时替换两个文件可以绕过检查。
+
+发布工作流为每个 tarball 签署 GitHub 构建来源证明。安装前如需验证下载的 tarball，可使用 GitHub CLI 并要求本仓库的发布工作流身份：
+
+```sh
+gh attestation verify deepseek-harness-cli-x64-linux.tar.gz \
+  --repo peiyuwang54/deepseek-harness-cli \
+  --signer-workflow peiyuwang54/deepseek-harness-cli/.github/workflows/deepseek-harness-cli-release.yml
+```
+
+显式验证要求存在由发布工作流生成的证明；没有证明的旧发布会验证失败。安装器和 Homebrew cask 只自动检查校验和。npm 发布也会请求来源证明；将 registry 认证切换到 Trusted Publishing，需要包所有者先配置 npm 受信任发布者。
 
 ## 开发
 

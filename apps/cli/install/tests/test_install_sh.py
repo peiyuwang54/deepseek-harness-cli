@@ -391,6 +391,34 @@ class InstallerTestCase(unittest.TestCase):
         self.assertIn("unknown argument", result.stderr)
 
     # --- PATH insertion -----------------------------------------------------
+    def test_fish_uses_its_own_config(self) -> None:
+        home = self.tmp / "home"
+        config = self.tmp / "fish config"
+        env = {"SHELL": "/usr/bin/fish", "XDG_CONFIG_HOME": str(config)}
+        for _ in range(2):
+            result = self.run_installer(os_name="linux", arch="x64", extra_env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+        fish_config = config / "fish" / "conf.d" / "deepseek-harness-cli.fish"
+        self.assertTrue(fish_config.exists())
+        self.assertIn('set -gx PATH', fish_config.read_text())
+        self.assertEqual(fish_config.read_text().count(str(self.tmp / "install" / "bin")), 1)
+        self.assertFalse((home / ".zshrc").exists())
+
+    def test_macos_bash_updates_the_first_login_profile(self) -> None:
+        home = self.tmp / "home"
+        profile = home / ".profile"
+        profile.write_text("# existing login settings\n")
+        result = self.run_installer(os_name="macos", arch="arm64", extra_env={"SHELL": "/bin/bash"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("install/bin:$PATH", profile.read_text())
+        self.assertFalse((home / ".bash_profile").exists())
+
+    def test_macos_bash_creates_a_login_profile_and_updates_interactive_shells(self) -> None:
+        result = self.run_installer(os_name="macos", arch="arm64", extra_env={"SHELL": "/bin/bash"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for name in (".bash_profile", ".bashrc"):
+            self.assertIn("install/bin:$PATH", (self.tmp / "home" / name).read_text())
+
     def test_path_insertion_idempotent(self) -> None:
         home = self.tmp / "home"
         zshrc = home / ".zshrc"

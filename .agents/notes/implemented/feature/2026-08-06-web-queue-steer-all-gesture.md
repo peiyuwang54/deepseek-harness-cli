@@ -22,6 +22,8 @@ One keyboard gesture now replaces N clicks while keeping a single strict-steer p
 
 ## Related
 
+The keyless browser test holds the replay stream until keyboard steering has transferred both queued messages. It then records the pending-steering snapshot only after the question composer is visible. Model pacing cannot replace the input during the gesture or move the checkpoint between reasoning completion and question presentation.
+
 The per-row 插话发送 action and its strict-steer boundary are owned by [Steer a queued Web message into the active turn](../feature/2026-07-30-web-queue-steer-action.md); this note only adds the whole-queue keyboard gesture on top of that decision.
 
 ## Alternatives considered

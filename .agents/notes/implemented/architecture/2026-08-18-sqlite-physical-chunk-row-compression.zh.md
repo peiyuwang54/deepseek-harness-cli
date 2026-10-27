@@ -76,6 +76,6 @@ SQLite 在 schema 17 包内拥有分片编码和验证。字段完全匹配的�
 
 标准 SQLite 提供方保留每一项逻辑持久化、回放、revision、崩溃恢复和模型可见行为。在节奏流验证中，高频批次使用的行数和测得的进程磁盘写入字节少于此前布局；空闲样本没有新增测得写入。打包率取决于持久批次边界，但除显式崩溃修复外，已经提交的行保持不可变。
 
-代价是不迁移旧的预发布 SQLite schema，以及取决于时序的物理行数。SQLite 与 Zstandard 都是同步操作：每个连接以配置的 `busyTimeoutMs` 等待竞争锁，该等待期间会阻塞其 JavaScript 线程，大型行的编码与解码也在该线程上执行。冷打开会在 journal-mode 切换立即返回 `SQLITE_BUSY` 后让出执行，并在从打开时计算的重试截止点后不再发起新尝试；正在执行的同步调用可能更晚才完成。外部 SQL 工具必须使用提供方解码器，而不能假定每个物理 `events.type` 都是逻辑事件类型或每个 payload 列都是文本。
+代价是不迁移旧的预发布 SQLite schema，以及取决于时序的物理行数。SQLite 与 Zstandard 都是同步操作：每个连接以配置的 `busyTimeoutMs` 等待竞争锁，该等待期间会阻塞其 JavaScript 线程，大型行的编码与解码也在该线程上执行。冷打开会在 journal-mode 切换立即返回 `SQLITE_BUSY` 后让出执行，并在从打开时计算的重试截止点后不再发起新尝试；正在执行的同步调用可能更晚才完成。Schema 初始化也计入该预算，因此首次返回 busy 时就可能已经没有重试时间。重试间隔检查控制单调时钟和等待延迟，避免依赖主机调度；真实竞争进程测试继续验证 SQLite 锁等待的集成行为。外部 SQL 工具必须使用提供方解码器，而不能假定每个物理 `events.type` 都是逻辑事件类型或每个 payload 列都是文本。
 
 [JSONL 打包行决策](2026-07-26-packed-chunk-rows-by-default.md)、[有界持久化批处理](2026-08-08-bounded-session-persistence-write-batching.md)和原始[会话持久化决策](2026-06-14-session-persistence.md)继续保持 active：它们分别负责 JSONL 格式、写入调度以及后端无关的服务语义。

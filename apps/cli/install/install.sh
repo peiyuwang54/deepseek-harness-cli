@@ -172,11 +172,28 @@ add_to_rc() {
 }
 
 case "${SHELL:-}" in
+  *fish)
+    fish_dir="${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d"
+    mkdir -p "$fish_dir"
+    printf 'set -gx PATH "%s/bin" $PATH\n' "$INSTALL_DIR" > "$fish_dir/deepseek-harness-cli.fish"
+    echo "deepseek-harness-cli: added $INSTALL_DIR/bin to PATH in $fish_dir/deepseek-harness-cli.fish"
+    ;;
   *zsh)
     add_to_rc "$HOME/.zshrc"
     ;;
   *bash)
     add_to_rc "$HOME/.bashrc"
+    if [ "$OS" = macos ]; then
+      if [ -f "$HOME/.bash_profile" ]; then
+        add_to_rc "$HOME/.bash_profile"
+      elif [ -f "$HOME/.bash_login" ]; then
+        add_to_rc "$HOME/.bash_login"
+      elif [ -f "$HOME/.profile" ]; then
+        add_to_rc "$HOME/.profile"
+      else
+        add_to_rc "$HOME/.bash_profile"
+      fi
+    fi
     ;;
   *)
     [ -f "$HOME/.zshrc" ] && add_to_rc "$HOME/.zshrc"
@@ -187,4 +204,7 @@ case "${SHELL:-}" in
     ;;
 esac
 
-echo "deepseek-harness-cli: done. Restart your shell or run: export PATH=\"$INSTALL_DIR/bin:\$PATH\""
+case "${SHELL:-}" in
+  *fish) echo "deepseek-harness-cli: done. Restart your shell or run: set -gx PATH \"$INSTALL_DIR/bin\" \$PATH" ;;
+  *) echo "deepseek-harness-cli: done. Restart your shell or run: export PATH=\"$INSTALL_DIR/bin:\$PATH\"" ;;
+esac

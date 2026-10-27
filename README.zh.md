@@ -30,8 +30,6 @@ curl -fsSL https://raw.githubusercontent.com/peiyuwang54/deepseek-harness-cli/ma
 
 <a id="install-windows"></a>
 
-该命令默认会在 `http://127.0.0.1:3080` 启动 Web UI，本机启动时还会用默认浏览器打开页面。通过 SSH 启动时只打印宿主机 URL，因为本地转发地址由 SSH 客户端或编辑器持有。传入 `--no-open` 可仅运行服务器而不打开浏览器。详见 [Web UI 指南](docs/user/guide/index.md)。
-
 Windows：
 
 ```powershell
@@ -57,6 +55,14 @@ deepseek
 # or
 dsh
 ```
+
+使用 `deepseek web` 启动 Web UI：
+
+```sh
+deepseek web
+```
+
+该命令默认会在 `http://127.0.0.1:3080` 启动 Web UI，本机启动时还会用默认浏览器打开页面。通过 SSH 启动时只打印宿主机 URL，因为本地转发地址由 SSH 客户端或编辑器持有。传入 `--no-open` 可仅运行服务器而不打开浏览器。详见 [Web UI 指南](docs/user/guide/index.md)。
 
 脚本与 CI 可用 `deepseek exec` 运行非交互任务：
 

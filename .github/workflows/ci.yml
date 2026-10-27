@@ -481,12 +481,14 @@ jobs:
     name: windows node 24 / native complete
     timeout-minutes: 120
     env:
-      DSH_COVERAGE_MAX_WORKERS: '6'
-      DSH_COVERAGE_PARTITIONS: '8'
+      # Standard hosted runners share capacity with the native build and gates.
+      # Keep the larger budgets only for explicitly configured runner pools.
+      DSH_COVERAGE_MAX_WORKERS: ${{ ((vars.DSH_CI_FAILOVER_WINDOWS == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]') || vars.DSH_CI_HOSTED_WINDOWS_RUNNER != '') && '6' || '3' }}
+      DSH_COVERAGE_PARTITIONS: ${{ ((vars.DSH_CI_FAILOVER_WINDOWS == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]') || vars.DSH_CI_HOSTED_WINDOWS_RUNNER != '') && '8' || '2' }}
       # Instrumented process and polling fixtures can exceed Vitest's defaults
       # under the complete lane's concurrent gate load.
       DSH_COVERAGE_TEST_TIMEOUT_MS: '30000'
-      DSH_GATE_CONCURRENCY: '4'
+      DSH_GATE_CONCURRENCY: ${{ ((vars.DSH_CI_FAILOVER_WINDOWS == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]') || vars.DSH_CI_HOSTED_WINDOWS_RUNNER != '') && '4' || '2' }}
       DSH_PUBLINT_CONCURRENCY: '8'
     steps:
       - uses: actions/checkout@v6

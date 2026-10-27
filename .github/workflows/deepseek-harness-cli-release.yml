@@ -215,7 +215,7 @@ jobs:
           EXE: ${{ github.workspace }}/dist-exe/deepseek-harness-cli-${{ steps.product.outputs.platform }}
         run: python3 scripts/check-macos-deployment-target.py "$EXE" "$EXE-spawn-helper"
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: deepseek-harness-cli-exe-${{ steps.product.outputs.platform }}
           path: |
@@ -294,21 +294,21 @@ jobs:
         with:
           subject-path: dist-release/*.tar.gz
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: deepseek-harness-cli-release-assets
           path: dist-release
           if-no-files-found: error
           retention-days: 7
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: deepseek-harness-cli-npm-packages
           path: dist-npm
           if-no-files-found: error
           retention-days: 7
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: deepseek-harness-cli-cask
           path: deepseek-harness-cli.rb

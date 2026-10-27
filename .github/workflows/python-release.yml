@@ -51,7 +51,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v7
         with:
           pattern: deepseek_harness_*
           path: dist
@@ -137,7 +137,7 @@ jobs:
             }
           fi
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v7
         with:
           pattern: deepseek_harness_*
           path: dist
@@ -194,7 +194,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v7
         with:
           name: python-release-${{ needs.validate.outputs.version }}
           path: dist
@@ -229,7 +229,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v7
         with:
           name: python-release-${{ needs.validate.outputs.version }}
           path: dist

@@ -266,7 +266,7 @@ jobs:
           --runtime-exe "${{ steps.runtime.outputs.exe }}"
           --output-dir dist-python
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@v7
         with:
           name: deepseek_harness_sdk-${{ needs.plan.outputs.version }}-py3-none-any.whl
           path: dist-python
